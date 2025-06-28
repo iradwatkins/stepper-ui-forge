@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +14,11 @@ const Events = () => {
     { id: "all", label: "All Events" },
     { id: "workshops", label: "Workshops" },
     { id: "sets", label: "Sets" },
-    { id: "meetups", label: "Meetups" },
-    { id: "conferences", label: "Conferences" },
+    { id: "in-the-park", label: "In the park" },
+    { id: "trips", label: "Trips" },
+    { id: "cruises", label: "Cruises" },
+    { id: "holiday", label: "Holiday" },
+    { id: "competitions", label: "Competitions" },
   ];
 
   const mockEvents = [
@@ -48,28 +50,67 @@ const Events = () => {
     },
     {
       id: 3,
-      title: "Tech Entrepreneurs Meetup",
-      description: "Network with fellow entrepreneurs and share ideas",
+      title: "Park Yoga Session",
+      description: "Relax and unwind with outdoor yoga",
       date: "2024-07-25",
-      time: "6:00 PM",
-      location: "Innovation Center",
-      price: "$25",
-      category: "meetups",
-      attendees: 80,
-      image: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=400&h=200&fit=crop",
+      time: "8:00 AM",
+      location: "Central Park",
+      price: "$15",
+      category: "in-the-park",
+      attendees: 30,
+      image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=200&fit=crop",
       type: "ticketed"
     },
     {
       id: 4,
-      title: "Premium Design Conference",
-      description: "Exclusive conference with industry leaders",
+      title: "Weekend Mountain Trip",
+      description: "Adventure hiking trip to the mountains",
       date: "2024-08-01",
-      time: "9:00 AM",
-      location: "Grand Convention Center",
-      price: "$299",
-      category: "conferences",
+      time: "6:00 AM",
+      location: "Blue Ridge Mountains",
+      price: "$150",
+      category: "trips",
+      attendees: 25,
+      image: "https://images.unsplash.com/photo-1464822759844-d150419e72bb?w=400&h=200&fit=crop",
+      type: "premium"
+    },
+    {
+      id: 5,
+      title: "Caribbean Cruise Experience",
+      description: "7-day luxury cruise with entertainment",
+      date: "2024-08-10",
+      time: "2:00 PM",
+      location: "Miami Port",
+      price: "$899",
+      category: "cruises",
       attendees: 200,
-      image: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=400&h=200&fit=crop",
+      image: "https://images.unsplash.com/photo-1540946485063-a40da27bda5b?w=400&h=200&fit=crop",
+      type: "premium"
+    },
+    {
+      id: 6,
+      title: "Christmas Holiday Celebration",
+      description: "Festive holiday party with family activities",
+      date: "2024-12-20",
+      time: "5:00 PM",
+      location: "Community Center",
+      price: "$25",
+      category: "holiday",
+      attendees: 150,
+      image: "https://images.unsplash.com/photo-1512389142860-9c449e58a543?w=400&h=200&fit=crop",
+      type: "ticketed"
+    },
+    {
+      id: 7,
+      title: "Dance Competition Finals",
+      description: "Annual dance competition with cash prizes",
+      date: "2024-09-15",
+      time: "7:00 PM",
+      location: "Grand Theater",
+      price: "$50",
+      category: "competitions",
+      attendees: 300,
+      image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=200&fit=crop",
       type: "premium"
     },
   ];
