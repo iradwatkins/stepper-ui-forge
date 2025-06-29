@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -7,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/contexts/AuthContext'
-import { MailIcon, KeyIcon, ChromeIcon, Loader2Icon, AlertCircleIcon } from 'lucide-react'
+import { MailIcon, KeyIcon, ChromeIcon, Loader2Icon, AlertCircleIcon, CheckCircleIcon } from 'lucide-react'
 
 export const Auth = () => {
   const { signIn, signUp, signInWithGoogle, signInWithMagicLink } = useAuth()
@@ -72,13 +73,17 @@ export const Auth = () => {
     setMessage(null)
 
     try {
+      console.log('Attempting to send magic link to:', email)
       const { error } = await signInWithMagicLink(email)
       if (error) {
+        console.error('Magic link error:', error)
         setError(error.message)
       } else {
-        setMessage('Check your email for the magic link!')
+        console.log('Magic link sent successfully')
+        setMessage('Magic link sent! Check your email and click the link to sign in.')
       }
     } catch (err) {
+      console.error('Magic link exception:', err)
       setError('Failed to send magic link')
     } finally {
       setLoading(false)
@@ -106,7 +111,7 @@ export const Auth = () => {
 
           {message && (
             <Alert className="border-green-200 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200">
-              <MailIcon className="h-4 w-4" />
+              <CheckCircleIcon className="h-4 w-4" />
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           )}
@@ -222,25 +227,27 @@ export const Auth = () => {
               Continue with Google
             </Button>
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleMagicLink}
-              disabled={loading || !email}
-            >
-              {loading ? (
-                <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <MailIcon className="w-4 h-4 mr-2" />
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleMagicLink}
+                disabled={loading || !email}
+              >
+                {loading ? (
+                  <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <MailIcon className="w-4 h-4 mr-2" />
+                )}
+                Send Magic Link
+              </Button>
+              
+              {!email && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Enter your email above to send a magic link
+                </p>
               )}
-              Send Magic Link
-            </Button>
-            
-            {!email && (
-              <p className="text-xs text-muted-foreground text-center">
-                Enter your email above to send a magic link
-              </p>
-            )}
+            </div>
           </div>
         </CardContent>
       </Card>
