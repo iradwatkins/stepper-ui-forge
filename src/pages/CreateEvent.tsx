@@ -2,17 +2,18 @@
 import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Progress } from "@/components/ui/progress";
 import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
 import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfiguration } from "@/components/create-event/TicketConfiguration";
 import { ReviewStep } from "@/components/create-event/ReviewStep";
+import { WizardNavigator, WizardControls } from "@/components/create-event/wizard";
 import { eventsService, Event } from "@/lib/events";
 import { useNavigate } from "react-router-dom";
 import { EventFormData, EventType, eventFormSchema } from "@/types/event-form";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useEventData } from "@/hooks/useEventData";
+import { useWizardNavigation } from "@/hooks/useWizardNavigation";
 
 console.log("CreateEvent component loading...");
 
@@ -20,7 +21,6 @@ const CreateEvent = () => {
   console.log("CreateEvent component rendering...");
 
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
   const [eventType, setEventType] = useState<EventType['id'] | "">("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
@@ -39,18 +39,26 @@ const CreateEvent = () => {
       isPublic: true,
       tags: [],
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      images: []
-    }
+      images: {}
+    },
+    mode: "onChange" // Enable validation on change for better UX
   });
 
   const { eventData, setEventData, addTicketTier, removeTicketTier, updateTicketTier } = useEventData();
-  const { uploadedImages, setUploadedImages, isProcessingImage, handleImageUpload, removeImage } = useImageUpload();
+  const { uploadedImages, setUploadedImages, isProcessingImage, processingProgress, handleImageUpload, removeImage } = useImageUpload();
+  
+  // Enhanced wizard navigation
+  const wizard = useWizardNavigation({ 
+    form, 
+    eventType, 
+    selectedCategories 
+  });
   const { lastSaved, clearDraft, loadDraft } = useAutoSave({
     form,
     eventType,
     selectedCategories,
     uploadedImages,
-    currentStep,
+    currentStep: wizard.currentStep,
     enabled: autoSaveEnabled
   });
 
@@ -60,27 +68,27 @@ const CreateEvent = () => {
     { id: "premium", title: "Premium Events" }
   ];
 
-  const totalSteps = 4;
-  const progress = (currentStep / totalSteps) * 100;
-
   // Load draft on component mount
   useEffect(() => {
-    loadDraft(setEventType, setSelectedCategories, setUploadedImages, setCurrentStep);
-  }, []);
+    loadDraft(setEventType, setSelectedCategories, setUploadedImages, wizard.goToStep);
+  }, [wizard.goToStep]);
 
-  const handleImageUploadWithForm = useCallback(async (files: FileList) => {
-    await handleImageUpload(files);
-    // Update form with new images after upload
-    setTimeout(() => {
-      form.setValue('images', [...uploadedImages, ...Array.from(files).map(() => '')]);
-    }, 100);
-  }, [handleImageUpload, uploadedImages, form]);
+  const handleImageUploadWithForm = useCallback(async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {
+    await handleImageUpload(files, imageType);
+  }, [handleImageUpload]);
 
-  const removeImageWithForm = useCallback((index: number) => {
-    removeImage(index);
-    const newImages = uploadedImages.filter((_, i) => i !== index);
-    form.setValue('images', newImages);
-  }, [removeImage, uploadedImages, form]);
+  const removeImageWithForm = useCallback((imageType: 'banner' | 'postcard') => {
+    removeImage(imageType);
+  }, [removeImage]);
+
+  // Sync uploadedImages and categories with form whenever they change
+  useEffect(() => {
+    form.setValue('images', uploadedImages);
+  }, [uploadedImages, form]);
+
+  useEffect(() => {
+    form.setValue('categories', selectedCategories);
+  }, [selectedCategories, form]);
 
   const handleCategoryToggle = useCallback((categoryId: string) => {
     console.log("Category toggled:", categoryId);
@@ -93,20 +101,26 @@ const CreateEvent = () => {
     });
   }, []);
 
-  const nextStep = () => {
-    console.log("Moving to next step from:", currentStep);
-    if (currentStep === 2) {
+  const handleNextStep = () => {
+    console.log("Moving to next step from:", wizard.currentStep);
+    console.log("Can go forward:", wizard.canGoForward);
+    console.log("Form data:", form.getValues());
+    console.log("Selected categories:", selectedCategories);
+    console.log("Event type:", eventType);
+    
+    if (wizard.currentStep === 2) {
       const formData = form.getValues();
+      console.log("Updating eventData with form data:", formData);
       setEventData(prev => ({
         ...prev,
-        title: formData.title,
-        description: formData.description,
-        organizationName: formData.organizationName,
-        date: formData.date,
-        time: formData.time,
+        title: formData.title || '',
+        description: formData.description || '',
+        organizationName: formData.organizationName || '',
+        date: formData.date || '',
+        time: formData.time || '',
         endDate: formData.endDate,
         endTime: formData.endTime,
-        location: formData.address,
+        location: formData.address || '',
         category: selectedCategories.join(', '),
         capacity: formData.capacity,
         displayPrice: formData.displayPrice ? {
@@ -114,20 +128,16 @@ const CreateEvent = () => {
           label: formData.displayPrice.label
         } : undefined,
         isPublic: formData.isPublic ?? true,
-        images: uploadedImages
+        images: []  // Legacy field - actual images are in uploadedImages state
       }));
     }
     
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
+    wizard.nextStep();
   };
 
-  const prevStep = () => {
-    console.log("Moving to previous step from:", currentStep);
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+  const handlePrevStep = () => {
+    console.log("Moving to previous step from:", wizard.currentStep);
+    wizard.prevStep();
   };
 
   const handlePublish = async () => {
@@ -149,7 +159,7 @@ const CreateEvent = () => {
         capacity: eventData.capacity,
         displayPrice: eventData.displayPrice,
         isPublic: eventData.isPublic ?? true,
-        images: eventData.images || [],
+        images: uploadedImages,
         tickets: eventData.tickets || [],
         eventType: eventType as 'simple' | 'ticketed' | 'premium'
       };
@@ -172,11 +182,11 @@ const CreateEvent = () => {
     form.reset();
     setEventType("");
     setSelectedCategories([]);
-    setUploadedImages([]);
-    setCurrentStep(1);
+    setUploadedImages({});
+    wizard.goToStep(1);
   };
 
-  console.log("Current step:", currentStep, "Event type:", eventType);
+  console.log("Current step:", wizard.currentStep, "Event type:", eventType);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -204,69 +214,129 @@ const CreateEvent = () => {
           )}
         </div>
         
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium">Step {currentStep} of {totalSteps}</span>
-            <span className="text-sm text-muted-foreground">{Math.round(progress)}% complete</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
+        {/* Enhanced Wizard Navigation */}
+        <WizardNavigator
+          steps={wizard.visibleSteps}
+          currentStep={wizard.currentStep}
+          getStepStatus={wizard.getStepStatus}
+          onStepClick={wizard.goToStep}
+        />
       </div>
 
-      {currentStep === 1 && (
-        <EventTypeSelection 
-          eventType={eventType} 
-          setEventType={setEventType} 
-          onNext={nextStep} 
-        />
+      {/* Step 1: Event Type Selection */}
+      {wizard.currentStep === 1 && (
+        <div className="space-y-6">
+          <EventTypeSelection 
+            eventType={eventType} 
+            setEventType={setEventType} 
+            onNext={handleNextStep} 
+          />
+          <WizardControls
+            canGoBack={wizard.canGoBackward}
+            canGoForward={wizard.canGoForward}
+            onBack={handlePrevStep}
+            onNext={handleNextStep}
+            isFirstStep={wizard.isFirstStep}
+            isLastStep={wizard.isLastStep}
+            errors={wizard.getCurrentStepErrors()}
+          />
+        </div>
       )}
 
-      {currentStep === 2 && (
-        <BasicInformation 
-          form={form}
-          selectedCategories={selectedCategories}
-          onCategoryToggle={handleCategoryToggle}
-          uploadedImages={uploadedImages}
-          onImageUpload={handleImageUploadWithForm}
-          onRemoveImage={removeImageWithForm}
-          isProcessingImage={isProcessingImage}
-          onNext={nextStep}
-          onPrevious={prevStep}
-          eventType={eventType}
-        />
+      {/* Step 2: Basic Information */}
+      {wizard.currentStep === 2 && (
+        <div className="space-y-6">
+          <BasicInformation 
+            form={form}
+            selectedCategories={selectedCategories}
+            onCategoryToggle={handleCategoryToggle}
+            uploadedImages={uploadedImages}
+            onImageUpload={handleImageUploadWithForm}
+            onRemoveImage={removeImageWithForm}
+            isProcessingImage={isProcessingImage}
+            eventType={eventType}
+          />
+          <WizardControls
+            canGoBack={wizard.canGoBackward}
+            canGoForward={wizard.canGoForward}
+            onBack={handlePrevStep}
+            onNext={handleNextStep}
+            isFirstStep={wizard.isFirstStep}
+            isLastStep={wizard.isLastStep}
+            errors={wizard.getCurrentStepErrors()}
+          />
+        </div>
       )}
 
-      {currentStep === 3 && eventType !== "simple" && (
-        <TicketConfiguration
-          tickets={eventData.tickets}
-          onAddTicketTier={addTicketTier}
-          onRemoveTicketTier={removeTicketTier}
-          onUpdateTicketTier={updateTicketTier}
-          onNext={nextStep}
-          onPrevious={prevStep}
-        />
+      {/* Step 3: Ticketing (for Ticketed/Premium events) */}
+      {wizard.currentStep === 3 && eventType !== "simple" && (
+        <div className="space-y-6">
+          <TicketConfiguration
+            tickets={eventData.tickets}
+            onAddTicketTier={addTicketTier}
+            onRemoveTicketTier={removeTicketTier}
+            onUpdateTicketTier={updateTicketTier}
+            onNext={handleNextStep}
+            onPrevious={handlePrevStep}
+          />
+          <WizardControls
+            canGoBack={wizard.canGoBackward}
+            canGoForward={wizard.canGoForward}
+            onBack={handlePrevStep}
+            onNext={handleNextStep}
+            isFirstStep={wizard.isFirstStep}
+            isLastStep={wizard.isLastStep}
+            nextButtonText="Continue to Review"
+          />
+        </div>
       )}
 
-      {currentStep === 3 && eventType === "simple" && (
-        <ReviewStep
-          eventData={eventData}
-          eventType={eventType}
-          eventTypes={eventTypes}
-          onPrevious={prevStep}
-          onPublish={handlePublish}
-          isPublishing={isPublishing}
-        />
+      {/* Step 3: Review (for Simple events - skip ticketing) */}
+      {wizard.currentStep === 3 && eventType === "simple" && (
+        <div className="space-y-6">
+          <ReviewStep
+            eventData={eventData}
+            eventType={eventType}
+            eventTypes={eventTypes}
+            onPrevious={handlePrevStep}
+            onPublish={handlePublish}
+            isPublishing={isPublishing}
+          />
+          <WizardControls
+            canGoBack={wizard.canGoBackward}
+            canGoForward={false}
+            onBack={handlePrevStep}
+            onNext={handlePublish}
+            isFirstStep={wizard.isFirstStep}
+            isLastStep={wizard.isLastStep}
+            isLoading={isPublishing}
+            nextButtonText="Publish Event"
+          />
+        </div>
       )}
 
-      {currentStep === 4 && (
-        <ReviewStep
-          eventData={eventData}
-          eventType={eventType}
-          eventTypes={eventTypes}
-          onPrevious={prevStep}
-          onPublish={handlePublish}
-          isPublishing={isPublishing}
-        />
+      {/* Step 4: Review (for Ticketed/Premium events) */}
+      {wizard.currentStep === 4 && (
+        <div className="space-y-6">
+          <ReviewStep
+            eventData={eventData}
+            eventType={eventType}
+            eventTypes={eventTypes}
+            onPrevious={handlePrevStep}
+            onPublish={handlePublish}
+            isPublishing={isPublishing}
+          />
+          <WizardControls
+            canGoBack={wizard.canGoBackward}
+            canGoForward={false}
+            onBack={handlePrevStep}
+            onNext={handlePublish}
+            isFirstStep={wizard.isFirstStep}
+            isLastStep={wizard.isLastStep}
+            isLoading={isPublishing}
+            nextButtonText="Publish Event"
+          />
+        </div>
       )}
     </div>
   );

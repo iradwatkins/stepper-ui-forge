@@ -24,7 +24,52 @@ export const eventFormSchema = z.object({
   isPublic: z.boolean().default(true),
   tags: z.array(z.string()).optional(),
   timezone: z.string().optional(),
-  images: z.array(z.string()).optional()
+  images: z.object({
+    banner: z.object({
+      original: z.string(),
+      medium: z.string(),
+      small: z.string(),
+      thumbnail: z.string(),
+      webp: z.object({
+        original: z.string(),
+        medium: z.string(),
+        small: z.string(),
+        thumbnail: z.string()
+      }),
+      metadata: z.object({
+        originalSize: z.number(),
+        compressedSize: z.number(),
+        compressionRatio: z.number(),
+        format: z.string(),
+        dimensions: z.object({
+          width: z.number(),
+          height: z.number()
+        })
+      })
+    }).optional(),
+    postcard: z.object({
+      original: z.string(),
+      medium: z.string(),
+      small: z.string(),
+      thumbnail: z.string(),
+      webp: z.object({
+        original: z.string(),
+        medium: z.string(),
+        small: z.string(),
+        thumbnail: z.string()
+      }),
+      metadata: z.object({
+        originalSize: z.number(),
+        compressedSize: z.number(),
+        compressionRatio: z.number(),
+        format: z.string(),
+        dimensions: z.object({
+          width: z.number(),
+          height: z.number()
+        })
+      })
+    }).optional()
+  }).optional()
 }).refine((data) => {
   if (data.endDate && data.date) {
     return new Date(data.endDate) >= new Date(data.date);

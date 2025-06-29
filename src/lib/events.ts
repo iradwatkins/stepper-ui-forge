@@ -16,7 +16,52 @@ export interface Event {
     label: string;
   };
   isPublic: boolean;
-  images?: string[];
+  images?: {
+    banner?: {
+      original: string;
+      medium: string;
+      small: string;
+      thumbnail: string;
+      webp: {
+        original: string;
+        medium: string;
+        small: string;
+        thumbnail: string;
+      };
+      metadata: {
+        originalSize: number;
+        compressedSize: number;
+        compressionRatio: number;
+        format: string;
+        dimensions: {
+          width: number;
+          height: number;
+        };
+      };
+    };
+    postcard?: {
+      original: string;
+      medium: string;
+      small: string;
+      thumbnail: string;
+      webp: {
+        original: string;
+        medium: string;
+        small: string;
+        thumbnail: string;
+      };
+      metadata: {
+        originalSize: number;
+        compressedSize: number;
+        compressionRatio: number;
+        format: string;
+        dimensions: {
+          width: number;
+          height: number;
+        };
+      };
+    };
+  };
   tickets?: Array<{
     name: string;
     price: number;

@@ -3,9 +3,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, ImageIcon, X, Upload, DollarSignIcon } from "lucide-react";
+
+interface OptimizedImage {
+  original: string;
+  medium: string;
+  small: string;
+  thumbnail: string;
+  webp: {
+    original: string;
+    medium: string;
+    small: string;
+    thumbnail: string;
+  };
+  metadata: {
+    originalSize: number;
+    compressedSize: number;
+    compressionRatio: number;
+    format: string;
+    dimensions: {
+      width: number;
+      height: number;
+    };
+  };
+}
+
+interface ProcessedImages {
+  banner?: OptimizedImage;
+  postcard?: OptimizedImage;
+}
 
 interface EventFormData {
   title: string;
@@ -25,19 +52,17 @@ interface EventFormData {
   isPublic: boolean;
   tags?: string[];
   timezone?: string;
-  images?: string[];
+  images?: ProcessedImages;
 }
 
 interface BasicInformationProps {
   form: UseFormReturn<EventFormData>;
   selectedCategories: string[];
   onCategoryToggle: (categoryId: string) => void;
-  uploadedImages: string[];
-  onImageUpload: (files: FileList) => void;
-  onRemoveImage: (index: number) => void;
+  uploadedImages: ProcessedImages;
+  onImageUpload: (files: FileList, imageType?: 'banner' | 'postcard') => void;
+  onRemoveImage: (imageType: 'banner' | 'postcard') => void;
   isProcessingImage: boolean;
-  onNext: () => void;
-  onPrevious: () => void;
   eventType: 'simple' | 'ticketed' | 'premium' | '';
 }
 
@@ -59,8 +84,6 @@ export const BasicInformation = ({
   onImageUpload,
   onRemoveImage,
   isProcessingImage,
-  onNext, 
-  onPrevious,
   eventType
 }: BasicInformationProps) => {
   console.log("BasicInformation rendering with categories:", selectedCategories);
@@ -70,32 +93,17 @@ export const BasicInformation = ({
     categories: form.watch('categories')
   });
 
-  const handleImageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageInputChange = (e: React.ChangeEvent<HTMLInputElement>, imageType: 'banner' | 'postcard' = 'banner') => {
     if (e.target.files && e.target.files.length > 0) {
-      onImageUpload(e.target.files);
+      onImageUpload(e.target.files, imageType);
     }
   };
 
   const showDisplayPrice = eventType === 'simple';
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Form submitted with categories:", selectedCategories);
-    
-    // Set categories in form before validation
-    form.setValue('categories', selectedCategories);
-    
-    // Check if form is valid and categories are selected
-    if (selectedCategories.length > 0 && form.formState.isValid) {
-      onNext();
-    } else {
-      // Trigger validation to show errors
-      form.trigger();
-    }
-  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold mb-2">Event Information</h2>
         <p className="text-sm text-muted-foreground">Tell us about your event</p>
@@ -301,55 +309,134 @@ export const BasicInformation = ({
               Event Images
             </CardTitle>
             <CardDescription className="text-sm">
-              Upload images to make your event more appealing (optional)
+              Upload high-quality images to make your event more appealing (optional)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  id="image-upload"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageInputChange}
-                  className="hidden"
-                  disabled={isProcessingImage}
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="cursor-pointer flex flex-col items-center gap-2"
-                >
-                  <Upload className="w-8 h-8 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">
-                      {isProcessingImage ? "Processing images..." : "Click to upload images"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PNG, JPG, WebP up to 10MB each
-                    </p>
+            <div className="space-y-6">
+              {/* Banner Image Upload */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Banner Image</h4>
+                  <span className="text-xs text-muted-foreground">Recommended: 1200x600px</span>
+                </div>
+                
+                {!uploadedImages.banner ? (
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      id="banner-upload"
+                      accept="image/*"
+                      onChange={(e) => handleImageInputChange(e, 'banner')}
+                      className="hidden"
+                      disabled={isProcessingImage}
+                    />
+                    <label
+                      htmlFor="banner-upload"
+                      className="cursor-pointer flex flex-col items-center gap-2"
+                    >
+                      <Upload className="w-8 h-8 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {isProcessingImage ? "Processing banner..." : "Upload banner image"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PNG, JPG, WebP up to 10MB - Auto-optimized to WebP
+                        </p>
+                      </div>
+                    </label>
                   </div>
-                </label>
+                ) : (
+                  <div className="relative group">
+                    <img
+                      src={uploadedImages.banner.thumbnail}
+                      alt="Event banner"
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                      <div className="text-white text-center text-xs space-y-1">
+                        <p>Compression: {uploadedImages.banner.metadata.compressionRatio}%</p>
+                        <p>Size: {(uploadedImages.banner.metadata.compressedSize / 1024 / 1024).toFixed(2)}MB</p>
+                        <p>{uploadedImages.banner.metadata.dimensions.width}x{uploadedImages.banner.metadata.dimensions.height}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveImage('banner')}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {uploadedImages.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {uploadedImages.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={image}
-                        alt={`Event image ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => onRemoveImage(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+              {/* Postcard Image Upload */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Postcard Image</h4>
+                  <span className="text-xs text-muted-foreground">Recommended: 600x400px</span>
+                </div>
+                
+                {!uploadedImages.postcard ? (
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      id="postcard-upload"
+                      accept="image/*"
+                      onChange={(e) => handleImageInputChange(e, 'postcard')}
+                      className="hidden"
+                      disabled={isProcessingImage}
+                    />
+                    <label
+                      htmlFor="postcard-upload"
+                      className="cursor-pointer flex flex-col items-center gap-2"
+                    >
+                      <Upload className="w-6 h-6 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {isProcessingImage ? "Processing postcard..." : "Upload postcard image"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Optional - For social sharing and listings
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <img
+                      src={uploadedImages.postcard.thumbnail}
+                      alt="Event postcard"
+                      className="w-full h-24 object-cover rounded-lg border"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                      <div className="text-white text-center text-xs space-y-1">
+                        <p>Compression: {uploadedImages.postcard.metadata.compressionRatio}%</p>
+                        <p>Size: {(uploadedImages.postcard.metadata.compressedSize / 1024 / 1024).toFixed(2)}MB</p>
+                        <p>{uploadedImages.postcard.metadata.dimensions.width}x{uploadedImages.postcard.metadata.dimensions.height}</p>
+                      </div>
                     </div>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => onRemoveImage('postcard')}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Processing Progress */}
+              {isProcessingImage && (
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Processing image optimization...
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Converting to WebP format and generating multiple sizes
+                  </p>
                 </div>
               )}
             </div>
@@ -456,19 +543,6 @@ export const BasicInformation = ({
         </Card>
       </div>
 
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={onPrevious} className="flex-1">
-          Back
-        </Button>
-        <Button 
-          type="submit" 
-          disabled={!form.formState.isValid || isProcessingImage}
-          className="flex-1"
-        >
-          {isProcessingImage ? "Processing..." : 
-           selectedCategories.length === 0 ? "Select categories to continue" : "Continue"}
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 };

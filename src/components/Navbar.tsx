@@ -29,12 +29,22 @@ const Navbar = () => {
           </Link>
           
           {user && (
-            <Link to="/create-event">
-              <Button variant="outline" size="sm">
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Create Event
-              </Button>
-            </Link>
+            <>
+              <Link to="/dashboard">
+                <Button 
+                  variant={location.pathname.startsWith("/dashboard") ? "default" : "ghost"}
+                  className="font-medium"
+                >
+                  Dashboard
+                </Button>
+              </Link>
+              <Link to="/create-event">
+                <Button variant="outline" size="sm">
+                  <PlusIcon className="w-4 h-4 mr-2" />
+                  Create Event
+                </Button>
+              </Link>
+            </>
           )}
           
           <Button
