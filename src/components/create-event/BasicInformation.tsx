@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ImageIcon, X, Upload } from "lucide-react";
 
 interface EventFormData {
   title: string;
@@ -27,12 +27,17 @@ interface EventFormData {
   isPublic: boolean;
   tags?: string[];
   timezone?: string;
+  images?: string[];
 }
 
 interface BasicInformationProps {
   form: UseFormReturn<EventFormData>;
   selectedCategories: string[];
   onCategoryToggle: (categoryId: string) => void;
+  uploadedImages: string[];
+  onImageUpload: (files: FileList) => void;
+  onRemoveImage: (index: number) => void;
+  isProcessingImage: boolean;
   onNext: () => void;
   onPrevious: () => void;
 }
@@ -51,10 +56,20 @@ export const BasicInformation = ({
   form, 
   selectedCategories, 
   onCategoryToggle, 
+  uploadedImages,
+  onImageUpload,
+  onRemoveImage,
+  isProcessingImage,
   onNext, 
   onPrevious 
 }: BasicInformationProps) => {
   console.log("BasicInformation rendering with categories:", selectedCategories);
+
+  const handleImageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onImageUpload(e.target.files);
+    }
+  };
 
   return (
     <form onSubmit={form.handleSubmit(() => onNext())} className="space-y-4">
@@ -188,6 +203,68 @@ export const BasicInformation = ({
 
         <Card>
           <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ImageIcon className="w-4 h-4" />
+              Event Images
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Upload images to make your event more appealing (optional)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  id="image-upload"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageInputChange}
+                  className="hidden"
+                  disabled={isProcessingImage}
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <Upload className="w-8 h-8 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      {isProcessingImage ? "Processing images..." : "Click to upload images"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, GIF up to 10MB each
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {uploadedImages.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image}
+                        alt={`Event image ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onRemoveImage(index)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
             <CardTitle className="text-lg">Event Categories *</CardTitle>
             <CardDescription className="text-sm">
               Select one or more categories
@@ -243,10 +320,10 @@ export const BasicInformation = ({
         </Button>
         <Button 
           type="submit" 
-          disabled={!form.formState.isValid || selectedCategories.length === 0}
+          disabled={!form.formState.isValid || selectedCategories.length === 0 || isProcessingImage}
           className="flex-1"
         >
-          Continue
+          {isProcessingImage ? "Processing..." : "Continue"}
         </Button>
       </div>
     </form>

@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { EventTypeSelection } from "@/components/create-event/EventTypeSelection
 import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfiguration } from "@/components/create-event/TicketConfiguration";
 import { ReviewStep } from "@/components/create-event/ReviewStep";
+import imageCompression from 'browser-image-compression';
 
 console.log("CreateEvent component loading...");
 
@@ -33,7 +34,8 @@ const eventFormSchema = z.object({
   }).optional(),
   isPublic: z.boolean(),
   tags: z.array(z.string()).optional(),
-  timezone: z.string().optional()
+  timezone: z.string().optional(),
+  images: z.array(z.string()).optional()
 });
 
 type EventFormData = z.infer<typeof eventFormSchema>;
@@ -44,6 +46,10 @@ const CreateEvent = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [eventType, setEventType] = useState<EventType['id'] | "">("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventFormSchema),
@@ -57,7 +63,8 @@ const CreateEvent = () => {
       categories: [],
       isPublic: true,
       tags: [],
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      images: []
     }
   });
 
@@ -68,6 +75,7 @@ const CreateEvent = () => {
     time: "",
     location: "",
     category: "",
+    images: [] as string[],
     tickets: [{ name: "General Admission", price: 0, quantity: 100 }]
   });
 
@@ -79,6 +87,98 @@ const CreateEvent = () => {
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
+
+  // Auto-save functionality
+  useEffect(() => {
+    if (!autoSaveEnabled) return;
+
+    const saveTimer = setTimeout(() => {
+      const formData = form.getValues();
+      if (formData.title || formData.description) {
+        localStorage.setItem('draft-event', JSON.stringify({
+          ...formData,
+          eventType,
+          selectedCategories,
+          uploadedImages,
+          currentStep
+        }));
+        setLastSaved(new Date());
+        console.log("Auto-saved draft at:", new Date());
+      }
+    }, 2000);
+
+    return () => clearTimeout(saveTimer);
+  }, [form.watch(), eventType, selectedCategories, uploadedImages, currentStep, autoSaveEnabled]);
+
+  // Load draft on component mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('draft-event');
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        form.reset(draft);
+        setEventType(draft.eventType || "");
+        setSelectedCategories(draft.selectedCategories || []);
+        setUploadedImages(draft.uploadedImages || []);
+        setCurrentStep(draft.currentStep || 1);
+        console.log("Loaded draft from localStorage");
+      } catch (error) {
+        console.error("Error loading draft:", error);
+      }
+    }
+  }, []);
+
+  const handleImageUpload = useCallback(async (files: FileList) => {
+    if (!files.length) return;
+
+    setIsProcessingImage(true);
+    console.log("Processing image upload:", files.length, "files");
+
+    try {
+      const processedImages: string[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Image compression options
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          fileType: 'image/jpeg'
+        };
+
+        try {
+          const compressedFile = await imageCompression(file, options);
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(compressedFile);
+          });
+          
+          processedImages.push(base64);
+          console.log(`Processed image ${i + 1}/${files.length}`);
+        } catch (error) {
+          console.error(`Error processing image ${i + 1}:`, error);
+        }
+      }
+
+      setUploadedImages(prev => [...prev, ...processedImages]);
+      form.setValue('images', [...uploadedImages, ...processedImages]);
+      console.log("Successfully uploaded", processedImages.length, "images");
+    } catch (error) {
+      console.error("Error in image upload process:", error);
+    } finally {
+      setIsProcessingImage(false);
+    }
+  }, [uploadedImages, form]);
+
+  const removeImage = useCallback((index: number) => {
+    const newImages = uploadedImages.filter((_, i) => i !== index);
+    setUploadedImages(newImages);
+    form.setValue('images', newImages);
+    console.log("Removed image at index:", index);
+  }, [uploadedImages, form]);
 
   const handleCategoryToggle = useCallback((categoryId: string) => {
     console.log("Category toggled:", categoryId);
@@ -103,7 +203,8 @@ const CreateEvent = () => {
         date: formData.date,
         time: formData.time,
         location: formData.address,
-        category: selectedCategories.join(', ')
+        category: selectedCategories.join(', '),
+        images: uploadedImages
       }));
     }
     
@@ -144,6 +245,19 @@ const CreateEvent = () => {
 
   const handlePublish = () => {
     console.log("Publishing event with data:", eventData);
+    // Clear draft after publishing
+    localStorage.removeItem('draft-event');
+  };
+
+  const clearDraft = () => {
+    localStorage.removeItem('draft-event');
+    form.reset();
+    setEventType("");
+    setSelectedCategories([]);
+    setUploadedImages([]);
+    setCurrentStep(1);
+    setLastSaved(null);
+    console.log("Cleared draft");
   };
 
   console.log("Current step:", currentStep, "Event type:", eventType);
@@ -151,10 +265,28 @@ const CreateEvent = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-4">Create Your Event</h1>
-        <p className="text-xl text-muted-foreground mb-6">
-          Follow the steps below to create your event
-        </p>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-4xl font-bold mb-4">Create Your Event</h1>
+            <p className="text-xl text-muted-foreground mb-6">
+              Follow the steps below to create your event
+            </p>
+          </div>
+          
+          {lastSaved && (
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">
+                Last saved: {lastSaved.toLocaleTimeString()}
+              </p>
+              <button 
+                onClick={clearDraft}
+                className="text-xs text-red-500 hover:text-red-700"
+              >
+                Clear draft
+              </button>
+            </div>
+          )}
+        </div>
         
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
@@ -178,6 +310,10 @@ const CreateEvent = () => {
           form={form}
           selectedCategories={selectedCategories}
           onCategoryToggle={handleCategoryToggle}
+          uploadedImages={uploadedImages}
+          onImageUpload={handleImageUpload}
+          onRemoveImage={removeImage}
+          isProcessingImage={isProcessingImage}
           onNext={nextStep}
           onPrevious={prevStep}
         />
