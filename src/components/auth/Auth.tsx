@@ -90,26 +90,26 @@ export const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20 px-4 py-12 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md border-border bg-card shadow-xl">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
+          <CardTitle className="text-2xl font-bold text-center text-foreground">
             Welcome to Steppers
           </CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription className="text-center text-muted-foreground">
             Sign in to your account or create a new one
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="border-destructive/50">
               <AlertCircleIcon className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {message && (
-            <Alert className="border-green-200 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200">
+            <Alert className="border-green-200 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 dark:border-green-800">
               <CheckCircleIcon className="h-4 w-4" />
               <AlertDescription>{message}</AlertDescription>
             </Alert>
@@ -145,7 +145,7 @@ export const Auth = () => {
               {/* Magic Link Authentication */}
               <div className="space-y-2">
                 <div className="space-y-2">
-                  <Label htmlFor="magic-email">Email for Magic Link</Label>
+                  <Label htmlFor="magic-email" className="text-foreground">Email for Magic Link</Label>
                   <Input
                     id="magic-email"
                     type="email"
@@ -153,6 +153,7 @@ export const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
+                    className="border-border focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
                 <Button
@@ -190,7 +191,7 @@ export const Auth = () => {
               {/* Email/Password Authentication */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-foreground">Email</Label>
                   <Input
                     id="email"
                     type="email"
@@ -198,10 +199,11 @@ export const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
+                    className="border-border focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-foreground">Password</Label>
                   <Input
                     id="password"
                     type="password"
@@ -209,10 +211,11 @@ export const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
+                    className="border-border focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
                 <Button
-                  className="w-full"
+                  className="w-full button-primary"
                   onClick={() => handleEmailAuth(false)}
                   disabled={loading}
                 >
@@ -250,7 +253,7 @@ export const Auth = () => {
               {/* Magic Link Authentication */}
               <div className="space-y-2">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-magic-email">Email for Magic Link</Label>
+                  <Label htmlFor="signup-magic-email" className="text-foreground">Email for Magic Link</Label>
                   <Input
                     id="signup-magic-email"
                     type="email"
@@ -258,6 +261,7 @@ export const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
+                    className="border-border focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
                 <Button
@@ -295,7 +299,7 @@ export const Auth = () => {
               {/* Email/Password Authentication */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email" className="text-foreground">Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
@@ -303,10 +307,11 @@ export const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
+                    className="border-border focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                  <Label htmlFor="signup-password" className="text-foreground">Password</Label>
                   <Input
                     id="signup-password"
                     type="password"
@@ -314,10 +319,11 @@ export const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
+                    className="border-border focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
                 <Button
-                  className="w-full"
+                  className="w-full button-primary"
                   onClick={() => handleEmailAuth(true)}
                   disabled={loading}
                 >

@@ -22,7 +22,6 @@ interface EventType {
 interface EventTypeSelectionProps {
   eventType: EventType['id'] | "";
   setEventType: (type: EventType['id']) => void;
-  onNext: () => void;
 }
 
 const eventTypes: EventType[] = [
@@ -109,7 +108,7 @@ const eventTypes: EventType[] = [
   }
 ];
 
-export const EventTypeSelection = ({ eventType, setEventType, onNext }: EventTypeSelectionProps) => {
+export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelectionProps) => {
   console.log("EventTypeSelection rendering with eventType:", eventType);
 
   return (
@@ -196,22 +195,15 @@ export const EventTypeSelection = ({ eventType, setEventType, onNext }: EventTyp
         })}
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="text-center">
         <p className="text-sm text-muted-foreground">
           Need help choosing? All plans can be upgraded later.
         </p>
-        <Button 
-          onClick={onNext} 
-          disabled={!eventType}
-          size="lg"
-          className="px-8"
-        >
-          {eventType 
-            ? `Continue with ${eventTypes.find(t => t.id === eventType)?.title}` 
-            : 'Select an event type to continue'
-          }
-          {eventType && <CheckIcon className="w-4 h-4 ml-2" />}
-        </Button>
+        {eventType && (
+          <p className="text-sm text-primary font-medium mt-2">
+            ✓ Selected: {eventTypes.find(t => t.id === eventType)?.title}
+          </p>
+        )}
       </div>
     </div>
   );

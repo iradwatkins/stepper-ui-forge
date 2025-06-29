@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +6,9 @@ import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfiguration } from "@/components/create-event/TicketConfiguration";
 import { ReviewStep } from "@/components/create-event/ReviewStep";
 import { WizardNavigator, WizardControls } from "@/components/create-event/wizard";
-import { eventsService, Event } from "@/lib/events";
+import { EventsService } from "@/lib/events-db";
+import { Event, EventInsert, ImageMetadata } from "@/types/database";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { EventFormData, EventType, eventFormSchema } from "@/types/event-form";
 import { useImageUpload } from "@/hooks/useImageUpload";
@@ -21,6 +22,7 @@ const CreateEvent = () => {
   console.log("CreateEvent component rendering...");
 
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [eventType, setEventType] = useState<EventType['id'] | "">("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
@@ -140,34 +142,76 @@ const CreateEvent = () => {
     wizard.prevStep();
   };
 
+  // Create eventData with actual images for ReviewStep
+  const eventDataWithImages = {
+    ...eventData,
+    images: [
+      ...(uploadedImages.banner ? [uploadedImages.banner.medium] : []),
+      ...(uploadedImages.postcard ? [uploadedImages.postcard.medium] : [])
+    ]
+  };
+
   const handlePublish = async () => {
+    if (!user?.id) {
+      console.error("User not authenticated");
+      return;
+    }
+
     console.log("Publishing event with data:", eventData);
+    console.log("Uploaded images:", uploadedImages);
     setIsPublishing(true);
     
     try {
-      const eventToSave: Omit<Event, 'id' | 'createdAt' | 'updatedAt'> = {
+      // Convert uploadedImages to database format
+      const imageMetadata: Record<string, ImageMetadata> = {};
+      
+      if (uploadedImages.banner) {
+        imageMetadata.banner = {
+          url: uploadedImages.banner.medium,
+          alt: "Event banner image",
+          size: uploadedImages.banner.metadata.compressedSize,
+          filename: "banner"
+        };
+      }
+      
+      if (uploadedImages.postcard) {
+        imageMetadata.postcard = {
+          url: uploadedImages.postcard.medium,
+          alt: "Event postcard image", 
+          size: uploadedImages.postcard.metadata.compressedSize,
+          filename: "postcard"
+        };
+      }
+
+      // Format data for database (snake_case fields)
+      const eventToSave: EventInsert = {
+        owner_id: user.id,
         title: eventData.title,
         description: eventData.description,
-        organizationName: eventData.organizationName || 'Unknown Organization',
+        organization_name: eventData.organizationName || 'Unknown Organization',
         date: eventData.date,
         time: eventData.time,
-        endDate: eventData.endDate,
-        endTime: eventData.endTime,
         location: eventData.location,
-        category: eventData.category,
         categories: selectedCategories,
-        capacity: eventData.capacity,
-        displayPrice: eventData.displayPrice,
-        isPublic: eventData.isPublic ?? true,
-        images: uploadedImages,
-        tickets: eventData.tickets || [],
-        eventType: eventType as 'simple' | 'ticketed' | 'premium'
+        event_type: eventType as 'simple' | 'ticketed' | 'premium',
+        status: 'published',
+        images: imageMetadata,
+        is_public: eventData.isPublic ?? true,
+        max_attendees: eventData.capacity,
+        registration_deadline: null
       };
 
-      const savedEvent = eventsService.createEvent(eventToSave);
-      localStorage.removeItem('draft-event');
-      console.log("Event published successfully:", savedEvent);
-      navigate('/events');
+      console.log("Formatted event for database:", eventToSave);
+      
+      const savedEvent = await EventsService.createEvent(eventToSave);
+      
+      if (savedEvent) {
+        localStorage.removeItem('draft-event');
+        console.log("Event published successfully:", savedEvent);
+        navigate('/dashboard');
+      } else {
+        throw new Error('Failed to create event');
+      }
       
     } catch (error) {
       console.error("Error publishing event:", error);
@@ -189,155 +233,151 @@ const CreateEvent = () => {
   console.log("Current step:", wizard.currentStep, "Event type:", eventType);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-8">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h1 className="text-4xl font-bold mb-4">Create Your Event</h1>
-            <p className="text-xl text-muted-foreground mb-6">
-              Follow the steps below to create your event
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="mb-8">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className="text-4xl font-bold mb-4 text-foreground">Create Your Event</h1>
+              <p className="text-xl text-muted-foreground mb-6">
+                Follow the steps below to create your event
+              </p>
+            </div>
+            
+            {lastSaved && (
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">
+                  Last saved: {lastSaved.toLocaleTimeString()}
+                </p>
+                <button 
+                  onClick={handleClearDraft}
+                  className="text-xs text-destructive hover:text-destructive/80 transition-colors"
+                >
+                  Clear draft
+                </button>
+              </div>
+            )}
           </div>
           
-          {lastSaved && (
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">
-                Last saved: {lastSaved.toLocaleTimeString()}
-              </p>
-              <button 
-                onClick={handleClearDraft}
-                className="text-xs text-red-500 hover:text-red-700"
-              >
-                Clear draft
-              </button>
-            </div>
-          )}
+          {/* Enhanced Wizard Navigation */}
+          <WizardNavigator
+            steps={wizard.visibleSteps}
+            currentStep={wizard.currentStep}
+            getStepStatus={wizard.getStepStatus}
+            onStepClick={wizard.goToStep}
+          />
         </div>
-        
-        {/* Enhanced Wizard Navigation */}
-        <WizardNavigator
-          steps={wizard.visibleSteps}
-          currentStep={wizard.currentStep}
-          getStepStatus={wizard.getStepStatus}
-          onStepClick={wizard.goToStep}
-        />
+
+        {/* Step 1: Event Type Selection */}
+        {wizard.currentStep === 1 && (
+          <div className="space-y-6">
+            <EventTypeSelection 
+              eventType={eventType} 
+              setEventType={setEventType} 
+            />
+            <WizardControls
+              canGoBack={wizard.canGoBackward}
+              canGoForward={wizard.canGoForward}
+              onBack={handlePrevStep}
+              onNext={handleNextStep}
+              isFirstStep={wizard.isFirstStep}
+              isLastStep={wizard.isLastStep}
+              errors={wizard.getCurrentStepErrors()}
+              nextButtonText={eventType ? `Continue with ${eventType === 'simple' ? 'Simple Events' : eventType === 'ticketed' ? 'Ticketed Events' : 'Premium Events'}` : 'Select an event type to continue'}
+            />
+          </div>
+        )}
+
+        {/* Step 2: Basic Information */}
+        {wizard.currentStep === 2 && (
+          <div className="space-y-6">
+            <BasicInformation 
+              form={form}
+              selectedCategories={selectedCategories}
+              onCategoryToggle={handleCategoryToggle}
+              uploadedImages={uploadedImages}
+              onImageUpload={handleImageUploadWithForm}
+              onRemoveImage={removeImageWithForm}
+              isProcessingImage={isProcessingImage}
+              eventType={eventType}
+            />
+            <WizardControls
+              canGoBack={wizard.canGoBackward}
+              canGoForward={wizard.canGoForward}
+              onBack={handlePrevStep}
+              onNext={handleNextStep}
+              isFirstStep={wizard.isFirstStep}
+              isLastStep={wizard.isLastStep}
+              errors={wizard.getCurrentStepErrors()}
+            />
+          </div>
+        )}
+
+        {/* Step 3: Ticketing (for Ticketed/Premium events) */}
+        {wizard.currentStep === 3 && eventType !== "simple" && (
+          <div className="space-y-6">
+            <TicketConfiguration
+              tickets={eventData.tickets}
+              onAddTicketTier={addTicketTier}
+              onRemoveTicketTier={removeTicketTier}
+              onUpdateTicketTier={updateTicketTier}
+              onNext={handleNextStep}
+              onPrevious={handlePrevStep}
+            />
+            <WizardControls
+              canGoBack={wizard.canGoBackward}
+              canGoForward={wizard.canGoForward}
+              onBack={handlePrevStep}
+              onNext={handleNextStep}
+              isFirstStep={wizard.isFirstStep}
+              isLastStep={wizard.isLastStep}
+              nextButtonText="Continue to Review"
+            />
+          </div>
+        )}
+
+        {/* Step 3: Review (for Simple events - skip ticketing) */}
+        {wizard.currentStep === 3 && eventType === "simple" && (
+          <div className="space-y-6">
+            <ReviewStep
+              eventData={eventDataWithImages}
+              eventType={eventType}
+              eventTypes={eventTypes}
+            />
+            <WizardControls
+              canGoBack={wizard.canGoBackward}
+              canGoForward={false}
+              onBack={handlePrevStep}
+              onNext={handlePublish}
+              isFirstStep={wizard.isFirstStep}
+              isLastStep={wizard.isLastStep}
+              isLoading={isPublishing}
+              nextButtonText="Publish Event"
+            />
+          </div>
+        )}
+
+        {/* Step 4: Review (for Ticketed/Premium events) */}
+        {wizard.currentStep === 4 && (
+          <div className="space-y-6">
+            <ReviewStep
+              eventData={eventDataWithImages}
+              eventType={eventType}
+              eventTypes={eventTypes}
+            />
+            <WizardControls
+              canGoBack={wizard.canGoBackward}
+              canGoForward={false}
+              onBack={handlePrevStep}
+              onNext={handlePublish}
+              isFirstStep={wizard.isFirstStep}
+              isLastStep={wizard.isLastStep}
+              isLoading={isPublishing}
+              nextButtonText="Publish Event"
+            />
+          </div>
+        )}
       </div>
-
-      {/* Step 1: Event Type Selection */}
-      {wizard.currentStep === 1 && (
-        <div className="space-y-6">
-          <EventTypeSelection 
-            eventType={eventType} 
-            setEventType={setEventType} 
-            onNext={handleNextStep} 
-          />
-          <WizardControls
-            canGoBack={wizard.canGoBackward}
-            canGoForward={wizard.canGoForward}
-            onBack={handlePrevStep}
-            onNext={handleNextStep}
-            isFirstStep={wizard.isFirstStep}
-            isLastStep={wizard.isLastStep}
-            errors={wizard.getCurrentStepErrors()}
-          />
-        </div>
-      )}
-
-      {/* Step 2: Basic Information */}
-      {wizard.currentStep === 2 && (
-        <div className="space-y-6">
-          <BasicInformation 
-            form={form}
-            selectedCategories={selectedCategories}
-            onCategoryToggle={handleCategoryToggle}
-            uploadedImages={uploadedImages}
-            onImageUpload={handleImageUploadWithForm}
-            onRemoveImage={removeImageWithForm}
-            isProcessingImage={isProcessingImage}
-            eventType={eventType}
-          />
-          <WizardControls
-            canGoBack={wizard.canGoBackward}
-            canGoForward={wizard.canGoForward}
-            onBack={handlePrevStep}
-            onNext={handleNextStep}
-            isFirstStep={wizard.isFirstStep}
-            isLastStep={wizard.isLastStep}
-            errors={wizard.getCurrentStepErrors()}
-          />
-        </div>
-      )}
-
-      {/* Step 3: Ticketing (for Ticketed/Premium events) */}
-      {wizard.currentStep === 3 && eventType !== "simple" && (
-        <div className="space-y-6">
-          <TicketConfiguration
-            tickets={eventData.tickets}
-            onAddTicketTier={addTicketTier}
-            onRemoveTicketTier={removeTicketTier}
-            onUpdateTicketTier={updateTicketTier}
-            onNext={handleNextStep}
-            onPrevious={handlePrevStep}
-          />
-          <WizardControls
-            canGoBack={wizard.canGoBackward}
-            canGoForward={wizard.canGoForward}
-            onBack={handlePrevStep}
-            onNext={handleNextStep}
-            isFirstStep={wizard.isFirstStep}
-            isLastStep={wizard.isLastStep}
-            nextButtonText="Continue to Review"
-          />
-        </div>
-      )}
-
-      {/* Step 3: Review (for Simple events - skip ticketing) */}
-      {wizard.currentStep === 3 && eventType === "simple" && (
-        <div className="space-y-6">
-          <ReviewStep
-            eventData={eventData}
-            eventType={eventType}
-            eventTypes={eventTypes}
-            onPrevious={handlePrevStep}
-            onPublish={handlePublish}
-            isPublishing={isPublishing}
-          />
-          <WizardControls
-            canGoBack={wizard.canGoBackward}
-            canGoForward={false}
-            onBack={handlePrevStep}
-            onNext={handlePublish}
-            isFirstStep={wizard.isFirstStep}
-            isLastStep={wizard.isLastStep}
-            isLoading={isPublishing}
-            nextButtonText="Publish Event"
-          />
-        </div>
-      )}
-
-      {/* Step 4: Review (for Ticketed/Premium events) */}
-      {wizard.currentStep === 4 && (
-        <div className="space-y-6">
-          <ReviewStep
-            eventData={eventData}
-            eventType={eventType}
-            eventTypes={eventTypes}
-            onPrevious={handlePrevStep}
-            onPublish={handlePublish}
-            isPublishing={isPublishing}
-          />
-          <WizardControls
-            canGoBack={wizard.canGoBackward}
-            canGoForward={false}
-            onBack={handlePrevStep}
-            onNext={handlePublish}
-            isFirstStep={wizard.isFirstStep}
-            isLastStep={wizard.isLastStep}
-            isLoading={isPublishing}
-            nextButtonText="Publish Event"
-          />
-        </div>
-      )}
     </div>
   );
 };

@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { EventsService } from '@/lib/events-db'
+import { EventWithStats, TicketType } from '@/types/database'
+
+interface DashboardStats {
+  total_events: number
+  published_events: number
+  draft_events: number
+  completed_events: number
+  total_tickets_sold: number
+  total_revenue: number
+  total_attendees: number
+  recent_events: EventWithStats[]
+}
 import { SupabaseStatus } from '@/components/SupabaseStatus'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,7 +30,7 @@ import {
 
 export default function DashboardHome() {
   const { user } = useAuth()
-  const [dashboardStats, setDashboardStats] = useState<any>(null)
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -56,10 +68,10 @@ export default function DashboardHome() {
     return (
       <div className="space-y-8">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="h-8 bg-muted rounded w-1/3 mb-4"></div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+              <div key={i} className="h-24 bg-muted rounded"></div>
             ))}
           </div>
         </div>
@@ -102,13 +114,13 @@ export default function DashboardHome() {
     }
   ]
 
-  const recentEvents = dashboardStats?.recent_events?.map((event: any) => ({
+  const recentEvents = dashboardStats?.recent_events?.map((event: EventWithStats) => ({
     id: event.id,
     title: event.title,
     date: new Date(event.date).toLocaleDateString(),
     status: event.status.charAt(0).toUpperCase() + event.status.slice(1),
     ticketsSold: event.tickets_sold || 0,
-    totalTickets: event.ticket_types?.reduce((sum: number, tt: any) => sum + tt.quantity, 0) || 0,
+    totalTickets: event.ticket_types?.reduce((sum: number, tt: TicketType) => sum + (tt.quantity || 0), 0) || 0,
     revenue: `$${(event.total_revenue || 0).toLocaleString()}`
   })) || []
 
@@ -119,10 +131,10 @@ export default function DashboardHome() {
 
       {/* Welcome Section */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-foreground">
           Welcome back, {user?.user_metadata?.full_name || 'there'}! 👋
         </h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-muted-foreground">
           Here's what's happening with your events today.
         </p>
       </div>
@@ -130,9 +142,9 @@ export default function DashboardHome() {
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title}>
+          <Card key={stat.title} className="card-hover border-border bg-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
               <div className={`p-2 rounded-lg ${stat.color}`}>
@@ -140,10 +152,10 @@ export default function DashboardHome() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
               <p className={`text-xs mt-1 ${
                 stat.changeType === 'positive' ? 'text-green-600' : 
-                stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
+                stat.changeType === 'negative' ? 'text-red-600' : 'text-muted-foreground'
               }`}>
                 {stat.change}
               </p>
@@ -155,15 +167,15 @@ export default function DashboardHome() {
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Recent Events */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 border-border bg-card">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Recent Events</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-foreground">Recent Events</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Manage and track your event performance
               </CardDescription>
             </div>
-            <Button>
+            <Button className="button-primary">
               <Plus className="mr-2 h-4 w-4" />
               Create Event
             </Button>
@@ -173,11 +185,11 @@ export default function DashboardHome() {
               {recentEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{event.title}</h4>
-                    <p className="text-sm text-gray-600">{event.date}</p>
+                    <h4 className="font-medium text-foreground">{event.title}</h4>
+                    <p className="text-sm text-muted-foreground">{event.date}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant={
                         event.status === 'Published' ? 'default' :
@@ -185,14 +197,14 @@ export default function DashboardHome() {
                       }>
                         {event.status}
                       </Badge>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {event.ticketsSold}/{event.totalTickets} tickets sold
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">{event.revenue}</p>
-                    <Button variant="ghost" size="sm" className="mt-1">
+                    <p className="font-medium text-foreground">{event.revenue}</p>
+                    <Button variant="ghost" size="sm" className="mt-1 hover:bg-muted">
                       View Details
                     </Button>
                   </div>

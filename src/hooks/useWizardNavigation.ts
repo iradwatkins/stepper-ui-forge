@@ -144,7 +144,7 @@ export const useWizardNavigation = ({
       case 'event-type':
         return eventType ? [] : ['Please select an event type'];
       
-      case 'basic-info':
+      case 'basic-info': {
         const basicErrors: string[] = [];
         if (errors.title) basicErrors.push('Event title is required');
         if (errors.description) basicErrors.push('Event description is required');
@@ -156,6 +156,7 @@ export const useWizardNavigation = ({
           basicErrors.push('At least one category must be selected');
         }
         return basicErrors;
+      }
       
       default:
         return [];

@@ -36,12 +36,9 @@ interface ReviewStepProps {
   eventData: EventData;
   eventType: EventType['id'] | "";
   eventTypes: EventType[];
-  onPrevious: () => void;
-  onPublish: () => void;
-  isPublishing?: boolean;
 }
 
-export const ReviewStep = ({ eventData, eventType, eventTypes, onPrevious, onPublish, isPublishing = false }: ReviewStepProps) => {
+export const ReviewStep = ({ eventData, eventType, eventTypes }: ReviewStepProps) => {
   console.log("ReviewStep rendering with eventData:", eventData);
 
   const formatDate = (date: string) => {
@@ -228,18 +225,6 @@ export const ReviewStep = ({ eventData, eventType, eventTypes, onPrevious, onPub
         </Card>
       )}
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onPrevious} disabled={isPublishing}>
-          Back
-        </Button>
-        <Button 
-          className="px-8" 
-          onClick={onPublish}
-          disabled={isPublishing}
-        >
-          {isPublishing ? "Publishing..." : "Publish Event"}
-        </Button>
-      </div>
     </div>
   );
 };

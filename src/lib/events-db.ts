@@ -1,6 +1,28 @@
 import { supabase, isSupabaseReady } from './supabase'
 import { Event, EventInsert, EventUpdate, EventWithStats, TicketType, TicketTypeInsert } from '@/types/database'
 
+interface EventAnalytics {
+  totalTicketsSold: number
+  totalRevenue: number
+  salesByDate: Record<string, number>
+  ticketTypeBreakdown: Array<{
+    name: string
+    sold: number
+    revenue: number
+  }>
+}
+
+interface DashboardStats {
+  total_events: number
+  published_events: number
+  draft_events: number
+  completed_events: number
+  total_tickets_sold: number
+  total_revenue: number
+  total_attendees: number
+  recent_events: EventWithStats[]
+}
+
 export class EventsService {
   static async getUserEvents(userId: string): Promise<EventWithStats[]> {
     if (!isSupabaseReady) {
@@ -286,7 +308,7 @@ export class EventsService {
     }
   }
 
-  static async getEventAnalytics(eventId: string): Promise<any> {
+  static async getEventAnalytics(eventId: string): Promise<EventAnalytics> {
     try {
       // Get basic event stats
       const event = await this.getEvent(eventId)
@@ -313,11 +335,14 @@ export class EventsService {
       }, {} as Record<string, number>) || {}
 
       return {
-        event,
-        total_tickets_sold: event.tickets_sold,
-        total_revenue: event.total_revenue,
-        sales_by_date: salesByDate,
-        ticket_types: event.ticket_types
+        totalTicketsSold: event.tickets_sold || 0,
+        totalRevenue: event.total_revenue || 0,
+        salesByDate: salesByDate,
+        ticketTypeBreakdown: (event.ticket_types || []).map(tt => ({
+          name: tt.name,
+          sold: tt.sold_quantity || 0,
+          revenue: (tt.sold_quantity || 0) * (tt.price || 0)
+        }))
       }
     } catch (error) {
       console.error('Error in getEventAnalytics:', error)
@@ -337,7 +362,7 @@ export class EventsService {
     return this.updateEvent(eventId, { status: 'completed' })
   }
 
-  static async getDashboardStats(userId: string): Promise<any> {
+  static async getDashboardStats(userId: string): Promise<DashboardStats> {
     try {
       const events = await this.getUserEvents(userId)
       

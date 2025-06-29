@@ -1,58 +1,38 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CalendarIcon, MapPinIcon, UsersIcon, ShareIcon, HeartIcon } from "lucide-react";
 import { useParams } from "react-router-dom";
+import { eventsService, Event } from "@/lib/events";
 import CheckoutModal from "@/components/CheckoutModal";
 
 const EventDetail = () => {
   const { id } = useParams();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock event data - in real app this would come from API
-  const event = {
-    id: 1,
-    title: "React Workshop: Building Modern Apps",
-    description: "Join us for an intensive workshop on building modern React applications. We'll cover the latest patterns, hooks, state management, and best practices that will help you build scalable and maintainable applications.",
-    fullDescription: `This comprehensive workshop is designed for developers who want to master React development. 
+  useEffect(() => {
+    if (!id) return;
+    
+    const loadEvent = () => {
+      setLoading(true);
+      try {
+        const foundEvent = eventsService.getEventById(id);
+        setEvent(foundEvent);
+      } catch (error) {
+        console.error('Error loading event:', error);
+        setEvent(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-What you'll learn:
-• Modern React patterns and best practices
-• Advanced hooks and custom hook development
-• State management with Context API and Zustand
-• Performance optimization techniques
-• Testing strategies for React components
-• Building responsive and accessible interfaces
-
-Prerequisites:
-• Basic knowledge of JavaScript
-• Familiarity with HTML/CSS
-• Basic React knowledge helpful but not required
-
-What's included:
-• 6 hours of hands-on training
-• Workshop materials and code samples
-• Certificate of completion
-• Networking lunch
-• Follow-up support for 30 days`,
-    date: "2024-07-15",
-    time: "10:00 AM - 4:00 PM",
-    location: "Downtown Tech Hub, 123 Innovation Ave",
-    price: 75,
-    category: "workshops",
-    attendees: 45,
-    maxAttendees: 60,
-    image: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=800&h=400&fit=crop",
-    type: "ticketed",
-    organizer: {
-      name: "Tech Learning Hub",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
-    },
-    tags: ["React", "JavaScript", "Web Development", "Workshop"]
-  };
+    loadEvent();
+  }, [id]);
 
   const getEventTypeColor = (type: string) => {
     switch (type) {
@@ -63,20 +43,45 @@ What's included:
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Loading event...</h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Event not found</h1>
+          <p className="text-muted-foreground">The event you're looking for doesn't exist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const eventImage = event.images?.banner?.medium || event.images?.postcard?.medium || '/placeholder-event.jpg';
+  const eventPrice = event.eventType === 'simple' && event.displayPrice ? event.displayPrice.amount : 
+                     event.tickets && event.tickets.length > 0 ? Math.min(...event.tickets.map(t => t.price)) : 0;
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <div className="relative h-80 md:h-96 overflow-hidden">
         <img
-          src={event.image}
+          src={eventImage}
           alt={event.title}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-black/50" />
         <div className="absolute bottom-4 left-4 right-4 text-white">
           <div className="container mx-auto">
-            <Badge className={`${getEventTypeColor(event.type)} mb-2`}>
-              {event.type}
+            <Badge className={`${getEventTypeColor(event.eventType)} mb-2`}>
+              {event.eventType}
             </Badge>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">{event.title}</h1>
             <p className="text-lg opacity-90">{event.description}</p>
@@ -111,8 +116,10 @@ What's included:
                 <div className="flex items-center gap-3">
                   <UsersIcon className="w-5 h-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">{event.attendees} / {event.maxAttendees} attending</p>
-                    <p className="text-sm text-muted-foreground">{event.maxAttendees - event.attendees} spots remaining</p>
+                    <p className="font-medium">{event.attendees || 0} attending</p>
+                    {event.capacity && (
+                      <p className="text-sm text-muted-foreground">{event.capacity - (event.attendees || 0)} spots remaining</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -125,21 +132,21 @@ What's included:
               </CardHeader>
               <CardContent>
                 <div className="prose dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-line">{event.fullDescription}</p>
+                  <p className="whitespace-pre-line">{event.description}</p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Tags */}
+            {/* Categories */}
             <Card>
               <CardHeader>
-                <CardTitle>Tags</CardTitle>
+                <CardTitle>Categories</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {event.tags.map((tag, index) => (
+                  {event.categories.map((category, index) => (
                     <Badge key={index} variant="secondary">
-                      {tag}
+                      {category}
                     </Badge>
                   ))}
                 </div>
@@ -153,8 +160,8 @@ What's included:
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">
-                  ${event.price}
-                  <span className="text-base font-normal text-muted-foreground ml-2">per ticket</span>
+                  {eventPrice > 0 ? `$${eventPrice}` : 'Free'}
+                  {eventPrice > 0 && <span className="text-base font-normal text-muted-foreground ml-2">per ticket</span>}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -185,13 +192,13 @@ What's included:
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
-                  <img
-                    src={event.organizer.avatar}
-                    alt={event.organizer.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-lg font-bold text-primary">
+                      {event.organizationName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                   <div>
-                    <p className="font-medium">{event.organizer.name}</p>
+                    <p className="font-medium">{event.organizationName}</p>
                     <p className="text-sm text-muted-foreground">Event Organizer</p>
                   </div>
                 </div>
@@ -207,7 +214,13 @@ What's included:
       <CheckoutModal 
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
-        event={event}
+        event={{
+          id: parseInt(event.id),
+          title: event.title,
+          date: event.date,
+          time: event.time,
+          price: eventPrice
+        }}
       />
     </div>
   );

@@ -82,108 +82,116 @@ const Events = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Discover Events</h1>
-          <p className="text-xl text-muted-foreground">Loading events...</p>
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold mb-4 text-foreground">Discover Events</h1>
+            <p className="text-xl text-muted-foreground">Loading events...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-4">Discover Events</h1>
-        <p className="text-xl text-muted-foreground mb-6">
-          Find amazing events happening near you
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-4 text-foreground">Discover Events</h1>
+          <p className="text-xl text-muted-foreground mb-6">
+            Find amazing events happening near you
+          </p>
 
-        {/* Search Bar */}
-        <div className="relative mb-6">
-          <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search events..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-12 text-lg"
-          />
+          {/* Search Bar */}
+          <div className="relative mb-6">
+            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 text-lg border-border focus:border-primary/50 focus:ring-primary/20"
+            />
+          </div>
+
+          {/* Category Filters */}
+          <div className="flex flex-wrap gap-2 mb-8">
+            {categories.map((category) => (
+              <Button
+                key={category.id}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`rounded-full transition-all duration-200 ${
+                  selectedCategory === category.id 
+                    ? "bg-primary hover:bg-primary/90 shadow-md" 
+                    : "hover:border-primary/50 hover:bg-primary/5"
+                }`}
+              >
+                {category.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        {/* Category Filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {categories.map((category) => (
-            <Button
-              key={category.id}
-              variant={selectedCategory === category.id ? "default" : "outline"}
-              onClick={() => setSelectedCategory(category.id)}
-              className="rounded-full"
-            >
-              {category.label}
-            </Button>
+        {/* Events Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredEvents.map((event) => (
+            <Link key={event.id} to={`/events/${event.id}`}>
+              <Card className="overflow-hidden card-hover border-border bg-card">
+                <div className="aspect-video overflow-hidden">
+                  {event.images?.banner?.medium || event.images?.postcard?.medium ? (
+                    <img
+                      src={event.images?.banner?.medium || event.images?.postcard?.medium}
+                      alt={event.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <span className="text-muted-foreground">No image</span>
+                    </div>
+                  )}
+                </div>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge className={getEventTypeColor(event.eventType)}>
+                      {event.eventType}
+                    </Badge>
+                    <span className="text-lg font-bold text-primary">{getEventPrice(event)}</span>
+                  </div>
+                  <CardTitle className="line-clamp-2 text-foreground">{event.title}</CardTitle>
+                  <CardDescription className="line-clamp-2 text-muted-foreground">
+                    {event.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4" />
+                      <span>{formatDate(event.date)} at {event.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPinIcon className="w-4 h-4" />
+                      <span>{event.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <UsersIcon className="w-4 h-4" />
+                      <span>{event.attendees || 0} attending</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
-      </div>
 
-      {/* Events Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEvents.map((event) => (
-          <Link key={event.id} to={`/events/${event.id}`}>
-            <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="aspect-video overflow-hidden">
-                {event.images && event.images.length > 0 ? (
-                  <img
-                    src={event.images[0]}
-                    alt={event.title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <span className="text-muted-foreground">No image</span>
-                  </div>
-                )}
-              </div>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start mb-2">
-                  <Badge className={getEventTypeColor(event.eventType)}>
-                    {event.eventType}
-                  </Badge>
-                  <span className="text-lg font-bold text-primary">{getEventPrice(event)}</span>
-                </div>
-                <CardTitle className="line-clamp-2">{event.title}</CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {event.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4" />
-                    <span>{formatDate(event.date)} at {event.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPinIcon className="w-4 h-4" />
-                    <span>{event.location}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <UsersIcon className="w-4 h-4" />
-                    <span>{event.attendees || 0} attending</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+        {filteredEvents.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-xl text-muted-foreground mb-4">No events found matching your criteria.</p>
+            <Link to="/create-event">
+              <Button className="button-primary">Create Your Own Event</Button>
+            </Link>
+          </div>
+        )}
       </div>
-
-      {filteredEvents.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-xl text-muted-foreground">No events found matching your criteria.</p>
-          <Link to="/create-event">
-            <Button className="mt-4">Create Your Own Event</Button>
-          </Link>
-        </div>
-      )}
     </div>
   );
 };

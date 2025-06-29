@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -35,10 +35,10 @@ const createMockClient = () => ({
       getPublicUrl: () => ({ data: { publicUrl: '' } })
     })
   }
-})
+} as unknown as SupabaseClient<Database>)
 
 export const supabase = isSupabaseConfigured 
   ? createClient<Database>(supabaseUrl!, supabaseAnonKey!)
-  : createMockClient() as any
+  : createMockClient()
 
 export const isSupabaseReady = isSupabaseConfigured

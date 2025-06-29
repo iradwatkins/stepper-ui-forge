@@ -90,11 +90,11 @@ export default function Profile() {
           phone: profileData.phone || '',
           location: profileData.location || '',
           organization: profileData.organization || '',
-          socialLinks: profileData.social_links as any || {
-            twitter: '',
-            instagram: '',
-            linkedin: '',
-            facebook: ''
+          socialLinks: {
+            twitter: (profileData.social_links as Record<string, string>)?.twitter || '',
+            instagram: (profileData.social_links as Record<string, string>)?.instagram || '',
+            linkedin: (profileData.social_links as Record<string, string>)?.linkedin || '',
+            facebook: (profileData.social_links as Record<string, string>)?.facebook || ''
           }
         })
         setNotifications(profileData.notification_preferences)

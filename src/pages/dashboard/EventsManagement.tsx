@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { EventsService } from '@/lib/events-db'
-import { EventWithStats } from '@/types/database'
+import { EventWithStats, ImageMetadata } from '@/types/database'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,59 +39,30 @@ import {
 } from 'lucide-react'
 
 export default function EventsManagement() {
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
+  const [events, setEvents] = useState<EventWithStats[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Mock data - replace with real data from your events service
-  const events = [
-    {
-      id: '1',
-      title: 'Summer Music Festival 2024',
-      date: '2024-07-15',
-      status: 'published',
-      type: 'ticketed',
-      ticketsSold: 245,
-      totalTickets: 500,
-      revenue: 4900,
-      attendees: 245,
-      createdAt: '2024-06-01'
-    },
-    {
-      id: '2',
-      title: 'Tech Conference: Future of AI',
-      date: '2024-08-02',
-      status: 'draft',
-      type: 'premium',
-      ticketsSold: 0,
-      totalTickets: 200,
-      revenue: 0,
-      attendees: 0,
-      createdAt: '2024-06-15'
-    },
-    {
-      id: '3',
-      title: 'Local Food Truck Rally',
-      date: '2024-06-28',
-      status: 'completed',
-      type: 'simple',
-      ticketsSold: 150,
-      totalTickets: 150,
-      revenue: 2250,
-      attendees: 145,
-      createdAt: '2024-05-20'
-    },
-    {
-      id: '4',
-      title: 'Community Art Workshop',
-      date: '2024-09-10',
-      status: 'published',
-      type: 'ticketed',
-      ticketsSold: 12,
-      totalTickets: 30,
-      revenue: 240,
-      attendees: 12,
-      createdAt: '2024-06-20'
+  // Load real events from database
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!user?.id) return
+      
+      try {
+        setIsLoading(true)
+        const userEvents = await EventsService.getUserEvents(user.id)
+        console.log('Loaded real events:', userEvents)
+        setEvents(userEvents)
+      } catch (error) {
+        console.error('Error loading events:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  ]
+
+    loadEvents()
+  }, [user?.id])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -125,7 +96,7 @@ export default function EventsManagement() {
     event.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const EventActions = ({ event }: { event: any }) => (
+  const EventActions = ({ event }: { event: EventWithStats }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -195,7 +166,7 @@ export default function EventsManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {events.reduce((sum, event) => sum + event.attendees, 0)}
+              {events.reduce((sum, event) => sum + (event.attendee_count || 0), 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               +180 from last month
@@ -209,7 +180,7 @@ export default function EventsManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${events.reduce((sum, event) => sum + event.revenue, 0).toLocaleString()}
+              ${events.reduce((sum, event) => sum + (event.total_revenue || 0), 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
               +20.1% from last month
@@ -278,6 +249,7 @@ export default function EventsManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Image</TableHead>
                     <TableHead>Event</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
@@ -291,9 +263,30 @@ export default function EventsManagement() {
                   {filteredEvents.map((event) => (
                     <TableRow key={event.id}>
                       <TableCell>
+                        <div className="w-12 h-12 rounded-lg overflow-hidden border">
+                          {event.images && (event.images as Record<string, ImageMetadata>)?.banner?.url ? (
+                            <img
+                              src={(event.images as Record<string, ImageMetadata>).banner.url}
+                              alt={event.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : event.images && (event.images as Record<string, ImageMetadata>)?.postcard?.url ? (
+                            <img
+                              src={(event.images as Record<string, ImageMetadata>).postcard.url}
+                              alt={event.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                              No Image
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="font-medium">{event.title}</div>
                         <div className="text-sm text-gray-500">
-                          Created {new Date(event.createdAt).toLocaleDateString()}
+                          Created {new Date(event.created_at).toLocaleDateString()}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -305,15 +298,15 @@ export default function EventsManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={getTypeColor(event.type)}>
-                          {event.type}
+                        <Badge variant="outline" className={getTypeColor(event.event_type)}>
+                          {event.event_type}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {event.ticketsSold}/{event.totalTickets}
+                        {event.tickets_sold || 0}/{event.ticket_types?.reduce((sum, tt) => sum + (tt.quantity || 0), 0) || 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        ${event.revenue.toLocaleString()}
+                        ${(event.total_revenue || 0).toLocaleString()}
                       </TableCell>
                       <TableCell>
                         <EventActions event={event} />

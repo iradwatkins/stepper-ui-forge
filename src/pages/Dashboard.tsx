@@ -10,7 +10,7 @@ export default function Dashboard() {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       {/* Mobile sidebar */}
       <DashboardSidebar 
         open={sidebarOpen} 
@@ -29,7 +29,7 @@ export default function Dashboard() {
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden"
+            className="lg:hidden hover:bg-muted"
           >
             <Menu className="h-5 w-5" />
           </Button>

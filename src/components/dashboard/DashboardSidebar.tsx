@@ -156,7 +156,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     <div className="space-y-1">
       {title && (
         <div className="px-3 py-2">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             {title}
           </h2>
         </div>
@@ -180,8 +180,8 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             onClick={() => toggleExpanded(item.title)}
             className={cn(
               'w-full justify-between px-3 py-2 text-left font-medium',
-              'hover:bg-white/10 hover:text-white',
-              'text-white/80'
+              'hover:bg-accent hover:text-accent-foreground',
+              'text-muted-foreground'
             )}
           >
             <div className="flex items-center gap-3">
@@ -202,26 +202,27 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             </div>
           </Button>
           {isExpanded && (
-            <div className="ml-6 mt-1 space-y-1">
+            <div className="ml-4 mt-1 space-y-1">
               {item.children?.map((child) => (
-                <Link
-                  key={child.title}
-                  to={child.href!}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors',
-                    'hover:bg-white/10 hover:text-white',
-                    isActive(child.href)
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md'
-                      : 'text-white/70'
-                  )}
-                >
-                  <child.icon className="h-4 w-4" />
-                  <span className="flex-1">{child.title}</span>
-                  {child.badge && (
-                    <Badge variant="secondary" className="h-5 px-2 text-xs">
-                      {child.badge}
-                    </Badge>
-                  )}
+                <Link key={child.title} to={child.href || '#'}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      'w-full justify-start px-3 py-2 text-sm',
+                      'hover:bg-accent hover:text-accent-foreground',
+                      isActive(child.href) 
+                        ? 'bg-accent text-accent-foreground' 
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    <child.icon className="mr-3 h-4 w-4" />
+                    {child.title}
+                    {child.badge && (
+                      <Badge variant="secondary" className="ml-auto h-5 px-2 text-xs">
+                        {child.badge}
+                      </Badge>
+                    )}
+                  </Button>
                 </Link>
               ))}
             </div>
@@ -231,23 +232,25 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     }
 
     return (
-      <Link
-        to={item.href!}
-        className={cn(
-          'flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors',
-          'hover:bg-white/10 hover:text-white',
-          isItemActive
-            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md'
-            : 'text-white/80'
-        )}
-      >
-        <item.icon className="h-5 w-5" />
-        <span className="flex-1">{item.title}</span>
-        {item.badge && (
-          <Badge variant="secondary" className="h-5 px-2 text-xs">
-            {item.badge}
-          </Badge>
-        )}
+      <Link to={item.href || '#'}>
+        <Button
+          variant="ghost"
+          className={cn(
+            'w-full justify-start px-3 py-2 font-medium',
+            'hover:bg-accent hover:text-accent-foreground',
+            isItemActive 
+              ? 'bg-accent text-accent-foreground' 
+              : 'text-muted-foreground'
+          )}
+        >
+          <item.icon className="mr-3 h-5 w-5" />
+          {item.title}
+          {item.badge && (
+            <Badge variant="secondary" className="ml-auto h-5 px-2 text-xs">
+              {item.badge}
+            </Badge>
+          )}
+        </Button>
       </Link>
     )
   }

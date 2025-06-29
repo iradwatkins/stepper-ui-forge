@@ -3,6 +3,20 @@ export type EventStatus = 'draft' | 'published' | 'cancelled' | 'completed'
 export type TicketStatus = 'active' | 'used' | 'refunded' | 'cancelled'
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
 
+export interface ImageMetadata {
+  url: string
+  alt?: string
+  size?: number
+  filename?: string
+}
+
+export interface TeamPermissions {
+  canEdit: boolean
+  canManageTickets: boolean
+  canViewAnalytics: boolean
+  canManageTeam: boolean
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -17,7 +31,7 @@ export interface Database {
           phone: string | null
           location: string | null
           organization: string | null
-          social_links: Record<string, any>
+          social_links: Record<string, string>
           notification_preferences: {
             emailMarketing: boolean
             emailUpdates: boolean
@@ -44,7 +58,7 @@ export interface Database {
           phone?: string | null
           location?: string | null
           organization?: string | null
-          social_links?: Record<string, any>
+          social_links?: Record<string, string>
           notification_preferences?: {
             emailMarketing?: boolean
             emailUpdates?: boolean
@@ -71,7 +85,7 @@ export interface Database {
           phone?: string | null
           location?: string | null
           organization?: string | null
-          social_links?: Record<string, any>
+          social_links?: Record<string, string>
           notification_preferences?: {
             emailMarketing?: boolean
             emailUpdates?: boolean
@@ -102,7 +116,7 @@ export interface Database {
           categories: string[]
           event_type: EventType
           status: EventStatus
-          images: Record<string, any>
+          images: Record<string, ImageMetadata>
           is_public: boolean
           max_attendees: number | null
           registration_deadline: string | null
@@ -121,7 +135,7 @@ export interface Database {
           categories?: string[]
           event_type?: EventType
           status?: EventStatus
-          images?: Record<string, any>
+          images?: Record<string, ImageMetadata>
           is_public?: boolean
           max_attendees?: number | null
           registration_deadline?: string | null
@@ -140,7 +154,7 @@ export interface Database {
           categories?: string[]
           event_type?: EventType
           status?: EventStatus
-          images?: Record<string, any>
+          images?: Record<string, ImageMetadata>
           is_public?: boolean
           max_attendees?: number | null
           registration_deadline?: string | null
@@ -315,7 +329,7 @@ export interface Database {
           event_id: string
           user_id: string
           role: string
-          permissions: Record<string, any>
+          permissions: TeamPermissions
           invited_by: string | null
           invited_at: string
           accepted_at: string | null
@@ -325,7 +339,7 @@ export interface Database {
           event_id: string
           user_id: string
           role?: string
-          permissions?: Record<string, any>
+          permissions?: TeamPermissions
           invited_by?: string | null
           invited_at?: string
           accepted_at?: string | null
@@ -335,7 +349,7 @@ export interface Database {
           event_id?: string
           user_id?: string
           role?: string
-          permissions?: Record<string, any>
+          permissions?: TeamPermissions
           invited_by?: string | null
           invited_at?: string
           accepted_at?: string | null
