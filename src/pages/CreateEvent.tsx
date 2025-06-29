@@ -2,88 +2,19 @@
 import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Progress } from "@/components/ui/progress";
 import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
 import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfiguration } from "@/components/create-event/TicketConfiguration";
 import { ReviewStep } from "@/components/create-event/ReviewStep";
-import imageCompression from 'browser-image-compression';
 import { eventsService, Event } from "@/lib/events";
 import { useNavigate } from "react-router-dom";
+import { EventFormData, EventType, eventFormSchema } from "@/types/event-form";
+import { useImageUpload } from "@/hooks/useImageUpload";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { useEventData } from "@/hooks/useEventData";
 
 console.log("CreateEvent component loading...");
-
-interface EventType {
-  id: 'simple' | 'ticketed' | 'premium';
-  title: string;
-}
-
-const eventFormSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters").max(100, "Title too long"),
-  description: z.string().min(10, "Description must be at least 10 characters").max(2000, "Description too long"),
-  organizationName: z.string().min(2, "Organization/Promoter name is required").max(100, "Name too long"),
-  date: z.string().refine(date => new Date(date) > new Date(), "Event date must be in the future"),
-  time: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format"),
-  endDate: z.string().optional(),
-  endTime: z.string().optional(),
-  address: z.string().min(10, "Please enter a complete address").max(200, "Address too long"),
-  categories: z.array(z.string()).min(1, "At least one category must be selected"),
-  capacity: z.number().positive().optional(),
-  displayPrice: z.object({
-    amount: z.number().min(0, "Price cannot be negative"),
-    label: z.string().min(1, "Price label is required")
-  }).optional(),
-  isPublic: z.boolean().default(true),
-  tags: z.array(z.string()).optional(),
-  timezone: z.string().optional(),
-  images: z.array(z.string()).optional()
-}).refine((data) => {
-  // If end date is provided, it must be after start date
-  if (data.endDate && data.date) {
-    return new Date(data.endDate) >= new Date(data.date);
-  }
-  return true;
-}, {
-  message: "End date must be after start date",
-  path: ["endDate"]
-}).refine((data) => {
-  // If end time is provided, end date must also be provided
-  if (data.endTime && !data.endDate) {
-    return false;
-  }
-  return true;
-}, {
-  message: "End time requires an end date",
-  path: ["endTime"]
-});
-
-type EventFormData = z.infer<typeof eventFormSchema>;
-
-// Updated interface to match what's needed
-interface EventData {
-  title: string;
-  description: string;
-  organizationName: string;
-  date: string;
-  time: string;
-  endDate?: string;
-  endTime?: string;
-  location: string;
-  category: string;
-  capacity?: number;
-  displayPrice?: {
-    amount: number;
-    label: string;
-  };
-  isPublic: boolean;
-  images: string[];
-  tickets: Array<{
-    name: string;
-    price: number;
-    quantity: number;
-  }>;
-}
 
 const CreateEvent = () => {
   console.log("CreateEvent component rendering...");
@@ -92,10 +23,7 @@ const CreateEvent = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [eventType, setEventType] = useState<EventType['id'] | "">("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   
   const form = useForm<EventFormData>({
@@ -115,17 +43,15 @@ const CreateEvent = () => {
     }
   });
 
-  const [eventData, setEventData] = useState<EventData>({
-    title: "",
-    description: "",
-    organizationName: "",
-    date: "",
-    time: "",
-    location: "",
-    category: "",
-    isPublic: true,
-    images: [],
-    tickets: [{ name: "General Admission", price: 0, quantity: 100 }]
+  const { eventData, setEventData, addTicketTier, removeTicketTier, updateTicketTier } = useEventData();
+  const { uploadedImages, setUploadedImages, isProcessingImage, handleImageUpload, removeImage } = useImageUpload();
+  const { lastSaved, clearDraft, loadDraft } = useAutoSave({
+    form,
+    eventType,
+    selectedCategories,
+    uploadedImages,
+    currentStep,
+    enabled: autoSaveEnabled
   });
 
   const eventTypes: EventType[] = [
@@ -137,97 +63,24 @@ const CreateEvent = () => {
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (!autoSaveEnabled) return;
-
-    const saveTimer = setTimeout(() => {
-      const formData = form.getValues();
-      if (formData.title || formData.description) {
-        localStorage.setItem('draft-event', JSON.stringify({
-          ...formData,
-          eventType,
-          selectedCategories,
-          uploadedImages,
-          currentStep
-        }));
-        setLastSaved(new Date());
-        console.log("Auto-saved draft at:", new Date());
-      }
-    }, 2000);
-
-    return () => clearTimeout(saveTimer);
-  }, [form.watch(), eventType, selectedCategories, uploadedImages, currentStep, autoSaveEnabled]);
-
   // Load draft on component mount
   useEffect(() => {
-    const savedDraft = localStorage.getItem('draft-event');
-    if (savedDraft) {
-      try {
-        const draft = JSON.parse(savedDraft);
-        form.reset(draft);
-        setEventType(draft.eventType || "");
-        setSelectedCategories(draft.selectedCategories || []);
-        setUploadedImages(draft.uploadedImages || []);
-        setCurrentStep(draft.currentStep || 1);
-        console.log("Loaded draft from localStorage");
-      } catch (error) {
-        console.error("Error loading draft:", error);
-      }
-    }
+    loadDraft(setEventType, setSelectedCategories, setUploadedImages, setCurrentStep);
   }, []);
 
-  const handleImageUpload = useCallback(async (files: FileList) => {
-    if (!files.length) return;
+  const handleImageUploadWithForm = useCallback(async (files: FileList) => {
+    await handleImageUpload(files);
+    // Update form with new images after upload
+    setTimeout(() => {
+      form.setValue('images', [...uploadedImages, ...Array.from(files).map(() => '')]);
+    }, 100);
+  }, [handleImageUpload, uploadedImages, form]);
 
-    setIsProcessingImage(true);
-    console.log("Processing image upload:", files.length, "files");
-
-    try {
-      const processedImages: string[] = [];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        
-        // Image compression options
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-          fileType: 'image/jpeg'
-        };
-
-        try {
-          const compressedFile = await imageCompression(file, options);
-          const base64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(compressedFile);
-          });
-          
-          processedImages.push(base64);
-          console.log(`Processed image ${i + 1}/${files.length}`);
-        } catch (error) {
-          console.error(`Error processing image ${i + 1}:`, error);
-        }
-      }
-
-      setUploadedImages(prev => [...prev, ...processedImages]);
-      form.setValue('images', [...uploadedImages, ...processedImages]);
-      console.log("Successfully uploaded", processedImages.length, "images");
-    } catch (error) {
-      console.error("Error in image upload process:", error);
-    } finally {
-      setIsProcessingImage(false);
-    }
-  }, [uploadedImages, form]);
-
-  const removeImage = useCallback((index: number) => {
+  const removeImageWithForm = useCallback((index: number) => {
+    removeImage(index);
     const newImages = uploadedImages.filter((_, i) => i !== index);
-    setUploadedImages(newImages);
     form.setValue('images', newImages);
-    console.log("Removed image at index:", index);
-  }, [uploadedImages, form]);
+  }, [removeImage, uploadedImages, form]);
 
   const handleCategoryToggle = useCallback((categoryId: string) => {
     console.log("Category toggled:", categoryId);
@@ -256,7 +109,10 @@ const CreateEvent = () => {
         location: formData.address,
         category: selectedCategories.join(', '),
         capacity: formData.capacity,
-        displayPrice: formData.displayPrice,
+        displayPrice: formData.displayPrice ? {
+          amount: formData.displayPrice.amount,
+          label: formData.displayPrice.label
+        } : undefined,
         isPublic: formData.isPublic ?? true,
         images: uploadedImages
       }));
@@ -274,35 +130,11 @@ const CreateEvent = () => {
     }
   };
 
-  const addTicketTier = () => {
-    setEventData(prev => ({
-      ...prev,
-      tickets: [...prev.tickets, { name: "", price: 0, quantity: 0 }]
-    }));
-  };
-
-  const removeTicketTier = (index: number) => {
-    setEventData(prev => ({
-      ...prev,
-      tickets: prev.tickets.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateTicketTier = (index: number, field: string, value: string | number) => {
-    setEventData(prev => ({
-      ...prev,
-      tickets: prev.tickets.map((ticket, i) => 
-        i === index ? { ...ticket, [field]: value } : ticket
-      )
-    }));
-  };
-
   const handlePublish = async () => {
     console.log("Publishing event with data:", eventData);
     setIsPublishing(true);
     
     try {
-      // Prepare event data for storage
       const eventToSave: Omit<Event, 'id' | 'createdAt' | 'updatedAt'> = {
         title: eventData.title,
         description: eventData.description,
@@ -322,15 +154,9 @@ const CreateEvent = () => {
         eventType: eventType as 'simple' | 'ticketed' | 'premium'
       };
 
-      // Save the event
       const savedEvent = eventsService.createEvent(eventToSave);
-      
-      // Clear draft after successful publishing
       localStorage.removeItem('draft-event');
-      
       console.log("Event published successfully:", savedEvent);
-      
-      // Navigate to the events page
       navigate('/events');
       
     } catch (error) {
@@ -341,15 +167,13 @@ const CreateEvent = () => {
     }
   };
 
-  const clearDraft = () => {
-    localStorage.removeItem('draft-event');
+  const handleClearDraft = () => {
+    clearDraft();
     form.reset();
     setEventType("");
     setSelectedCategories([]);
     setUploadedImages([]);
     setCurrentStep(1);
-    setLastSaved(null);
-    console.log("Cleared draft");
   };
 
   console.log("Current step:", currentStep, "Event type:", eventType);
@@ -371,7 +195,7 @@ const CreateEvent = () => {
                 Last saved: {lastSaved.toLocaleTimeString()}
               </p>
               <button 
-                onClick={clearDraft}
+                onClick={handleClearDraft}
                 className="text-xs text-red-500 hover:text-red-700"
               >
                 Clear draft
@@ -403,8 +227,8 @@ const CreateEvent = () => {
           selectedCategories={selectedCategories}
           onCategoryToggle={handleCategoryToggle}
           uploadedImages={uploadedImages}
-          onImageUpload={handleImageUpload}
-          onRemoveImage={removeImage}
+          onImageUpload={handleImageUploadWithForm}
+          onRemoveImage={removeImageWithForm}
           isProcessingImage={isProcessingImage}
           onNext={nextStep}
           onPrevious={prevStep}
