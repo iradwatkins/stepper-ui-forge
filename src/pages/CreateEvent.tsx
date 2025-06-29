@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -59,6 +60,31 @@ const eventFormSchema = z.object({
 
 type EventFormData = z.infer<typeof eventFormSchema>;
 
+// Updated interface to match what's needed
+interface EventData {
+  title: string;
+  description: string;
+  organizationName: string;
+  date: string;
+  time: string;
+  endDate?: string;
+  endTime?: string;
+  location: string;
+  category: string;
+  capacity?: number;
+  displayPrice?: {
+    amount: number;
+    label: string;
+  };
+  isPublic: boolean;
+  images: string[];
+  tickets: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+}
+
 const CreateEvent = () => {
   console.log("CreateEvent component rendering...");
 
@@ -89,14 +115,16 @@ const CreateEvent = () => {
     }
   });
 
-  const [eventData, setEventData] = useState({
+  const [eventData, setEventData] = useState<EventData>({
     title: "",
     description: "",
+    organizationName: "",
     date: "",
     time: "",
     location: "",
     category: "",
-    images: [] as string[],
+    isPublic: true,
+    images: [],
     tickets: [{ name: "General Admission", price: 0, quantity: 100 }]
   });
 
@@ -229,7 +257,7 @@ const CreateEvent = () => {
         category: selectedCategories.join(', '),
         capacity: formData.capacity,
         displayPrice: formData.displayPrice,
-        isPublic: formData.isPublic,
+        isPublic: formData.isPublic ?? true,
         images: uploadedImages
       }));
     }
