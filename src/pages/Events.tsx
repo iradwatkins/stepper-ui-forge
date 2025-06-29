@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SearchIcon, MapPinIcon, CalendarIcon, UsersIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { eventsService, Event } from "@/lib/events";
 
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const categories = [
     { id: "all", label: "All Events" },
@@ -21,104 +24,31 @@ const Events = () => {
     { id: "competitions", label: "Competitions" },
   ];
 
-  const mockEvents = [
-    {
-      id: 1,
-      title: "React Workshop: Building Modern Apps",
-      description: "Learn the latest React patterns and best practices",
-      date: "2024-07-15",
-      time: "10:00 AM",
-      location: "Downtown Tech Hub",
-      price: "$75",
-      category: "workshops",
-      attendees: 45,
-      image: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=200&fit=crop",
-      type: "ticketed"
-    },
-    {
-      id: 2,
-      title: "Summer Music Set",
-      description: "Enjoy live music from local artists",
-      date: "2024-07-20",
-      time: "7:00 PM",
-      location: "Riverside Park",
-      price: "Free",
-      category: "sets",
-      attendees: 120,
-      image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=200&fit=crop",
-      type: "simple"
-    },
-    {
-      id: 3,
-      title: "Park Yoga Session",
-      description: "Relax and unwind with outdoor yoga",
-      date: "2024-07-25",
-      time: "8:00 AM",
-      location: "Central Park",
-      price: "$15",
-      category: "in-the-park",
-      attendees: 30,
-      image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=200&fit=crop",
-      type: "ticketed"
-    },
-    {
-      id: 4,
-      title: "Weekend Mountain Trip",
-      description: "Adventure hiking trip to the mountains",
-      date: "2024-08-01",
-      time: "6:00 AM",
-      location: "Blue Ridge Mountains",
-      price: "$150",
-      category: "trips",
-      attendees: 25,
-      image: "https://images.unsplash.com/photo-1464822759844-d150419e72bb?w=400&h=200&fit=crop",
-      type: "premium"
-    },
-    {
-      id: 5,
-      title: "Caribbean Cruise Experience",
-      description: "7-day luxury cruise with entertainment",
-      date: "2024-08-10",
-      time: "2:00 PM",
-      location: "Miami Port",
-      price: "$899",
-      category: "cruises",
-      attendees: 200,
-      image: "https://images.unsplash.com/photo-1540946485063-a40da27bda5b?w=400&h=200&fit=crop",
-      type: "premium"
-    },
-    {
-      id: 6,
-      title: "Christmas Holiday Celebration",
-      description: "Festive holiday party with family activities",
-      date: "2024-12-20",
-      time: "5:00 PM",
-      location: "Community Center",
-      price: "$25",
-      category: "holiday",
-      attendees: 150,
-      image: "https://images.unsplash.com/photo-1512389142860-9c449e58a543?w=400&h=200&fit=crop",
-      type: "ticketed"
-    },
-    {
-      id: 7,
-      title: "Dance Competition Finals",
-      description: "Annual dance competition with cash prizes",
-      date: "2024-09-15",
-      time: "7:00 PM",
-      location: "Grand Theater",
-      price: "$50",
-      category: "competitions",
-      attendees: 300,
-      image: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400&h=200&fit=crop",
-      type: "premium"
-    },
-  ];
+  // Load events on component mount
+  useEffect(() => {
+    const loadEvents = () => {
+      setLoading(true);
+      try {
+        const publicEvents = eventsService.getPublicEvents();
+        setEvents(publicEvents);
+      } catch (error) {
+        console.error('Error loading events:', error);
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredEvents = mockEvents.filter(event => {
+    loadEvents();
+  }, []);
+
+  const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
+                         event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         event.organizationName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || 
+                           event.categories.includes(selectedCategory) || 
+                           event.category.includes(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
@@ -130,6 +60,36 @@ const Events = () => {
       default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
+
+  const getEventPrice = (event: Event) => {
+    if (event.eventType === 'simple' && event.displayPrice) {
+      return `${event.displayPrice.label}: $${event.displayPrice.amount}`;
+    }
+    if (event.eventType === 'ticketed' && event.tickets && event.tickets.length > 0) {
+      const minPrice = Math.min(...event.tickets.map(t => t.price));
+      return `From $${minPrice}`;
+    }
+    return "Free";
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4">Discover Events</h1>
+          <p className="text-xl text-muted-foreground">Loading events...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -171,18 +131,24 @@ const Events = () => {
           <Link key={event.id} to={`/events/${event.id}`}>
             <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
               <div className="aspect-video overflow-hidden">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                />
+                {event.images && event.images.length > 0 ? (
+                  <img
+                    src={event.images[0]}
+                    alt={event.title}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <span className="text-muted-foreground">No image</span>
+                  </div>
+                )}
               </div>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start mb-2">
-                  <Badge className={getEventTypeColor(event.type)}>
-                    {event.type}
+                  <Badge className={getEventTypeColor(event.eventType)}>
+                    {event.eventType}
                   </Badge>
-                  <span className="text-lg font-bold text-primary">{event.price}</span>
+                  <span className="text-lg font-bold text-primary">{getEventPrice(event)}</span>
                 </div>
                 <CardTitle className="line-clamp-2">{event.title}</CardTitle>
                 <CardDescription className="line-clamp-2">
@@ -193,7 +159,7 @@ const Events = () => {
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="w-4 h-4" />
-                    <span>{event.date} at {event.time}</span>
+                    <span>{formatDate(event.date)} at {event.time}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPinIcon className="w-4 h-4" />
@@ -201,7 +167,7 @@ const Events = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <UsersIcon className="w-4 h-4" />
-                    <span>{event.attendees} attending</span>
+                    <span>{event.attendees || 0} attending</span>
                   </div>
                 </div>
               </CardContent>

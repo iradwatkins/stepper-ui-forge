@@ -1,13 +1,11 @@
-
 import { UseFormReturn } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, ImageIcon, X, Upload } from "lucide-react";
+import { CalendarIcon, ImageIcon, X, Upload, DollarSignIcon } from "lucide-react";
 
 interface EventFormData {
   title: string;
@@ -40,6 +38,7 @@ interface BasicInformationProps {
   isProcessingImage: boolean;
   onNext: () => void;
   onPrevious: () => void;
+  eventType: 'simple' | 'ticketed' | 'premium' | '';
 }
 
 const EVENT_CATEGORIES = [
@@ -61,9 +60,15 @@ export const BasicInformation = ({
   onRemoveImage,
   isProcessingImage,
   onNext, 
-  onPrevious 
+  onPrevious,
+  eventType
 }: BasicInformationProps) => {
   console.log("BasicInformation rendering with categories:", selectedCategories);
+  console.log("Form validation state:", {
+    isValid: form.formState.isValid,
+    errors: form.formState.errors,
+    categories: form.watch('categories')
+  });
 
   const handleImageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -71,8 +76,26 @@ export const BasicInformation = ({
     }
   };
 
+  const showDisplayPrice = eventType === 'simple';
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Form submitted with categories:", selectedCategories);
+    
+    // Set categories in form before validation
+    form.setValue('categories', selectedCategories);
+    
+    // Check if form is valid and categories are selected
+    if (selectedCategories.length > 0 && form.formState.isValid) {
+      onNext();
+    } else {
+      // Trigger validation to show errors
+      form.trigger();
+    }
+  };
+
   return (
-    <form onSubmit={form.handleSubmit(() => onNext())} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold mb-2">Event Information</h2>
         <p className="text-sm text-muted-foreground">Tell us about your event</p>
@@ -187,6 +210,27 @@ export const BasicInformation = ({
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  {...form.register('endDate')}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="endTime" className="text-sm font-medium">End Time</Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  {...form.register('endTime')}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="capacity" className="text-sm font-medium">Event Capacity</Label>
               <Input
@@ -197,9 +241,58 @@ export const BasicInformation = ({
                 {...form.register('capacity', { valueAsNumber: true })}
                 className="mt-1"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave empty for unlimited capacity
+              </p>
             </div>
           </CardContent>
         </Card>
+
+        {/* Display Price Section - Only for Simple Events */}
+        {showDisplayPrice && (
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DollarSignIcon className="w-4 h-4" />
+                Display Price (Informational Only)
+              </CardTitle>
+              <CardDescription className="text-sm">
+                For Simple Events, you can display a suggested price or cost (no payment processing)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="displayPriceAmount" className="text-sm font-medium">Amount</Label>
+                  <Input
+                    id="displayPriceAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...form.register('displayPrice.amount', { valueAsNumber: true })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="displayPriceLabel" className="text-sm font-medium">Label *</Label>
+                  <Input
+                    id="displayPriceLabel"
+                    placeholder="e.g., Suggested donation, Entry fee"
+                    {...form.register('displayPrice.label')}
+                    className={`mt-1 ${form.formState.errors.displayPrice?.label ? 'border-red-500' : ''}`}
+                  />
+                </div>
+              </div>
+              {form.formState.errors.displayPrice?.label && (
+                <p className="text-xs text-red-500">{form.formState.errors.displayPrice.label.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Examples: "Suggested donation: $10", "Entry fee: $5", "Free (donations welcome)"
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-4">
@@ -233,7 +326,7 @@ export const BasicInformation = ({
                       {isProcessingImage ? "Processing images..." : "Click to upload images"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      PNG, JPG, GIF up to 10MB each
+                      PNG, JPG, WebP up to 10MB each
                     </p>
                   </div>
                 </label>
@@ -267,37 +360,52 @@ export const BasicInformation = ({
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Event Categories *</CardTitle>
             <CardDescription className="text-sm">
-              Select one or more categories
+              Select one or more categories ({selectedCategories.length} selected)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {EVENT_CATEGORIES.map((category) => (
-                <div
-                  key={category.id}
-                  className={`border rounded-lg p-3 cursor-pointer transition-all text-center ${
-                    selectedCategories.includes(category.id)
-                      ? 'border-primary bg-primary/10 shadow-sm'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onClick={() => onCategoryToggle(category.id)}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Checkbox
-                      checked={selectedCategories.includes(category.id)}
-                      onChange={() => onCategoryToggle(category.id)}
-                      className="scale-90"
-                    />
-                    <p className="text-sm font-medium">{category.label}</p>
+              {EVENT_CATEGORIES.map((category) => {
+                const isSelected = selectedCategories.includes(category.id);
+                return (
+                  <div
+                    key={category.id}
+                    className={`border rounded-lg p-3 cursor-pointer transition-all text-center ${
+                      isSelected
+                        ? 'border-primary bg-primary/10 shadow-sm'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => onCategoryToggle(category.id)}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                        isSelected 
+                          ? 'bg-primary border-primary' 
+                          : 'border-muted-foreground'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <p className={`text-sm font-medium ${isSelected ? 'text-primary' : ''}`}>
+                        {category.label}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {form.formState.errors.categories && (
               <p className="text-xs text-red-500 mt-2">{form.formState.errors.categories.message}</p>
             )}
+            {selectedCategories.length === 0 && (
+              <p className="text-xs text-amber-600 mt-2">Please select at least one category</p>
+            )}
             {selectedCategories.length > 0 && (
               <div className="mt-3">
+                <p className="text-xs text-muted-foreground mb-2">Selected categories:</p>
                 <div className="flex flex-wrap gap-1">
                   {selectedCategories.map(categoryId => {
                     const category = EVENT_CATEGORIES.find(c => c.id === categoryId);
@@ -312,6 +420,40 @@ export const BasicInformation = ({
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">Event Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <div 
+                className={`w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer ${
+                  form.watch('isPublic') 
+                    ? 'bg-primary border-primary' 
+                    : 'border-muted-foreground'
+                }`}
+                onClick={() => form.setValue('isPublic', !form.watch('isPublic'))}
+              >
+                {form.watch('isPublic') && (
+                  <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <Label 
+                htmlFor="isPublic" 
+                className="text-sm font-medium cursor-pointer"
+                onClick={() => form.setValue('isPublic', !form.watch('isPublic'))}
+              >
+                Make this event public
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Public events appear in search results and event listings
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex gap-3">
@@ -320,10 +462,11 @@ export const BasicInformation = ({
         </Button>
         <Button 
           type="submit" 
-          disabled={!form.formState.isValid || selectedCategories.length === 0 || isProcessingImage}
+          disabled={!form.formState.isValid || isProcessingImage}
           className="flex-1"
         >
-          {isProcessingImage ? "Processing..." : "Continue"}
+          {isProcessingImage ? "Processing..." : 
+           selectedCategories.length === 0 ? "Select categories to continue" : "Continue"}
         </Button>
       </div>
     </form>

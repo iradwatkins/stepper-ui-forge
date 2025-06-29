@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,6 +8,8 @@ import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfiguration } from "@/components/create-event/TicketConfiguration";
 import { ReviewStep } from "@/components/create-event/ReviewStep";
 import imageCompression from 'browser-image-compression';
+import { eventsService, Event } from "@/lib/events";
+import { useNavigate } from "react-router-dom";
 
 console.log("CreateEvent component loading...");
 
@@ -32,10 +33,28 @@ const eventFormSchema = z.object({
     amount: z.number().min(0, "Price cannot be negative"),
     label: z.string().min(1, "Price label is required")
   }).optional(),
-  isPublic: z.boolean(),
+  isPublic: z.boolean().default(true),
   tags: z.array(z.string()).optional(),
   timezone: z.string().optional(),
   images: z.array(z.string()).optional()
+}).refine((data) => {
+  // If end date is provided, it must be after start date
+  if (data.endDate && data.date) {
+    return new Date(data.endDate) >= new Date(data.date);
+  }
+  return true;
+}, {
+  message: "End date must be after start date",
+  path: ["endDate"]
+}).refine((data) => {
+  // If end time is provided, end date must also be provided
+  if (data.endTime && !data.endDate) {
+    return false;
+  }
+  return true;
+}, {
+  message: "End time requires an end date",
+  path: ["endTime"]
 });
 
 type EventFormData = z.infer<typeof eventFormSchema>;
@@ -43,6 +62,7 @@ type EventFormData = z.infer<typeof eventFormSchema>;
 const CreateEvent = () => {
   console.log("CreateEvent component rendering...");
 
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [eventType, setEventType] = useState<EventType['id'] | "">("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -50,6 +70,7 @@ const CreateEvent = () => {
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventFormSchema),
@@ -187,10 +208,9 @@ const CreateEvent = () => {
         ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId];
       
-      form.setValue('categories', newCategories);
       return newCategories;
     });
-  }, [form]);
+  }, []);
 
   const nextStep = () => {
     console.log("Moving to next step from:", currentStep);
@@ -200,10 +220,16 @@ const CreateEvent = () => {
         ...prev,
         title: formData.title,
         description: formData.description,
+        organizationName: formData.organizationName,
         date: formData.date,
         time: formData.time,
+        endDate: formData.endDate,
+        endTime: formData.endTime,
         location: formData.address,
         category: selectedCategories.join(', '),
+        capacity: formData.capacity,
+        displayPrice: formData.displayPrice,
+        isPublic: formData.isPublic,
         images: uploadedImages
       }));
     }
@@ -243,10 +269,48 @@ const CreateEvent = () => {
     }));
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     console.log("Publishing event with data:", eventData);
-    // Clear draft after publishing
-    localStorage.removeItem('draft-event');
+    setIsPublishing(true);
+    
+    try {
+      // Prepare event data for storage
+      const eventToSave: Omit<Event, 'id' | 'createdAt' | 'updatedAt'> = {
+        title: eventData.title,
+        description: eventData.description,
+        organizationName: eventData.organizationName || 'Unknown Organization',
+        date: eventData.date,
+        time: eventData.time,
+        endDate: eventData.endDate,
+        endTime: eventData.endTime,
+        location: eventData.location,
+        category: eventData.category,
+        categories: selectedCategories,
+        capacity: eventData.capacity,
+        displayPrice: eventData.displayPrice,
+        isPublic: eventData.isPublic ?? true,
+        images: eventData.images || [],
+        tickets: eventData.tickets || [],
+        eventType: eventType as 'simple' | 'ticketed' | 'premium'
+      };
+
+      // Save the event
+      const savedEvent = eventsService.createEvent(eventToSave);
+      
+      // Clear draft after successful publishing
+      localStorage.removeItem('draft-event');
+      
+      console.log("Event published successfully:", savedEvent);
+      
+      // Navigate to the events page
+      navigate('/events');
+      
+    } catch (error) {
+      console.error("Error publishing event:", error);
+      alert("Failed to publish event. Please try again.");
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const clearDraft = () => {
@@ -316,6 +380,7 @@ const CreateEvent = () => {
           isProcessingImage={isProcessingImage}
           onNext={nextStep}
           onPrevious={prevStep}
+          eventType={eventType}
         />
       )}
 
@@ -337,6 +402,7 @@ const CreateEvent = () => {
           eventTypes={eventTypes}
           onPrevious={prevStep}
           onPublish={handlePublish}
+          isPublishing={isPublishing}
         />
       )}
 
@@ -347,6 +413,7 @@ const CreateEvent = () => {
           eventTypes={eventTypes}
           onPrevious={prevStep}
           onPublish={handlePublish}
+          isPublishing={isPublishing}
         />
       )}
     </div>
