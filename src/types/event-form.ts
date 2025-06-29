@@ -109,7 +109,11 @@ export interface EventData {
   images: string[];
   tickets: Array<{
     name: string;
+    description?: string;
     price: number;
+    earlyBirdPrice?: number;
+    earlyBirdUntil?: string;
     quantity: number;
+    hasEarlyBird?: boolean;
   }>;
 }

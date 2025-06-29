@@ -7,25 +7,37 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { CalendarIcon, MapPinIcon, UsersIcon, ShareIcon, HeartIcon } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { eventsService, Event } from "@/lib/events";
+import { TicketSelector } from "@/components/ticketing";
+import { TicketType } from "@/types/database";
 import CheckoutModal from "@/components/CheckoutModal";
 
 const EventDetail = () => {
   const { id } = useParams();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [event, setEvent] = useState<Event | null>(null);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     
-    const loadEvent = () => {
+    const loadEvent = async () => {
       setLoading(true);
       try {
         const foundEvent = eventsService.getEventById(id);
         setEvent(foundEvent);
+        
+        // Load ticket types for ticketed and premium events
+        if (foundEvent && (foundEvent.eventType === 'ticketed' || foundEvent.eventType === 'premium')) {
+          loadTicketTypes(foundEvent.id);
+        } else {
+          setTicketsLoading(false);
+        }
       } catch (error) {
         console.error('Error loading event:', error);
         setEvent(null);
+        setTicketsLoading(false);
       } finally {
         setLoading(false);
       }
@@ -33,6 +45,67 @@ const EventDetail = () => {
 
     loadEvent();
   }, [id]);
+
+  // Mock function to load ticket types - replace with actual API call
+  const loadTicketTypes = async (eventId: string) => {
+    setTicketsLoading(true);
+    try {
+      // Mock ticket types data - replace with actual API call
+      const mockTicketTypes: TicketType[] = [
+        {
+          id: `${eventId}-general`,
+          event_id: eventId,
+          name: 'General Admission',
+          description: 'Standard access to the event',
+          price: 25.00,
+          early_bird_price: 20.00,
+          early_bird_until: '2024-12-01T23:59:59Z',
+          quantity: 100,
+          sold_quantity: 15,
+          max_per_person: 4,
+          sale_start: null,
+          sale_end: null,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: `${eventId}-vip`,
+          event_id: eventId,
+          name: 'VIP Access',
+          description: 'Premium access with special perks and reserved seating',
+          price: 75.00,
+          early_bird_price: null,
+          early_bird_until: null,
+          quantity: 50,
+          sold_quantity: 8,
+          max_per_person: 2,
+          sale_start: null,
+          sale_end: null,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
+      
+      setTicketTypes(mockTicketTypes);
+    } catch (error) {
+      console.error('Error loading ticket types:', error);
+      setTicketTypes([]);
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
+
+  // Handle adding tickets to cart
+  const handleAddToCart = (selections: any[]) => {
+    console.log('Adding to cart:', selections);
+    // TODO: Implement actual cart functionality
+    // For now, show checkout modal with first selection
+    if (selections.length > 0) {
+      setIsCheckoutOpen(true);
+    }
+  };
 
   const getEventTypeColor = (type: string) => {
     switch (type) {
@@ -156,22 +229,47 @@ const EventDetail = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Ticket Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">
-                  {eventPrice > 0 ? `$${eventPrice}` : 'Free'}
-                  {eventPrice > 0 && <span className="text-base font-normal text-muted-foreground ml-2">per ticket</span>}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full" 
-                  size="lg"
-                  onClick={() => setIsCheckoutOpen(true)}
-                >
-                  Buy Tickets
-                </Button>
+            {/* Ticket Selection */}
+            {event.eventType === 'simple' ? (
+              /* Simple Event Ticket Card */
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl">
+                    {eventPrice > 0 ? `$${eventPrice}` : 'Free'}
+                    {eventPrice > 0 && <span className="text-base font-normal text-muted-foreground ml-2">per ticket</span>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button 
+                    className="w-full" 
+                    size="lg"
+                    onClick={() => setIsCheckoutOpen(true)}
+                  >
+                    {eventPrice > 0 ? 'Buy Tickets' : 'Register'}
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <HeartIcon className="w-4 h-4 mr-2" />
+                      Save
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <ShareIcon className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* Ticketed/Premium Event Ticket Selector */
+              <div className="space-y-4">
+                <TicketSelector
+                  eventId={event.id}
+                  ticketTypes={ticketTypes}
+                  onAddToCart={handleAddToCart}
+                  isLoading={ticketsLoading}
+                />
+                
+                {/* Action Buttons for Ticketed Events */}
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1">
                     <HeartIcon className="w-4 h-4 mr-2" />
@@ -182,8 +280,8 @@ const EventDetail = () => {
                     Share
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            )}
 
             {/* Organizer Card */}
             <Card>

@@ -13,13 +13,25 @@ export const useEventData = () => {
     category: "",
     isPublic: true,
     images: [],
-    tickets: [{ name: "General Admission", price: 0, quantity: 100 }]
+    tickets: [{ 
+      name: "General Admission", 
+      description: "",
+      price: 0, 
+      quantity: 100,
+      hasEarlyBird: false 
+    }]
   });
 
   const addTicketTier = () => {
     setEventData(prev => ({
       ...prev,
-      tickets: [...prev.tickets, { name: "", price: 0, quantity: 0 }]
+      tickets: [...prev.tickets, { 
+        name: "", 
+        description: "",
+        price: 0, 
+        quantity: 0,
+        hasEarlyBird: false 
+      }]
     }));
   };
 
@@ -30,7 +42,7 @@ export const useEventData = () => {
     }));
   };
 
-  const updateTicketTier = (index: number, field: string, value: string | number) => {
+  const updateTicketTier = (index: number, field: string, value: string | number | boolean) => {
     setEventData(prev => ({
       ...prev,
       tickets: prev.tickets.map((ticket, i) => 

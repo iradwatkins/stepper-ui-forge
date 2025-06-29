@@ -1,12 +1,15 @@
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, AlertCircleIcon, AlertTriangleIcon, LoaderIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WizardStep } from "@/hooks/useWizardNavigation";
+import { WizardStep, StepStatus } from "@/hooks/useWizardNavigation";
 
 interface WizardNavigatorProps {
   steps: WizardStep[];
   currentStep: number;
-  getStepStatus: (stepIndex: number) => 'completed' | 'current' | 'pending';
+  getStepStatus: (stepIndex: number) => StepStatus;
   onStepClick?: (stepNumber: number) => void;
+  isNavigating?: boolean;
+  validationErrors?: string[];
+  validationWarnings?: string[];
   className?: string;
 }
 
@@ -15,6 +18,9 @@ export const WizardNavigator = ({
   currentStep,
   getStepStatus,
   onStepClick,
+  isNavigating = false,
+  validationErrors = [],
+  validationWarnings = [],
   className
 }: WizardNavigatorProps) => {
   return (
@@ -28,7 +34,9 @@ export const WizardNavigator = ({
           {steps.map((step, index) => {
             const stepNumber = index + 1;
             const status = getStepStatus(index);
-            const isClickable = onStepClick && (status === 'completed' || status === 'current');
+            const isClickable = onStepClick && (status === 'completed' || status === 'current') && !isNavigating;
+            const hasErrors = status === 'error';
+            const hasWarnings = status === 'warning';
             
             return (
               <li key={step.id} className="flex-1">
@@ -40,27 +48,41 @@ export const WizardNavigator = ({
                       onClick={() => isClickable && onStepClick(stepNumber)}
                       disabled={!isClickable}
                       className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-200",
+                        "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-200 relative",
                         {
                           // Completed step
                           "bg-primary border-primary text-primary-foreground hover:bg-primary/90": 
                             status === 'completed',
                           // Current step
                           "bg-primary border-primary text-primary-foreground ring-4 ring-primary/20": 
-                            status === 'current',
+                            status === 'current' && !hasErrors && !hasWarnings,
+                          // Error state
+                          "bg-destructive border-destructive text-destructive-foreground ring-4 ring-destructive/20": 
+                            hasErrors,
+                          // Warning state
+                          "bg-yellow-500 border-yellow-500 text-white ring-4 ring-yellow-500/20": 
+                            hasWarnings,
                           // Pending step
                           "bg-muted border-muted-foreground/30 text-muted-foreground": 
                             status === 'pending',
                           // Clickable states
                           "cursor-pointer hover:scale-105": isClickable,
-                          "cursor-not-allowed": !isClickable && status === 'pending'
+                          "cursor-not-allowed": !isClickable && status === 'pending',
+                          // Navigating state
+                          "opacity-60": isNavigating
                         }
                       )}
                       aria-label={`${step.title}: ${status}`}
                       aria-current={status === 'current' ? 'step' : undefined}
                     >
-                      {status === 'completed' ? (
+                      {isNavigating && status === 'current' ? (
+                        <LoaderIcon className="h-4 w-4 animate-spin" />
+                      ) : status === 'completed' ? (
                         <CheckIcon className="h-5 w-5" />
+                      ) : hasErrors ? (
+                        <AlertCircleIcon className="h-5 w-5" />
+                      ) : hasWarnings ? (
+                        <AlertTriangleIcon className="h-5 w-5" />
                       ) : (
                         <span className="text-sm font-medium">{stepNumber}</span>
                       )}
@@ -72,7 +94,9 @@ export const WizardNavigator = ({
                     <div className={cn(
                       "text-sm font-medium transition-colors",
                       {
-                        "text-primary": status === 'completed' || status === 'current',
+                        "text-primary": status === 'completed' || (status === 'current' && !hasErrors && !hasWarnings),
+                        "text-destructive": hasErrors,
+                        "text-yellow-600": hasWarnings,
                         "text-muted-foreground": status === 'pending'
                       }
                     )}>
@@ -81,6 +105,23 @@ export const WizardNavigator = ({
                     <div className="text-xs text-muted-foreground">
                       {step.description}
                     </div>
+                    {/* Show validation messages for current step */}
+                    {status === 'current' && (validationErrors.length > 0 || validationWarnings.length > 0) && (
+                      <div className="mt-1 space-y-1">
+                        {validationErrors.map((error, idx) => (
+                          <div key={idx} className="text-xs text-destructive flex items-center gap-1">
+                            <AlertCircleIcon className="h-3 w-3" />
+                            {error}
+                          </div>
+                        ))}
+                        {validationWarnings.map((warning, idx) => (
+                          <div key={idx} className="text-xs text-yellow-600 flex items-center gap-1">
+                            <AlertTriangleIcon className="h-3 w-3" />
+                            {warning}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Connector Line */}
@@ -90,6 +131,8 @@ export const WizardNavigator = ({
                         "h-0.5 transition-colors",
                         {
                           "bg-primary": status === 'completed',
+                          "bg-destructive": hasErrors,
+                          "bg-yellow-500": hasWarnings,
                           "bg-muted-foreground/30": status === 'current' || status === 'pending'
                         }
                       )} />
@@ -125,17 +168,49 @@ export const WizardNavigator = ({
         <div className="flex items-center space-x-3">
           <div className={cn(
             "flex h-8 w-8 items-center justify-center rounded-full border-2",
-            "bg-primary border-primary text-primary-foreground"
+            {
+              "bg-primary border-primary text-primary-foreground": 
+                !validationErrors.length && !validationWarnings.length,
+              "bg-destructive border-destructive text-destructive-foreground": 
+                validationErrors.length > 0,
+              "bg-yellow-500 border-yellow-500 text-white": 
+                validationWarnings.length > 0 && !validationErrors.length
+            }
           )}>
-            <span className="text-xs font-medium">{currentStep}</span>
+            {isNavigating ? (
+              <LoaderIcon className="h-3 w-3 animate-spin" />
+            ) : validationErrors.length > 0 ? (
+              <AlertCircleIcon className="h-3 w-3" />
+            ) : validationWarnings.length > 0 ? (
+              <AlertTriangleIcon className="h-3 w-3" />
+            ) : (
+              <span className="text-xs font-medium">{currentStep}</span>
+            )}
           </div>
-          <div>
+          <div className="flex-1">
             <div className="text-sm font-medium">
               {steps[currentStep - 1]?.title}
             </div>
             <div className="text-xs text-muted-foreground">
               {steps[currentStep - 1]?.description}
             </div>
+            {/* Mobile validation messages */}
+            {(validationErrors.length > 0 || validationWarnings.length > 0) && (
+              <div className="mt-2 space-y-1">
+                {validationErrors.map((error, idx) => (
+                  <div key={idx} className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircleIcon className="h-3 w-3" />
+                    {error}
+                  </div>
+                ))}
+                {validationWarnings.map((warning, idx) => (
+                  <div key={idx} className="text-xs text-yellow-600 flex items-center gap-1">
+                    <AlertTriangleIcon className="h-3 w-3" />
+                    {warning}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

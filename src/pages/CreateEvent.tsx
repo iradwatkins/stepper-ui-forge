@@ -49,11 +49,18 @@ const CreateEvent = () => {
   const { eventData, setEventData, addTicketTier, removeTicketTier, updateTicketTier } = useEventData();
   const { uploadedImages, setUploadedImages, isProcessingImage, processingProgress, handleImageUpload, removeImage } = useImageUpload();
   
-  // Enhanced wizard navigation
+  // Enhanced wizard navigation with callbacks
   const wizard = useWizardNavigation({ 
     form, 
     eventType, 
-    selectedCategories 
+    selectedCategories,
+    enableHistory: true,
+    onStepChange: (stepId, direction) => {
+      console.log(`Navigated to step: ${stepId}, direction: ${direction}`);
+    },
+    onValidationError: (errors, stepId) => {
+      console.log(`Validation errors in step ${stepId}:`, errors);
+    }
   });
   const { lastSaved, clearDraft, loadDraft } = useAutoSave({
     form,
@@ -70,10 +77,12 @@ const CreateEvent = () => {
     { id: "premium", title: "Premium Events" }
   ];
 
-  // Load draft on component mount
+  // Load draft on component mount - only run once
   useEffect(() => {
-    loadDraft(setEventType, setSelectedCategories, setUploadedImages, wizard.goToStep);
-  }, [wizard.goToStep]);
+    loadDraft(setEventType, setSelectedCategories, setUploadedImages, (step: number) => {
+      wizard.goToStep(step, true); // Skip validation on draft load
+    });
+  }, []); // Empty dependency array - only run once
 
   const handleImageUploadWithForm = useCallback(async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {
     await handleImageUpload(files, imageType);
@@ -103,16 +112,11 @@ const CreateEvent = () => {
     });
   }, []);
 
-  const handleNextStep = () => {
-    console.log("Moving to next step from:", wizard.currentStep);
-    console.log("Can go forward:", wizard.canGoForward);
-    console.log("Form data:", form.getValues());
-    console.log("Selected categories:", selectedCategories);
-    console.log("Event type:", eventType);
-    
+  // Enhanced step change handler that syncs form data
+  const handleStepDataSync = useCallback(() => {
     if (wizard.currentStep === 2) {
       const formData = form.getValues();
-      console.log("Updating eventData with form data:", formData);
+      console.log("Syncing form data to eventData:", formData);
       setEventData(prev => ({
         ...prev,
         title: formData.title || '',
@@ -133,14 +137,12 @@ const CreateEvent = () => {
         images: []  // Legacy field - actual images are in uploadedImages state
       }));
     }
-    
-    wizard.nextStep();
-  };
+  }, [wizard.currentStep, form, selectedCategories, setEventData]);
 
-  const handlePrevStep = () => {
-    console.log("Moving to previous step from:", wizard.currentStep);
-    wizard.prevStep();
-  };
+  // Sync data when step changes - remove recursive dependency
+  useEffect(() => {
+    handleStepDataSync();
+  }, [wizard.currentStep]); // Only depend on currentStep, not the sync function
 
   // Create eventData with actual images for ReviewStep
   const eventDataWithImages = {
@@ -227,7 +229,7 @@ const CreateEvent = () => {
     setEventType("");
     setSelectedCategories([]);
     setUploadedImages({});
-    wizard.goToStep(1);
+    wizard.goToStep(1, true); // Skip validation when clearing draft
   };
 
   console.log("Current step:", wizard.currentStep, "Event type:", eventType);
@@ -265,6 +267,9 @@ const CreateEvent = () => {
             currentStep={wizard.currentStep}
             getStepStatus={wizard.getStepStatus}
             onStepClick={wizard.goToStep}
+            isNavigating={wizard.isNavigating}
+            validationErrors={wizard.lastValidationResult?.errors || []}
+            validationWarnings={wizard.lastValidationResult?.warnings || []}
           />
         </div>
 
@@ -278,11 +283,14 @@ const CreateEvent = () => {
             <WizardControls
               canGoBack={wizard.canGoBackward}
               canGoForward={wizard.canGoForward}
-              onBack={handlePrevStep}
-              onNext={handleNextStep}
+              onBack={wizard.prevStep}
+              onNext={wizard.nextStep}
               isFirstStep={wizard.isFirstStep}
               isLastStep={wizard.isLastStep}
-              errors={wizard.getCurrentStepErrors()}
+              isNavigating={wizard.isNavigating}
+              errors={wizard.lastValidationResult?.errors || []}
+              warnings={wizard.lastValidationResult?.warnings || []}
+              lastSaved={lastSaved}
               nextButtonText={eventType ? `Continue with ${eventType === 'simple' ? 'Simple Events' : eventType === 'ticketed' ? 'Ticketed Events' : 'Premium Events'}` : 'Select an event type to continue'}
             />
           </div>
@@ -304,11 +312,15 @@ const CreateEvent = () => {
             <WizardControls
               canGoBack={wizard.canGoBackward}
               canGoForward={wizard.canGoForward}
-              onBack={handlePrevStep}
-              onNext={handleNextStep}
+              onBack={wizard.prevStep}
+              onNext={wizard.nextStep}
               isFirstStep={wizard.isFirstStep}
               isLastStep={wizard.isLastStep}
-              errors={wizard.getCurrentStepErrors()}
+              isNavigating={wizard.isNavigating}
+              errors={wizard.lastValidationResult?.errors || []}
+              warnings={wizard.lastValidationResult?.warnings || []}
+              lastSaved={lastSaved}
+              helpText="Complete all required fields to continue to the next step"
             />
           </div>
         )}
@@ -321,17 +333,22 @@ const CreateEvent = () => {
               onAddTicketTier={addTicketTier}
               onRemoveTicketTier={removeTicketTier}
               onUpdateTicketTier={updateTicketTier}
-              onNext={handleNextStep}
-              onPrevious={handlePrevStep}
+              onNext={wizard.nextStep}
+              onPrevious={wizard.prevStep}
             />
             <WizardControls
               canGoBack={wizard.canGoBackward}
               canGoForward={wizard.canGoForward}
-              onBack={handlePrevStep}
-              onNext={handleNextStep}
+              onBack={wizard.prevStep}
+              onNext={wizard.nextStep}
               isFirstStep={wizard.isFirstStep}
               isLastStep={wizard.isLastStep}
+              isNavigating={wizard.isNavigating}
+              errors={wizard.lastValidationResult?.errors || []}
+              warnings={wizard.lastValidationResult?.warnings || []}
+              lastSaved={lastSaved}
               nextButtonText="Continue to Review"
+              helpText="Configure your ticket types and pricing"
             />
           </div>
         )}
@@ -346,13 +363,18 @@ const CreateEvent = () => {
             />
             <WizardControls
               canGoBack={wizard.canGoBackward}
-              canGoForward={false}
-              onBack={handlePrevStep}
+              canGoForward={true}
+              onBack={wizard.prevStep}
               onNext={handlePublish}
               isFirstStep={wizard.isFirstStep}
               isLastStep={wizard.isLastStep}
               isLoading={isPublishing}
+              isNavigating={wizard.isNavigating}
+              errors={wizard.lastValidationResult?.errors || []}
+              warnings={wizard.lastValidationResult?.warnings || []}
+              lastSaved={lastSaved}
               nextButtonText="Publish Event"
+              helpText="Review your event details and publish when ready"
             />
           </div>
         )}
@@ -367,13 +389,18 @@ const CreateEvent = () => {
             />
             <WizardControls
               canGoBack={wizard.canGoBackward}
-              canGoForward={false}
-              onBack={handlePrevStep}
+              canGoForward={true}
+              onBack={wizard.prevStep}
               onNext={handlePublish}
               isFirstStep={wizard.isFirstStep}
               isLastStep={wizard.isLastStep}
               isLoading={isPublishing}
+              isNavigating={wizard.isNavigating}
+              errors={wizard.lastValidationResult?.errors || []}
+              warnings={wizard.lastValidationResult?.warnings || []}
+              lastSaved={lastSaved}
               nextButtonText="Publish Event"
+              helpText="Review your event details and publish when ready"
             />
           </div>
         )}

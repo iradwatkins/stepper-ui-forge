@@ -169,6 +169,8 @@ export interface Database {
           name: string
           description: string | null
           price: number
+          early_bird_price: number | null
+          early_bird_until: string | null
           quantity: number
           sold_quantity: number
           max_per_person: number
@@ -184,6 +186,8 @@ export interface Database {
           name: string
           description?: string | null
           price?: number
+          early_bird_price?: number | null
+          early_bird_until?: string | null
           quantity: number
           sold_quantity?: number
           max_per_person?: number
@@ -199,6 +203,8 @@ export interface Database {
           name?: string
           description?: string | null
           price?: number
+          early_bird_price?: number | null
+          early_bird_until?: string | null
           quantity?: number
           sold_quantity?: number
           max_per_person?: number
