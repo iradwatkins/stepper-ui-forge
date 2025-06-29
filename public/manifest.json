@@ -1,0 +1,29 @@
+{
+  "name": "Steppers - Event Management Platform",
+  "short_name": "Steppers",
+  "description": "Comprehensive event management and ticketing platform",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["entertainment", "business", "productivity"],
+  "lang": "en",
+  "dir": "ltr",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}
