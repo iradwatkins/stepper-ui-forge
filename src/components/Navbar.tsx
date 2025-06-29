@@ -3,13 +3,10 @@ import { Button } from "@/components/ui/button";
 import { MoonIcon, SunIcon, PlusIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { UserProfile } from "@/components/auth/UserProfile";
 
 const Navbar = () => {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
-  const { user } = useAuth();
 
   return (
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -28,14 +25,12 @@ const Navbar = () => {
             </Button>
           </Link>
           
-          {user && (
-            <Link to="/create-event">
-              <Button variant="outline" size="sm">
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Create Event
-              </Button>
-            </Link>
-          )}
+          <Link to="/create-event">
+            <Button variant="outline" size="sm">
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Create Event
+            </Button>
+          </Link>
           
           <Button
             variant="ghost"
@@ -46,8 +41,6 @@ const Navbar = () => {
             <MoonIcon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
-          
-          <UserProfile />
         </div>
       </div>
     </nav>
