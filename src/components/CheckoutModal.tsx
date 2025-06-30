@@ -9,9 +9,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon, Calendar, MapPin } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon, Calendar, MapPin, AlertCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
+import { getPaymentConfig, validatePaymentConfig, logPaymentStatus } from "@/lib/payment-config";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -28,10 +30,12 @@ interface CheckoutModalProps {
 
 const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: CheckoutModalProps) => {
   const [quantity, setQuantity] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paymentMethod, setPaymentMethod] = useState("paypal"); // Default to PayPal
   const [step, setStep] = useState(1);
   const { items, subtotal, fees, total, totalItems, clearCart } = useCart();
   const { toast } = useToast();
+  const [paymentConfigValid, setPaymentConfigValid] = useState(true);
+  const [missingConfig, setMissingConfig] = useState<string[]>([]);
 
   // Determine if we're using cart mode or single event mode
   const isCartMode = useCartMode || (!event && items.length > 0);
@@ -47,10 +51,18 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
   const checkoutTotal = isCartMode ? total : singleEventTotal;
   const checkoutItemCount = isCartMode ? totalItems : quantity;
 
-  // Reset step when modal opens/closes
+  // Reset step and validate payment config when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setStep(1);
+      
+      // Validate payment configuration
+      const validation = validatePaymentConfig();
+      setPaymentConfigValid(validation.isValid);
+      setMissingConfig(validation.missing);
+      
+      // Log payment status in development
+      logPaymentStatus();
     }
   }, [isOpen]);
 
@@ -184,66 +196,95 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
               )
             )}
 
+            {/* Payment Configuration Warning */}
+            {!paymentConfigValid && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Payment configuration incomplete. Missing: {missingConfig.join(', ')}
+                  <br />
+                  Please add the required environment variables to enable payments.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Payment Method */}
             <div className="space-y-3">
               <Label className="text-base font-medium">Payment Method</Label>
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                 <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                  <RadioGroupItem value="card" id="card" />
-                  <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer">
-                    <CreditCardIcon className="w-4 h-4" />
-                    Credit/Debit Card
+                  <RadioGroupItem value="paypal" id="paypal" />
+                  <Label htmlFor="paypal" className="flex items-center gap-2 cursor-pointer">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#003087">
+                      <path d="M8.32 20.32c-.24 0-.44-.19-.46-.43L7.1 15.6c-.02-.29.21-.54.5-.54h2.8c1.45 0 2.77-.59 3.72-1.66.95-1.07 1.36-2.47 1.16-3.94-.2-1.47-1.06-2.73-2.42-3.55C11.22 5.09 9.47 4.68 7.7 5.05L5.3 5.56c-.36.07-.62.39-.59.76l1.75 12.89c.02.29-.19.55-.48.57-.01 0-.02 0-.03 0H3.5c-.28 0-.51-.23-.51-.51 0-.01 0-.02 0-.03L1.2 5.35c-.07-.54.31-1.03.85-1.1l2.91-.57c2.33-.46 4.7.11 6.68 1.59 1.98 1.48 3.19 3.61 3.41 6 .22 2.39-.46 4.7-1.92 6.5-1.46 1.8-3.57 2.83-5.94 2.9L8.32 20.32z"/>
+                    </svg>
+                    PayPal
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                  <RadioGroupItem value="paypal" id="paypal" />
-                  <Label htmlFor="paypal" className="flex items-center gap-2 cursor-pointer">
-                    <DollarSignIcon className="w-4 h-4" />
-                    PayPal
+                  <RadioGroupItem value="square" id="square" />
+                  <Label htmlFor="square" className="flex items-center gap-2 cursor-pointer">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#000">
+                      <path d="M4.01 4.01h15.98v15.98H4.01V4.01zm1.6 1.6v12.78h12.78V5.61H5.61z"/>
+                      <path d="M7.21 7.21h9.58v9.58H7.21V7.21zm1.6 1.6v6.38h6.38V8.81H8.81z"/>
+                    </svg>
+                    Square
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2 p-3 border rounded-lg">
                   <RadioGroupItem value="cashapp" id="cashapp" />
                   <Label htmlFor="cashapp" className="flex items-center gap-2 cursor-pointer">
-                    <DollarSignIcon className="w-4 h-4" />
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#00C851">
+                      <path d="M23.59 3.47c-.86.21-1.8.35-2.78.41 1-.6 1.77-1.55 2.13-2.68-.93.55-1.96.95-3.06 1.17-.88-.94-2.13-1.53-3.52-1.53-2.66 0-4.82 2.16-4.82 4.82 0 .38.04.75.13 1.1-4-.2-7.56-2.12-9.93-5.04-.42.72-.66 1.55-.66 2.44 0 1.67.85 3.15 2.14 4.01-.79-.02-1.53-.24-2.18-.6v.06c0 2.34 1.66 4.29 3.87 4.73-.4.11-.83.17-1.27.17-.31 0-.62-.03-.92-.08.62 1.94 2.42 3.35 4.55 3.39-1.67 1.31-3.77 2.09-6.05 2.09-.39 0-.78-.02-1.17-.07 2.18 1.4 4.77 2.21 7.56 2.21 9.05 0 14-7.5 14-14 0-.21 0-.42-.01-.63.96-.69 1.79-1.56 2.45-2.55z"/>
+                    </svg>
                     Cash App
                   </Label>
                 </div>
               </RadioGroup>
             </div>
 
-            {/* Payment Form */}
-            {paymentMethod === "card" && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" placeholder="John" />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" placeholder="Doe" />
-                  </div>
+            {/* Customer Information */}
+            <div className="space-y-4">
+              <Label className="text-base font-medium">Customer Information</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input id="firstName" placeholder="John" />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" />
-                </div>
-                <div>
-                  <Label htmlFor="cardNumber">Card Number</Label>
-                  <Input id="cardNumber" placeholder="1234 5678 9012 3456" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="expiry">Expiry Date</Label>
-                    <Input id="expiry" placeholder="MM/YY" />
-                  </div>
-                  <div>
-                    <Label htmlFor="cvv">CVV</Label>
-                    <Input id="cvv" placeholder="123" />
-                  </div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input id="lastName" placeholder="Doe" />
                 </div>
               </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="john@example.com" />
+              </div>
+            </div>
+
+            {/* Payment Method Instructions */}
+            {paymentMethod === "paypal" && (
+              <Alert>
+                <AlertDescription>
+                  You will be redirected to PayPal to complete your payment securely.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {paymentMethod === "square" && (
+              <Alert>
+                <AlertDescription>
+                  You will be redirected to Square to complete your payment securely.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {paymentMethod === "cashapp" && (
+              <Alert>
+                <AlertDescription>
+                  You will be redirected to Cash App to complete your payment securely.
+                </AlertDescription>
+              </Alert>
             )}
 
             {/* Order Summary */}
@@ -268,8 +309,16 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
               </CardContent>
             </Card>
 
-            <Button onClick={handleCheckout} className="w-full" size="lg">
-              Complete Purchase
+            <Button 
+              onClick={handleCheckout} 
+              className="w-full" 
+              size="lg"
+              disabled={!paymentConfigValid}
+            >
+              {paymentConfigValid 
+                ? `Complete Purchase - ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}`
+                : "Payment Configuration Required"
+              }
             </Button>
           </div>
         )}

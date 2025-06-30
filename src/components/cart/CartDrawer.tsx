@@ -27,15 +27,6 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
     clearCart();
   };
 
-  // Create mock event data for checkout modal (simplified for now)
-  const checkoutEvent = items.length > 0 ? {
-    id: parseInt(items[0].eventId) || 1,
-    title: items.length > 1 ? `${items.length} Events` : items[0].eventTitle,
-    date: items[0].eventDate,
-    time: items[0].eventTime,
-    price: total
-  } : null;
-
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -139,13 +130,11 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
       </Sheet>
 
       {/* Checkout Modal */}
-      {checkoutEvent && (
-        <CheckoutModal 
-          isOpen={isCheckoutOpen}
-          onClose={() => setIsCheckoutOpen(false)}
-          event={checkoutEvent}
-        />
-      )}
+      <CheckoutModal 
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        useCartMode={true}
+      />
     </>
   );
 };
