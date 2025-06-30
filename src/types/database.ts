@@ -259,6 +259,38 @@ export interface Database {
           updated_at?: string
         }
       }
+      cart_items: {
+        Row: {
+          id: string
+          user_id: string | null
+          session_id: string | null
+          ticket_type_id: string
+          event_id: string
+          quantity: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          session_id?: string | null
+          ticket_type_id: string
+          event_id: string
+          quantity: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          session_id?: string | null
+          ticket_type_id?: string
+          event_id?: string
+          quantity?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       orders: {
         Row: {
           id: string
@@ -435,6 +467,10 @@ export type TeamMemberUpdate = Database['public']['Tables']['team_members']['Upd
 export type EventAnalytics = Database['public']['Tables']['event_analytics']['Row']
 export type EventAnalyticsInsert = Database['public']['Tables']['event_analytics']['Insert']
 export type EventAnalyticsUpdate = Database['public']['Tables']['event_analytics']['Update']
+
+export type CartItem = Database['public']['Tables']['cart_items']['Row']
+export type CartItemInsert = Database['public']['Tables']['cart_items']['Insert']
+export type CartItemUpdate = Database['public']['Tables']['cart_items']['Update']
 
 // Extended types with relations
 export type EventWithStats = Event & {

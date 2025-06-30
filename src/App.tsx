@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import Profile from "./pages/Profile";
 import EventsManagement from "./pages/dashboard/EventsManagement";
+import PaymentTestPage from "./pages/PaymentTest";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/events/:id" element={<EventDetail />} />
+                <Route path="/payment-test" element={<PaymentTestPage />} />
                 <Route path="/create-event" element={
                   <ProtectedRoute>
                     <CreateEvent />
