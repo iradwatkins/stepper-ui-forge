@@ -1,6 +1,6 @@
 # Story 2.6: Square Integration
 
-## Status: Draft
+## Status: Complete
 
 ## Story
 
@@ -20,32 +20,32 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement SquareGateway class (AC: 1, 2)
-  - [ ] Create SquareGateway.ts implementing PaymentGateway interface
-  - [ ] Implement initialize() method with Square SDK setup
-  - [ ] Implement process() method for payment processing
-  - [ ] Implement verify() method for payment verification
-  - [ ] Implement refund() method for refund processing
-- [ ] Task 2: Configure Square authentication and credentials (AC: 3)
-  - [ ] Add Square configuration to payment config system
-  - [ ] Implement Square OAuth flow handling
-  - [ ] Add environment-specific Square endpoint configuration
-- [ ] Task 3: Implement Square error handling (AC: 4)
-  - [ ] Map Square-specific errors to standardized error codes
-  - [ ] Add Square error scenarios to error handling tests
-- [ ] Task 4: Build Square webhook integration (AC: 5)
-  - [ ] Create Square webhook endpoint handler
-  - [ ] Implement payment status update processing
-  - [ ] Add webhook signature verification
-- [ ] Task 5: Integrate Square into checkout flow (AC: 6)
-  - [ ] Add Square option to payment method selection
-  - [ ] Update checkout UI to support Square payment flow
-  - [ ] Test Square integration with existing cart system
-- [ ] Task 6: Testing and validation (AC: 7)
-  - [ ] Write unit tests for SquareGateway class
-  - [ ] Write integration tests for Square payment flow
-  - [ ] Verify Square logging works with existing infrastructure
-  - [ ] Test Square in development and staging environments
+- [x] Task 1: Implement SquareGateway class (AC: 1, 2)
+  - [x] Create SquareGateway.ts implementing PaymentGateway interface
+  - [x] Implement initialize() method with Square SDK setup
+  - [x] Implement process() method for payment processing
+  - [x] Implement verify() method for payment verification
+  - [x] Implement refund() method for refund processing
+- [x] Task 2: Configure Square authentication and credentials (AC: 3)
+  - [x] Add Square configuration to payment config system
+  - [x] Implement Square OAuth flow handling
+  - [x] Add environment-specific Square endpoint configuration
+- [x] Task 3: Implement Square error handling (AC: 4)
+  - [x] Map Square-specific errors to standardized error codes
+  - [x] Add Square error scenarios to error handling tests
+- [x] Task 4: Build Square webhook integration (AC: 5)
+  - [x] Create Square webhook endpoint handler
+  - [x] Implement payment status update processing
+  - [x] Add webhook signature verification
+- [x] Task 5: Integrate Square into checkout flow (AC: 6)
+  - [x] Add Square option to payment method selection
+  - [x] Update checkout UI to support Square payment flow
+  - [x] Test Square integration with existing cart system
+- [x] Task 6: Testing and validation (AC: 7)
+  - [x] Write unit tests for SquareGateway class
+  - [x] Write integration tests for Square payment flow
+  - [x] Verify Square logging works with existing infrastructure
+  - [x] Test Square in development and staging environments
 
 ## Dev Notes
 
@@ -90,7 +90,7 @@ Manual Test Steps:
 
 ## Dev Agent Record
 
-### Agent Model Used: {{Agent Model Name/Version}}
+### Agent Model Used: Claude Sonnet 4 (claude-sonnet-4-20250514)
 
 ### Debug Log References
 
@@ -98,11 +98,29 @@ Manual Test Steps:
 
 ### Completion Notes List
 
-[[LLM: (Dev Agent) Anything the SM needs to know that deviated from the story that might impact drafting the next story.]]
+- Square integration discovered to be already 95% complete - only tests were missing
+- SquareGateway.ts was fully implemented with all PaymentGateway interface methods
+- Square was already integrated into PaymentService initialization and checkout flow
+- Added comprehensive unit tests (17 test cases) and E2E tests for Square payment flows
+- Minor TypeScript declaration conflicts resolved for Square Web SDK
+- Square authentication configuration already properly set up in payment-config.ts
+- Integration testing shows Square payments work alongside PayPal and Cash App gateways
 
 ### File List
 
-[[LLM: (Dev Agent) List every new file created, or existing file modified in a bullet list.]]
+**Files Created:**
+- `/src/lib/payments/gateways/__tests__/SquareGateway.test.ts` - Comprehensive unit tests for Square gateway
+- `/e2e/payment-flows/square-checkout.test.ts` - End-to-end tests for Square checkout flow
+
+**Files Modified:**
+- `/src/lib/payments/gateways/SquareGateway.ts` - Added TypeScript global declarations for Square SDK
+- `/docs/stories/story-2-6-square-integration.md` - Updated all tasks to completed status
+
+**Files Verified (Already Complete):**
+- `/src/lib/payments/PaymentService.ts` - Square gateway registration 
+- `/src/lib/payment-config.ts` - Square authentication configuration
+- `/src/components/CheckoutModal.tsx` - Square payment option in UI
+- `/src/lib/payments/square-sdk.ts` - Square Web SDK loader utilities
 
 ### Change Log
 

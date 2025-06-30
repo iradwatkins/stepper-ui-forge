@@ -2,6 +2,13 @@
 // Implements PaymentGateway interface for Square payment processing
 
 import { PaymentGateway } from '../PaymentGateway';
+
+// Extend global Window interface for Square SDK
+declare global {
+  interface Window {
+    Square?: any;
+  }
+}
 import {
   PaymentGateway as PaymentGatewayType,
   PaymentRequest,

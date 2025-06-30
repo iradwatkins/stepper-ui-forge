@@ -1,6 +1,6 @@
 # Story 2.5: PayPal Integration
 
-## Status: Draft
+## Status: Complete
 
 ## Story
 

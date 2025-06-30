@@ -241,24 +241,22 @@ describe('CashAppGateway', () => {
 
       await gateway.processPaymentWithToken('token-123', validPaymentRequest);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://connect.squareupsandbox.com/v2/payments',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer test-access-token',
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({
-            source_id: 'token-123',
-            amount_money: { amount: 5000, currency: 'USD' },
-            idempotency_key: expect.stringContaining('order-456'),
-            order_id: 'order-456',
-            note: 'Cash App Pay: Token payment',
-            buyer_email_address: 'test@example.com',
-          }),
-        })
-      );
+      const lastCall = (global.fetch as jest.Mock).mock.calls[(global.fetch as jest.Mock).mock.calls.length - 1];
+      const [url, options] = lastCall;
+      const body = JSON.parse(options.body);
+
+      expect(url).toBe('https://connect.squareupsandbox.com/v2/payments');
+      expect(options.method).toBe('POST');
+      expect(options.headers).toEqual(expect.objectContaining({
+        'Authorization': 'Bearer test-access-token',
+        'Content-Type': 'application/json',
+      }));
+      expect(body.source_id).toBe('token-123');
+      expect(body.amount_money).toEqual({ amount: 5000, currency: 'USD' });
+      expect(body.idempotency_key).toMatch(/^order-456-\d+$/);
+      expect(body.order_id).toBe('order-456');
+      expect(body.note).toBe('Cash App Pay: Token payment');
+      expect(body.buyer_email_address).toBe('test@example.com');
     });
 
     it('should handle payment creation failure', async () => {
@@ -366,10 +364,15 @@ describe('CashAppGateway', () => {
 
       await gateway.processRefund(refundRequest);
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenLastCalledWith(
         'https://connect.squareupsandbox.com/v2/refunds',
         expect.objectContaining({
-          body: expect.stringContaining('"amount_money":undefined'),
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-access-token',
+            'Content-Type': 'application/json',
+          }),
+          body: expect.not.stringContaining('amount_money'),
         })
       );
     });

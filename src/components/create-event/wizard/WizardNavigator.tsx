@@ -1,6 +1,7 @@
 import { CheckIcon, AlertCircleIcon, AlertTriangleIcon, LoaderIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WizardStep, StepStatus } from "@/hooks/useWizardNavigation";
+import { useEffect } from "react";
 
 interface WizardNavigatorProps {
   steps: WizardStep[];
@@ -23,14 +24,80 @@ export const WizardNavigator = ({
   validationWarnings = [],
   className
 }: WizardNavigatorProps) => {
+  
+  // Add keyboard navigation support
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle if focus is on wizard and we have step click handler
+      if (!onStepClick || isNavigating) return;
+      
+      // Check if focus is within the wizard navigator
+      const wizardElement = document.querySelector('[aria-label="Event creation progress"]');
+      if (!wizardElement?.contains(document.activeElement)) return;
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          event.preventDefault();
+          if (currentStep > 1) {
+            const prevStep = currentStep - 1;
+            const prevStatus = getStepStatus(prevStep - 1);
+            if (prevStatus === 'completed' || prevStatus === 'current') {
+              onStepClick(prevStep);
+            }
+          }
+          break;
+          
+        case 'ArrowRight':
+        case 'ArrowDown':
+          event.preventDefault();
+          if (currentStep < steps.length) {
+            const nextStep = currentStep + 1;
+            const nextStatus = getStepStatus(nextStep - 1);
+            if (nextStatus === 'completed' || nextStatus === 'current') {
+              onStepClick(nextStep);
+            }
+          }
+          break;
+          
+        case 'Home':
+          event.preventDefault();
+          // Go to first completed or current step
+          for (let i = 0; i < steps.length; i++) {
+            const status = getStepStatus(i);
+            if (status === 'completed' || status === 'current') {
+              onStepClick(i + 1);
+              break;
+            }
+          }
+          break;
+          
+        case 'End':
+          event.preventDefault();
+          // Go to last completed or current step
+          for (let i = steps.length - 1; i >= 0; i--) {
+            const status = getStepStatus(i);
+            if (status === 'completed' || status === 'current') {
+              onStepClick(i + 1);
+              break;
+            }
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [currentStep, steps.length, getStepStatus, onStepClick, isNavigating]);
   return (
     <nav 
       className={cn("mb-8", className)}
       aria-label="Event creation progress"
+      role="navigation"
     >
       {/* Desktop Layout */}
       <div className="hidden md:block">
-        <ol className="flex items-center justify-between">
+        <ol className="flex items-center justify-between" role="progressbar" aria-label="Event creation steps">
           {steps.map((step, index) => {
             const stepNumber = index + 1;
             const status = getStepStatus(index);
@@ -72,8 +139,10 @@ export const WizardNavigator = ({
                           "opacity-60": isNavigating
                         }
                       )}
-                      aria-label={`${step.title}: ${status}`}
+                      aria-label={`Step ${stepNumber}: ${step.title} - ${status === 'completed' ? 'completed' : status === 'current' ? 'current step' : status === 'error' ? 'has errors' : status === 'warning' ? 'has warnings' : 'pending'}`}
                       aria-current={status === 'current' ? 'step' : undefined}
+                      aria-describedby={`step-${stepNumber}-description`}
+                      tabIndex={isClickable ? 0 : -1}
                     >
                       {isNavigating && status === 'current' ? (
                         <LoaderIcon className="h-4 w-4 animate-spin" />
@@ -102,7 +171,7 @@ export const WizardNavigator = ({
                     )}>
                       {step.title}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div id={`step-${stepNumber}-description`} className="text-xs text-muted-foreground">
                       {step.description}
                     </div>
                     {/* Show validation messages for current step */}

@@ -17,6 +17,7 @@ import DashboardHome from "./pages/DashboardHome";
 import Profile from "./pages/Profile";
 import EventsManagement from "./pages/dashboard/EventsManagement";
 import PaymentTestPage from "./pages/PaymentTest";
+import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 
@@ -52,6 +53,11 @@ const App = () => (
                 <Route path="/create-event" element={
                   <ProtectedRoute>
                     <CreateEvent />
+                  </ProtectedRoute>
+                } />
+                <Route path="/cash-payments" element={
+                  <ProtectedRoute>
+                    <CashPaymentDashboardPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/dashboard" element={

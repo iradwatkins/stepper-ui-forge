@@ -10,12 +10,13 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon, Calendar, MapPin, AlertCircle } from "lucide-react";
+import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon, BanknoteIcon, Calendar, MapPin, AlertCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
 import { getPaymentConfig, validatePaymentConfig, logPaymentStatus } from "@/lib/payment-config";
 import { OrderService } from "@/lib/services/OrderService";
 import { TicketService } from "@/lib/services/TicketService";
+import { CashPaymentService } from "@/lib/services/CashPaymentService";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -49,6 +50,10 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
+  
+  // Cash payment state
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null);
 
   // Determine if we're using cart mode or single event mode
   const isCartMode = useCartMode || (!event && items.length > 0);
@@ -121,13 +126,6 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
         name: `${customerInfo.firstName} ${customerInfo.lastName}`,
       };
 
-      // Create payment info (simulated for now)
-      const payment = {
-        paymentMethod,
-        totalAmount: checkoutTotal,
-        paymentIntentId: `sim_${Date.now()}`, // Simulated payment ID
-      };
-
       // Convert cart items to the format expected by OrderService
       let cartItemsForOrder = items;
       
@@ -147,55 +145,120 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
         }];
       }
 
-      // Step 1: Create order
-      const orderResult = await OrderService.createOrder({
-        customer,
-        payment,
-        cartItems: cartItemsForOrder,
-      });
+      if (paymentMethod === 'cash') {
+        // Handle cash payment workflow
+        
+        // Create payment info for cash
+        const payment = {
+          paymentMethod: 'cash',
+          totalAmount: checkoutTotal,
+          paymentIntentId: `cash_${Date.now()}`,
+          status: 'awaiting_cash_payment'
+        };
 
-      if (!orderResult.success || !orderResult.order) {
-        throw new Error(orderResult.error || 'Failed to create order');
+        // Step 1: Create order with pending cash payment status
+        const orderResult = await OrderService.createOrder({
+          customer,
+          payment,
+          cartItems: cartItemsForOrder,
+        });
+
+        if (!orderResult.success || !orderResult.order) {
+          throw new Error(orderResult.error || 'Failed to create order');
+        }
+
+        // Step 2: Generate verification code for cash payment
+        const cashPaymentResult = await CashPaymentService.createCashPayment({
+          orderId: orderResult.order.id,
+          customerEmail: customer.email,
+          customerName: customer.name,
+          totalAmount: checkoutTotal
+        });
+
+        if (!cashPaymentResult.success) {
+          throw new Error(cashPaymentResult.error || 'Failed to create cash payment code');
+        }
+
+        // Store verification code for display
+        setVerificationCode(cashPaymentResult.verificationCode!);
+        setCodeExpiresAt(cashPaymentResult.expiresAt!);
+
+        // Success - show verification code
+        setStep(3);
+        
+        // Clear cart after successful order creation if in cart mode
+        if (isCartMode) {
+          clearCart();
+        }
+
+        toast({
+          title: "Cash Order Created!",
+          description: `Order created successfully. Please provide the verification code when paying cash to the organizer.`,
+        });
+
+      } else {
+        // Handle digital payment workflow (existing logic)
+        
+        // Create payment info (simulated for now)
+        const payment = {
+          paymentMethod,
+          totalAmount: checkoutTotal,
+          paymentIntentId: `sim_${Date.now()}`, // Simulated payment ID
+        };
+
+        // Step 1: Create order
+        const orderResult = await OrderService.createOrder({
+          customer,
+          payment,
+          cartItems: cartItemsForOrder,
+        });
+
+        if (!orderResult.success || !orderResult.order) {
+          throw new Error(orderResult.error || 'Failed to create order');
+        }
+
+        // Step 2: Generate tickets immediately for digital payments
+        const ticketResult = await TicketService.generateTickets({
+          order: orderResult.order,
+          orderItems: orderResult.orderItems,
+        });
+
+        if (!ticketResult.success) {
+          throw new Error(ticketResult.error || 'Failed to generate tickets');
+        }
+
+        // Log email status
+        if (ticketResult.emailSent) {
+          console.log('✅ Ticket confirmation email sent successfully');
+        } else if (ticketResult.emailError) {
+          console.warn('⚠️ Ticket email failed:', ticketResult.emailError);
+        }
+
+        // Success! 
+        setStep(3);
+        
+        // Clear cart after successful purchase if in cart mode
+        if (isCartMode) {
+          clearCart();
+        }
+
+        toast({
+          title: "Purchase Complete!",
+          description: `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} purchased successfully. Check your email for ticket details.`,
+        });
       }
 
-      // Step 2: Generate tickets
-      const ticketResult = await TicketService.generateTickets({
-        order: orderResult.order,
-        orderItems: orderResult.orderItems,
-      });
-
-      if (!ticketResult.success) {
-        throw new Error(ticketResult.error || 'Failed to generate tickets');
-      }
-
-      // Log email status
-      if (ticketResult.emailSent) {
-        console.log('✅ Ticket confirmation email sent successfully');
-      } else if (ticketResult.emailError) {
-        console.warn('⚠️ Ticket email failed:', ticketResult.emailError);
-      }
-
-      // Success! 
-      setStep(3);
-      
-      // Clear cart after successful purchase if in cart mode
-      if (isCartMode) {
-        clearCart();
-      }
-
-      toast({
-        title: "Purchase Complete!",
-        description: `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} purchased successfully. Check your email for ticket details.`,
-      });
-
-      // Auto-close after a delay
+      // Auto-close after a delay (longer for cash payments so users can note the code)
+      const autoCloseDelay = paymentMethod === 'cash' ? 10000 : 3000; // 10 seconds for cash, 3 for digital
       setTimeout(() => {
         onClose();
         setStep(1);
         setIsProcessing(false);
-        // Reset customer info for next use
+        // Reset customer info and cash payment state for next use
         setCustomerInfo({ firstName: '', lastName: '', email: '' });
-      }, 3000);
+        setVerificationCode(null);
+        setCodeExpiresAt(null);
+      }, autoCloseDelay);
 
     } catch (error) {
       console.error('Checkout failed:', error);
@@ -222,7 +285,7 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
             <DialogTitle className="text-lg sm:text-xl">
               {step === 1 && "Checkout"}
               {step === 2 && "Processing Payment"}
-              {step === 3 && "Payment Successful!"}
+              {step === 3 && (paymentMethod === 'cash' ? "Cash Order Created!" : "Payment Successful!")}
             </DialogTitle>
             <DialogDescription className="text-sm sm:text-base">
               {step === 1 && (isCartMode 
@@ -230,7 +293,7 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                 : "Complete your ticket purchase"
               )}
               {step === 2 && "Please wait while we process your payment..."}
-              {step === 3 && "Your tickets have been confirmed!"}
+              {step === 3 && (paymentMethod === 'cash' ? "Present this verification code when paying cash" : "Your tickets have been confirmed!")}
             </DialogDescription>
           </DialogHeader>
 
@@ -398,6 +461,13 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                             <span className="font-medium text-sm lg:text-base">Cash App</span>
                           </Label>
                         </div>
+                        <div className="flex items-center space-x-3 p-3 lg:p-4 border rounded-lg hover:bg-muted/20 transition-colors">
+                          <RadioGroupItem value="cash" id="cash" />
+                          <Label htmlFor="cash" className="flex items-center gap-2 lg:gap-3 cursor-pointer flex-1">
+                            <BanknoteIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                            <span className="font-medium text-sm lg:text-base">Cash (In-Person)</span>
+                          </Label>
+                        </div>
                       </RadioGroup>
                     </CardContent>
                   </Card>
@@ -494,17 +564,53 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
 
         {step === 3 && (
           <div className="flex-1 flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Payment Successful!</h3>
-              <p className="text-muted-foreground">
-                Your tickets have been generated and sent to {customerInfo.email}. 
-                Check your email for ticket details and QR codes.
-              </p>
+            <div className="text-center max-w-md mx-auto px-4">
+              {paymentMethod === 'cash' ? (
+                // Cash payment success
+                <>
+                  <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <BanknoteIcon className="w-10 h-10 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-4">Cash Order Created!</h3>
+                  
+                  {verificationCode && (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 mb-4">
+                      <p className="text-sm text-muted-foreground mb-2">Verification Code:</p>
+                      <div className="text-2xl font-mono font-bold tracking-wider text-center py-2 px-4 bg-white dark:bg-gray-900 rounded border-2 border-dashed border-gray-300 dark:border-gray-600">
+                        {verificationCode}
+                      </div>
+                      {codeExpiresAt && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Expires: {codeExpiresAt.toLocaleDateString()} at {codeExpiresAt.toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Present this verification code when paying cash to the event organizer. 
+                    Your tickets will be generated and sent to {customerInfo.email} after payment confirmation.
+                  </p>
+                  
+                  <div className="text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded">
+                    💡 A copy of this verification code has been sent to your email.
+                  </div>
+                </>
+              ) : (
+                // Digital payment success
+                <>
+                  <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Payment Successful!</h3>
+                  <p className="text-muted-foreground">
+                    Your tickets have been generated and sent to {customerInfo.email}. 
+                    Check your email for ticket details and QR codes.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         )}

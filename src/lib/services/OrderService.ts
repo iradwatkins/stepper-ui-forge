@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client'
 import { CartItem } from '@/contexts/CartContext'
+import { FeeReconciliationService } from './FeeReconciliationService'
 
 // Type assertion for supabase client to work with our database
 const db = supabase as any
@@ -13,6 +14,7 @@ interface Order {
   customer_phone: string | null
   total_amount: number
   payment_status: 'pending' | 'completed' | 'failed' | 'refunded'
+  order_status: 'pending' | 'processing' | 'awaiting_cash_payment' | 'cash_confirmed' | 'completed' | 'cancelled' | 'refunded'
   payment_intent_id: string | null
   payment_method: string | null
   created_at: string
@@ -27,6 +29,7 @@ interface OrderInsert {
   customer_phone?: string | null
   total_amount: number
   payment_status?: 'pending' | 'completed' | 'failed' | 'refunded'
+  order_status?: 'pending' | 'processing' | 'awaiting_cash_payment' | 'cash_confirmed' | 'completed' | 'cancelled' | 'refunded'
   payment_intent_id?: string | null
   payment_method?: string | null
   created_at?: string
@@ -63,6 +66,7 @@ export interface PaymentInfo {
   paymentIntentId?: string
   paymentMethod: string
   totalAmount: number
+  status?: 'awaiting_cash_payment' | 'completed' | 'pending'
 }
 
 export interface CreateOrderRequest {
@@ -119,7 +123,8 @@ export class OrderService {
           customer_name: request.customer.name || null,
           customer_phone: request.customer.phone || null,
           total_amount: eventTotal,
-          payment_status: 'completed', // Payment already succeeded
+          payment_status: request.payment.paymentMethod === 'cash' ? 'pending' : 'completed',
+          order_status: request.payment.status === 'awaiting_cash_payment' ? 'awaiting_cash_payment' : 'completed',
           payment_intent_id: request.payment.paymentIntentId || null,
           payment_method: request.payment.paymentMethod,
         }
@@ -155,6 +160,39 @@ export class OrderService {
         }
 
         allOrderItems.push(...orderItems)
+
+        // Handle fee reconciliation for online payments
+        if (request.payment.paymentMethod !== 'cash' && allOrders[0]) {
+          try {
+            // Get the organizer ID from the event
+            const { data: eventData, error: eventError } = await db
+              .from('events')
+              .select('owner_id')
+              .eq('id', eventId)
+              .single();
+
+            if (!eventError && eventData) {
+              // Process fee reconciliation for this online payment
+              const feeDeduction = await FeeReconciliationService.processOnlinePaymentFeeDeduction(
+                eventData.owner_id,
+                allOrders[0].id,
+                eventTotal
+              );
+
+              console.log('Fee reconciliation processed:', {
+                organizerId: eventData.owner_id,
+                orderId: allOrders[0].id,
+                originalFee: feeDeduction.originalFee,
+                additionalCashFeeDeducted: feeDeduction.additionalCashFeeDeducted,
+                totalFeeDeducted: feeDeduction.totalFeeDeducted,
+                remainingCashFeesOwed: feeDeduction.remainingCashFeesOwed
+              });
+            }
+          } catch (feeError) {
+            // Don't fail the order creation if fee reconciliation fails
+            console.warn('Fee reconciliation failed but order creation succeeded:', feeError);
+          }
+        }
       }
 
       // For simplicity, return the first order (most common case is single event)
