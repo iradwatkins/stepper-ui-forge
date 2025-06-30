@@ -4,8 +4,10 @@
 import React from 'react';
 import { PaymentTest } from '@/components/payment/PaymentTest';
 import { PaymentModal } from '@/components/payment/PaymentModal';
+import { PaymentDebug } from '@/components/payment/PaymentDebug';
 import { Button } from '@/components/ui/button';
-import { CreditCard } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CreditCard, Bug } from 'lucide-react';
 
 const PaymentTestPage: React.FC = () => {
   return (
@@ -35,7 +37,23 @@ const PaymentTestPage: React.FC = () => {
         </div>
       </div>
       
-      <PaymentTest />
+      <Tabs defaultValue="test" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="test">Payment Test</TabsTrigger>
+          <TabsTrigger value="debug">
+            <Bug className="h-4 w-4 mr-2" />
+            Debug
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="test" className="mt-6">
+          <PaymentTest />
+        </TabsContent>
+        
+        <TabsContent value="debug" className="mt-6">
+          <PaymentDebug />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

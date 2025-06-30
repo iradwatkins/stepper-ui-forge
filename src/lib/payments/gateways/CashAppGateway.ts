@@ -45,19 +45,28 @@ export class CashAppGateway extends PaymentGateway {
       if (typeof window !== 'undefined') {
         // Check if Square Web SDK is loaded
         if (!window.Square) {
-          throw new Error('Square Web SDK not loaded. Cash App Pay requires Square Web SDK.');
-        }
-
-        this.payments = window.Square.payments(this.applicationId, this.locationId);
-        
-        // Verify Cash App Pay is available
-        const cashAppPay = await this.payments.cashAppPay({
-          redirectURL: window.location.origin,
-          referenceId: 'test-reference'
-        });
-        
-        if (!cashAppPay) {
-          throw new Error('Cash App Pay not available in this environment');
+          console.warn('Square Web SDK not loaded. Cash App Pay will have limited functionality.');
+          // Don't throw error, just warn
+        } else {
+          try {
+            this.payments = window.Square.payments(this.applicationId, this.locationId);
+            
+            // Try to verify Cash App Pay is available
+            try {
+              const cashAppPay = await this.payments.cashAppPay({
+                redirectURL: window.location.origin,
+                referenceId: 'test-reference'
+              });
+              
+              if (!cashAppPay) {
+                console.warn('Cash App Pay not available in this environment');
+              }
+            } catch (error) {
+              console.warn('Cash App Pay initialization check failed:', error);
+            }
+          } catch (error) {
+            console.warn('Failed to initialize Square Web SDK for Cash App:', error);
+          }
         }
       }
 
@@ -357,7 +366,7 @@ export class CashAppGateway extends PaymentGateway {
     
     if (!response.ok) {
       const errorText = await response.text();
-      let errorData;
+      let errorData: any;
       try {
         errorData = JSON.parse(errorText);
       } catch {

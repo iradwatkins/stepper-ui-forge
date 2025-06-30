@@ -69,10 +69,15 @@ export class SquareGateway extends PaymentGateway {
       if (typeof window !== 'undefined') {
         // Check if Square Web SDK is loaded
         if (!window.Square) {
-          throw new Error('Square Web SDK not loaded. Please include the Square Web SDK script.');
+          console.warn('Square Web SDK not loaded. Square gateway will have limited functionality.');
+          // Don't throw error, just warn - gateway can still work for API calls
+        } else {
+          try {
+            this.payments = window.Square.payments(this.applicationId, this.locationId);
+          } catch (error) {
+            console.warn('Failed to initialize Square Web SDK payments:', error);
+          }
         }
-
-        this.payments = window.Square.payments(this.applicationId, this.locationId);
       }
 
       // Test API connectivity
@@ -362,7 +367,7 @@ export class SquareGateway extends PaymentGateway {
     
     if (!response.ok) {
       const errorText = await response.text();
-      let errorData;
+      let errorData: any;
       try {
         errorData = JSON.parse(errorText);
       } catch {

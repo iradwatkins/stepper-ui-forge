@@ -68,35 +68,44 @@ export class PaymentService {
 
       this.paymentManager.registerGateway(paypalGateway);
 
-      // Initialize Square Gateway
-      const squareGateway = new SquareGateway({
-        environment: config.square.environment,
-        credentials: {
-          applicationId: config.square.applicationId,
-          accessToken: config.square.accessToken,
-          locationId: config.square.locationId
-        },
-        returnUrl: `${window.location.origin}/payment/success`,
-        cancelUrl: `${window.location.origin}/payment/cancel`,
-        webhookUrl: config.webhookUrl
-      });
+      // Only initialize Square and Cash App if we're in the browser and have credentials
+      if (typeof window !== 'undefined' && config.square.applicationId && config.square.accessToken) {
+        try {
+          // Initialize Square Gateway
+          const squareGateway = new SquareGateway({
+            environment: config.square.environment,
+            credentials: {
+              applicationId: config.square.applicationId,
+              accessToken: config.square.accessToken,
+              locationId: config.square.locationId
+            },
+            returnUrl: `${window.location.origin}/payment/success`,
+            cancelUrl: `${window.location.origin}/payment/cancel`,
+            webhookUrl: config.webhookUrl
+          });
 
-      this.paymentManager.registerGateway(squareGateway);
+          this.paymentManager.registerGateway(squareGateway);
 
-      // Initialize Cash App Gateway (uses Square infrastructure)
-      const cashAppGateway = new CashAppGateway({
-        environment: config.square.environment, // Uses Square environment
-        credentials: {
-          clientId: config.square.applicationId, // Same as Square app ID
-          accessToken: config.square.accessToken,
-          locationId: config.square.locationId
-        },
-        returnUrl: `${window.location.origin}/payment/success`,
-        cancelUrl: `${window.location.origin}/payment/cancel`,
-        webhookUrl: config.webhookUrl
-      });
+          // Initialize Cash App Gateway (uses Square infrastructure)
+          const cashAppGateway = new CashAppGateway({
+            environment: config.square.environment, // Uses Square environment
+            credentials: {
+              clientId: config.square.applicationId, // Same as Square app ID
+              accessToken: config.square.accessToken,
+              locationId: config.square.locationId
+            },
+            returnUrl: `${window.location.origin}/payment/success`,
+            cancelUrl: `${window.location.origin}/payment/cancel`,
+            webhookUrl: config.webhookUrl
+          });
 
-      this.paymentManager.registerGateway(cashAppGateway);
+          this.paymentManager.registerGateway(cashAppGateway);
+        } catch (error) {
+          console.warn('Failed to initialize Square/Cash App gateways:', error);
+        }
+      } else {
+        console.warn('Square/Cash App initialization skipped - missing credentials or not in browser environment');
+      }
 
       // Initialize all registered gateways
       await this.paymentManager.initializeGateways();
