@@ -14,6 +14,8 @@ import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon, Calendar, MapPin, 
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
 import { getPaymentConfig, validatePaymentConfig, logPaymentStatus } from "@/lib/payment-config";
+import { OrderService } from "@/lib/services/OrderService";
+import { TicketService } from "@/lib/services/TicketService";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -36,6 +38,17 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
   const { toast } = useToast();
   const [paymentConfigValid, setPaymentConfigValid] = useState(true);
   const [missingConfig, setMissingConfig] = useState<string[]>([]);
+  
+  // Customer information form state
+  const [customerInfo, setCustomerInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+  });
+  
+  // Processing state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processError, setProcessError] = useState<string | null>(null);
 
   // Determine if we're using cart mode or single event mode
   const isCartMode = useCartMode || (!event && items.length > 0);
@@ -75,24 +88,130 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
     return item.price;
   };
 
-  const handleCheckout = () => {
-    // Simulate checkout process
+  const handleCheckout = async () => {
+    // Validate customer information
+    if (!customerInfo.firstName || !customerInfo.lastName || !customerInfo.email) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all customer information fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerInfo.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setProcessError(null);
     setStep(2);
-    setTimeout(() => {
+
+    try {
+      // Create customer info
+      const customer = {
+        email: customerInfo.email,
+        name: `${customerInfo.firstName} ${customerInfo.lastName}`,
+      };
+
+      // Create payment info (simulated for now)
+      const payment = {
+        paymentMethod,
+        totalAmount: checkoutTotal,
+        paymentIntentId: `sim_${Date.now()}`, // Simulated payment ID
+      };
+
+      // Convert cart items to the format expected by OrderService
+      let cartItemsForOrder = items;
+      
+      // If not in cart mode, create a cart item from the single event
+      if (!isCartMode && event) {
+        cartItemsForOrder = [{
+          id: `event-${event.id}`,
+          ticketTypeId: `ticket-type-${event.id}`, // This would need to be actual ticket type ID
+          eventId: event.id.toString(),
+          quantity,
+          price: event.price,
+          title: `${event.title} Ticket`,
+          eventTitle: event.title,
+          eventDate: event.date,
+          eventTime: event.time,
+          maxPerPerson: 10,
+        }];
+      }
+
+      // Step 1: Create order
+      const orderResult = await OrderService.createOrder({
+        customer,
+        payment,
+        cartItems: cartItemsForOrder,
+      });
+
+      if (!orderResult.success || !orderResult.order) {
+        throw new Error(orderResult.error || 'Failed to create order');
+      }
+
+      // Step 2: Generate tickets
+      const ticketResult = await TicketService.generateTickets({
+        order: orderResult.order,
+        orderItems: orderResult.orderItems,
+      });
+
+      if (!ticketResult.success) {
+        throw new Error(ticketResult.error || 'Failed to generate tickets');
+      }
+
+      // Log email status
+      if (ticketResult.emailSent) {
+        console.log('✅ Ticket confirmation email sent successfully');
+      } else if (ticketResult.emailError) {
+        console.warn('⚠️ Ticket email failed:', ticketResult.emailError);
+      }
+
+      // Success! 
       setStep(3);
+      
+      // Clear cart after successful purchase if in cart mode
+      if (isCartMode) {
+        clearCart();
+      }
+
+      toast({
+        title: "Purchase Complete!",
+        description: `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} purchased successfully. Check your email for ticket details.`,
+      });
+
+      // Auto-close after a delay
       setTimeout(() => {
-        // Clear cart after successful purchase if in cart mode
-        if (isCartMode) {
-          clearCart();
-          toast({
-            title: "Purchase Complete!",
-            description: `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} purchased successfully.`,
-          });
-        }
         onClose();
         setStep(1);
-      }, 2000);
-    }, 2000);
+        setIsProcessing(false);
+        // Reset customer info for next use
+        setCustomerInfo({ firstName: '', lastName: '', email: '' });
+      }, 3000);
+
+    } catch (error) {
+      console.error('Checkout failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setProcessError(errorMessage);
+      
+      toast({
+        title: "Checkout Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      // Go back to step 1 so user can try again
+      setStep(1);
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -296,6 +415,8 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                           <Input 
                             id="firstName" 
                             placeholder="John" 
+                            value={customerInfo.firstName}
+                            onChange={(e) => setCustomerInfo(prev => ({ ...prev, firstName: e.target.value }))}
                             className="h-9 sm:h-10 lg:h-11 text-sm lg:text-base transition-all"
                           />
                         </div>
@@ -304,6 +425,8 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                           <Input 
                             id="lastName" 
                             placeholder="Doe" 
+                            value={customerInfo.lastName}
+                            onChange={(e) => setCustomerInfo(prev => ({ ...prev, lastName: e.target.value }))}
                             className="h-9 sm:h-10 lg:h-11 text-sm lg:text-base transition-all"
                           />
                         </div>
@@ -314,6 +437,8 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                           id="email" 
                           type="email" 
                           placeholder="john@example.com" 
+                          value={customerInfo.email}
+                          onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
                           className="h-9 sm:h-10 lg:h-11 text-sm lg:text-base transition-all"
                         />
                       </div>
@@ -330,12 +455,23 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                   </Alert>
                   
                   {/* Checkout Button */}
+                  {/* Error display */}
+                  {processError && (
+                    <Alert className="bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm text-red-700 dark:text-red-300">
+                        {processError}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   <Button 
                     onClick={handleCheckout} 
                     className="w-full h-11 lg:h-12 text-base lg:text-lg font-semibold transition-all" 
-                    disabled={!paymentConfigValid}
+                    disabled={!paymentConfigValid || isProcessing}
                   >
-                    {paymentConfigValid 
+                    {isProcessing ? "Processing..." : 
+                     paymentConfigValid 
                       ? `Complete Purchase - $${checkoutTotal.toFixed(2)}`
                       : "Payment Configuration Required"
                     }
@@ -365,7 +501,10 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                 </svg>
               </div>
               <h3 className="text-lg font-semibold mb-2">Payment Successful!</h3>
-              <p className="text-muted-foreground">Check your email for ticket details and confirmation.</p>
+              <p className="text-muted-foreground">
+                Your tickets have been generated and sent to {customerInfo.email}. 
+                Check your email for ticket details and QR codes.
+              </p>
             </div>
           </div>
         )}

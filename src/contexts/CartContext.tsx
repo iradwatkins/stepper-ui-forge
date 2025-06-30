@@ -13,6 +13,7 @@ export interface CartItem {
   eventTitle: string
   eventDate: string
   eventTime: string
+  eventLocation?: string // Optional location field
   earlyBirdPrice?: number
   earlyBirdUntil?: string
   maxPerPerson: number

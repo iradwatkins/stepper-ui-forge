@@ -44,12 +44,12 @@ export class CashAppGateway extends PaymentGateway {
       // Initialize Square Web SDK for Cash App Pay
       if (typeof window !== 'undefined') {
         // Check if Square Web SDK is loaded
-        if (!window.Square) {
+        if (!(window as any).Square) {
           console.warn('Square Web SDK not loaded. Cash App Pay will have limited functionality.');
           // Don't throw error, just warn
         } else {
           try {
-            this.payments = window.Square.payments(this.applicationId, this.locationId);
+            this.payments = (window as any).Square.payments(this.applicationId, this.locationId);
             
             // Try to verify Cash App Pay is available
             try {
