@@ -1,3 +1,6 @@
+/* Import Samsung Z Fold & Z Flip optimizations */
+@import './styles/flip-phones.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

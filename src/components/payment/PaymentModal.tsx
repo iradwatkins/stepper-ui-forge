@@ -211,10 +211,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     switch (currentStep) {
       case 'method':
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="text-center">
-              <h3 className="font-semibold">Choose Payment Method</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="font-semibold text-base sm:text-lg">Choose Payment Method</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
                 Select your preferred payment gateway
               </p>
             </div>
@@ -269,17 +269,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
       case 'details':
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="text-center">
-              <h3 className="font-semibold">Payment Details</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="font-semibold text-base sm:text-lg">Payment Details</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
                 Enter your payment information
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="amount" className="text-sm font-medium">Amount (USD)</Label>
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="amount" className="text-sm font-semibold text-foreground">Amount (USD)</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -287,43 +287,43 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="25.00"
-                  className="mt-1"
+                  className="h-10 sm:h-11 text-sm sm:text-base border-2 focus:border-primary transition-colors touch-manipulation"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="email" className="text-sm font-medium">Customer Email</Label>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-semibold text-foreground">Customer Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   placeholder="test@example.com"
-                  className="mt-1"
+                  className="h-10 sm:h-11 text-sm sm:text-base border-2 focus:border-primary transition-colors touch-manipulation"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-semibold text-foreground">Description</Label>
                 <Input
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Test Payment - Event Ticket"
-                  className="mt-1"
+                  className="h-10 sm:h-11 text-sm sm:text-base border-2 focus:border-primary transition-colors touch-manipulation"
                 />
               </div>
             </div>
           </div>
         );
 
-      case 'review':
+      case 'review': {
         const selectedMethodData = availableMethods.find(m => m.gateway === selectedMethod);
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="text-center">
-              <h3 className="font-semibold">Review Payment</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="font-semibold text-base sm:text-lg">Review Payment</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
                 Please review your payment details
               </p>
             </div>
@@ -368,6 +368,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
           </div>
         );
+      }
 
       case 'processing':
         return (
@@ -384,7 +385,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
       case 'result':
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="text-center">
               <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
                 paymentResult?.success ? 'bg-green-100' : 'bg-red-100'
@@ -459,7 +460,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     <div className="space-y-6">
       {/* Progress Indicator */}
       {!isInitializing && (
-        <div className="flex items-center justify-center space-x-2">
+        <div className="flex items-center justify-center space-x-2 py-2">
           {['method', 'details', 'review', 'result'].map((step, index) => {
             const isActive = currentStep === step;
             const isCompleted = ['method', 'details', 'review'].indexOf(currentStep) > index;
@@ -495,13 +496,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       )}
 
       {/* Step Content */}
-      <div className="min-h-[400px] max-h-[500px] overflow-y-auto">
+      <div className="min-h-[350px]">
         {renderStepContent()}
       </div>
 
       {/* Navigation Buttons */}
       {!isInitializing && currentStep !== 'processing' && (
-        <div className="flex gap-3 pt-4 border-t">
+        <div className="flex gap-3 pt-6 mt-6 border-t">
           {currentStep !== 'method' && currentStep !== 'result' && (
             <Button 
               onClick={prevStep}
@@ -551,21 +552,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         <DialogTrigger asChild>
           {trigger}
         </DialogTrigger>
-        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[95vh] overflow-y-auto p-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Payment Gateway Test
-            </DialogTitle>
-            <DialogDescription>
-              {currentStep === 'method' && 'Select your preferred payment method'}
-              {currentStep === 'details' && 'Enter your payment information'}
-              {currentStep === 'review' && 'Review your payment details'}
-              {currentStep === 'processing' && 'Processing your payment...'}
-              {currentStep === 'result' && 'Payment completed'}
-            </DialogDescription>
-          </DialogHeader>
-          {content}
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-hidden p-0 payment-modal">
+          <div className="flex flex-col h-full max-h-[90vh]">
+            <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b dialog-header">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                Payment Gateway Test
+              </DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
+                {currentStep === 'method' && 'Select your preferred payment method'}
+                {currentStep === 'details' && 'Enter your payment information'}
+                {currentStep === 'review' && 'Review your payment details'}
+                {currentStep === 'processing' && 'Processing your payment...'}
+                {currentStep === 'result' && 'Payment completed'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 dialog-content">
+              {content}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     );
