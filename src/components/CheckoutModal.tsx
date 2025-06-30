@@ -14,9 +14,9 @@ import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon, BanknoteIcon, Cale
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
 import { getPaymentConfig, validatePaymentConfig, logPaymentStatus } from "@/lib/payment-config";
-import { OrderService } from "@/lib/services/OrderService";
-import { TicketService } from "@/lib/services/TicketService";
 import { CashPaymentService } from "@/lib/services/CashPaymentService";
+import { AtomicOrderService } from "@/lib/services/AtomicOrderService";
+import { useCartInventoryValidation } from "@/lib/hooks/useRealTimeInventory";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -51,6 +51,10 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
   const [isProcessing, setIsProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
   
+  // Reservation state
+  const [reservationIds, setReservationIds] = useState<string[]>([]);
+  const [holdingInventory, setHoldingInventory] = useState(false);
+  
   // Cash payment state
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
   const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null);
@@ -68,11 +72,24 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
   const checkoutFees = isCartMode ? fees : singleEventFees;
   const checkoutTotal = isCartMode ? total : singleEventTotal;
   const checkoutItemCount = isCartMode ? totalItems : quantity;
+  
+  // Prepare cart items for validation
+  const cartItemsForValidation = isCartMode 
+    ? items.map(item => ({ ticket_type_id: item.ticketTypeId, quantity: item.quantity }))
+    : event 
+    ? [{ ticket_type_id: `ticket-type-${event.id}`, quantity }]
+    : [];
+  
+  // Real-time inventory validation
+  const { validationErrors, isValid: inventoryValid, loading: inventoryLoading } = 
+    useCartInventoryValidation(cartItemsForValidation);
 
   // Reset step and validate payment config when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setStep(1);
+      setReservationIds([]);
+      setHoldingInventory(false);
       
       // Validate payment configuration
       const validation = validatePaymentConfig();
@@ -81,10 +98,15 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
       
       // Log payment status in development
       logPaymentStatus();
+    } else {
+      // Release any active reservations when modal closes
+      if (reservationIds.length > 0) {
+        AtomicOrderService.extendReservations(reservationIds, 0); // Release immediately
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, reservationIds]);
 
-  const getCurrentPrice = (item: any): number => {
+  const getCurrentPrice = (item: { price: number; earlyBirdPrice?: number; earlyBirdUntil?: string }): number => {
     if (item.earlyBirdPrice && item.earlyBirdUntil) {
       const now = new Date();
       const earlyBirdEnd = new Date(item.earlyBirdUntil);
@@ -114,139 +136,105 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
       });
       return;
     }
+    
+    // Check inventory availability
+    if (!inventoryValid) {
+      toast({
+        title: "Tickets No Longer Available",
+        description: "Some tickets in your cart are no longer available. Please adjust your selection.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsProcessing(true);
     setProcessError(null);
-    setStep(2);
+    setHoldingInventory(true);
 
     try {
       // Create customer info
       const customer = {
+        firstName: customerInfo.firstName,
+        lastName: customerInfo.lastName,
         email: customerInfo.email,
-        name: `${customerInfo.firstName} ${customerInfo.lastName}`,
+      };
+      
+      // Create payment info
+      const payment = {
+        method: paymentMethod as 'stripe' | 'cash_app' | 'cash',
+        amount: checkoutTotal,
+        ...(paymentMethod === 'cash' && { cash_verification_code: `cash_${Date.now()}` })
       };
 
-      // Convert cart items to the format expected by OrderService
-      let cartItemsForOrder = items;
+      // Convert cart items to the format expected by AtomicOrderService
+      let cartItemsForOrder = items.map(item => ({
+        ticket_type_id: item.ticketTypeId,
+        quantity: item.quantity,
+        price: getCurrentPrice(item),
+        ticket_type_name: item.title
+      }));
       
       // If not in cart mode, create a cart item from the single event
       if (!isCartMode && event) {
         cartItemsForOrder = [{
-          id: `event-${event.id}`,
-          ticketTypeId: `ticket-type-${event.id}`, // This would need to be actual ticket type ID
-          eventId: event.id.toString(),
+          ticket_type_id: `ticket-type-${event.id}`, // This would need to be actual ticket type ID
           quantity,
           price: event.price,
-          title: `${event.title} Ticket`,
-          eventTitle: event.title,
-          eventDate: event.date,
-          eventTime: event.time,
-          maxPerPerson: 10,
+          ticket_type_name: `${event.title} Ticket`
         }];
       }
-
-      if (paymentMethod === 'cash') {
-        // Handle cash payment workflow
-        
-        // Create payment info for cash
-        const payment = {
-          paymentMethod: 'cash',
-          totalAmount: checkoutTotal,
-          paymentIntentId: `cash_${Date.now()}`,
-          status: 'awaiting_cash_payment'
-        };
-
-        // Step 1: Create order with pending cash payment status
-        const orderResult = await OrderService.createOrder({
-          customer,
-          payment,
-          cartItems: cartItemsForOrder,
-        });
-
-        if (!orderResult.success || !orderResult.order) {
-          throw new Error(orderResult.error || 'Failed to create order');
+      
+      setStep(2);
+      
+      // Use atomic order service for all purchases
+      const orderResult = await AtomicOrderService.createAtomicOrder(
+        customer,
+        payment,
+        cartItemsForOrder
+      );
+      
+      if (!orderResult.success) {
+        if (orderResult.errorCode === 'INSUFFICIENT_INVENTORY' && orderResult.availabilityErrors) {
+          const errorMessages = orderResult.availabilityErrors.map(err => 
+            `Ticket type ${err.ticketTypeId}: ${err.requested} requested, ${err.available} available`
+          ).join('\n');
+          
+          throw new Error(`Some tickets are no longer available:\n${errorMessages}`);
         }
+        
+        throw new Error(orderResult.error || 'Failed to create order');
+      }
 
-        // Step 2: Generate verification code for cash payment
+      // Handle cash payment specific logic
+      if (paymentMethod === 'cash') {
+        // For cash payments, we need to generate a verification code
         const cashPaymentResult = await CashPaymentService.createCashPayment({
-          orderId: orderResult.order.id,
+          orderId: orderResult.orderId!,
           customerEmail: customer.email,
-          customerName: customer.name,
+          customerName: `${customer.firstName} ${customer.lastName}`,
           totalAmount: checkoutTotal
         });
 
-        if (!cashPaymentResult.success) {
-          throw new Error(cashPaymentResult.error || 'Failed to create cash payment code');
+        if (cashPaymentResult.success) {
+          setVerificationCode(cashPaymentResult.verificationCode!);
+          setCodeExpiresAt(cashPaymentResult.expiresAt!);
         }
-
-        // Store verification code for display
-        setVerificationCode(cashPaymentResult.verificationCode!);
-        setCodeExpiresAt(cashPaymentResult.expiresAt!);
-
-        // Success - show verification code
-        setStep(3);
-        
-        // Clear cart after successful order creation if in cart mode
-        if (isCartMode) {
-          clearCart();
-        }
-
-        toast({
-          title: "Cash Order Created!",
-          description: `Order created successfully. Please provide the verification code when paying cash to the organizer.`,
-        });
-
-      } else {
-        // Handle digital payment workflow (existing logic)
-        
-        // Create payment info (simulated for now)
-        const payment = {
-          paymentMethod,
-          totalAmount: checkoutTotal,
-          paymentIntentId: `sim_${Date.now()}`, // Simulated payment ID
-        };
-
-        // Step 1: Create order
-        const orderResult = await OrderService.createOrder({
-          customer,
-          payment,
-          cartItems: cartItemsForOrder,
-        });
-
-        if (!orderResult.success || !orderResult.order) {
-          throw new Error(orderResult.error || 'Failed to create order');
-        }
-
-        // Step 2: Generate tickets immediately for digital payments
-        const ticketResult = await TicketService.generateTickets({
-          order: orderResult.order,
-          orderItems: orderResult.orderItems,
-        });
-
-        if (!ticketResult.success) {
-          throw new Error(ticketResult.error || 'Failed to generate tickets');
-        }
-
-        // Log email status
-        if (ticketResult.emailSent) {
-          console.log('✅ Ticket confirmation email sent successfully');
-        } else if (ticketResult.emailError) {
-          console.warn('⚠️ Ticket email failed:', ticketResult.emailError);
-        }
-
-        // Success! 
-        setStep(3);
-        
-        // Clear cart after successful purchase if in cart mode
-        if (isCartMode) {
-          clearCart();
-        }
-
-        toast({
-          title: "Purchase Complete!",
-          description: `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} purchased successfully. Check your email for ticket details.`,
-        });
       }
+      
+      // Success!
+      setStep(3);
+      
+      // Clear cart after successful purchase if in cart mode
+      if (isCartMode) {
+        clearCart();
+      }
+
+      toast({
+        title: paymentMethod === 'cash' ? "Cash Order Created!" : "Purchase Complete!",
+        description: paymentMethod === 'cash' 
+          ? "Order created successfully. Please provide the verification code when paying cash to the organizer."
+          : `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} purchased successfully. Check your email for ticket details.`,
+      });
 
       // Auto-close after a delay (longer for cash payments so users can note the code)
       const autoCloseDelay = paymentMethod === 'cash' ? 10000 : 3000; // 10 seconds for cash, 3 for digital
@@ -254,10 +242,12 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
         onClose();
         setStep(1);
         setIsProcessing(false);
+        setHoldingInventory(false);
         // Reset customer info and cash payment state for next use
         setCustomerInfo({ firstName: '', lastName: '', email: '' });
         setVerificationCode(null);
         setCodeExpiresAt(null);
+        setReservationIds([]);
       }, autoCloseDelay);
 
     } catch (error) {
@@ -274,6 +264,7 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
       // Go back to step 1 so user can try again
       setStep(1);
       setIsProcessing(false);
+      setHoldingInventory(false);
     }
   };
 
@@ -429,6 +420,31 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                       </AlertDescription>
                     </Alert>
                   )}
+                  
+                  {/* Inventory Validation Warnings */}
+                  {validationErrors.length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">
+                        <div className="font-medium mb-1">Tickets No Longer Available:</div>
+                        {validationErrors.map((error, index) => (
+                          <div key={index} className="text-xs">
+                            • {error.error}
+                          </div>
+                        ))}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {/* Inventory Loading */}
+                  {inventoryLoading && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">
+                        Checking ticket availability...
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   {/* Payment Method Section */}
                   <Card>
@@ -538,9 +554,11 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                   <Button 
                     onClick={handleCheckout} 
                     className="w-full h-11 lg:h-12 text-base lg:text-lg font-semibold transition-all" 
-                    disabled={!paymentConfigValid || isProcessing}
+                    disabled={!paymentConfigValid || isProcessing || !inventoryValid || inventoryLoading}
                   >
-                    {isProcessing ? "Processing..." : 
+                    {isProcessing ? (holdingInventory ? "Reserving Tickets..." : "Processing...") : 
+                     !inventoryValid ? "Tickets Unavailable" :
+                     inventoryLoading ? "Checking Availability..." :
                      paymentConfigValid 
                       ? `Complete Purchase - $${checkoutTotal.toFixed(2)}`
                       : "Payment Configuration Required"
@@ -556,8 +574,15 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
           <div className="flex-1 flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-6"></div>
-              <h3 className="text-lg font-semibold mb-2">Processing Payment</h3>
-              <p className="text-muted-foreground">Please wait while we process your payment...</p>
+              <h3 className="text-lg font-semibold mb-2">
+                {holdingInventory ? "Reserving Tickets" : "Processing Payment"}
+              </h3>
+              <p className="text-muted-foreground">
+                {holdingInventory 
+                  ? "Securing your tickets and processing payment..."
+                  : "Please wait while we process your payment..."
+                }
+              </p>
             </div>
           </div>
         )}
