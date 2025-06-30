@@ -253,17 +253,17 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
-                  <span>Subtotal ({quantity} tickets)</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>Subtotal ({checkoutItemCount} ticket{checkoutItemCount !== 1 ? 's' : ''})</span>
+                  <span>${checkoutSubtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Processing Fee</span>
-                  <span>${fees.toFixed(2)}</span>
+                  <span>${checkoutFees.toFixed(2)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-medium text-lg">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${checkoutTotal.toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
