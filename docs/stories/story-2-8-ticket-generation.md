@@ -117,7 +117,7 @@ Payment Success → Create Order → Generate Tickets → Send Email → Clear C
   "holderName": "string",
   "ticketType": "string",
   "eventDate": "ISO string",
-  "venue": "string",
+  "venue": "string",But I think Claude 4.0 would be better, don't you think? I am asking for your suggestion. 
   "validationHash": "secure hash for tamper detection"
 }
 ```
