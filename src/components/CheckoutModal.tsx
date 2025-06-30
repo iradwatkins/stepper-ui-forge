@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -7,28 +7,61 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MinusIcon, PlusIcon, CreditCardIcon, DollarSignIcon, Calendar, MapPin } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/components/ui/use-toast";
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  event: {
+  event?: {
     id: number;
     title: string;
     date: string;
     time: string;
     price: number;
   };
+  useCartMode?: boolean; // New prop to use cart items instead of single event
 }
 
-const CheckoutModal = ({ isOpen, onClose, event }: CheckoutModalProps) => {
+const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: CheckoutModalProps) => {
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [step, setStep] = useState(1);
+  const { items, subtotal, fees, total, totalItems, clearCart } = useCart();
+  const { toast } = useToast();
 
-  const subtotal = event.price * quantity;
-  const fees = subtotal * 0.03; // 3% processing fee
-  const total = subtotal + fees;
+  // Determine if we're using cart mode or single event mode
+  const isCartMode = useCartMode || (!event && items.length > 0);
+  
+  // For single event mode, calculate totals
+  const singleEventSubtotal = event ? event.price * quantity : 0;
+  const singleEventFees = singleEventSubtotal * 0.03;
+  const singleEventTotal = singleEventSubtotal + singleEventFees;
+
+  // Use cart totals or single event totals
+  const checkoutSubtotal = isCartMode ? subtotal : singleEventSubtotal;
+  const checkoutFees = isCartMode ? fees : singleEventFees;
+  const checkoutTotal = isCartMode ? total : singleEventTotal;
+  const checkoutItemCount = isCartMode ? totalItems : quantity;
+
+  // Reset step when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+    }
+  }, [isOpen]);
+
+  const getCurrentPrice = (item: any): number => {
+    if (item.earlyBirdPrice && item.earlyBirdUntil) {
+      const now = new Date();
+      const earlyBirdEnd = new Date(item.earlyBirdUntil);
+      return now <= earlyBirdEnd ? item.earlyBirdPrice : item.price;
+    }
+    return item.price;
+  };
 
   const handleCheckout = () => {
     // Simulate checkout process
@@ -36,6 +69,14 @@ const CheckoutModal = ({ isOpen, onClose, event }: CheckoutModalProps) => {
     setTimeout(() => {
       setStep(3);
       setTimeout(() => {
+        // Clear cart after successful purchase if in cart mode
+        if (isCartMode) {
+          clearCart();
+          toast({
+            title: "Purchase Complete!",
+            description: `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} purchased successfully.`,
+          });
+        }
         onClose();
         setStep(1);
       }, 2000);
@@ -44,7 +85,7 @@ const CheckoutModal = ({ isOpen, onClose, event }: CheckoutModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>
             {step === 1 && "Checkout"}
@@ -52,7 +93,10 @@ const CheckoutModal = ({ isOpen, onClose, event }: CheckoutModalProps) => {
             {step === 3 && "Payment Successful!"}
           </DialogTitle>
           <DialogDescription>
-            {step === 1 && "Complete your ticket purchase"}
+            {step === 1 && (isCartMode 
+              ? `Complete your purchase of ${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''}`
+              : "Complete your ticket purchase"
+            )}
             {step === 2 && "Please wait while we process your payment..."}
             {step === 3 && "Your tickets have been confirmed!"}
           </DialogDescription>
@@ -60,38 +104,85 @@ const CheckoutModal = ({ isOpen, onClose, event }: CheckoutModalProps) => {
 
         {step === 1 && (
           <div className="space-y-6">
-            {/* Event Summary */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">{event.title}</CardTitle>
-                <CardDescription>
-                  {event.date} at {event.time}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      disabled={quantity <= 1}
-                    >
-                      <MinusIcon className="w-4 h-4" />
-                    </Button>
-                    <span className="w-8 text-center">{quantity}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setQuantity(quantity + 1)}
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <span className="font-medium">${event.price} each</span>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Items Summary */}
+            {isCartMode ? (
+              /* Multi-Item Cart Mode */
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Order Items</CardTitle>
+                  <CardDescription>
+                    {checkoutItemCount} ticket{checkoutItemCount !== 1 ? 's' : ''} from {new Set(items.map(item => item.eventId)).size} event{new Set(items.map(item => item.eventId)).size !== 1 ? 's' : ''}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <ScrollArea className="max-h-40">
+                    <div className="space-y-3">
+                      {items.map((item) => {
+                        const currentPrice = getCurrentPrice(item);
+                        const itemTotal = currentPrice * item.quantity;
+                        return (
+                          <div key={item.id} className="flex justify-between items-start p-3 bg-muted/50 rounded-lg">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm truncate">{item.eventTitle}</h4>
+                              <p className="text-sm text-muted-foreground truncate">{item.title}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>{item.eventDate}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">•</span>
+                                <span className="text-xs text-muted-foreground">{item.eventTime}</span>
+                              </div>
+                            </div>
+                            <div className="text-right ml-2">
+                              <div className="font-medium text-sm">${itemTotal.toFixed(2)}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {item.quantity} × ${currentPrice.toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            ) : (
+              /* Single Event Mode (Legacy) */
+              event && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">{event.title}</CardTitle>
+                    <CardDescription>
+                      {event.date} at {event.time}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                          disabled={quantity <= 1}
+                        >
+                          <MinusIcon className="w-4 h-4" />
+                        </Button>
+                        <span className="w-8 text-center">{quantity}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setQuantity(quantity + 1)}
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <span className="font-medium">${event.price} each</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            )}
 
             {/* Payment Method */}
             <div className="space-y-3">

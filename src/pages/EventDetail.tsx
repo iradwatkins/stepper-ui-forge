@@ -9,10 +9,14 @@ import { useParams } from "react-router-dom";
 import { eventsService, Event } from "@/lib/events";
 import { TicketSelector } from "@/components/ticketing";
 import { TicketType } from "@/types/database";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/components/ui/use-toast";
 import CheckoutModal from "@/components/CheckoutModal";
 
 const EventDetail = () => {
   const { id } = useParams();
+  const { addItem } = useCart();
+  const { toast } = useToast();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [event, setEvent] = useState<Event | null>(null);
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
@@ -99,11 +103,75 @@ const EventDetail = () => {
 
   // Handle adding tickets to cart
   const handleAddToCart = (selections: any[]) => {
-    console.log('Adding to cart:', selections);
-    // TODO: Implement actual cart functionality
-    // For now, show checkout modal with first selection
-    if (selections.length > 0) {
-      setIsCheckoutOpen(true);
+    if (!event) {
+      toast({
+        title: "Error",
+        description: "Event not found",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      let totalTicketsAdded = 0;
+      
+      selections.forEach(selection => {
+        addItem(selection.ticketType, event, selection.quantity);
+        totalTicketsAdded += selection.quantity;
+      });
+
+      // Show success toast
+      toast({
+        title: "Added to Cart",
+        description: `${totalTicketsAdded} ticket${totalTicketsAdded !== 1 ? 's' : ''} added to your cart`,
+      });
+
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add tickets to cart. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle simple event registration (free events)
+  const handleSimpleEventRegistration = () => {
+    if (!event) return;
+
+    // For simple events, create a mock ticket type and add to cart
+    const simpleTicketType: TicketType = {
+      id: `${event.id}-simple`,
+      event_id: event.id,
+      name: 'Registration',
+      description: 'Free event registration',
+      price: 0,
+      early_bird_price: null,
+      early_bird_until: null,
+      quantity: 1000, // Large number for simple events
+      sold_quantity: 0,
+      max_per_person: 1,
+      sale_start: null,
+      sale_end: null,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      addItem(simpleTicketType, event, 1);
+      toast({
+        title: "Added to Cart",
+        description: "Registration added to your cart",
+      });
+    } catch (error) {
+      console.error('Error registering for event:', error);
+      toast({
+        title: "Error",
+        description: "Failed to register for event. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -243,7 +311,7 @@ const EventDetail = () => {
                   <Button 
                     className="w-full" 
                     size="lg"
-                    onClick={() => setIsCheckoutOpen(true)}
+                    onClick={() => eventPrice > 0 ? setIsCheckoutOpen(true) : handleSimpleEventRegistration()}
                   >
                     {eventPrice > 0 ? 'Buy Tickets' : 'Register'}
                   </Button>
