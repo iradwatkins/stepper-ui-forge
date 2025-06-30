@@ -97,249 +97,279 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>
-            {step === 1 && "Checkout"}
-            {step === 2 && "Processing Payment"}
-            {step === 3 && "Payment Successful!"}
-          </DialogTitle>
-          <DialogDescription>
-            {step === 1 && (isCartMode 
-              ? `Complete your purchase of ${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''}`
-              : "Complete your ticket purchase"
-            )}
-            {step === 2 && "Please wait while we process your payment..."}
-            {step === 3 && "Your tickets have been confirmed!"}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] p-0 overflow-hidden checkout-modal">
+        <div className="flex flex-col h-full max-h-[95vh]">
+          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b flex-shrink-0">
+            <DialogTitle className="text-lg sm:text-xl">
+              {step === 1 && "Checkout"}
+              {step === 2 && "Processing Payment"}
+              {step === 3 && "Payment Successful!"}
+            </DialogTitle>
+            <DialogDescription className="text-sm sm:text-base">
+              {step === 1 && (isCartMode 
+                ? `Complete your purchase of ${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''}`
+                : "Complete your ticket purchase"
+              )}
+              {step === 2 && "Please wait while we process your payment..."}
+              {step === 3 && "Your tickets have been confirmed!"}
+            </DialogDescription>
+          </DialogHeader>
 
         {step === 1 && (
-          <div className="space-y-6">
-            {/* Items Summary */}
-            {isCartMode ? (
-              /* Multi-Item Cart Mode */
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Order Items</CardTitle>
-                  <CardDescription>
-                    {checkoutItemCount} ticket{checkoutItemCount !== 1 ? 's' : ''} from {new Set(items.map(item => item.eventId)).size} event{new Set(items.map(item => item.eventId)).size !== 1 ? 's' : ''}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <ScrollArea className="max-h-40">
-                    <div className="space-y-3">
-                      {items.map((item) => {
-                        const currentPrice = getCurrentPrice(item);
-                        const itemTotal = currentPrice * item.quantity;
-                        return (
-                          <div key={item.id} className="flex justify-between items-start p-3 bg-muted/50 rounded-lg">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-sm truncate">{item.eventTitle}</h4>
-                              <p className="text-sm text-muted-foreground truncate">{item.title}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>{item.eventDate}</span>
+          <div className="flex flex-1 min-h-0 flex-col md:flex-row">
+            {/* Left Column - Order Items & Summary */}
+            <div className="flex-1 md:border-r">
+              <ScrollArea className="h-full">
+                <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+                  {/* Order Items Section */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base sm:text-lg">
+                        {isCartMode ? "Order Items" : "Event Details"}
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        {isCartMode 
+                          ? `${checkoutItemCount} ticket${checkoutItemCount !== 1 ? 's' : ''} from ${new Set(items.map(item => item.eventId)).size} event${new Set(items.map(item => item.eventId)).size !== 1 ? 's' : ''}`
+                          : event ? `${event.date} at ${event.time}` : ""
+                        }
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {isCartMode ? (
+                        <div className="space-y-3 max-h-48 sm:max-h-60 lg:max-h-80 overflow-y-auto">
+                          {items.map((item) => {
+                            const currentPrice = getCurrentPrice(item);
+                            const itemTotal = currentPrice * item.quantity;
+                            return (
+                              <div key={item.id} className="flex justify-between items-start p-3 bg-muted/30 rounded-lg border">
+                                <div className="flex-1 min-w-0 pr-3">
+                                  <h4 className="font-medium text-sm leading-tight">{item.eventTitle}</h4>
+                                  <p className="text-sm text-muted-foreground leading-tight mt-1">{item.title}</p>
+                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Calendar className="h-3 w-3 flex-shrink-0" />
+                                      <span>{item.eventDate}</span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">•</span>
+                                    <span className="text-xs text-muted-foreground">{item.eventTime}</span>
+                                  </div>
+                                  {item.eventLocation && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                                      <span className="truncate">{item.eventLocation}</span>
+                                    </div>
+                                  )}
                                 </div>
-                                <span className="text-xs text-muted-foreground">•</span>
-                                <span className="text-xs text-muted-foreground">{item.eventTime}</span>
+                                <div className="text-right flex-shrink-0">
+                                  <div className="font-semibold text-sm">${itemTotal.toFixed(2)}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.quantity} × ${currentPrice.toFixed(2)}
+                                  </div>
+                                  {item.earlyBirdPrice && item.earlyBirdUntil && currentPrice === item.earlyBirdPrice && (
+                                    <Badge variant="secondary" className="text-xs mt-1">Early Bird</Badge>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <div className="text-right ml-2">
-                              <div className="font-medium text-sm">${itemTotal.toFixed(2)}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {item.quantity} × ${currentPrice.toFixed(2)}
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        event && (
+                          <div className="p-3 bg-muted/30 rounded-lg border">
+                            <h4 className="font-medium text-sm leading-tight">{event.title}</h4>
+                            <div className="flex items-center justify-between mt-3">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                  disabled={quantity <= 1}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MinusIcon className="w-3 h-3" />
+                                </Button>
+                                <span className="w-8 text-center text-sm">{quantity}</span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setQuantity(quantity + 1)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <PlusIcon className="w-3 h-3" />
+                                </Button>
                               </div>
+                              <span className="font-medium text-sm">${event.price} each</span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            ) : (
-              /* Single Event Mode (Legacy) */
-              event && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">{event.title}</CardTitle>
-                    <CardDescription>
-                      {event.date} at {event.time}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          disabled={quantity <= 1}
-                        >
-                          <MinusIcon className="w-4 h-4" />
-                        </Button>
-                        <span className="w-8 text-center">{quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setQuantity(quantity + 1)}
-                        >
-                          <PlusIcon className="w-4 h-4" />
-                        </Button>
+                        )
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Order Summary Section */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base sm:text-lg lg:text-xl">Order Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 lg:space-y-4">
+                      <div className="flex justify-between text-sm lg:text-base">
+                        <span>Subtotal ({checkoutItemCount} ticket{checkoutItemCount !== 1 ? 's' : ''})</span>
+                        <span className="font-medium">${checkoutSubtotal.toFixed(2)}</span>
                       </div>
-                      <span className="font-medium">${event.price} each</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            )}
-
-            {/* Payment Configuration Warning */}
-            {!paymentConfigValid && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Payment configuration incomplete. Missing: {missingConfig.join(', ')}
-                  <br />
-                  Please add the required environment variables to enable payments.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Payment Method */}
-            <div className="space-y-3">
-              <Label className="text-base font-medium">Payment Method</Label>
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                  <RadioGroupItem value="paypal" id="paypal" />
-                  <Label htmlFor="paypal" className="flex items-center gap-2 cursor-pointer">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#003087">
-                      <path d="M8.32 20.32c-.24 0-.44-.19-.46-.43L7.1 15.6c-.02-.29.21-.54.5-.54h2.8c1.45 0 2.77-.59 3.72-1.66.95-1.07 1.36-2.47 1.16-3.94-.2-1.47-1.06-2.73-2.42-3.55C11.22 5.09 9.47 4.68 7.7 5.05L5.3 5.56c-.36.07-.62.39-.59.76l1.75 12.89c.02.29-.19.55-.48.57-.01 0-.02 0-.03 0H3.5c-.28 0-.51-.23-.51-.51 0-.01 0-.02 0-.03L1.2 5.35c-.07-.54.31-1.03.85-1.1l2.91-.57c2.33-.46 4.7.11 6.68 1.59 1.98 1.48 3.19 3.61 3.41 6 .22 2.39-.46 4.7-1.92 6.5-1.46 1.8-3.57 2.83-5.94 2.9L8.32 20.32z"/>
-                    </svg>
-                    PayPal
-                  </Label>
+                      <div className="flex justify-between text-sm lg:text-base text-muted-foreground">
+                        <span>Processing Fee (3%)</span>
+                        <span>${checkoutFees.toFixed(2)}</span>
+                      </div>
+                      <Separator />
+                      <div className="flex justify-between font-semibold text-base sm:text-lg lg:text-xl">
+                        <span>Total</span>
+                        <span>${checkoutTotal.toFixed(2)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                  <RadioGroupItem value="square" id="square" />
-                  <Label htmlFor="square" className="flex items-center gap-2 cursor-pointer">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#000">
-                      <path d="M4.01 4.01h15.98v15.98H4.01V4.01zm1.6 1.6v12.78h12.78V5.61H5.61z"/>
-                      <path d="M7.21 7.21h9.58v9.58H7.21V7.21zm1.6 1.6v6.38h6.38V8.81H8.81z"/>
-                    </svg>
-                    Square
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                  <RadioGroupItem value="cashapp" id="cashapp" />
-                  <Label htmlFor="cashapp" className="flex items-center gap-2 cursor-pointer">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#00C851">
-                      <path d="M23.59 3.47c-.86.21-1.8.35-2.78.41 1-.6 1.77-1.55 2.13-2.68-.93.55-1.96.95-3.06 1.17-.88-.94-2.13-1.53-3.52-1.53-2.66 0-4.82 2.16-4.82 4.82 0 .38.04.75.13 1.1-4-.2-7.56-2.12-9.93-5.04-.42.72-.66 1.55-.66 2.44 0 1.67.85 3.15 2.14 4.01-.79-.02-1.53-.24-2.18-.6v.06c0 2.34 1.66 4.29 3.87 4.73-.4.11-.83.17-1.27.17-.31 0-.62-.03-.92-.08.62 1.94 2.42 3.35 4.55 3.39-1.67 1.31-3.77 2.09-6.05 2.09-.39 0-.78-.02-1.17-.07 2.18 1.4 4.77 2.21 7.56 2.21 9.05 0 14-7.5 14-14 0-.21 0-.42-.01-.63.96-.69 1.79-1.56 2.45-2.55z"/>
-                    </svg>
-                    Cash App
-                  </Label>
-                </div>
-              </RadioGroup>
+              </ScrollArea>
             </div>
 
-            {/* Customer Information */}
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Customer Information</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" placeholder="John" />
+            {/* Right Column - Payment & Customer Info */}
+            <div className="w-full md:w-96 lg:w-[400px] xl:w-[450px] flex-shrink-0 md:border-t-0 border-t">
+              <ScrollArea className="h-full">
+                <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+                  
+                  {/* Payment Configuration Warning */}
+                  {!paymentConfigValid && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">
+                        Payment configuration incomplete. Missing: {missingConfig.join(', ')}
+                        <br />
+                        Please add the required environment variables to enable payments.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Payment Method Section */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base sm:text-lg">Payment Method</CardTitle>
+                      <CardDescription className="text-sm">Choose your preferred payment option</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3 lg:space-y-4">
+                        <div className="flex items-center space-x-3 p-3 lg:p-4 border rounded-lg hover:bg-muted/20 transition-colors">
+                          <RadioGroupItem value="paypal" id="paypal" />
+                          <Label htmlFor="paypal" className="flex items-center gap-2 lg:gap-3 cursor-pointer flex-1">
+                            <svg className="w-4 h-4 lg:w-5 lg:h-5" viewBox="0 0 24 24" fill="#003087">
+                              <path d="M8.32 20.32c-.24 0-.44-.19-.46-.43L7.1 15.6c-.02-.29.21-.54.5-.54h2.8c1.45 0 2.77-.59 3.72-1.66.95-1.07 1.36-2.47 1.16-3.94-.2-1.47-1.06-2.73-2.42-3.55C11.22 5.09 9.47 4.68 7.7 5.05L5.3 5.56c-.36.07-.62.39-.59.76l1.75 12.89c.02.29-.19.55-.48.57-.01 0-.02 0-.03 0H3.5c-.28 0-.51-.23-.51-.51 0-.01 0-.02 0-.03L1.2 5.35c-.07-.54.31-1.03.85-1.1l2.91-.57c2.33-.46 4.7.11 6.68 1.59 1.98 1.48 3.19 3.61 3.41 6 .22 2.39-.46 4.7-1.92 6.5-1.46 1.8-3.57 2.83-5.94 2.9L8.32 20.32z"/>
+                            </svg>
+                            <span className="font-medium text-sm lg:text-base">PayPal</span>
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-3 p-3 lg:p-4 border rounded-lg hover:bg-muted/20 transition-colors">
+                          <RadioGroupItem value="square" id="square" />
+                          <Label htmlFor="square" className="flex items-center gap-2 lg:gap-3 cursor-pointer flex-1">
+                            <CreditCardIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                            <span className="font-medium text-sm lg:text-base">Square</span>
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-3 p-3 lg:p-4 border rounded-lg hover:bg-muted/20 transition-colors">
+                          <RadioGroupItem value="cashapp" id="cashapp" />
+                          <Label htmlFor="cashapp" className="flex items-center gap-2 lg:gap-3 cursor-pointer flex-1">
+                            <DollarSignIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                            <span className="font-medium text-sm lg:text-base">Cash App</span>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </CardContent>
+                  </Card>
+
+                  {/* Customer Information Section */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base sm:text-lg">Customer Information</CardTitle>
+                      <CardDescription className="text-sm">Enter your details for the ticket purchase</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
+                          <Input 
+                            id="firstName" 
+                            placeholder="John" 
+                            className="h-9 sm:h-10 lg:h-11 text-sm lg:text-base transition-all"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
+                          <Input 
+                            id="lastName" 
+                            placeholder="Doe" 
+                            className="h-9 sm:h-10 lg:h-11 text-sm lg:text-base transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
+                        <Input 
+                          id="email" 
+                          type="email" 
+                          placeholder="john@example.com" 
+                          className="h-9 sm:h-10 lg:h-11 text-sm lg:text-base transition-all"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Payment Instructions */}
+                  <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                    <AlertDescription className="text-sm">
+                      {paymentMethod === "paypal" && "You will be redirected to PayPal to complete your payment securely."}
+                      {paymentMethod === "square" && "You will be redirected to Square to complete your payment securely."}
+                      {paymentMethod === "cashapp" && "You will be redirected to Cash App to complete your payment securely."}
+                    </AlertDescription>
+                  </Alert>
+                  
+                  {/* Checkout Button */}
+                  <Button 
+                    onClick={handleCheckout} 
+                    className="w-full h-11 lg:h-12 text-base lg:text-lg font-semibold transition-all" 
+                    disabled={!paymentConfigValid}
+                  >
+                    {paymentConfigValid 
+                      ? `Complete Purchase - $${checkoutTotal.toFixed(2)}`
+                      : "Payment Configuration Required"
+                    }
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" placeholder="Doe" />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="john@example.com" />
-              </div>
+              </ScrollArea>
             </div>
-
-            {/* Payment Method Instructions */}
-            {paymentMethod === "paypal" && (
-              <Alert>
-                <AlertDescription>
-                  You will be redirected to PayPal to complete your payment securely.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {paymentMethod === "square" && (
-              <Alert>
-                <AlertDescription>
-                  You will be redirected to Square to complete your payment securely.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {paymentMethod === "cashapp" && (
-              <Alert>
-                <AlertDescription>
-                  You will be redirected to Cash App to complete your payment securely.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Order Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal ({checkoutItemCount} ticket{checkoutItemCount !== 1 ? 's' : ''})</span>
-                  <span>${checkoutSubtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Processing Fee</span>
-                  <span>${checkoutFees.toFixed(2)}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-medium text-lg">
-                  <span>Total</span>
-                  <span>${checkoutTotal.toFixed(2)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Button 
-              onClick={handleCheckout} 
-              className="w-full" 
-              size="lg"
-              disabled={!paymentConfigValid}
-            >
-              {paymentConfigValid 
-                ? `Complete Purchase - ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}`
-                : "Payment Configuration Required"
-              }
-            </Button>
           </div>
         )}
 
         {step === 2 && (
-          <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Processing your payment...</p>
+          <div className="flex-1 flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-6"></div>
+              <h3 className="text-lg font-semibold mb-2">Processing Payment</h3>
+              <p className="text-muted-foreground">Please wait while we process your payment...</p>
+            </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+          <div className="flex-1 flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Payment Successful!</h3>
+              <p className="text-muted-foreground">Check your email for ticket details and confirmation.</p>
             </div>
-            <p className="text-muted-foreground">Check your email for ticket details!</p>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );

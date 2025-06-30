@@ -159,6 +159,89 @@
     height: 36px !important;
     font-size: 0.875rem !important;
   }
+  
+  /* Checkout modal for Z Fold outer screen */
+  .checkout-modal {
+    max-width: 100% !important;
+    margin: 0.25rem !important;
+    max-height: 95vh !important;
+  }
+  
+  .checkout-modal .flex-col.lg\\:flex-row {
+    flex-direction: column !important;
+  }
+  
+  .checkout-modal .lg\\:border-r {
+    border-right: none !important;
+    border-bottom: 1px solid hsl(var(--border)) !important;
+  }
+  
+  .checkout-modal .lg\\:w-80 {
+    width: 100% !important;
+  }
+  
+  .checkout-modal .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .checkout-modal input {
+    height: 36px !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .checkout-modal button {
+    height: 40px !important;
+    font-size: 0.875rem !important;
+  }
+}
+
+/* Tablet and Desktop Optimizations */
+@media (min-width: 768px) {
+  /* Tablet optimizations */
+  .checkout-modal {
+    max-width: 1000px !important;
+  }
+  
+  .checkout-modal .md\\:flex-row {
+    flex-direction: row !important;
+  }
+  
+  .checkout-modal .md\\:border-r {
+    border-right: 1px solid hsl(var(--border)) !important;
+    border-bottom: none !important;
+  }
+  
+  .checkout-modal .md\\:w-96 {
+    width: 24rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop optimizations */
+  .checkout-modal {
+    max-width: 1200px !important;
+  }
+  
+  /* Desktop column width optimizations */
+  .checkout-modal [class*="lg:w-[400px]"] {
+    width: 400px !important;
+  }
+  
+  .checkout-modal .lg\\:p-8 {
+    padding: 2rem !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Large desktop optimizations */
+  .checkout-modal {
+    max-width: 1400px !important;
+  }
+  
+  /* Large desktop column width optimizations */
+  .checkout-modal [class*="xl:w-[450px]"] {
+    width: 450px !important;
+  }
 }
 
 /* Samsung Z Fold INNER SCREEN (open) - Tablet-like wide screen */
@@ -205,6 +288,12 @@
     max-width: 500px !important;
     margin: 2rem auto !important;
   }
+  
+  /* Checkout modal optimized for Z Fold inner screen */
+  .checkout-modal {
+    max-width: 900px !important;
+    margin: 1rem !important;
+  }
 }
 
 /* Samsung Z Flip phones - different from Z Fold */
@@ -244,5 +333,44 @@
   .cart-actions button {
     height: 32px !important;
     font-size: 0.7rem !important;
+  }
+  
+  /* Checkout modal for Z Flip */
+  .checkout-modal {
+    max-width: 100% !important;
+    margin: 0.125rem !important;
+    max-height: 98vh !important;
+  }
+  
+  .checkout-modal .flex-col.lg\\:flex-row {
+    flex-direction: column !important;
+  }
+  
+  .checkout-modal .lg\\:border-r {
+    border-right: none !important;
+    border-bottom: 1px solid hsl(var(--border)) !important;
+  }
+  
+  .checkout-modal .lg\\:w-80 {
+    width: 100% !important;
+  }
+  
+  .checkout-modal .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .checkout-modal input {
+    height: 32px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .checkout-modal button {
+    height: 36px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .checkout-modal .space-y-4,
+  .checkout-modal .space-y-6 {
+    gap: 0.75rem !important;
   }
 }
