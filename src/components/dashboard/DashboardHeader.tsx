@@ -115,12 +115,14 @@ export function DashboardHeader({ children }: DashboardHeaderProps) {
           </div>
 
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative hover:bg-muted">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-xs text-destructive-foreground flex items-center justify-center">
-              3
-            </span>
-          </Button>
+          <Link to="/dashboard/notifications">
+            <Button variant="ghost" size="sm" className="relative hover:bg-muted">
+              <Bell className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-xs text-destructive-foreground flex items-center justify-center">
+                3
+              </span>
+            </Button>
+          </Link>
 
           {/* Settings */}
           <Link to="/dashboard/settings">
