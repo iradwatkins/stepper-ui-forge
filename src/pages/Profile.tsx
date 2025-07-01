@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { ProfileService } from '@/lib/profiles'
+import { TwoFactorService } from '@/lib/two-factor'
 import { Profile as ProfileType } from '@/types/database'
 import { SupabaseStatus } from '@/components/SupabaseStatus'
+import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,17 +15,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   User,
-  Mail,
-  Phone,
-  Globe,
-  MapPin,
-  Calendar,
   Upload,
   Save,
   Shield,
-  Bell,
   Eye,
   EyeOff
 } from 'lucide-react'
@@ -33,6 +30,7 @@ export default function Profile() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [profile, setProfile] = useState<ProfileType | null>(null)
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false)
 
   // Profile form state
   const [profileData, setProfileData] = useState({
@@ -72,6 +70,7 @@ export default function Profile() {
   useEffect(() => {
     if (user?.id) {
       loadProfile()
+      load2FAStatus()
     }
   }, [user?.id])
 
@@ -83,7 +82,7 @@ export default function Profile() {
       if (profileData) {
         setProfile(profileData)
         setProfileData({
-          fullName: profileData.full_name || '',
+          fullName: profileData.full_name || user.user_metadata?.full_name || user.user_metadata?.name || '',
           email: profileData.email,
           bio: profileData.bio || '',
           website: profileData.website || '',
@@ -97,14 +96,26 @@ export default function Profile() {
             facebook: (profileData.social_links as Record<string, string>)?.facebook || ''
           }
         })
-        setNotifications(profileData.notification_preferences)
-        setPrivacy(profileData.privacy_settings)
+        setNotifications(profileData.notification_preferences || {
+          emailMarketing: true,
+          emailUpdates: true,
+          emailTickets: true,
+          pushNotifications: true,
+          smsNotifications: false
+        })
+        setPrivacy(profileData.privacy_settings || {
+          profileVisible: true,
+          showEmail: false,
+          showPhone: false,
+          showEvents: true
+        })
       } else {
         // Create initial profile if it doesn't exist
         const newProfile = await ProfileService.createProfile({
           id: user.id,
           email: user.email || '',
           full_name: user.user_metadata?.full_name || '',
+          avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
         })
         if (newProfile) {
           setProfile(newProfile)
@@ -122,6 +133,17 @@ export default function Profile() {
         description: "Failed to load profile data. Please try again.",
         variant: "destructive"
       })
+    }
+  }
+
+  const load2FAStatus = async () => {
+    if (!user?.id) return
+    
+    try {
+      const enabled = await TwoFactorService.is2FAEnabled(user.id)
+      setIs2FAEnabled(enabled)
+    } catch (error) {
+      console.error('Error loading 2FA status:', error)
     }
   }
 
@@ -203,6 +225,16 @@ export default function Profile() {
 
     const file = event.target.files[0]
     
+    // Basic file validation
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive"
+      })
+      return
+    }
+    
     try {
       setIsLoading(true)
       const avatarUrl = await ProfileService.uploadAvatar(user.id, file)
@@ -222,6 +254,7 @@ export default function Profile() {
       })
     } finally {
       setIsLoading(false)
+      event.target.value = ''
     }
   }
 
@@ -237,7 +270,7 @@ export default function Profile() {
             <div className="relative">
               <Avatar className="h-24 w-24">
                 <AvatarImage
-                  src={profile?.avatar_url || user?.user_metadata?.avatar_url}
+                  src={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
                   alt={profileData.fullName || profileData.email}
                 />
                 <AvatarFallback className="text-lg">
@@ -459,20 +492,37 @@ export default function Profile() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Security</h4>
-                <div className="space-y-3">
-                  <Button variant="outline" className="justify-start" asChild>
-                    <a href="https://supabase.com/dashboard/project/reset-password" target="_blank" rel="noopener noreferrer">
-                      <Shield className="mr-2 h-4 w-4" />
-                      Change Password
-                    </a>
-                  </Button>
-                  <Button variant="outline" className="justify-start" disabled>
-                    <Shield className="mr-2 h-4 w-4" />
-                    Two-Factor Authentication (Coming Soon)
-                  </Button>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-medium mb-4">Security</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">Password</p>
+                          <p className="text-sm text-muted-foreground">
+                            Change your account password
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="mailto:support@stepperslife.com?subject=Password Reset Request">
+                          Change Password
+                        </a>
+                      </Button>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg">
+                      <TwoFactorSetup 
+                        userId={user?.id || ''}
+                        isEnabled={is2FAEnabled}
+                        onStatusChange={setIs2FAEnabled}
+                      />
+                    </div>
+                  </div>
                 </div>
+                
               </div>
 
               <Separator />
@@ -484,7 +534,7 @@ export default function Profile() {
                     variant="outline" 
                     className="justify-start"
                     onClick={() => toast({
-                      title: "Data Export",
+                      title: "Data Export Requested",
                       description: "Your account data export will be sent to your email within 24 hours.",
                     })}
                   >
@@ -496,7 +546,7 @@ export default function Profile() {
                     className="justify-start"
                     onClick={() => toast({
                       title: "Account Deletion",
-                      description: "Please contact support to delete your account.",
+                      description: "Please contact support@stepperslife.com to delete your account.",
                       variant: "destructive"
                     })}
                   >

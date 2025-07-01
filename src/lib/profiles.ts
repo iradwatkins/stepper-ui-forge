@@ -69,6 +69,21 @@ export class ProfileService {
   }
 
   static async uploadAvatar(userId: string, file: File): Promise<string | null> {
+    if (!isSupabaseReady) {
+      console.warn('Supabase not configured - using fallback avatar storage')
+      // Use fallback storage (localStorage for demo)
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const base64String = reader.result as string
+          localStorage.setItem(`avatar_${userId}`, base64String)
+          resolve(base64String)
+        }
+        reader.onerror = () => reject(new Error('Failed to read file'))
+        reader.readAsDataURL(file)
+      })
+    }
+
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${userId}/avatar.${fileExt}`
@@ -83,6 +98,20 @@ export class ProfileService {
 
       if (uploadError) {
         console.error('Error uploading avatar:', uploadError)
+        // Fall back to localStorage if storage bucket doesn't exist
+        if (uploadError.message.includes('not found')) {
+          console.warn('Storage bucket not found, using fallback storage')
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => {
+              const base64String = reader.result as string
+              localStorage.setItem(`avatar_${userId}`, base64String)
+              resolve(base64String)
+            }
+            reader.onerror = () => reject(new Error('Failed to read file'))
+            reader.readAsDataURL(file)
+          })
+        }
         throw uploadError
       }
 
@@ -104,6 +133,7 @@ export class ProfileService {
       throw error
     }
   }
+
 
   static async updateNotificationPreferences(
     userId: string, 

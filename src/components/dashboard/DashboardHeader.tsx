@@ -19,7 +19,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Bell, Search, Settings, User, LogOut } from 'lucide-react'
+import { Bell, Search, Settings, User, LogOut, LayoutDashboard, Ticket } from 'lucide-react'
 
 interface DashboardHeaderProps {
   children?: React.ReactNode
@@ -163,6 +163,19 @@ export function DashboardHeader({ children }: DashboardHeaderProps) {
                   </p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard" className="flex items-center">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/my-tickets" className="flex items-center">
+                  <Ticket className="mr-2 h-4 w-4" />
+                  <span>My Tickets</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/dashboard/profile" className="flex items-center">

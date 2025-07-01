@@ -45,11 +45,6 @@ interface NavigationItem {
 // Base navigation for all users
 const getBaseNavigation = (): NavigationItem[] => [
   {
-    title: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard
-  },
-  {
     title: 'Profile',
     href: '/dashboard/profile',
     icon: User
@@ -62,11 +57,6 @@ const getRegularUserNavigation = (): NavigationItem[] => [
     title: 'Browse Events',
     href: '/events',
     icon: Calendar
-  },
-  {
-    title: 'My Tickets',
-    href: '/my-tickets',
-    icon: Ticket
   },
   {
     title: 'Following',
