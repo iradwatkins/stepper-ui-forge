@@ -44,7 +44,7 @@ const Navbar = () => {
                   Dashboard
                 </Button>
               </Link>
-              <Link to="/create-event" className="hidden md:block">
+              <Link to="/create-event">
                 <Button variant="outline" size="sm" className="text-xs px-2 h-8">
                   <PlusIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Create Event</span>

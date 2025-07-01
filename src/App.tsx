@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import CreateEvent from "./pages/CreateEvent";
+import EditEvent from "./pages/EditEvent";
 import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import Profile from "./pages/Profile";
@@ -35,6 +36,13 @@ import AdminAnalytics from "./pages/dashboard/admin/AdminAnalytics";
 import AdminSettings from "./pages/dashboard/admin/AdminSettings";
 import AdminMonitor from "./pages/dashboard/admin/AdminMonitor";
 import Following from "./pages/dashboard/Following";
+import FollowerManagement from "./pages/dashboard/FollowerManagement";
+import SalesDashboard from "./pages/dashboard/SalesDashboard";
+import ReferralCodes from "./pages/dashboard/ReferralCodes";
+import Earnings from "./pages/dashboard/Earnings";
+import EventAssignments from "./pages/dashboard/EventAssignments";
+import Schedule from "./pages/dashboard/Schedule";
+import AudienceInsights from "./pages/dashboard/AudienceInsights";
 import PaymentTestPage from "./pages/PaymentTest";
 import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
 import NotFound from "./pages/NotFound";
@@ -75,6 +83,11 @@ const App = () => (
                     <CreateEvent />
                   </ProtectedRoute>
                 } />
+                <Route path="/edit-event/:id" element={
+                  <ProtectedRoute>
+                    <EditEvent />
+                  </ProtectedRoute>
+                } />
                 <Route path="/cash-payments" element={
                   <ProtectedRoute>
                     <CashPaymentDashboardPage />
@@ -90,6 +103,13 @@ const App = () => (
                   <Route path="settings" element={<Settings />} />
                   <Route path="notifications" element={<Notifications />} />
                   <Route path="following" element={<Following />} />
+                  <Route path="followers" element={<FollowerManagement />} />
+                  <Route path="sales" element={<SalesDashboard />} />
+                  <Route path="referrals" element={<ReferralCodes />} />
+                  <Route path="earnings" element={<Earnings />} />
+                  <Route path="assignments" element={<EventAssignments />} />
+                  <Route path="schedule" element={<Schedule />} />
+                  <Route path="audience" element={<AudienceInsights />} />
                   <Route path="events" element={<EventsManagement />} />
                   <Route path="events/drafts" element={<DraftEvents />} />
                   <Route path="events/archived" element={<ArchivedEvents />} />

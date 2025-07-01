@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAdminPermissions } from '@/lib/hooks/useAdminPermissions'
 import { useUserPermissions } from '@/lib/hooks/useUserPermissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Calendar,
@@ -14,15 +14,10 @@ import {
   QrCode,
   TrendingUp,
   Plus,
-  Eye,
   Heart,
-  Clock,
-  BarChart3,
-  Ticket,
   Monitor,
   Activity,
   AlertCircle,
-  ArrowUpRight,
   CheckCircle
 } from 'lucide-react'
 
@@ -362,14 +357,15 @@ export default function UnifiedDashboardHome() {
       </Button>
     )
 
-    if (isEventOwner || isAdmin) {
-      actions.push(
-        <Button key="create-event" className="h-20 flex-col gap-2">
+    // Create Event available to all users
+    actions.push(
+      <Button key="create-event" className="h-20 flex-col gap-2" asChild>
+        <Link to="/create-event">
           <Plus className="h-6 w-6" />
           <span className="text-sm">Create Event</span>
-        </Button>
-      )
-    }
+        </Link>
+      </Button>
+    )
 
     if (canSellTickets) {
       actions.push(

@@ -110,9 +110,11 @@ export default function EventsManagement() {
           <Eye className="mr-2 h-4 w-4" />
           View Event
         </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Event
+        <DropdownMenuItem asChild>
+          <Link to={`/edit-event/${event.id}`}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Event
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem>
           <Copy className="mr-2 h-4 w-4" />
