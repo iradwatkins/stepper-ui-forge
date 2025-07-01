@@ -2,7 +2,7 @@
 // Shows/hides navigation items based on user permissions and authentication status
 
 import React from 'react'
-import { useRouter } from 'next/router'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   Users, 
@@ -38,7 +38,8 @@ interface NavigationItem {
 
 // Main dashboard navigation menu
 export const DashboardNavigation: React.FC = () => {
-  const router = useRouter()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const { 
     canSellTickets, 
@@ -121,8 +122,8 @@ export const DashboardNavigation: React.FC = () => {
       {filteredItems.map((item) => (
         <Button
           key={item.href}
-          variant={router.pathname === item.href ? 'default' : 'ghost'}
-          onClick={() => router.push(item.href)}
+          variant={location.pathname === item.href ? 'default' : 'ghost'}
+          onClick={() => navigate(item.href)}
           className="flex items-center space-x-2"
         >
           {item.icon}
@@ -140,7 +141,7 @@ export const DashboardNavigation: React.FC = () => {
 
 // User menu dropdown with permission-based items
 export const UserMenuDropdown: React.FC<{ trigger: React.ReactNode }> = ({ trigger }) => {
-  const router = useRouter()
+  const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const { 
     canSellTickets, 
@@ -155,7 +156,7 @@ export const UserMenuDropdown: React.FC<{ trigger: React.ReactNode }> = ({ trigg
 
   const handleSignOut = async () => {
     await signOut()
-    router.push('/')
+    navigate('/')
   }
 
   return (
@@ -167,7 +168,7 @@ export const UserMenuDropdown: React.FC<{ trigger: React.ReactNode }> = ({ trigg
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem onClick={() => router.push('/profile')}>
+        <DropdownMenuItem onClick={() => navigate('/profile')}>
           <Settings className="mr-2 h-4 w-4" />
           Profile Settings
         </DropdownMenuItem>
@@ -179,7 +180,7 @@ export const UserMenuDropdown: React.FC<{ trigger: React.ReactNode }> = ({ trigg
             <DropdownMenuLabel>Dashboard</DropdownMenuLabel>
             
             {canSellTickets && (
-              <DropdownMenuItem onClick={() => router.push('/dashboard/follower')}>
+              <DropdownMenuItem onClick={() => navigate('/dashboard/follower')}>
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Ticket Sales
                 <Badge variant="secondary" className="ml-auto">
@@ -189,7 +190,7 @@ export const UserMenuDropdown: React.FC<{ trigger: React.ReactNode }> = ({ trigg
             )}
             
             {canWorkEvents && (
-              <DropdownMenuItem onClick={() => router.push('/dashboard/team')}>
+              <DropdownMenuItem onClick={() => navigate('/dashboard/team')}>
                 <QrCode className="mr-2 h-4 w-4" />
                 Team Dashboard
               </DropdownMenuItem>
@@ -203,17 +204,17 @@ export const UserMenuDropdown: React.FC<{ trigger: React.ReactNode }> = ({ trigg
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Organizer Tools</DropdownMenuLabel>
             
-            <DropdownMenuItem onClick={() => router.push('/dashboard/events')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/events')}>
               <Calendar className="mr-2 h-4 w-4" />
               My Events
             </DropdownMenuItem>
             
-            <DropdownMenuItem onClick={() => router.push('/dashboard/followers')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/followers')}>
               <Users className="mr-2 h-4 w-4" />
               Manage Followers
             </DropdownMenuItem>
             
-            <DropdownMenuItem onClick={() => router.push('/dashboard/analytics')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/analytics')}>
               <TrendingUp className="mr-2 h-4 w-4" />
               Analytics
             </DropdownMenuItem>
@@ -231,7 +232,7 @@ export const UserMenuDropdown: React.FC<{ trigger: React.ReactNode }> = ({ trigg
 
 // Quick actions toolbar based on permissions
 export const QuickActionsToolbar: React.FC = () => {
-  const router = useRouter()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { canSellTickets, canWorkEvents, canPerformAction } = useUserPermissions()
 
@@ -244,7 +245,7 @@ export const QuickActionsToolbar: React.FC = () => {
       {canPerformAction('create_events') && (
         <Button 
           size="sm" 
-          onClick={() => router.push('/create-event')}
+          onClick={() => navigate('/create-event')}
         >
           <UserPlus className="h-4 w-4 mr-2" />
           Create Event
@@ -255,7 +256,7 @@ export const QuickActionsToolbar: React.FC = () => {
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => router.push('/dashboard/referrals')}
+          onClick={() => navigate('/dashboard/referrals')}
         >
           <DollarSign className="h-4 w-4 mr-2" />
           Generate Link
@@ -266,7 +267,7 @@ export const QuickActionsToolbar: React.FC = () => {
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => router.push('/dashboard/scanner')}
+          onClick={() => navigate('/dashboard/scanner')}
         >
           <QrCode className="h-4 w-4 mr-2" />
           Scan Tickets
@@ -278,7 +279,8 @@ export const QuickActionsToolbar: React.FC = () => {
 
 // Sidebar navigation for dashboard pages
 export const DashboardSidebar: React.FC = () => {
-  const router = useRouter()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const { 
     canSellTickets, 
@@ -376,9 +378,9 @@ export const DashboardSidebar: React.FC = () => {
               {section.items.map((item) => (
                 <Button
                   key={item.href}
-                  variant={router.pathname === item.href ? 'secondary' : 'ghost'}
+                  variant={location.pathname === item.href ? 'secondary' : 'ghost'}
                   className="w-full justify-start"
-                  onClick={() => router.push(item.href)}
+                  onClick={() => navigate(item.href)}
                 >
                   {item.icon}
                   <span className="ml-2">{item.label}</span>
@@ -404,9 +406,9 @@ export const EventContextMenu: React.FC<EventContextMenuProps> = ({
   organizerId,
   trigger
 }) => {
-  const router = useRouter()
+  const navigate = useNavigate()
   const { user } = useAuth()
-  const { permissions } = useUserPermissions()
+  const { } = useUserPermissions()
 
   if (!user) {
     return <>{trigger}</>
@@ -418,14 +420,14 @@ export const EventContextMenu: React.FC<EventContextMenuProps> = ({
         {trigger}
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={() => router.push(`/event/${eventId}`)}>
+        <DropdownMenuItem onClick={() => navigate(`/event/${eventId}`)}>
           View Event
         </DropdownMenuItem>
         
         {/* Permission-based actions */}
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem onClick={() => router.push(`/event/${eventId}/tickets`)}>
+        <DropdownMenuItem onClick={() => navigate(`/event/${eventId}/tickets`)}>
           Buy Tickets
         </DropdownMenuItem>
       </DropdownMenuContent>

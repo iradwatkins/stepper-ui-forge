@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { useAdminPermissions } from '@/lib/hooks/useAdminPermissions'
+import { useUserPermissions } from '@/lib/hooks/useUserPermissions'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -22,7 +24,14 @@ import {
   CreditCard,
   UserPlus,
   Shield,
-  X
+  X,
+  DollarSign,
+  QrCode,
+  Heart,
+  Clock,
+  PieChart,
+  Briefcase,
+  Monitor
 } from 'lucide-react'
 
 interface NavigationItem {
@@ -33,7 +42,8 @@ interface NavigationItem {
   children?: NavigationItem[]
 }
 
-const navigation: NavigationItem[] = [
+// Base navigation for all users
+const getBaseNavigation = (): NavigationItem[] => [
   {
     title: 'Dashboard',
     href: '/dashboard',
@@ -43,9 +53,70 @@ const navigation: NavigationItem[] = [
     title: 'Profile',
     href: '/dashboard/profile',
     icon: User
+  }
+]
+
+// Navigation for regular users
+const getRegularUserNavigation = (): NavigationItem[] => [
+  {
+    title: 'Browse Events',
+    href: '/events',
+    icon: Calendar
   },
   {
-    title: 'Events',
+    title: 'My Tickets',
+    href: '/my-tickets',
+    icon: Ticket
+  },
+  {
+    title: 'Following',
+    href: '/dashboard/following',
+    icon: Heart
+  }
+]
+
+// Navigation for sellers
+const getSellerNavigation = (): NavigationItem[] => [
+  {
+    title: 'Sales Dashboard',
+    href: '/dashboard/sales',
+    icon: DollarSign
+  },
+  {
+    title: 'Referral Codes',
+    href: '/dashboard/referrals',
+    icon: CreditCard
+  },
+  {
+    title: 'Earnings',
+    href: '/dashboard/earnings',
+    icon: BarChart3
+  }
+]
+
+// Navigation for team members
+const getTeamMemberNavigation = (): NavigationItem[] => [
+  {
+    title: 'Event Assignments',
+    href: '/dashboard/assignments',
+    icon: Calendar
+  },
+  {
+    title: 'Check-In Tools',
+    href: '/dashboard/checkin',
+    icon: QrCode
+  },
+  {
+    title: 'Schedule',
+    href: '/dashboard/schedule',
+    icon: Clock
+  }
+]
+
+// Navigation for organizers
+const getOrganizerNavigation = (): NavigationItem[] => [
+  {
+    title: 'My Events',
     icon: Calendar,
     children: [
       {
@@ -72,29 +143,29 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
-    title: 'Ticketing',
-    icon: Ticket,
+    title: 'Analytics',
+    icon: PieChart,
     children: [
       {
-        title: 'All Tickets',
-        href: '/dashboard/tickets',
-        icon: Ticket
-      },
-      {
-        title: 'Sales Analytics',
-        href: '/dashboard/tickets/analytics',
+        title: 'Event Analytics',
+        href: '/dashboard/analytics',
         icon: BarChart3
       },
       {
-        title: 'Payments',
-        href: '/dashboard/tickets/payments',
-        icon: CreditCard
+        title: 'Sales Reports',
+        href: '/dashboard/tickets/analytics',
+        icon: DollarSign
+      },
+      {
+        title: 'Audience Insights',
+        href: '/dashboard/audience',
+        icon: Users
       }
     ]
   },
   {
     title: 'Team Management',
-    icon: Users,
+    icon: Briefcase,
     children: [
       {
         title: 'Team Members',
@@ -112,6 +183,11 @@ const navigation: NavigationItem[] = [
         icon: Shield
       }
     ]
+  },
+  {
+    title: 'Followers',
+    href: '/dashboard/followers',
+    icon: Users
   }
 ]
 
@@ -129,6 +205,36 @@ const accountNavigation: NavigationItem[] = [
   }
 ]
 
+// Navigation for admins
+const getAdminNavigation = (): NavigationItem[] => [
+  {
+    title: 'Admin Panel',
+    icon: Shield,
+    children: [
+      {
+        title: 'User Management',
+        href: '/dashboard/admin/users',
+        icon: Users
+      },
+      {
+        title: 'Platform Analytics',
+        href: '/dashboard/admin/analytics',
+        icon: BarChart3
+      },
+      {
+        title: 'System Settings',
+        href: '/dashboard/admin/settings',
+        icon: Settings
+      },
+      {
+        title: 'System Monitor',
+        href: '/dashboard/admin/monitor',
+        icon: Monitor
+      }
+    ]
+  }
+]
+
 interface DashboardSidebarProps {
   open?: boolean
   onClose?: () => void
@@ -137,7 +243,32 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ open = true, onClose, className }: DashboardSidebarProps) {
   const location = useLocation()
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Events'])
+  const { isAdmin } = useAdminPermissions()
+  const { canSellTickets, canWorkEvents, isEventOwner } = useUserPermissions()
+  const [expandedItems, setExpandedItems] = useState<string[]>(['My Events'])
+
+  // Build navigation based on user permissions
+  const buildNavigation = (): NavigationItem[] => {
+    let navigation = getBaseNavigation()
+    
+    if (isEventOwner) {
+      navigation = [...navigation, ...getOrganizerNavigation()]
+    } else {
+      navigation = [...navigation, ...getRegularUserNavigation()]
+      
+      if (canSellTickets) {
+        navigation = [...navigation, ...getSellerNavigation()]
+      }
+      
+      if (canWorkEvents) {
+        navigation = [...navigation, ...getTeamMemberNavigation()]
+      }
+    }
+    
+    return navigation
+  }
+
+  const navigation = buildNavigation()
 
   const toggleExpanded = (title: string) => {
     setExpandedItems(prev =>
@@ -304,6 +435,12 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             <NavigationGroup items={navigation} />
             <Separator className="bg-white/20" />
             <NavigationGroup items={accountNavigation} title="Account" />
+            {isAdmin && (
+              <>
+                <Separator className="bg-white/20" />
+                <NavigationGroup items={getAdminNavigation()} title="Administration" />
+              </>
+            )}
           </div>
         </ScrollArea>
 

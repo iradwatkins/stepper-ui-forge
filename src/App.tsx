@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminRoute } from "@/components/auth/AdminRoute";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
@@ -29,6 +30,11 @@ import TeamInvite from "./pages/dashboard/TeamInvite";
 import TeamRoles from "./pages/dashboard/TeamRoles";
 import CheckInManagement from "./pages/dashboard/CheckInManagement";
 import LiveAnalytics from "./pages/dashboard/LiveAnalytics";
+import AdminUsers from "./pages/dashboard/admin/AdminUsers";
+import AdminAnalytics from "./pages/dashboard/admin/AdminAnalytics";
+import AdminSettings from "./pages/dashboard/admin/AdminSettings";
+import AdminMonitor from "./pages/dashboard/admin/AdminMonitor";
+import Following from "./pages/dashboard/Following";
 import PaymentTestPage from "./pages/PaymentTest";
 import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
 import NotFound from "./pages/NotFound";
@@ -83,6 +89,7 @@ const App = () => (
                   <Route path="profile" element={<Profile />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="notifications" element={<Notifications />} />
+                  <Route path="following" element={<Following />} />
                   <Route path="events" element={<EventsManagement />} />
                   <Route path="events/drafts" element={<DraftEvents />} />
                   <Route path="events/archived" element={<ArchivedEvents />} />
@@ -95,6 +102,27 @@ const App = () => (
                   <Route path="team/roles" element={<TeamRoles />} />
                   <Route path="checkin" element={<CheckInManagement />} />
                   <Route path="analytics" element={<LiveAnalytics />} />
+                  {/* Admin routes within dashboard */}
+                  <Route path="admin/users" element={
+                    <AdminRoute>
+                      <AdminUsers />
+                    </AdminRoute>
+                  } />
+                  <Route path="admin/analytics" element={
+                    <AdminRoute>
+                      <AdminAnalytics />
+                    </AdminRoute>
+                  } />
+                  <Route path="admin/settings" element={
+                    <AdminRoute>
+                      <AdminSettings />
+                    </AdminRoute>
+                  } />
+                  <Route path="admin/monitor" element={
+                    <AdminRoute>
+                      <AdminMonitor />
+                    </AdminRoute>
+                  } />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
