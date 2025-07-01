@@ -7,26 +7,17 @@ import {
   AlertTriangle, 
   RefreshCw, 
   Eye,
-  Filter,
-  Download,
   Search,
-  MoreVertical
+  TrendingUp,
+  BarChart3
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Progress } from '@/components/ui/progress'
 import {
   Select,
   SelectContent,
@@ -34,15 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Progress } from '@/components/ui/progress'
-import { TeamService, CheckInSession } from '@/lib/services/TeamService'
-import { QRValidationService } from '@/lib/services/QRValidationService'
 
 interface CheckinDashboardProps {
   eventId: string
@@ -53,8 +35,13 @@ interface CheckInStats {
   checked_in: number
   pending: number
   check_in_rate: number
-  hourly_stats: { hour: string, count: number }[]
-  recent_checkins: any[]
+  recent_checkins: Array<{
+    id: string
+    attendee_name: string
+    staff_member: string
+    timestamp: string
+    status: 'success' | 'failed' | 'duplicate'
+  }>
 }
 
 interface LiveActivity {
@@ -64,12 +51,10 @@ interface LiveActivity {
   staff_member: string
   timestamp: string
   status: 'success' | 'failed' | 'duplicate'
-  details?: any
 }
 
 export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
   const [stats, setStats] = useState<CheckInStats | null>(null)
-  const [activeSessions, setActiveSessions] = useState<CheckInSession[]>([])
   const [liveActivity, setLiveActivity] = useState<LiveActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -95,24 +80,19 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
     try {
       setError(null)
       
-      // Load team stats and active sessions
-      const teamStatsResult = await TeamService.getTeamStats(eventId)
-      
-      if (teamStatsResult.success && teamStatsResult.data) {
-        // Transform team stats into check-in stats format
-        const mockStats: CheckInStats = {
-          total_tickets: 250, // Would come from ticket service
-          checked_in: teamStatsResult.data.recent_activity.check_ins_today || 0,
-          pending: 250 - (teamStatsResult.data.recent_activity.check_ins_today || 0),
-          check_in_rate: ((teamStatsResult.data.recent_activity.check_ins_today || 0) / 250) * 100,
-          hourly_stats: generateMockHourlyStats(),
-          recent_checkins: []
-        }
-        setStats(mockStats)
+      // Mock data for development - replace with actual service calls
+      const mockStats: CheckInStats = {
+        total_tickets: 250,
+        checked_in: 87,
+        pending: 163,
+        check_in_rate: 34.8,
+        recent_checkins: []
       }
 
-      // Load recent activity (mock data for now)
-      setLiveActivity(generateMockLiveActivity())
+      const mockActivity: LiveActivity[] = generateMockLiveActivity()
+      
+      setStats(mockStats)
+      setLiveActivity(mockActivity)
       
     } catch (err) {
       setError('Failed to load dashboard data')
@@ -122,33 +102,21 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
     }
   }
 
-  const generateMockHourlyStats = () => {
-    const now = new Date()
-    const hours = []
-    for (let i = 6; i >= 0; i--) {
-      const hour = new Date(now.getTime() - i * 60 * 60 * 1000)
-      hours.push({
-        hour: hour.toLocaleTimeString([], { hour: '2-digit' }),
-        count: Math.floor(Math.random() * 20) + 5
-      })
-    }
-    return hours
-  }
-
   const generateMockLiveActivity = (): LiveActivity[] => {
     const activities = []
     const now = new Date()
+    const names = ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson', 'Chris Brown']
+    const staff = ['Alex (Staff)', 'Jordan (Staff)', 'Taylor (Staff)']
     
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 15; i++) {
       const timestamp = new Date(now.getTime() - i * 2 * 60 * 1000) // 2 minutes apart
       activities.push({
         id: `activity_${i}`,
-        type: Math.random() > 0.8 ? 'error' : 'check_in' as any,
-        ticket_holder: `Attendee ${i + 1}`,
-        staff_member: `Staff Member ${Math.floor(Math.random() * 3) + 1}`,
+        type: Math.random() > 0.8 ? 'error' : 'check_in',
+        ticket_holder: names[Math.floor(Math.random() * names.length)],
+        staff_member: staff[Math.floor(Math.random() * staff.length)],
         timestamp: timestamp.toISOString(),
-        status: Math.random() > 0.9 ? 'failed' : 'success' as any,
-        details: {}
+        status: Math.random() > 0.9 ? 'failed' : Math.random() > 0.95 ? 'duplicate' : 'success'
       })
     }
     
@@ -157,6 +125,7 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
 
   const getActivityIcon = (type: string, status: string) => {
     if (status === 'failed') return <AlertTriangle className="w-4 h-4 text-red-500" />
+    if (status === 'duplicate') return <AlertTriangle className="w-4 h-4 text-orange-500" />
     if (type === 'check_in') return <UserCheck className="w-4 h-4 text-green-500" />
     return <Activity className="w-4 h-4 text-blue-500" />
   }
@@ -165,6 +134,7 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
     switch (status) {
       case 'success': return 'text-green-700 bg-green-50 border-green-200'
       case 'failed': return 'text-red-700 bg-red-50 border-red-200'
+      case 'duplicate': return 'text-orange-700 bg-orange-50 border-orange-200'
       default: return 'text-gray-700 bg-gray-50 border-gray-200'
     }
   }
@@ -245,39 +215,48 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="ml-2 text-sm font-medium">Total Tickets</span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Tickets</p>
+                  <p className="text-2xl font-bold">{stats.total_tickets}</p>
+                </div>
+                <Users className="h-8 w-8 text-muted-foreground" />
               </div>
-              <div className="text-2xl font-bold">{stats.total_tickets}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <UserCheck className="h-4 w-4 text-muted-foreground" />
-                <span className="ml-2 text-sm font-medium">Checked In</span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Checked In</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.checked_in}</p>
+                </div>
+                <UserCheck className="h-8 w-8 text-green-500" />
               </div>
-              <div className="text-2xl font-bold text-green-600">{stats.checked_in}</div>
               <Progress value={stats.check_in_rate} className="mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">{stats.check_in_rate.toFixed(1)}% of total</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="ml-2 text-sm font-medium">Pending</span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pending</p>
+                  <p className="text-2xl font-bold text-orange-600">{stats.pending}</p>
+                </div>
+                <Clock className="h-8 w-8 text-orange-500" />
               </div>
-              <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                <span className="ml-2 text-sm font-medium">Check-in Rate</span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Check-in Rate</p>
+                  <p className="text-2xl font-bold">{stats.check_in_rate.toFixed(1)}%</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-blue-500" />
               </div>
-              <div className="text-2xl font-bold">{stats.check_in_rate.toFixed(1)}%</div>
             </CardContent>
           </Card>
         </div>
@@ -287,8 +266,8 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
       <Tabs defaultValue="live" className="space-y-4">
         <TabsList>
           <TabsTrigger value="live">Live Activity</TabsTrigger>
-          <TabsTrigger value="sessions">Staff Sessions</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="live" className="space-y-4">
@@ -310,6 +289,7 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="success">Success</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="duplicate">Duplicate</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="relative">
@@ -347,7 +327,13 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge variant={activity.status === 'success' ? 'default' : 'destructive'}>
+                        <Badge 
+                          variant={
+                            activity.status === 'success' ? 'default' : 
+                            activity.status === 'duplicate' ? 'secondary' : 
+                            'destructive'
+                          }
+                        >
                           {activity.status}
                         </Badge>
                         <Button variant="ghost" size="sm">
@@ -362,58 +348,42 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="sessions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Staff Sessions</CardTitle>
-              <CardDescription>
-                Monitor active check-in sessions and staff activity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No active sessions</p>
-                <p className="text-sm">Staff sessions will appear here when check-in starts</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="analytics" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Hourly Check-ins</CardTitle>
                 <CardDescription>
-                  Check-in volume over the last 7 hours
+                  Check-in volume over the last 24 hours
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {stats && (
-                  <div className="space-y-2">
-                    {stats.hourly_stats.map((stat, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{stat.hour}</span>
+                <div className="space-y-2">
+                  {Array.from({ length: 8 }, (_, i) => {
+                    const hour = new Date(Date.now() - i * 3600000).getHours()
+                    const count = Math.floor(Math.random() * 25) + 5
+                    return (
+                      <div key={i} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{hour}:00</span>
                         <div className="flex items-center space-x-2">
                           <div className="w-24 bg-muted rounded-full h-2">
                             <div 
                               className="bg-primary h-2 rounded-full" 
-                              style={{ width: `${(stat.count / 20) * 100}%` }}
+                              style={{ width: `${(count / 30) * 100}%` }}
                             ></div>
                           </div>
-                          <span className="text-sm text-muted-foreground w-8">{stat.count}</span>
+                          <span className="text-sm text-muted-foreground w-8">{count}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )
+                  })}
+                </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Performance Metrics</CardTitle>
+                <CardTitle>Success Metrics</CardTitle>
                 <CardDescription>
                   Key check-in performance indicators
                 </CardDescription>
@@ -440,6 +410,37 @@ export function CheckinDashboard({ eventId }: CheckinDashboardProps) {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Staff Performance</CardTitle>
+              <CardDescription>
+                Individual staff member check-in performance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {['Alex Johnson', 'Jordan Smith', 'Taylor Brown'].map((staff, index) => (
+                  <div key={staff} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <div className="font-medium">{staff}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {Math.floor(Math.random() * 50) + 20} scans today
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{98 + index}% success rate</div>
+                      <div className="text-xs text-muted-foreground">
+                        {Math.floor(Math.random() * 3)} errors
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
