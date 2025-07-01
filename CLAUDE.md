@@ -15,6 +15,17 @@ npm run test:watch    # Run tests in watch mode
 npm run test:coverage # Run tests with coverage report
 ```
 
+## Troubleshooting
+
+**Page Not Loading (ERR_CONNECTION_REFUSED)**:
+- Check if development server is running with `npm run dev`
+- Ensure `.env` file exists with proper Supabase configuration:
+  ```
+  VITE_SUPABASE_URL=your_supabase_url
+  VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+  ```
+- Copy `.env.example` to `.env` and update with actual values if missing
+
 ## Architecture Overview
 
 This is a **React/TypeScript event management platform** with Supabase backend, built using modern patterns:
