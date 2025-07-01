@@ -10,8 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { UserIcon, LogOutIcon, Loader2Icon } from 'lucide-react'
+import { Auth } from './Auth'
 
 export const UserProfile = () => {
   const { user, signOut } = useAuth()
@@ -28,7 +34,21 @@ export const UserProfile = () => {
     }
   }
 
-  if (!user) return null
+  // Show sign-in button for non-authenticated users
+  if (!user) {
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="default" size="sm" className="h-8 px-3 text-xs sm:text-sm">
+            Sign In
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <Auth />
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   const userInitials = user.email
     ? user.email.substring(0, 2).toUpperCase()
