@@ -302,6 +302,8 @@ export interface Database {
           payment_status: PaymentStatus
           payment_intent_id: string | null
           payment_method: string | null
+          referred_by_code: string | null
+          commission_amount: number
           created_at: string
           updated_at: string
         }
@@ -315,6 +317,8 @@ export interface Database {
           payment_status?: PaymentStatus
           payment_intent_id?: string | null
           payment_method?: string | null
+          referred_by_code?: string | null
+          commission_amount?: number
           created_at?: string
           updated_at?: string
         }
@@ -328,6 +332,8 @@ export interface Database {
           payment_status?: PaymentStatus
           payment_intent_id?: string | null
           payment_method?: string | null
+          referred_by_code?: string | null
+          commission_amount?: number
           created_at?: string
           updated_at?: string
         }
@@ -419,6 +425,225 @@ export interface Database {
           created_at?: string
         }
       }
+      user_follows: {
+        Row: {
+          id: string
+          follower_id: string
+          organizer_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          follower_id: string
+          organizer_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          follower_id?: string
+          organizer_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      follower_promotions: {
+        Row: {
+          id: string
+          follow_id: string
+          organizer_id: string
+          follower_id: string
+          can_sell_tickets: boolean
+          can_work_events: boolean
+          is_co_organizer: boolean
+          commission_rate: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          follow_id: string
+          organizer_id: string
+          follower_id: string
+          can_sell_tickets?: boolean
+          can_work_events?: boolean
+          is_co_organizer?: boolean
+          commission_rate?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          follow_id?: string
+          organizer_id?: string
+          follower_id?: string
+          can_sell_tickets?: boolean
+          can_work_events?: boolean
+          is_co_organizer?: boolean
+          commission_rate?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      referral_codes: {
+        Row: {
+          id: string
+          promotion_id: string
+          event_id: string | null
+          code: string
+          qr_code_url: string | null
+          referral_url: string | null
+          is_active: boolean
+          clicks_count: number
+          conversions_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          promotion_id: string
+          event_id?: string | null
+          code: string
+          qr_code_url?: string | null
+          referral_url?: string | null
+          is_active?: boolean
+          clicks_count?: number
+          conversions_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          promotion_id?: string
+          event_id?: string | null
+          code?: string
+          qr_code_url?: string | null
+          referral_url?: string | null
+          is_active?: boolean
+          clicks_count?: number
+          conversions_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      commission_earnings: {
+        Row: {
+          id: string
+          referral_code_id: string
+          order_id: string
+          follower_id: string
+          organizer_id: string
+          event_id: string
+          sale_amount: number
+          commission_rate: number
+          commission_amount: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          referral_code_id: string
+          order_id: string
+          follower_id: string
+          organizer_id: string
+          event_id: string
+          sale_amount: number
+          commission_rate: number
+          commission_amount: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          referral_code_id?: string
+          order_id?: string
+          follower_id?: string
+          organizer_id?: string
+          event_id?: string
+          sale_amount?: number
+          commission_rate?: number
+          commission_amount?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      organizer_banking_info: {
+        Row: {
+          id: string
+          organizer_id: string
+          payout_method: string
+          payout_details_encrypted: string
+          is_verified: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organizer_id: string
+          payout_method: string
+          payout_details_encrypted: string
+          is_verified?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organizer_id?: string
+          payout_method?: string
+          payout_details_encrypted?: string
+          is_verified?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      payout_requests: {
+        Row: {
+          id: string
+          organizer_id: string
+          amount: number
+          payout_method: string
+          status: string
+          platform_fees: number
+          net_amount: number
+          commission_deductions: number
+          requested_at: string
+          processed_at: string | null
+          completed_at: string | null
+          notes: string | null
+        }
+        Insert: {
+          id?: string
+          organizer_id: string
+          amount: number
+          payout_method: string
+          status?: string
+          platform_fees?: number
+          net_amount: number
+          commission_deductions?: number
+          requested_at?: string
+          processed_at?: string | null
+          completed_at?: string | null
+          notes?: string | null
+        }
+        Update: {
+          id?: string
+          organizer_id?: string
+          amount?: number
+          payout_method?: string
+          status?: string
+          platform_fees?: number
+          net_amount?: number
+          commission_deductions?: number
+          requested_at?: string
+          processed_at?: string | null
+          completed_at?: string | null
+          notes?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -471,6 +696,30 @@ export type EventAnalyticsUpdate = Database['public']['Tables']['event_analytics
 export type CartItem = Database['public']['Tables']['cart_items']['Row']
 export type CartItemInsert = Database['public']['Tables']['cart_items']['Insert']
 export type CartItemUpdate = Database['public']['Tables']['cart_items']['Update']
+
+export type UserFollow = Database['public']['Tables']['user_follows']['Row']
+export type UserFollowInsert = Database['public']['Tables']['user_follows']['Insert']
+export type UserFollowUpdate = Database['public']['Tables']['user_follows']['Update']
+
+export type FollowerPromotion = Database['public']['Tables']['follower_promotions']['Row']
+export type FollowerPromotionInsert = Database['public']['Tables']['follower_promotions']['Insert']
+export type FollowerPromotionUpdate = Database['public']['Tables']['follower_promotions']['Update']
+
+export type ReferralCode = Database['public']['Tables']['referral_codes']['Row']
+export type ReferralCodeInsert = Database['public']['Tables']['referral_codes']['Insert']
+export type ReferralCodeUpdate = Database['public']['Tables']['referral_codes']['Update']
+
+export type CommissionEarning = Database['public']['Tables']['commission_earnings']['Row']
+export type CommissionEarningInsert = Database['public']['Tables']['commission_earnings']['Insert']
+export type CommissionEarningUpdate = Database['public']['Tables']['commission_earnings']['Update']
+
+export type OrganizerBankingInfo = Database['public']['Tables']['organizer_banking_info']['Row']
+export type OrganizerBankingInfoInsert = Database['public']['Tables']['organizer_banking_info']['Insert']
+export type OrganizerBankingInfoUpdate = Database['public']['Tables']['organizer_banking_info']['Update']
+
+export type PayoutRequest = Database['public']['Tables']['payout_requests']['Row']
+export type PayoutRequestInsert = Database['public']['Tables']['payout_requests']['Insert']
+export type PayoutRequestUpdate = Database['public']['Tables']['payout_requests']['Update']
 
 // Extended types with relations
 export type EventWithStats = Event & {

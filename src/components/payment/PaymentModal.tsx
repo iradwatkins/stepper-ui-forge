@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, CheckCircle, XCircle, CreditCard, Wallet, DollarSign, ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { paymentService } from '@/lib/payments/PaymentService';
+import { apiPaymentService } from '@/lib/payments/ApiPaymentService';
 import type { PaymentRequest, PaymentResult, PaymentMethod } from '@/lib/payments/types';
 
 type PaymentStep = 'method' | 'details' | 'review' | 'processing' | 'result';
@@ -68,23 +68,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       
       console.log('🔄 Initializing payment service...');
       
-      if (!paymentService.isInitialized()) {
-        console.log('📝 Payment service not initialized, initializing now...');
-        await paymentService.initialize();
+      if (!apiPaymentService.isInitialized()) {
+        console.log('📝 API Payment service not initialized, initializing now...');
+        await apiPaymentService.initialize();
       } else {
-        console.log('✅ Payment service already initialized');
+        console.log('✅ API Payment service already initialized');
       }
       
-      const status = paymentService.getStatus();
-      console.log('📊 Payment service status:', status);
+      const status = await apiPaymentService.getStatus();
+      console.log('📊 API Payment service status:', status);
       
       if (status.hasAvailableGateways) {
-        const methods = paymentService.getAvailablePaymentMethods();
+        const methods = apiPaymentService.getAvailablePaymentMethods();
         console.log('💳 Available payment methods:', methods);
         setAvailableMethods(methods);
         if (methods.length > 0 && !selectedMethod) {
-          setSelectedMethod(methods[0].gateway);
-          console.log('🎯 Auto-selected payment method:', methods[0].gateway);
+          setSelectedMethod(methods[0].type);
+          console.log('🎯 Auto-selected payment method:', methods[0].type);
         }
       } else {
         console.warn('⚠️ No payment gateways available');
@@ -115,11 +115,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         description,
         customerEmail,
         customerName: 'Test Customer',
+        gatewayType: selectedMethod as any,
         successUrl: `${window.location.origin}/payment/success`,
         cancelUrl: `${window.location.origin}/payment/cancel`
       };
       
-      const result = await paymentService.processPayment(paymentRequest);
+      const result = await apiPaymentService.processPayment(paymentRequest);
       setPaymentResult(result);
       setCurrentStep('result');
       
@@ -223,16 +224,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <div className="grid gap-3">
                 {availableMethods.map((method) => (
                   <div
-                    key={method.gateway}
+                    key={method.type}
                     className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedMethod === method.gateway
+                      selectedMethod === method.type
                         ? 'border-primary bg-primary/5 shadow-sm'
                         : 'border-border hover:border-primary/50'
                     }`}
-                    onClick={() => setSelectedMethod(method.gateway)}
+                    onClick={() => setSelectedMethod(method.type)}
                   >
                     <div className="flex items-center gap-3">
-                      {getMethodIcon(method.gateway)}
+                      {getMethodIcon(method.type)}
                       <div>
                         <div className="font-medium">{method.name}</div>
                         <div className="text-sm text-muted-foreground">
@@ -246,10 +247,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={method.enabled ? 'default' : 'secondary'}>
-                        {method.enabled ? 'Ready' : 'Disabled'}
+                      <Badge variant="default">
+                        Ready
                       </Badge>
-                      {selectedMethod === method.gateway && (
+                      {selectedMethod === method.type && (
                         <Check className="h-4 w-4 text-primary" />
                       )}
                     </div>
@@ -318,7 +319,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         );
 
       case 'review': {
-        const selectedMethodData = availableMethods.find(m => m.gateway === selectedMethod);
+        const selectedMethodData = availableMethods.find(m => m.type === selectedMethod);
         return (
           <div className="space-y-6">
             <div className="text-center">
