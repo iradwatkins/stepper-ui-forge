@@ -111,6 +111,7 @@ const App = () => (
                   <Route path="schedule" element={<Schedule />} />
                   <Route path="audience" element={<AudienceInsights />} />
                   <Route path="events" element={<EventsManagement />} />
+                  <Route path="events/edit/:id" element={<EditEvent />} />
                   <Route path="events/drafts" element={<DraftEvents />} />
                   <Route path="events/archived" element={<ArchivedEvents />} />
                   <Route path="tickets" element={<TicketsOverview />} />

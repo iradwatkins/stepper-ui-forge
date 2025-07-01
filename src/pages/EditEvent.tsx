@@ -96,62 +96,6 @@ const EditEvent = () => {
 
         setOriginalEvent(event);
 
-        // Populate form with existing event data
-        form.reset({
-          title: event.title || "",
-          description: event.description || "",
-          organizationName: event.organization_name || "",
-          date: event.date || "",
-          time: event.time || "",
-          address: event.location || "",
-          categories: event.categories || [],
-          isPublic: event.is_public ?? true,
-          tags: [],
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          images: {}
-        });
-
-        // Set event type and categories
-        setEventType(event.event_type || "simple");
-        setSelectedCategories(event.categories || []);
-
-        // Load existing images if any
-        if (event.images && typeof event.images === 'object') {
-          const images = event.images as Record<string, ImageMetadata>;
-          const loadedImages: any = {};
-          
-          if (images.banner) {
-            loadedImages.banner = {
-              medium: images.banner.url,
-              metadata: { compressedSize: images.banner.size || 0 }
-            };
-          }
-          
-          if (images.postcard) {
-            loadedImages.postcard = {
-              medium: images.postcard.url,
-              metadata: { compressedSize: images.postcard.size || 0 }
-            };
-          }
-          
-          setUploadedImages(loadedImages);
-        }
-
-        // Set event data
-        setEventData({
-          title: event.title || '',
-          description: event.description || '',
-          organizationName: event.organization_name || '',
-          date: event.date || '',
-          time: event.time || '',
-          location: event.location || '',
-          category: (event.categories || []).join(', '),
-          capacity: event.max_attendees,
-          isPublic: event.is_public ?? true,
-          images: [],
-          tickets: []
-        });
-
       } catch (err) {
         console.error('Error loading event:', err);
         setError('Failed to load event data');
@@ -161,7 +105,68 @@ const EditEvent = () => {
     };
 
     loadEvent();
-  }, [id, user?.id, form, setEventData, setUploadedImages]);
+  }, [id, user?.id]);
+
+  // Populate form when originalEvent changes
+  useEffect(() => {
+    if (originalEvent) {
+      // Populate form with existing event data
+      form.reset({
+        title: originalEvent.title || "",
+        description: originalEvent.description || "",
+        organizationName: originalEvent.organization_name || "",
+        date: originalEvent.date || "",
+        time: originalEvent.time || "",
+        address: originalEvent.location || "",
+        categories: originalEvent.categories || [],
+        isPublic: originalEvent.is_public ?? true,
+        tags: [],
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        images: {}
+      });
+
+      // Set event type and categories
+      setEventType(originalEvent.event_type || "simple");
+      setSelectedCategories(originalEvent.categories || []);
+
+      // Load existing images if any
+      if (originalEvent.images && typeof originalEvent.images === 'object') {
+        const images = originalEvent.images as Record<string, ImageMetadata>;
+        const loadedImages: any = {};
+        
+        if (images.banner) {
+          loadedImages.banner = {
+            medium: images.banner.url,
+            metadata: { compressedSize: images.banner.size || 0 }
+          };
+        }
+        
+        if (images.postcard) {
+          loadedImages.postcard = {
+            medium: images.postcard.url,
+            metadata: { compressedSize: images.postcard.size || 0 }
+          };
+        }
+        
+        setUploadedImages(loadedImages);
+      }
+
+      // Set event data for other components
+      setEventData({
+        title: originalEvent.title || '',
+        description: originalEvent.description || '',
+        organizationName: originalEvent.organization_name || '',
+        date: originalEvent.date || '',
+        time: originalEvent.time || '',
+        location: originalEvent.location || '',
+        category: (originalEvent.categories || []).join(', '),
+        capacity: originalEvent.max_attendees,
+        isPublic: originalEvent.is_public ?? true,
+        images: [],
+        tickets: []
+      });
+    }
+  }, [originalEvent]);
 
   const handleImageUploadWithForm = useCallback(async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {
     await handleImageUpload(files, imageType);
@@ -299,8 +304,10 @@ const EditEvent = () => {
   };
 
   if (isLoading) {
+    const isDashboardContext = window.location.pathname.startsWith('/dashboard')
+    
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center">
+      <div className={isDashboardContext ? "flex items-center justify-center min-h-[400px]" : "min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center"}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading event...</p>
@@ -310,14 +317,16 @@ const EditEvent = () => {
   }
 
   if (error) {
+    const isDashboardContext = window.location.pathname.startsWith('/dashboard')
+    
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className={isDashboardContext ? "" : "min-h-screen bg-gradient-to-br from-background to-muted/20"}>
+        <div className={isDashboardContext ? "max-w-4xl" : "container mx-auto px-4 py-8 max-w-4xl"}>
           <div className="mb-8">
             <Link to="/dashboard/events">
               <Button variant="ghost" className="mb-4">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Events
+                Back to My Events
               </Button>
             </Link>
           </div>
@@ -330,16 +339,19 @@ const EditEvent = () => {
     );
   }
 
+  // Check if we're in dashboard context
+  const isDashboardContext = window.location.pathname.startsWith('/dashboard')
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className={isDashboardContext ? "" : "min-h-screen bg-gradient-to-br from-background to-muted/20"}>
+      <div className={isDashboardContext ? "max-w-4xl" : "container mx-auto px-4 py-8 max-w-4xl"}>
         <div className="mb-8">
           <div className="flex justify-between items-start mb-4">
             <div>
               <Link to="/dashboard/events">
                 <Button variant="ghost" className="mb-4">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Events
+                  Back to My Events
                 </Button>
               </Link>
               <h1 className="text-4xl font-bold mb-4 text-foreground">Edit Event</h1>

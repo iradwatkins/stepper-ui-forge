@@ -111,7 +111,7 @@ export default function EventsManagement() {
           View Event
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to={`/edit-event/${event.id}`}>
+          <Link to={`/dashboard/events/edit/${event.id}`}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Event
           </Link>

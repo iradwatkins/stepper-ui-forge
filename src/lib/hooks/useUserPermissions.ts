@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { FollowerService, UserPermissions } from '@/lib/services/FollowerService'
+import { EventsService } from '@/lib/events-db'
 
 export interface UserPermissionState {
   // Permission flags
@@ -72,12 +73,15 @@ export const useUserPermissions = () => {
       // Check if user has any permissions at all
       const hasAnyPermissions = await FollowerService.hasAnyPermissions(user.id)
       
+      // Check if user owns any events
+      const userEvents = await EventsService.getUserEvents(user.id)
+      const isEventOwner = userEvents.length > 0
+      
       // TODO: Implement checks for team and co-organizer permissions
       // For now, we'll use simplified logic
       const canSellTickets = sellingPermissions.length > 0
       const canWorkEvents = false // TODO: Check team permissions
       const isCoOrganizer = false // TODO: Check co-organizer permissions
-      const isEventOwner = false // TODO: Check if user owns any events
 
       setPermissionState({
         canSellTickets,
