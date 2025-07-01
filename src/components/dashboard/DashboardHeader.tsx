@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -123,9 +123,11 @@ export function DashboardHeader({ children }: DashboardHeaderProps) {
           </Button>
 
           {/* Settings */}
-          <Button variant="ghost" size="sm" className="hover:bg-muted">
-            <Settings className="h-5 w-5" />
-          </Button>
+          <Link to="/dashboard/settings">
+            <Button variant="ghost" size="sm" className="hover:bg-muted">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </Link>
 
           {/* User menu */}
           <DropdownMenu>
