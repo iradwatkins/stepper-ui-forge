@@ -232,7 +232,7 @@ export class TicketService {
         et: data.eventTitle,
         d: data.eventDate,
         tm: data.eventTime,
-        v: data.venue,
+        ven: data.venue,
         hash: data.validationHash,
         ts: new Date().toISOString(), // Timestamp for when QR was generated
       }

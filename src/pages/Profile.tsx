@@ -462,13 +462,15 @@ export default function Profile() {
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Security</h4>
                 <div className="space-y-3">
-                  <Button variant="outline" className="justify-start">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Change Password
+                  <Button variant="outline" className="justify-start" asChild>
+                    <a href="https://supabase.com/dashboard/project/reset-password" target="_blank" rel="noopener noreferrer">
+                      <Shield className="mr-2 h-4 w-4" />
+                      Change Password
+                    </a>
                   </Button>
-                  <Button variant="outline" className="justify-start">
+                  <Button variant="outline" className="justify-start" disabled>
                     <Shield className="mr-2 h-4 w-4" />
-                    Enable Two-Factor Authentication
+                    Two-Factor Authentication (Coming Soon)
                   </Button>
                 </div>
               </div>
@@ -478,11 +480,26 @@ export default function Profile() {
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Account Actions</h4>
                 <div className="space-y-3">
-                  <Button variant="outline" className="justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="justify-start"
+                    onClick={() => toast({
+                      title: "Data Export",
+                      description: "Your account data export will be sent to your email within 24 hours.",
+                    })}
+                  >
                     <User className="mr-2 h-4 w-4" />
                     Download Account Data
                   </Button>
-                  <Button variant="destructive" className="justify-start">
+                  <Button 
+                    variant="destructive" 
+                    className="justify-start"
+                    onClick={() => toast({
+                      title: "Account Deletion",
+                      description: "Please contact support to delete your account.",
+                      variant: "destructive"
+                    })}
+                  >
                     <User className="mr-2 h-4 w-4" />
                     Delete Account
                   </Button>

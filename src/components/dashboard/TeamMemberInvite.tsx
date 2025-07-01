@@ -164,7 +164,7 @@ export function TeamMemberInvite({ eventId, onInviteSent, onCancel }: TeamMember
           <Input
             id="email"
             type="email"
-            placeholder="team.member@example.com"
+            placeholder="team.member@demo.local"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
             className="pl-10"

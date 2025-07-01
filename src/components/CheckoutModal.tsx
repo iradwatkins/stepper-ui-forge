@@ -522,7 +522,7 @@ const CheckoutModal = ({ isOpen, onClose, event, useCartMode = false }: Checkout
                         <Input 
                           id="email" 
                           type="email" 
-                          placeholder="john@example.com" 
+                          placeholder="john@demo.local" 
                           value={customerInfo.email}
                           onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
                           className="h-9 sm:h-10 lg:h-11 text-sm lg:text-base transition-all"

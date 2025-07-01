@@ -70,7 +70,7 @@ export function TeamManagementDashboard({ eventId, onInviteMember }: TeamManagem
           device_info: {},
           notification_preferences: { email_notifications: true, push_notifications: true, sms_notifications: false },
           user_profile: {
-            email: 'manager@example.com',
+            email: 'manager@demo.local',
             full_name: 'Event Manager',
             avatar_url: null
           }

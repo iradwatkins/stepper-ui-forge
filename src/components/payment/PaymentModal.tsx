@@ -33,7 +33,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onPaymentSuccess,
   onPaymentError,
   defaultAmount = 25.00,
-  defaultEmail = 'test@example.com',
+  defaultEmail = 'test@demo.local',
   defaultDescription = 'Test Payment - Event Ticket',
   trigger
 }) => {
@@ -298,7 +298,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   type="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
-                  placeholder="test@example.com"
+                  placeholder="test@demo.local"
                   className="h-10 sm:h-11 text-sm sm:text-base border-2 focus:border-primary transition-colors touch-manipulation"
                 />
               </div>

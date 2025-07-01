@@ -15,7 +15,20 @@ import CreateEvent from "./pages/CreateEvent";
 import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import MyTickets from "./pages/MyTickets";
+import Notifications from "./pages/dashboard/Notifications";
 import EventsManagement from "./pages/dashboard/EventsManagement";
+import DraftEvents from "./pages/dashboard/DraftEvents";
+import ArchivedEvents from "./pages/dashboard/ArchivedEvents";
+import TicketsOverview from "./pages/dashboard/TicketsOverview";
+import TicketAnalytics from "./pages/dashboard/TicketAnalytics";
+import PaymentManagement from "./pages/dashboard/PaymentManagement";
+import TeamManagement from "./pages/dashboard/TeamManagement";
+import TeamInvite from "./pages/dashboard/TeamInvite";
+import TeamRoles from "./pages/dashboard/TeamRoles";
+import CheckInManagement from "./pages/dashboard/CheckInManagement";
+import LiveAnalytics from "./pages/dashboard/LiveAnalytics";
 import PaymentTestPage from "./pages/PaymentTest";
 import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
 import NotFound from "./pages/NotFound";
@@ -49,6 +62,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/events/:id" element={<EventDetail />} />
+                <Route path="/my-tickets" element={<MyTickets />} />
                 <Route path="/payment-test" element={<PaymentTestPage />} />
                 <Route path="/create-event" element={
                   <ProtectedRoute>
@@ -67,7 +81,20 @@ const App = () => (
                 }>
                   <Route index element={<DashboardHome />} />
                   <Route path="profile" element={<Profile />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="notifications" element={<Notifications />} />
                   <Route path="events" element={<EventsManagement />} />
+                  <Route path="events/drafts" element={<DraftEvents />} />
+                  <Route path="events/archived" element={<ArchivedEvents />} />
+                  <Route path="tickets" element={<TicketsOverview />} />
+                  <Route path="tickets/:id" element={<TicketsOverview />} />
+                  <Route path="tickets/analytics" element={<TicketAnalytics />} />
+                  <Route path="tickets/payments" element={<PaymentManagement />} />
+                  <Route path="team" element={<TeamManagement />} />
+                  <Route path="team/invite" element={<TeamInvite />} />
+                  <Route path="team/roles" element={<TeamRoles />} />
+                  <Route path="checkin" element={<CheckInManagement />} />
+                  <Route path="analytics" element={<LiveAnalytics />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

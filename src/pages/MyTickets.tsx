@@ -143,7 +143,7 @@ QR Code: ${ticket.qr_code}
           <div className="flex gap-2">
             <Input
               type="email"
-              placeholder="your.email@example.com"
+              placeholder="your.email@demo.local"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}

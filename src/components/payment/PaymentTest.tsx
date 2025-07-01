@@ -21,7 +21,7 @@ export const PaymentTest: React.FC = () => {
   
   // Form state
   const [amount, setAmount] = useState('25.00');
-  const [customerEmail, setCustomerEmail] = useState('test@example.com');
+  const [customerEmail, setCustomerEmail] = useState('test@demo.local');
   const [description, setDescription] = useState('Test Payment - Event Ticket');
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export const PaymentTest: React.FC = () => {
                 type="email"
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
-                placeholder="test@example.com"
+                placeholder="test@demo.local"
                 className="h-9"
               />
             </div>
