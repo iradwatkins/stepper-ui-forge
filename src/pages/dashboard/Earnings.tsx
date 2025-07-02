@@ -31,6 +31,8 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react'
+import { CommissionService, type CommissionEarning, type CommissionSummary } from '@/lib/services/CommissionService'
+import { PayoutService, type PayoutRequest, type PayoutSummary } from '@/lib/services/PayoutService'
 
 interface Earning {
   id: string
@@ -65,111 +67,50 @@ interface EarningsStats {
 
 export default function Earnings() {
   const { user } = useAuth()
-  const [earnings, setEarnings] = useState<Earning[]>([])
-  const [payouts, setPayouts] = useState<Payout[]>([])
-  const [stats, setStats] = useState<EarningsStats | null>(null)
+  const [earnings, setEarnings] = useState<CommissionEarning[]>([])
+  const [payouts, setPayouts] = useState<PayoutRequest[]>([])
+  const [commissionSummary, setCommissionSummary] = useState<CommissionSummary | null>(null)
+  const [payoutSummary, setPayoutSummary] = useState<PayoutSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('all')
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for demonstration
+  // Load real earnings data
   useEffect(() => {
     const loadEarningsData = async () => {
+      if (!user?.id) return
+      
       setIsLoading(true)
+      setError(null)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockStats: EarningsStats = {
-        totalEarnings: 1245.75,
-        pendingEarnings: 425.50,
-        paidEarnings: 820.25,
-        thisMonthEarnings: 325.75,
-        nextPayoutAmount: 425.50,
-        nextPayoutDate: '2024-02-01'
+      try {
+        // Load commission earnings, summary, and payout data in parallel
+        const [
+          earningsData,
+          commissionSummaryData,
+          payoutSummaryData,
+          payoutHistoryData
+        ] = await Promise.all([
+          CommissionService.getFollowerEarnings(user.id),
+          CommissionService.getFollowerCommissionSummary(user.id),
+          PayoutService.getPayoutSummary(user.id),
+          PayoutService.getPayoutHistory(user.id, 50, 0)
+        ])
+        
+        setEarnings(earningsData)
+        setCommissionSummary(commissionSummaryData)
+        setPayoutSummary(payoutSummaryData)
+        setPayouts(payoutHistoryData)
+      } catch (error) {
+        console.error('Error loading earnings data:', error)
+        setError('Failed to load earnings data. Please try again.')
+      } finally {
+        setIsLoading(false)
       }
-      
-      const mockEarnings: Earning[] = [
-        {
-          id: '1',
-          type: 'commission',
-          amount: 25.50,
-          description: 'VIP Pass sales commission',
-          eventTitle: 'Summer Music Festival',
-          referralCode: 'SUMMER2024',
-          date: '2024-01-15',
-          status: 'pending'
-        },
-        {
-          id: '2',
-          type: 'commission',
-          amount: 15.75,
-          description: 'General Admission sales commission',
-          eventTitle: 'Tech Conference 2024',
-          referralCode: 'TECH50',
-          date: '2024-01-14',
-          status: 'pending'
-        },
-        {
-          id: '3',
-          type: 'bonus',
-          amount: 50.00,
-          description: 'Monthly sales bonus',
-          eventTitle: 'Platform Bonus',
-          date: '2024-01-01',
-          status: 'paid',
-          payoutDate: '2024-01-15'
-        },
-        {
-          id: '4',
-          type: 'commission',
-          amount: 22.00,
-          description: 'Tasting Pass sales commission',
-          eventTitle: 'Food & Wine Expo',
-          referralCode: 'FOODIE25',
-          date: '2023-12-20',
-          status: 'paid',
-          payoutDate: '2024-01-01'
-        }
-      ]
-      
-      const mockPayouts: Payout[] = [
-        {
-          id: '1',
-          amount: 275.50,
-          method: 'bank_transfer',
-          date: '2024-01-15',
-          status: 'completed',
-          reference: 'TXN-2024-001',
-          earningsIncluded: 8
-        },
-        {
-          id: '2',
-          amount: 180.25,
-          method: 'paypal',
-          date: '2024-01-01',
-          status: 'completed',
-          reference: 'TXN-2023-012',
-          earningsIncluded: 5
-        },
-        {
-          id: '3',
-          amount: 425.50,
-          method: 'bank_transfer',
-          date: '2024-02-01',
-          status: 'pending',
-          reference: 'TXN-2024-002',
-          earningsIncluded: 12
-        }
-      ]
-      
-      setStats(mockStats)
-      setEarnings(mockEarnings)
-      setPayouts(mockPayouts)
-      setIsLoading(false)
     }
 
     loadEarningsData()
-  }, [selectedPeriod])
+  }, [user?.id, selectedPeriod])
 
   const getEarningTypeColor = (type: string) => {
     switch (type) {
@@ -240,6 +181,21 @@ export default function Earnings() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-lg font-semibold mb-2">Error Loading Data</p>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -277,9 +233,9 @@ export default function Earnings() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.totalEarnings.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${commissionSummary?.total_earnings.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
-              +${stats?.thisMonthEarnings.toFixed(2)} this month
+              {commissionSummary?.commission_count || 0} total earnings
             </p>
           </CardContent>
         </Card>
@@ -290,7 +246,7 @@ export default function Earnings() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.pendingEarnings.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${commissionSummary?.pending_amount.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
               Awaiting payout
             </p>
@@ -303,7 +259,7 @@ export default function Earnings() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.paidEarnings.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${payoutSummary?.total_paid.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
               Successfully paid
             </p>
@@ -312,20 +268,20 @@ export default function Earnings() {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Next Payout</CardTitle>
+            <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats?.nextPayoutAmount.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${payoutSummary?.available_balance.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.nextPayoutDate && new Date(stats.nextPayoutDate).toLocaleDateString()}
+              {payoutSummary?.last_payout_date && `Last: ${new Date(payoutSummary.last_payout_date).toLocaleDateString()}`}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Next Payout Alert */}
-      {stats?.nextPayoutAmount && stats.nextPayoutAmount > 0 && (
+      {/* Available Balance Alert */}
+      {payoutSummary?.available_balance && payoutSummary.available_balance > 0 && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="flex items-center justify-between p-6">
             <div className="flex items-center gap-4">
@@ -333,15 +289,16 @@ export default function Earnings() {
                 <DollarSign className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold">Next Payout Scheduled</h3>
+                <h3 className="font-semibold">Available for Payout</h3>
                 <p className="text-sm text-muted-foreground">
-                  ${stats.nextPayoutAmount.toFixed(2)} will be paid on {new Date(stats.nextPayoutDate).toLocaleDateString()}
+                  ${payoutSummary.available_balance.toFixed(2)} ready to be requested
+                  {payoutSummary.pending_requests > 0 && ` (${payoutSummary.pending_requests} requests pending)`}
                 </p>
               </div>
             </div>
             <Button variant="outline">
               <CreditCard className="mr-2 h-4 w-4" />
-              Payment Settings
+              Request Payout
             </Button>
           </CardContent>
         </Card>
@@ -376,36 +333,48 @@ export default function Earnings() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {earnings.map((earning) => (
-                    <TableRow key={earning.id}>
-                      <TableCell>
-                        <Badge className={getEarningTypeColor(earning.type)}>
-                          {earning.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{earning.description}</TableCell>
-                      <TableCell>{earning.eventTitle}</TableCell>
-                      <TableCell>
-                        {earning.referralCode && (
-                          <code className="font-mono text-sm">{earning.referralCode}</code>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium text-green-600">
-                        ${earning.amount.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(earning.date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(earning.status)}
-                          <Badge className={getStatusColor(earning.status)}>
-                            {earning.status}
-                          </Badge>
+                  {earnings.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="text-muted-foreground">
+                          <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>No earnings yet</p>
+                          <p className="text-sm">Start selling tickets to earn commissions!</p>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    earnings.map((earning) => (
+                      <TableRow key={earning.id}>
+                        <TableCell>
+                          <Badge className={getEarningTypeColor('commission')}>
+                            commission
+                          </Badge>
+                        </TableCell>
+                        <TableCell>Sales commission</TableCell>
+                        <TableCell>{(earning as any).events?.title || 'Unknown Event'}</TableCell>
+                        <TableCell>
+                          {(earning as any).referral_codes?.code && (
+                            <code className="font-mono text-sm">{(earning as any).referral_codes.code}</code>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium text-green-600">
+                          ${earning.commission_amount.toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(earning.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(earning.status)}
+                            <Badge className={getStatusColor(earning.status)}>
+                              {earning.status}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -433,36 +402,48 @@ export default function Earnings() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payouts.map((payout) => (
-                    <TableRow key={payout.id}>
-                      <TableCell>
-                        <code className="font-mono text-sm">{payout.reference}</code>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        ${payout.amount.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          {getPaymentMethodName(payout.method)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {payout.earningsIncluded} earnings
-                      </TableCell>
-                      <TableCell>
-                        {new Date(payout.date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(payout.status)}
-                          <Badge className={getStatusColor(payout.status)}>
-                            {payout.status}
-                          </Badge>
+                  {payouts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="text-muted-foreground">
+                          <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>No payouts yet</p>
+                          <p className="text-sm">Payouts will appear here once processed</p>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    payouts.map((payout) => (
+                      <TableRow key={payout.id}>
+                        <TableCell>
+                          <code className="font-mono text-sm">PAY-{payout.id.slice(0, 8)}</code>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          ${payout.amount.toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                            {getPaymentMethodName(payout.payout_method)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          Multiple commissions
+                        </TableCell>
+                        <TableCell>
+                          {new Date(payout.requested_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(payout.status)}
+                            <Badge className={getStatusColor(payout.status)}>
+                              {payout.status}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
