@@ -73,6 +73,58 @@ export class EventsService {
     }
   }
 
+  static async getAllEvents(limit = 100, offset = 0): Promise<EventWithStats[]> {
+    if (!isSupabaseReady) {
+      console.warn('Supabase not configured - returning empty events array')
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          ticket_types (
+            id,
+            name,
+            price,
+            quantity,
+            sold_quantity
+          ),
+          profiles!events_owner_id_fkey (
+            full_name,
+            organization
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) {
+        console.error('Error fetching all events:', error)
+        throw error
+      }
+
+      const eventsWithStats: EventWithStats[] = data.map(event => {
+        const ticketTypes = event.ticket_types as TicketType[]
+        const tickets_sold = ticketTypes?.reduce((sum, tt) => sum + tt.sold_quantity, 0) || 0
+        const total_revenue = ticketTypes?.reduce((sum, tt) => sum + (tt.price * tt.sold_quantity), 0) || 0
+
+        return {
+          ...event,
+          ticket_types: ticketTypes,
+          tickets_sold,
+          total_revenue,
+          attendee_count: tickets_sold
+        }
+      })
+
+      return eventsWithStats
+    } catch (error) {
+      console.error('Error in getAllEvents:', error)
+      throw error
+    }
+  }
+
   static async getPublicEvents(limit = 20, offset = 0): Promise<EventWithStats[]> {
     try {
       const { data, error } = await supabase

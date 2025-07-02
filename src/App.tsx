@@ -35,6 +35,8 @@ import AdminUsers from "./pages/dashboard/admin/AdminUsers";
 import AdminAnalytics from "./pages/dashboard/admin/AdminAnalytics";
 import AdminSettings from "./pages/dashboard/admin/AdminSettings";
 import AdminMonitor from "./pages/dashboard/admin/AdminMonitor";
+import AdminEvents from "./pages/dashboard/admin/AdminEvents";
+import EditEventsManage from "./pages/dashboard/EditEventsManage";
 import Following from "./pages/dashboard/Following";
 import FollowerManagement from "./pages/dashboard/FollowerManagement";
 import SalesDashboard from "./pages/dashboard/SalesDashboard";
@@ -111,6 +113,7 @@ const App = () => (
                   <Route path="schedule" element={<Schedule />} />
                   <Route path="audience" element={<AudienceInsights />} />
                   <Route path="events" element={<EventsManagement />} />
+                  <Route path="events/manage" element={<EditEventsManage />} />
                   <Route path="events/edit/:id" element={<EditEvent />} />
                   <Route path="events/drafts" element={<DraftEvents />} />
                   <Route path="events/archived" element={<ArchivedEvents />} />
@@ -124,6 +127,11 @@ const App = () => (
                   <Route path="checkin" element={<CheckInManagement />} />
                   <Route path="analytics" element={<LiveAnalytics />} />
                   {/* Admin routes within dashboard */}
+                  <Route path="admin/events" element={
+                    <AdminRoute>
+                      <AdminEvents />
+                    </AdminRoute>
+                  } />
                   <Route path="admin/users" element={
                     <AdminRoute>
                       <AdminUsers />

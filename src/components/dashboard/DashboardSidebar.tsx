@@ -120,6 +120,11 @@ const getOrganizerNavigation = (): NavigationItem[] => [
         icon: Plus
       },
       {
+        title: 'Edit Events',
+        href: '/dashboard/events/manage',
+        icon: Edit3
+      },
+      {
         title: 'Draft Events',
         href: '/dashboard/events/drafts',
         icon: Edit3,

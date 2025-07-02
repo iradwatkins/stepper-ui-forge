@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { SearchIcon, MapPinIcon, CalendarIcon, UsersIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { eventsService, Event } from "@/lib/events";
+import { EventsService } from "@/lib/events-db";
+import { EventWithStats, ImageMetadata } from "@/types/database";
 
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<EventWithStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   const categories = [
@@ -26,10 +27,10 @@ const Events = () => {
 
   // Load events on component mount
   useEffect(() => {
-    const loadEvents = () => {
+    const loadEvents = async () => {
       setLoading(true);
       try {
-        const publicEvents = eventsService.getPublicEvents();
+        const publicEvents = await EventsService.getPublicEvents(50, 0);
         setEvents(publicEvents);
       } catch (error) {
         console.error('Error loading events:', error);
@@ -44,11 +45,10 @@ const Events = () => {
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.organizationName.toLowerCase().includes(searchQuery.toLowerCase());
+                         event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         event.organization_name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || 
-                           event.categories.includes(selectedCategory) || 
-                           event.category.includes(selectedCategory);
+                           event.categories?.includes(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
@@ -61,12 +61,16 @@ const Events = () => {
     }
   };
 
-  const getEventPrice = (event: Event) => {
-    if (event.eventType === 'simple' && event.displayPrice) {
-      return `${event.displayPrice.label}: $${event.displayPrice.amount}`;
+  const getEventPrice = (event: EventWithStats) => {
+    if (event.event_type === 'simple') {
+      return "Free";
     }
-    if (event.eventType === 'ticketed' && event.tickets && event.tickets.length > 0) {
-      const minPrice = Math.min(...event.tickets.map(t => t.price));
+    if (event.event_type === 'ticketed' && event.ticket_types && event.ticket_types.length > 0) {
+      const minPrice = Math.min(...event.ticket_types.map(t => t.price));
+      return `From $${minPrice}`;
+    }
+    if (event.event_type === 'premium' && event.ticket_types && event.ticket_types.length > 0) {
+      const minPrice = Math.min(...event.ticket_types.map(t => t.price));
       return `From $${minPrice}`;
     }
     return "Free";
@@ -138,9 +142,9 @@ const Events = () => {
             <Link key={event.id} to={`/events/${event.id}`}>
               <Card className="overflow-hidden card-hover border-border bg-card event-card">
                 <div className="aspect-video overflow-hidden">
-                  {event.images?.banner?.medium || event.images?.postcard?.medium ? (
+                  {(event.images as Record<string, ImageMetadata>)?.banner?.url || (event.images as Record<string, ImageMetadata>)?.postcard?.url ? (
                     <img
-                      src={event.images?.banner?.medium || event.images?.postcard?.medium}
+                      src={(event.images as Record<string, ImageMetadata>)?.banner?.url || (event.images as Record<string, ImageMetadata>)?.postcard?.url}
                       alt={event.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     />
@@ -152,8 +156,8 @@ const Events = () => {
                 </div>
                 <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-4">
                   <div className="flex justify-between items-start mb-1 sm:mb-2 gap-2">
-                    <Badge className={`${getEventTypeColor(event.eventType)} text-xs px-1.5 py-0.5`}>
-                      {event.eventType}
+                    <Badge className={`${getEventTypeColor(event.event_type)} text-xs px-1.5 py-0.5`}>
+                      {event.event_type}
                     </Badge>
                     <span className="text-sm sm:text-base lg:text-lg font-bold text-primary flex-shrink-0">{getEventPrice(event)}</span>
                   </div>
@@ -174,7 +178,7 @@ const Events = () => {
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
                       <UsersIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      <span>{event.attendees || 0} attending</span>
+                      <span>{event.attendee_count || 0} attending</span>
                     </div>
                   </div>
                 </CardContent>

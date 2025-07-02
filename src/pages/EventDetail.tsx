@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CalendarIcon, MapPinIcon, UsersIcon, ShareIcon, HeartIcon } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { eventsService, Event } from "@/lib/events";
+import { EventsService } from "@/lib/events-db";
+import { EventWithStats, ImageMetadata } from "@/types/database";
 import { TicketSelector } from "@/components/ticketing";
 import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
@@ -18,7 +19,7 @@ const EventDetail = () => {
   const { addItem } = useCart();
   const { toast } = useToast();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [event, setEvent] = useState<Event | null>(null);
+  const [event, setEvent] = useState<EventWithStats | null>(null);
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
   const [ticketsLoading, setTicketsLoading] = useState(true);
@@ -29,12 +30,14 @@ const EventDetail = () => {
     const loadEvent = async () => {
       setLoading(true);
       try {
-        const foundEvent = eventsService.getEventById(id);
+        const foundEvent = await EventsService.getEvent(id);
         setEvent(foundEvent);
         
         // Load ticket types for ticketed and premium events
-        if (foundEvent && (foundEvent.eventType === 'ticketed' || foundEvent.eventType === 'premium')) {
-          loadTicketTypes(foundEvent.id);
+        if (foundEvent && (foundEvent.event_type === 'ticketed' || foundEvent.event_type === 'premium')) {
+          // Ticket types are already loaded with the event
+          setTicketTypes(foundEvent.ticket_types || []);
+          setTicketsLoading(false);
         } else {
           setTicketsLoading(false);
         }
@@ -205,9 +208,9 @@ const EventDetail = () => {
     );
   }
 
-  const eventImage = event.images?.banner?.medium || event.images?.postcard?.medium || '/placeholder-event.jpg';
-  const eventPrice = event.eventType === 'simple' && event.displayPrice ? event.displayPrice.amount : 
-                     event.tickets && event.tickets.length > 0 ? Math.min(...event.tickets.map(t => t.price)) : 0;
+  const eventImage = (event.images as Record<string, ImageMetadata>)?.banner?.url || (event.images as Record<string, ImageMetadata>)?.postcard?.url || '/placeholder-event.jpg';
+  const eventPrice = event.event_type === 'simple' ? 0 : 
+                     event.ticket_types && event.ticket_types.length > 0 ? Math.min(...event.ticket_types.map(t => t.price)) : 0;
 
   return (
     <div className="min-h-screen">
@@ -221,8 +224,8 @@ const EventDetail = () => {
         <div className="absolute inset-0 bg-black/50" />
         <div className="absolute bottom-4 left-4 right-4 text-white">
           <div className="container mx-auto">
-            <Badge className={`${getEventTypeColor(event.eventType)} mb-2`}>
-              {event.eventType}
+            <Badge className={`${getEventTypeColor(event.event_type)} mb-2`}>
+              {event.event_type}
             </Badge>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">{event.title}</h1>
             <p className="text-lg opacity-90">{event.description}</p>
@@ -257,9 +260,9 @@ const EventDetail = () => {
                 <div className="flex items-center gap-3">
                   <UsersIcon className="w-5 h-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">{event.attendees || 0} attending</p>
-                    {event.capacity && (
-                      <p className="text-sm text-muted-foreground">{event.capacity - (event.attendees || 0)} spots remaining</p>
+                    <p className="font-medium">{event.attendee_count || 0} attending</p>
+                    {event.max_attendees && (
+                      <p className="text-sm text-muted-foreground">{event.max_attendees - (event.attendee_count || 0)} spots remaining</p>
                     )}
                   </div>
                 </div>
@@ -285,7 +288,7 @@ const EventDetail = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {event.categories.map((category, index) => (
+                  {event.categories?.map((category, index) => (
                     <Badge key={index} variant="secondary">
                       {category}
                     </Badge>
@@ -298,7 +301,7 @@ const EventDetail = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Ticket Selection */}
-            {event.eventType === 'simple' ? (
+            {event.event_type === 'simple' ? (
               /* Simple Event Ticket Card */
               <Card>
                 <CardHeader>
@@ -360,11 +363,11 @@ const EventDetail = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                     <span className="text-lg font-bold text-primary">
-                      {event.organizationName.charAt(0).toUpperCase()}
+                      {event.organization_name?.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <p className="font-medium">{event.organizationName}</p>
+                    <p className="font-medium">{event.organization_name}</p>
                     <p className="text-sm text-muted-foreground">Event Organizer</p>
                   </div>
                 </div>

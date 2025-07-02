@@ -25,6 +25,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -34,54 +41,59 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { toast } from '@/components/ui/use-toast'
 import {
-  Plus,
   Search,
   Filter,
   MoreHorizontal,
   Edit,
   Trash2,
-  Copy,
   Eye,
   Calendar,
   Users,
   DollarSign,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Archive,
+  RotateCcw
 } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 
-export default function EventsManagement() {
+export default function AdminEvents() {
   const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [events, setEvents] = useState<EventWithStats[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [eventToDelete, setEventToDelete] = useState<EventWithStats | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [isDuplicating, setIsDuplicating] = useState(false)
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  // Load real events from database
+  // Load all events from the platform (admin view)
   useEffect(() => {
-    const loadEvents = async () => {
-      if (!user?.id) return
-      
+    const loadAllEvents = async () => {
       try {
         setIsLoading(true)
-        const userEvents = await EventsService.getUserEvents(user.id)
-        console.log('Loaded real events:', userEvents)
-        setEvents(userEvents)
+        // For admin view, get all events from all users across the platform
+        const allEvents = await EventsService.getAllEvents(100, 0)
+        console.log('Loaded all platform events:', allEvents)
+        setEvents(allEvents)
       } catch (error) {
         console.error('Error loading events:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load events. Please try again.",
+          variant: "destructive",
+        })
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadEvents()
-  }, [user?.id])
+    loadAllEvents()
+  }, [])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,12 +123,17 @@ export default function EventsManagement() {
     }
   }
 
-  const filteredEvents = events.filter(event =>
-    event.title.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         event.organization_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || event.status === statusFilter
+    const matchesType = typeFilter === 'all' || event.event_type === typeFilter
+    
+    return matchesSearch && matchesStatus && matchesType
+  })
 
   const handleDeleteEvent = async () => {
-    if (!eventToDelete || !user?.id) return
+    if (!eventToDelete) return
 
     setIsDeleting(true)
     try {
@@ -140,76 +157,26 @@ export default function EventsManagement() {
     }
   }
 
-  const handleDuplicateEvent = async (event: EventWithStats) => {
-    if (!user?.id) return
-
-    setIsDuplicating(true)
+  const handleStatusChange = async (event: EventWithStats, newStatus: 'published' | 'draft' | 'completed' | 'cancelled') => {
+    setIsUpdating(true)
     try {
-      const duplicatedEvent = await EventsService.duplicateEvent(event.id, user.id)
-      if (duplicatedEvent) {
-        // Refresh events list to include the new duplicate
-        const userEvents = await EventsService.getUserEvents(user.id)
-        setEvents(userEvents)
-        toast({
-          title: "Event duplicated",
-          description: `"${event.title}" has been duplicated successfully.`,
-        })
-      }
-    } catch (error) {
-      console.error('Error duplicating event:', error)
-      toast({
-        title: "Error",
-        description: "Failed to duplicate event. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsDuplicating(false)
-    }
-  }
-
-  const handlePublishEvent = async (event: EventWithStats) => {
-    setIsUpdatingStatus(true)
-    try {
-      const updatedEvent = await EventsService.publishEvent(event.id)
+      const updatedEvent = await EventsService.updateEvent(event.id, { status: newStatus })
       if (updatedEvent) {
-        setEvents(prev => prev.map(e => e.id === event.id ? { ...e, status: 'published', is_public: true } : e))
+        setEvents(prev => prev.map(e => e.id === event.id ? { ...e, status: newStatus } : e))
         toast({
-          title: "Event published",
-          description: `"${event.title}" is now live and visible to the public.`,
+          title: "Status updated",
+          description: `Event status changed to ${newStatus}.`,
         })
       }
     } catch (error) {
-      console.error('Error publishing event:', error)
+      console.error('Error updating event status:', error)
       toast({
         title: "Error",
-        description: "Failed to publish event. Please try again.",
+        description: "Failed to update event status. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setIsUpdatingStatus(false)
-    }
-  }
-
-  const handleUnpublishEvent = async (event: EventWithStats) => {
-    setIsUpdatingStatus(true)
-    try {
-      const updatedEvent = await EventsService.unpublishEvent(event.id)
-      if (updatedEvent) {
-        setEvents(prev => prev.map(e => e.id === event.id ? { ...e, status: 'draft', is_public: false } : e))
-        toast({
-          title: "Event unpublished",
-          description: `"${event.title}" is now a draft and hidden from public.`,
-        })
-      }
-    } catch (error) {
-      console.error('Error unpublishing event:', error)
-      toast({
-        title: "Error",
-        description: "Failed to unpublish event. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsUpdatingStatus(false)
+      setIsUpdating(false)
     }
   }
 
@@ -218,7 +185,7 @@ export default function EventsManagement() {
     setDeleteDialogOpen(true)
   }
 
-  const EventActions = ({ event }: { event: EventWithStats }) => (
+  const AdminEventActions = ({ event }: { event: EventWithStats }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -227,7 +194,7 @@ export default function EventsManagement() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuLabel>Admin Actions</DropdownMenuLabel>
         <DropdownMenuItem asChild>
           <Link to={`/events/${event.id}`}>
             <Eye className="mr-2 h-4 w-4" />
@@ -240,30 +207,33 @@ export default function EventsManagement() {
             Edit Event
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem 
-          onClick={() => handleDuplicateEvent(event)}
-          disabled={isDuplicating}
-        >
-          <Copy className="mr-2 h-4 w-4" />
-          {isDuplicating ? 'Duplicating...' : 'Duplicate Event'}
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
-        {event.status === 'draft' && (
+        <DropdownMenuLabel>Status Changes</DropdownMenuLabel>
+        {event.status !== 'published' && (
           <DropdownMenuItem 
-            onClick={() => handlePublishEvent(event)}
-            disabled={isUpdatingStatus}
+            onClick={() => handleStatusChange(event, 'published')}
+            disabled={isUpdating}
           >
             <CheckCircle className="mr-2 h-4 w-4" />
-            {isUpdatingStatus ? 'Publishing...' : 'Publish Event'}
+            Publish
           </DropdownMenuItem>
         )}
         {event.status === 'published' && (
           <DropdownMenuItem 
-            onClick={() => handleUnpublishEvent(event)}
-            disabled={isUpdatingStatus}
+            onClick={() => handleStatusChange(event, 'draft')}
+            disabled={isUpdating}
           >
-            <XCircle className="mr-2 h-4 w-4" />
-            {isUpdatingStatus ? 'Unpublishing...' : 'Unpublish Event'}
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Unpublish
+          </DropdownMenuItem>
+        )}
+        {event.status !== 'completed' && (
+          <DropdownMenuItem 
+            onClick={() => handleStatusChange(event, 'completed')}
+            disabled={isUpdating}
+          >
+            <Archive className="mr-2 h-4 w-4" />
+            Archive
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
@@ -272,28 +242,33 @@ export default function EventsManagement() {
           onClick={() => openDeleteDialog(event)}
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          Delete Event
+          Force Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading platform events...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Events</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Platform Events</h1>
           <p className="mt-2 text-gray-600">
-            Manage all your events from one place
+            Manage all events across the platform (Admin View)
           </p>
         </div>
-        <Link to="/create-event">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Event
-          </Button>
-        </Link>
       </div>
 
       {/* Stats Cards */}
@@ -306,7 +281,21 @@ export default function EventsManagement() {
           <CardContent>
             <div className="text-2xl font-bold">{events.length}</div>
             <p className="text-xs text-muted-foreground">
-              +2 from last month
+              Across all organizers
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Published Events</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {events.filter(e => e.status === 'published').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Currently live
             </p>
           </CardContent>
         </Card>
@@ -320,7 +309,7 @@ export default function EventsManagement() {
               {events.reduce((sum, event) => sum + (event.attendee_count || 0), 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              +180 from last month
+              Platform-wide
             </p>
           </CardContent>
         </Card>
@@ -334,21 +323,7 @@ export default function EventsManagement() {
               ${events.reduce((sum, event) => sum + (event.total_revenue || 0), 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              +20.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Events</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {events.filter(e => e.status === 'published').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Currently live
+              Platform revenue
             </p>
           </CardContent>
         </Card>
@@ -359,40 +334,59 @@ export default function EventsManagement() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>All Events</CardTitle>
+              <CardTitle>All Platform Events</CardTitle>
               <CardDescription>
-                A list of all your events and their current status.
+                Complete list of events across all organizers with admin controls.
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Search events..."
+                  placeholder="Search events or organizers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 w-[300px]"
                 />
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="simple">Simple</SelectItem>
+                  <SelectItem value="ticketed">Ticketed</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="all" className="w-full">
             <TabsList>
-              <TabsTrigger value="all">All ({events.length})</TabsTrigger>
+              <TabsTrigger value="all">All ({filteredEvents.length})</TabsTrigger>
               <TabsTrigger value="published">
-                Published ({events.filter(e => e.status === 'published').length})
+                Published ({filteredEvents.filter(e => e.status === 'published').length})
               </TabsTrigger>
               <TabsTrigger value="draft">
-                Drafts ({events.filter(e => e.status === 'draft').length})
+                Drafts ({filteredEvents.filter(e => e.status === 'draft').length})
               </TabsTrigger>
               <TabsTrigger value="completed">
-                Completed ({events.filter(e => e.status === 'completed').length})
+                Completed ({filteredEvents.filter(e => e.status === 'completed').length})
               </TabsTrigger>
             </TabsList>
             
@@ -402,6 +396,7 @@ export default function EventsManagement() {
                   <TableRow>
                     <TableHead>Image</TableHead>
                     <TableHead>Event</TableHead>
+                    <TableHead>Organizer</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Type</TableHead>
@@ -441,6 +436,9 @@ export default function EventsManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="font-medium">{event.organization_name || 'Unknown'}</div>
+                      </TableCell>
+                      <TableCell>
                         {new Date(event.date).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
@@ -460,7 +458,7 @@ export default function EventsManagement() {
                         ${(event.total_revenue || 0).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <EventActions event={event} />
+                        <AdminEventActions event={event} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -477,11 +475,13 @@ export default function EventsManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
-              Delete Event
+              Force Delete Event (Admin)
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>"{eventToDelete?.title}"</strong>? 
-              This action cannot be undone and will permanently remove the event and all associated data.
+              Are you sure you want to permanently delete <strong>"{eventToDelete?.title}"</strong>? 
+              This is an admin override that will permanently remove the event and all associated data.
+              <br /><br />
+              <strong>This action cannot be undone.</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -491,7 +491,7 @@ export default function EventsManagement() {
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              {isDeleting ? 'Deleting...' : 'Delete Event'}
+              {isDeleting ? 'Deleting...' : 'Force Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
