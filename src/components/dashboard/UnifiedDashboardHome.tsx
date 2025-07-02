@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAdminPermissions } from '@/lib/hooks/useAdminPermissions'
 import { useUserPermissions } from '@/lib/hooks/useUserPermissions'
+import { EventsService } from '@/lib/events-db'
+import { CommissionService } from '@/lib/services/CommissionService'
+import { PayoutService } from '@/lib/services/PayoutService'
+import { ReferralService } from '@/lib/services/ReferralService'
+import { FollowerService } from '@/lib/services/FollowerService'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -14,11 +20,9 @@ import {
   QrCode,
   TrendingUp,
   Plus,
-  Heart,
   Monitor,
   Activity,
-  AlertCircle,
-  CheckCircle
+  AlertCircle
 } from 'lucide-react'
 
 interface DashboardStats {
@@ -74,82 +78,96 @@ export default function UnifiedDashboardHome() {
     setError(null)
 
     try {
-      // Load mock data based on user role
-      const mockStats: DashboardStats = {
-        // Regular user stats
-        totalEarnings: canSellTickets ? 245.50 : undefined,
-        totalSales: canSellTickets ? 23 : undefined,
-        eventsWorked: canWorkEvents ? 5 : undefined,
-        ticketsScanned: canWorkEvents ? 127 : undefined,
-        
-        // Organizer stats
-        totalEvents: isEventOwner ? 3 : undefined,
-        totalFollowers: isEventOwner ? 45 : undefined,
-        totalRevenue: isEventOwner ? 2150.00 : undefined,
-        
-        // Admin stats
-        totalUsers: isAdmin ? 1234 : undefined,
-        platformRevenue: isAdmin ? 89012 : undefined,
-        activeEvents: isAdmin ? 45 : undefined,
-        systemHealth: isAdmin ? 98 : undefined,
-        
-        // Common stats
-        activeReferralCodes: 2,
-        upcomingEvents: 1
-      }
+      // Initialize stats object
+      const realStats: DashboardStats = {}
+      const realActivity: ActivityItem[] = []
 
-      const mockActivity: ActivityItem[] = []
-      
+      // Load data based on user role
       if (canSellTickets) {
-        mockActivity.push({
-          id: '1',
-          type: 'sale',
-          description: 'Ticket sale commission earned',
-          amount: 15.50,
-          timestamp: '2 hours ago',
-          icon: DollarSign
-        })
+        // Get real commission data
+        const commissionSummary = await CommissionService.getFollowerCommissionSummary(user.id)
+        const earnings = await CommissionService.getFollowerEarnings(user.id)
+        realStats.totalEarnings = commissionSummary.total_earnings || 0
+        realStats.totalSales = commissionSummary.total_sales || 0
+        
+        // Add recent commission activity
+        if (earnings.length > 0) {
+          const recentEarning = earnings[0]
+          realActivity.push({
+            id: recentEarning.id,
+            type: 'sale',
+            description: `Commission earned from ticket sale`,
+            amount: recentEarning.commission_amount,
+            timestamp: new Date(recentEarning.created_at).toLocaleDateString(),
+            icon: DollarSign
+          })
+        }
       }
-      
-      if (canWorkEvents) {
-        mockActivity.push({
-          id: '2',
-          type: 'checkin',
-          description: 'Scanned tickets at Summer Festival',
-          timestamp: 'Yesterday',
-          icon: QrCode
-        })
-      }
-      
+
       if (isEventOwner) {
-        mockActivity.push({
-          id: '3',
-          type: 'follow',
-          description: 'New follower: Sarah Johnson',
-          timestamp: '2 days ago',
-          icon: Heart
-        })
+        // Get real event data for organizer
+        const userEvents = await EventsService.getUserEvents(user.id)
+        realStats.totalEvents = userEvents.length
+        realStats.totalRevenue = userEvents.reduce((sum, event) => sum + (event.total_revenue || 0), 0)
+        realStats.totalFollowers = await FollowerService.getFollowerCount(user.id)
+        
+        // Add recent event activity
+        if (userEvents.length > 0) {
+          const recentEvent = userEvents.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )[0]
+          realActivity.push({
+            id: recentEvent.id,
+            type: 'event',
+            description: `Created event: ${recentEvent.title}`,
+            timestamp: new Date(recentEvent.created_at).toLocaleDateString(),
+            icon: Calendar
+          })
+        }
       }
-      
+
       if (isAdmin) {
-        mockActivity.push({
-          id: '4',
-          type: 'user_signup',
-          description: '12 new users registered today',
-          timestamp: '1 hour ago',
-          icon: Users
-        })
-        mockActivity.push({
-          id: '5',
+        // Get platform-wide data for admin
+        const allEvents = await EventsService.getAllEvents(100, 0)
+        // Get total user count from profiles table
+        const { count: userCount } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+        realStats.totalUsers = userCount || 0
+        realStats.platformRevenue = allEvents.reduce((sum, event) => sum + (event.total_revenue || 0), 0)
+        realStats.activeEvents = allEvents.filter(event => event.status === 'published').length
+        // Calculate system health based on active events and recent activity
+        const activeEventCount = allEvents.filter(event => event.status === 'published').length
+        const totalEventCount = allEvents.length
+        realStats.systemHealth = totalEventCount > 0 ? Math.round((activeEventCount / totalEventCount) * 100) : 100
+        
+        // Add admin activity
+        realActivity.push({
+          id: 'admin-1',
           type: 'system',
-          description: 'System backup completed successfully',
-          timestamp: '3 hours ago',
-          icon: CheckCircle
+          description: `Platform has ${allEvents.length} total events`,
+          timestamp: 'Today',
+          icon: Monitor
         })
       }
 
-      setStats(mockStats)
-      setRecentActivity(mockActivity)
+      // Common stats for all users
+      if (canSellTickets) {
+        // Get active referral codes count
+        const referralStats = await ReferralService.getFollowerReferralStats(user.id)
+        realStats.activeReferralCodes = referralStats.filter(code => code.clicks > 0 || code.conversions > 0).length
+      }
+      // Get upcoming events count for the user
+      const currentDate = new Date().toISOString()
+      const { data: upcomingEvents } = await supabase
+        .from('events')
+        .select('id')
+        .gte('date', currentDate)
+        .eq('status', 'published')
+      realStats.upcomingEvents = upcomingEvents?.length || 0
+
+      setStats(realStats)
+      setRecentActivity(realActivity)
     } catch (err) {
       console.error('Failed to load dashboard data:', err)
       setError('Failed to load dashboard data')
