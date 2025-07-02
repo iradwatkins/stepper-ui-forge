@@ -33,7 +33,7 @@ export interface ReferralStats {
 }
 
 export class ReferralService {
-  private static readonly BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://stepperslife.com'
+  private static readonly BASE_URL = import.meta.env.VITE_APP_URL || 'https://stepperslife.com'
 
   /**
    * Generate a unique referral code for a promoted follower
