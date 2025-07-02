@@ -27,6 +27,7 @@ const CreateEvent = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventFormSchema),
@@ -153,17 +154,33 @@ const CreateEvent = () => {
     ]
   };
 
-  const handlePublish = async () => {
+  const saveEventWithStatus = async (status: 'draft' | 'published') => {
     if (!user?.id) {
       console.error("User not authenticated");
-      return;
+      return null;
     }
 
-    console.log("Publishing event with data:", eventData);
+    console.log(`Saving event as ${status} with data:`, eventData);
     console.log("Uploaded images:", uploadedImages);
-    setIsPublishing(true);
     
     try {
+      // For drafts, only require basic info. For published, validate all required fields
+      const requiredFieldsForDraft = ['title', 'date'];
+      
+      if (status === 'published') {
+        // Full validation for published events
+        if (!eventData.title || !eventData.date || !eventData.location || !eventType) {
+          alert("Please fill in all required fields before publishing.");
+          return null;
+        }
+      } else {
+        // Minimal validation for drafts
+        if (!eventData.title || !eventData.date) {
+          alert("Please provide at least a title and date to save as draft.");
+          return null;
+        }
+      }
+
       // Convert uploadedImages to database format
       const imageMetadata: Record<string, ImageMetadata> = {};
       
@@ -189,16 +206,16 @@ const CreateEvent = () => {
       const eventToSave: EventInsert = {
         owner_id: user.id,
         title: eventData.title,
-        description: eventData.description,
+        description: eventData.description || '',
         organization_name: eventData.organizationName || 'Unknown Organization',
         date: eventData.date,
-        time: eventData.time,
-        location: eventData.location,
+        time: eventData.time || '12:00',
+        location: eventData.location || '',
         categories: selectedCategories,
-        event_type: eventType as 'simple' | 'ticketed' | 'premium',
-        status: 'published',
+        event_type: eventType as 'simple' | 'ticketed' | 'premium' || 'simple',
+        status: status,
         images: imageMetadata,
-        is_public: eventData.isPublic ?? true,
+        is_public: status === 'published' ? (eventData.isPublic ?? true) : false,
         max_attendees: eventData.capacity,
         registration_deadline: null
       };
@@ -209,17 +226,35 @@ const CreateEvent = () => {
       
       if (savedEvent) {
         localStorage.removeItem('draft-event');
-        console.log("Event published successfully:", savedEvent);
+        console.log(`Event ${status === 'draft' ? 'saved as draft' : 'published'} successfully:`, savedEvent);
         navigate('/dashboard');
+        return savedEvent;
       } else {
         throw new Error('Failed to create event');
       }
       
     } catch (error) {
-      console.error("Error publishing event:", error);
-      alert("Failed to publish event. Please try again.");
+      console.error(`Error ${status === 'draft' ? 'saving draft' : 'publishing'} event:`, error);
+      alert(`Failed to ${status === 'draft' ? 'save draft' : 'publish event'}. Please try again.`);
+      return null;
+    }
+  };
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await saveEventWithStatus('published');
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    try {
+      await saveEventWithStatus('draft');
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -291,6 +326,8 @@ const CreateEvent = () => {
               errors={wizard.lastValidationResult?.errors || []}
               warnings={wizard.lastValidationResult?.warnings || []}
               lastSaved={lastSaved}
+              onSaveDraft={handleSaveDraft}
+              isDraftSaving={isSavingDraft}
               nextButtonText={eventType ? `Continue with ${eventType === 'simple' ? 'Simple Events' : eventType === 'ticketed' ? 'Ticketed Events' : 'Premium Events'}` : 'Select an event type to continue'}
             />
           </div>
@@ -320,6 +357,8 @@ const CreateEvent = () => {
               errors={wizard.lastValidationResult?.errors || []}
               warnings={wizard.lastValidationResult?.warnings || []}
               lastSaved={lastSaved}
+              onSaveDraft={handleSaveDraft}
+              isDraftSaving={isSavingDraft}
               helpText="Complete all required fields to continue to the next step"
             />
           </div>
@@ -347,6 +386,8 @@ const CreateEvent = () => {
               errors={wizard.lastValidationResult?.errors || []}
               warnings={wizard.lastValidationResult?.warnings || []}
               lastSaved={lastSaved}
+              onSaveDraft={handleSaveDraft}
+              isDraftSaving={isSavingDraft}
               nextButtonText="Continue to Review"
               helpText="Configure your ticket types and pricing"
             />
@@ -373,6 +414,8 @@ const CreateEvent = () => {
               errors={wizard.lastValidationResult?.errors || []}
               warnings={wizard.lastValidationResult?.warnings || []}
               lastSaved={lastSaved}
+              onSaveDraft={handleSaveDraft}
+              isDraftSaving={isSavingDraft}
               nextButtonText="Publish Event"
               helpText="Review your event details and publish when ready"
             />
@@ -399,6 +442,8 @@ const CreateEvent = () => {
               errors={wizard.lastValidationResult?.errors || []}
               warnings={wizard.lastValidationResult?.warnings || []}
               lastSaved={lastSaved}
+              onSaveDraft={handleSaveDraft}
+              isDraftSaving={isSavingDraft}
               nextButtonText="Publish Event"
               helpText="Review your event details and publish when ready"
             />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { EventsService } from '@/lib/events-db'
 import { EventWithStats } from '@/types/database'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -48,50 +49,8 @@ export default function ArchivedEvents() {
 
     try {
       setIsLoading(true)
-      // Mock data for now - replace with actual service call
-      const mockArchived: EventWithStats[] = [
-        {
-          id: 'archived-1',
-          title: 'Spring Art Exhibition',
-          description: 'Local artists showcase their latest works',
-          date: '2024-04-15',
-          time: '10:00',
-          location: 'Downtown Gallery',
-          status: 'archived',
-          owner_id: user.id,
-          created_at: new Date('2024-03-01').toISOString(),
-          updated_at: new Date('2024-04-16').toISOString(),
-          event_type: 'ticketed',
-          max_attendees: 150,
-          stats: {
-            total_tickets: 150,
-            tickets_sold: 142,
-            revenue: 2840,
-            attendees: 138
-          }
-        },
-        {
-          id: 'archived-2',
-          title: 'Winter Networking Event',
-          description: 'Professional networking for local businesses',
-          date: '2024-01-20',
-          time: '18:30',
-          location: 'Business Center',
-          status: 'archived',
-          owner_id: user.id,
-          created_at: new Date('2023-12-15').toISOString(),
-          updated_at: new Date('2024-01-21').toISOString(),
-          event_type: 'premium',
-          max_attendees: 80,
-          stats: {
-            total_tickets: 80,
-            tickets_sold: 75,
-            revenue: 3750,
-            attendees: 72
-          }
-        }
-      ]
-      setArchivedEvents(mockArchived)
+      const archivedEvents = await EventsService.getArchivedEvents(user.id)
+      setArchivedEvents(archivedEvents)
     } catch (error) {
       console.error('Error loading archived events:', error)
     } finally {
@@ -100,13 +59,22 @@ export default function ArchivedEvents() {
   }
 
   const handleRestoreEvent = async (eventId: string) => {
-    // Mock implementation
-    // Would update event status to 'published' or 'draft'
+    try {
+      await EventsService.updateEvent(eventId, { status: 'draft' })
+      // Remove from archived list
+      setArchivedEvents(prev => prev.filter(event => event.id !== eventId))
+    } catch (error) {
+      console.error('Error restoring event:', error)
+    }
   }
 
   const handlePermanentDelete = async (eventId: string) => {
-    // Mock implementation
-    setArchivedEvents(prev => prev.filter(event => event.id !== eventId))
+    try {
+      await EventsService.deleteEvent(eventId)
+      setArchivedEvents(prev => prev.filter(event => event.id !== eventId))
+    } catch (error) {
+      console.error('Error permanently deleting event:', error)
+    }
   }
 
   const filteredEvents = archivedEvents.filter(event =>

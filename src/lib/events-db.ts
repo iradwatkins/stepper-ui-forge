@@ -414,6 +414,70 @@ export class EventsService {
     return this.updateEvent(eventId, { status: 'completed' })
   }
 
+  static async getUserEventsByStatus(userId: string, status: string): Promise<EventWithStats[]> {
+    if (!isSupabaseReady) {
+      console.warn('Supabase not configured - returning empty events array')
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          ticket_types (
+            id,
+            name,
+            price,
+            quantity,
+            sold_quantity
+          )
+        `)
+        .eq('owner_id', userId)
+        .eq('status', status)
+        .order('updated_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching user events by status:', error)
+        throw error
+      }
+
+      // Calculate stats for each event
+      const eventsWithStats: EventWithStats[] = data.map(event => {
+        const ticketTypes = event.ticket_types as TicketType[]
+        const tickets_sold = ticketTypes?.reduce((sum, tt) => sum + tt.sold_quantity, 0) || 0
+        const total_revenue = ticketTypes?.reduce((sum, tt) => sum + (tt.price * tt.sold_quantity), 0) || 0
+
+        return {
+          ...event,
+          ticket_types: ticketTypes,
+          tickets_sold,
+          total_revenue,
+          attendee_count: tickets_sold,
+          stats: {
+            total_tickets: ticketTypes?.reduce((sum, tt) => sum + tt.quantity, 0) || 0,
+            tickets_sold,
+            revenue: total_revenue,
+            attendees: tickets_sold
+          }
+        }
+      })
+
+      return eventsWithStats
+    } catch (error) {
+      console.error('Error in getUserEventsByStatus:', error)
+      throw error
+    }
+  }
+
+  static async getDraftEvents(userId: string): Promise<EventWithStats[]> {
+    return this.getUserEventsByStatus(userId, 'draft')
+  }
+
+  static async getArchivedEvents(userId: string): Promise<EventWithStats[]> {
+    return this.getUserEventsByStatus(userId, 'completed')
+  }
+
   static async getDashboardStats(userId: string): Promise<DashboardStats> {
     try {
       const events = await this.getUserEvents(userId)

@@ -48,50 +48,8 @@ export default function DraftEvents() {
 
     try {
       setIsLoading(true)
-      // Mock data for now - replace with actual service call
-      const mockDrafts: EventWithStats[] = [
-        {
-          id: 'draft-1',
-          title: 'Summer Music Festival',
-          description: 'A celebration of local artists and musicians',
-          date: '2024-08-15',
-          time: '18:00',
-          location: 'Central Park Amphitheater',
-          status: 'draft',
-          owner_id: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          event_type: 'ticketed',
-          max_attendees: 500,
-          stats: {
-            total_tickets: 0,
-            tickets_sold: 0,
-            revenue: 0,
-            attendees: 0
-          }
-        },
-        {
-          id: 'draft-2',
-          title: 'Tech Conference 2024',
-          description: 'Annual technology conference',
-          date: '2024-09-20',
-          time: '09:00',
-          location: 'Convention Center',
-          status: 'draft',
-          owner_id: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          event_type: 'premium',
-          max_attendees: 200,
-          stats: {
-            total_tickets: 0,
-            tickets_sold: 0,
-            revenue: 0,
-            attendees: 0
-          }
-        }
-      ]
-      setDraftEvents(mockDrafts)
+      const draftEvents = await EventsService.getDraftEvents(user.id)
+      setDraftEvents(draftEvents)
     } catch (error) {
       console.error('Error loading draft events:', error)
     } finally {
@@ -100,8 +58,12 @@ export default function DraftEvents() {
   }
 
   const handleDeleteDraft = async (eventId: string) => {
-    // Mock implementation
-    setDraftEvents(prev => prev.filter(event => event.id !== eventId))
+    try {
+      await EventsService.deleteEvent(eventId)
+      setDraftEvents(prev => prev.filter(event => event.id !== eventId))
+    } catch (error) {
+      console.error('Error deleting draft event:', error)
+    }
   }
 
   const filteredEvents = draftEvents.filter(event =>
@@ -235,7 +197,7 @@ export default function DraftEvents() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link to={`/create-event?edit=${event.id}`}>
+                          <Link to={`/dashboard/events/edit/${event.id}`}>
                             <Edit3 className="w-4 h-4 mr-2" />
                             Continue Editing
                           </Link>
