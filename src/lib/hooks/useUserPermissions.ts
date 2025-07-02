@@ -77,11 +77,15 @@ export const useUserPermissions = () => {
       const userEvents = await EventsService.getUserEvents(user.id)
       const isEventOwner = userEvents.length > 0
       
-      // TODO: Implement checks for team and co-organizer permissions
-      // For now, we'll use simplified logic
+      // Check team member permissions across all events
+      const teamMemberPermissions = await FollowerService.getUserTeamPermissions(user.id)
+      
+      // Check co-organizer status
+      const coOrganizerStatus = await FollowerService.getUserCoOrganizerStatus(user.id)
+      
       const canSellTickets = sellingPermissions.length > 0
-      const canWorkEvents = false // TODO: Check team permissions
-      const isCoOrganizer = false // TODO: Check co-organizer permissions
+      const canWorkEvents = teamMemberPermissions.length > 0
+      const isCoOrganizer = coOrganizerStatus.length > 0
 
       setPermissionState({
         canSellTickets,

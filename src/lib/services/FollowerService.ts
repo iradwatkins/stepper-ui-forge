@@ -1,7 +1,7 @@
 // Follower Service for managing follow relationships and promotions
 // Handles following, unfollowing, promoting followers, and permission management
 
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabase'
 import type { 
   UserFollow, UserFollowInsert, 
   FollowerPromotion, FollowerPromotionInsert, FollowerPromotionUpdate,
@@ -440,6 +440,128 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to get selling permissions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user's team member permissions across all events
+   */
+  static async getUserTeamPermissions(userId: string): Promise<Array<{
+    event_id: string
+    organizer_id: string
+    organizer_name: string
+    can_work_events: boolean
+  }>> {
+    try {
+      // Check follower promotions for can_work_events
+      const { data: followerPerms, error: followerError } = await db
+        .from('follower_promotions')
+        .select(`
+          organizer_id,
+          can_work_events,
+          profiles:organizer_id (
+            full_name,
+            organization
+          )
+        `)
+        .eq('follower_id', userId)
+        .eq('can_work_events', true);
+
+      if (followerError) {
+        console.error('Error fetching follower team permissions:', followerError);
+      }
+
+      // Check team_members table for event-specific assignments
+      const { data: teamMembers, error: teamError } = await db
+        .from('team_members')
+        .select(`
+          event_id,
+          events!inner (
+            id,
+            title,
+            owner_id,
+            profiles:owner_id (
+              full_name,
+              organization
+            )
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (teamError) {
+        console.error('Error fetching team member assignments:', teamError);
+      }
+
+      const permissions: Array<{
+        event_id: string
+        organizer_id: string
+        organizer_name: string
+        can_work_events: boolean
+      }> = [];
+
+      // Add follower promotions (general work permissions)
+      (followerPerms || []).forEach((item: any) => {
+        permissions.push({
+          event_id: 'all', // General permission across all events
+          organizer_id: item.organizer_id,
+          organizer_name: item.profiles.full_name || item.profiles.organization || 'Unknown Organizer',
+          can_work_events: item.can_work_events
+        });
+      });
+
+      // Add specific team member assignments
+      (teamMembers || []).forEach((item: any) => {
+        permissions.push({
+          event_id: item.event_id,
+          organizer_id: item.events.owner_id,
+          organizer_name: item.events.profiles.full_name || item.events.profiles.organization || 'Unknown Organizer',
+          can_work_events: true // Team members always have work permissions for their assigned events
+        });
+      });
+
+      return permissions;
+
+    } catch (error) {
+      console.error('Failed to get team permissions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user's co-organizer status across all organizers
+   */
+  static async getUserCoOrganizerStatus(userId: string): Promise<Array<{
+    organizer_id: string
+    organizer_name: string
+    is_co_organizer: boolean
+  }>> {
+    try {
+      const { data, error } = await db
+        .from('follower_promotions')
+        .select(`
+          organizer_id,
+          is_co_organizer,
+          profiles:organizer_id (
+            full_name,
+            organization
+          )
+        `)
+        .eq('follower_id', userId)
+        .eq('is_co_organizer', true);
+
+      if (error) {
+        throw new Error(`Failed to fetch co-organizer status: ${error.message}`);
+      }
+
+      return (data || []).map((item: any) => ({
+        organizer_id: item.organizer_id,
+        organizer_name: item.profiles.full_name || item.profiles.organization || 'Unknown Organizer',
+        is_co_organizer: item.is_co_organizer
+      }));
+
+    } catch (error) {
+      console.error('Failed to get co-organizer status:', error);
       return [];
     }
   }
