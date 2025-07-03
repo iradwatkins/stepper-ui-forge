@@ -23,9 +23,9 @@ const Index = () => {
                 Browse Events
               </Button>
             </Link>
-            <Link to="/create-event">
+            <Link to="/auth">
               <Button variant="outline" size="lg" className="px-8 py-4 text-lg">
-                Create Event
+                Sign In / Sign Up
               </Button>
             </Link>
           </div>

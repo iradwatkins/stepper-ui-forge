@@ -48,6 +48,7 @@ import AudienceInsights from "./pages/dashboard/AudienceInsights";
 import PaymentTestPage from "./pages/PaymentTest";
 import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
@@ -153,6 +154,7 @@ const App = () => (
                     </AdminRoute>
                   } />
                 </Route>
+                <Route path="/auth" element={<Auth />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
