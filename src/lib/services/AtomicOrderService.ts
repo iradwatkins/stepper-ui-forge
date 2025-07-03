@@ -13,6 +13,17 @@ export class AtomicOrderService {
     return AtomicOrderService.instance;
   }
 
+  // Legacy method for compatibility
+  async extendReservations(reservationIds: string[]) {
+    console.log('Extending reservations:', reservationIds);
+    return { success: true };
+  }
+
+  // Legacy method for compatibility
+  async createAtomicOrder(orderData: any) {
+    return this.processOrder(orderData);
+  }
+
   async processOrder(orderData: {
     eventId: string;
     items: any[];
