@@ -10,7 +10,7 @@ import { WizardNavigator } from "@/components/create-event/wizard/WizardNavigato
 import { WizardControls } from "@/components/create-event/wizard/WizardControls";
 import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
 import { BasicInformation } from "@/components/create-event/BasicInformation";
-import { TicketConfigurationWizard } from "@/components/create-event/TicketConfigurationWizard";
+import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -22,6 +22,7 @@ export default function CreateEventWizard() {
   const navigate = useNavigate();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [eventType, setEventType] = useState<'simple' | 'ticketed' | 'premium' | ''>('');
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form with validation
@@ -132,6 +133,12 @@ export default function CreateEventWizard() {
     toast.success(`${imageType} image removed`);
   };
 
+  // Handle ticket configuration changes
+  const handleTicketsChange = (tickets: TicketType[]) => {
+    setTicketTypes(tickets);
+    console.log('Tickets updated:', tickets);
+  };
+
   // Save event function
   const saveEvent = async (status: 'draft' | 'published' = 'draft') => {
     const validation = validateCurrentStep();
@@ -180,6 +187,44 @@ export default function CreateEventWizard() {
       }
 
       console.log("Event created successfully:", event);
+      
+      // Save ticket types if this is a ticketed or premium event
+      if ((eventType === 'ticketed' || eventType === 'premium') && ticketTypes.length > 0) {
+        console.log('Creating ticket types for event:', event.id);
+        
+        const ticketTypePromises = ticketTypes.map(async (ticket) => {
+          const ticketData = {
+            event_id: event.id,
+            name: ticket.name.trim(),
+            description: ticket.description?.trim() || null,
+            price: ticket.price,
+            quantity: ticket.quantity,
+            max_per_person: 10, // Default limit
+            is_active: true
+          };
+
+          const { error: ticketError } = await supabase
+            .from("ticket_types")
+            .insert(ticketData);
+
+          if (ticketError) {
+            console.error("Error creating ticket type:", ticketError);
+            throw new Error(`Failed to create ticket type "${ticket.name}": ${ticketError.message}`);
+          }
+          
+          console.log(`Created ticket type: ${ticket.name} for $${ticket.price}`);
+        });
+
+        try {
+          await Promise.all(ticketTypePromises);
+          console.log('All ticket types created successfully');
+        } catch (ticketError) {
+          console.error('Error creating ticket types:', ticketError);
+          toast.error(`Event created but failed to save ticket types: ${ticketError instanceof Error ? ticketError.message : 'Unknown error'}`);
+          return false;
+        }
+      }
+
       toast.success(`Event ${status === 'published' ? 'published' : 'saved as draft'} successfully!`);
       
       // Reset form and navigate
@@ -188,6 +233,7 @@ export default function CreateEventWizard() {
       if (uploadedImages.banner) removeImage('banner');
       if (uploadedImages.postcard) removeImage('postcard');
       setSelectedCategories([]);
+      setTicketTypes([]);
       setEventType('');
       
       if (status === "published") {
@@ -245,6 +291,7 @@ export default function CreateEventWizard() {
           <TicketConfigurationWizard
             form={form}
             eventType={eventType}
+            onTicketsChange={handleTicketsChange}
           />
         );
         

@@ -9,17 +9,9 @@ import {
   List,
   Map,
 } from "lucide-react"
+import { EVENT_CATEGORIES, getCategoryLabels } from "@/lib/constants/event-categories"
 
-const categories = [
-  "All Events",
-  "Workshops",
-  "Sets",
-  "In the park",
-  "Trips",
-  "Cruises",
-  "Holiday",
-  "Competitions",
-]
+const categories = ["All Events", ...getCategoryLabels()]
 
 interface EventFiltersProps {
   searchQuery: string;
@@ -28,6 +20,14 @@ interface EventFiltersProps {
   setActiveCategory: (category: string) => void;
   activeView: string;
   setActiveView: (view: string) => void;
+  selectedLocation: string;
+  setSelectedLocation: (location: string) => void;
+  selectedDateRange: { start: string; end: string };
+  setSelectedDateRange: (range: { start: string; end: string }) => void;
+  sortBy: string;
+  setSortBy: (sort: string) => void;
+  showAdvancedFilters: boolean;
+  setShowAdvancedFilters: (show: boolean) => void;
 }
 
 export function EventFilters({ 
@@ -36,7 +36,15 @@ export function EventFilters({
   activeCategory, 
   setActiveCategory, 
   activeView, 
-  setActiveView 
+  setActiveView,
+  selectedLocation,
+  setSelectedLocation,
+  selectedDateRange,
+  setSelectedDateRange,
+  sortBy,
+  setSortBy,
+  showAdvancedFilters,
+  setShowAdvancedFilters
 }: EventFiltersProps) {
 
   return (
@@ -74,13 +82,51 @@ export function EventFilters({
 
         {/* Advanced Filter Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
-            <MapPin className="h-4 w-4" /> All States
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
-            <CalendarDays className="h-4 w-4" /> All Dates
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+          <div className="relative">
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 appearance-none pr-8"
+            >
+              <option value="">All Locations</option>
+              <option value="CA">California</option>
+              <option value="NY">New York</option>
+              <option value="TX">Texas</option>
+              <option value="FL">Florida</option>
+              <option value="IL">Illinois</option>
+              <option value="WA">Washington</option>
+              <option value="OR">Oregon</option>
+              <option value="NV">Nevada</option>
+              <option value="AZ">Arizona</option>
+              <option value="CO">Colorado</option>
+            </select>
+            <MapPin className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={selectedDateRange.start}
+              onChange={(e) => setSelectedDateRange({...selectedDateRange, start: e.target.value})}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-sm"
+            />
+            <span className="text-gray-500">to</span>
+            <input
+              type="date"
+              value={selectedDateRange.end}
+              onChange={(e) => setSelectedDateRange({...selectedDateRange, end: e.target.value})}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-sm"
+            />
+          </div>
+          
+          <button 
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
+              showAdvancedFilters 
+                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300' 
+                : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
             <SlidersHorizontal className="h-4 w-4" /> Advanced Filters
           </button>
         </div>
@@ -93,10 +139,17 @@ export function EventFilters({
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">Sort by:</span>
-              <select className="border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                <option>Date (Earliest First)</option>
-                <option>Date (Latest First)</option>
-                <option>Popularity</option>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              >
+                <option value="date_asc">Date (Earliest First)</option>
+                <option value="date_desc">Date (Latest First)</option>
+                <option value="popularity">Popularity</option>
+                <option value="price_asc">Price (Low to High)</option>
+                <option value="price_desc">Price (High to Low)</option>
+                <option value="title_asc">Title (A to Z)</option>
               </select>
             </div>
             

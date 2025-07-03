@@ -4,7 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { GooglePlacesInput } from "@/components/ui/GooglePlacesInput";
 import { CalendarIcon, ImageIcon, X, Upload, DollarSignIcon } from "lucide-react";
+import { loadGoogleMapsAPI } from "@/lib/config/google-maps";
+import { useEffect, useState } from "react";
+import { EVENT_CATEGORIES } from "@/lib/constants/event-categories";
 
 interface OptimizedImage {
   original: string;
@@ -66,16 +70,6 @@ interface BasicInformationProps {
   eventType: 'simple' | 'ticketed' | 'premium' | '';
 }
 
-const EVENT_CATEGORIES = [
-  { id: 'workshops', label: 'Workshops' },
-  { id: 'sets', label: 'Sets' },
-  { id: 'in-the-park', label: 'In the park' },
-  { id: 'trips', label: 'Trips' },
-  { id: 'cruises', label: 'Cruises' },
-  { id: 'holiday', label: 'Holiday' },
-  { id: 'competitions', label: 'Competitions' }
-] as const;
-
 export const BasicInformation = ({ 
   form, 
   selectedCategories, 
@@ -86,6 +80,24 @@ export const BasicInformation = ({
   isProcessingImage,
   eventType
 }: BasicInformationProps) => {
+  const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
+  const [selectedPlaceData, setSelectedPlaceData] = useState<any>(null);
+
+  // Load Google Maps API on component mount
+  useEffect(() => {
+    const initGoogleMaps = async () => {
+      try {
+        await loadGoogleMapsAPI();
+        setIsGoogleMapsLoaded(true);
+      } catch (error) {
+        console.warn('Google Maps API failed to load:', error);
+        // Continue without enhanced search functionality
+      }
+    };
+
+    initGoogleMaps();
+  }, []);
+
   console.log("BasicInformation rendering with categories:", selectedCategories);
   console.log("Form validation state:", {
     isValid: form.formState.isValid,
@@ -97,6 +109,20 @@ export const BasicInformation = ({
     if (e.target.files && e.target.files.length > 0) {
       onImageUpload(e.target.files, imageType);
     }
+  };
+
+  // Handle address/location changes
+  const handleAddressChange = (value: string, placeData?: any) => {
+    form.setValue('address', value);
+    if (placeData) {
+      setSelectedPlaceData(placeData);
+      console.log('Selected place:', placeData);
+    }
+  };
+
+  const handlePlaceSelected = (placeData: any) => {
+    setSelectedPlaceData(placeData);
+    console.log('Place selected with full data:', placeData);
   };
 
   const showDisplayPrice = eventType === 'simple';
@@ -167,17 +193,36 @@ export const BasicInformation = ({
 
             <div>
               <Label htmlFor="address" className="text-sm font-medium">Event Location/Address *</Label>
-              <Input
-                id="address"
-                placeholder="e.g., Central Park, 123 Main St, New York, NY 10001"
-                {...form.register('address')}
-                className={`mt-1 ${form.formState.errors.address ? 'border-red-500' : ''}`}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                <strong>Include city and state/region for better search results.</strong> Can be venue name, street address, or area.
-              </p>
+              <div className="mt-1">
+                <GooglePlacesInput
+                  value={form.watch('address') || ''}
+                  onChange={handleAddressChange}
+                  onPlaceSelected={handlePlaceSelected}
+                  placeholder="Search for venue, address, or landmark..."
+                  error={!!form.formState.errors.address}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex items-start justify-between mt-1">
+                <p className="text-xs text-muted-foreground">
+                  {isGoogleMapsLoaded ? (
+                    <>
+                      <strong>🌍 Enhanced search enabled!</strong> Search for venues, addresses, or use current location.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Include city and state/region for better search results.</strong> Can be venue name, street address, or area.
+                    </>
+                  )}
+                </p>
+                {selectedPlaceData && (
+                  <div className="text-xs text-green-600 font-medium">
+                    📍 Location verified
+                  </div>
+                )}
+              </div>
               {form.formState.errors.address && (
-                <p className="text-xs text-red-500">{form.formState.errors.address.message}</p>
+                <p className="text-xs text-red-500 mt-1">{form.formState.errors.address.message}</p>
               )}
             </div>
           </CardContent>

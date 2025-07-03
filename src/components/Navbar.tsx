@@ -33,6 +33,35 @@ const Navbar = () => {
               Events
             </Button>
           </Link>
+
+          <Link to="/magazine">
+            <Button 
+              variant={location.pathname === "/magazine" ? "default" : "ghost"}
+              className="font-medium text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
+            >
+              <span className="hidden md:inline">Magazine</span>
+              <span className="md:hidden">Mag</span>
+            </Button>
+          </Link>
+
+          <Link to="/classes">
+            <Button 
+              variant={location.pathname === "/classes" ? "default" : "ghost"}
+              className="font-medium text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
+            >
+              Classes
+            </Button>
+          </Link>
+
+          <Link to="/community">
+            <Button 
+              variant={location.pathname === "/community" ? "default" : "ghost"}
+              className="font-medium text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
+            >
+              <span className="hidden sm:inline">Community</span>
+              <span className="sm:hidden">Comm</span>
+            </Button>
+          </Link>
           
           {user && (
             <>

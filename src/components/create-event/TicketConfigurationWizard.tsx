@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { AlertCircle, Plus, Trash2, Info, TicketIcon, DollarSignIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-interface TicketType {
+export interface TicketType {
   id: string;
   name: string;
   description: string;
@@ -24,9 +24,10 @@ interface TicketType {
 interface TicketConfigurationWizardProps {
   form: UseFormReturn<EventFormData>;
   eventType: 'simple' | 'ticketed' | 'premium' | '';
+  onTicketsChange?: (tickets: TicketType[]) => void;
 }
 
-export const TicketConfigurationWizard = ({ form, eventType }: TicketConfigurationWizardProps) => {
+export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange }: TicketConfigurationWizardProps) => {
   const [tickets, setTickets] = useState<TicketType[]>([
     {
       id: 'general',
@@ -37,6 +38,13 @@ export const TicketConfigurationWizard = ({ form, eventType }: TicketConfigurati
       hasEarlyBird: false
     }
   ]);
+
+  // Notify parent component when tickets change
+  useEffect(() => {
+    if (onTicketsChange && eventType !== 'simple') {
+      onTicketsChange(tickets);
+    }
+  }, [tickets, onTicketsChange, eventType]);
 
   const addTicketTier = () => {
     const newTicket: TicketType = {

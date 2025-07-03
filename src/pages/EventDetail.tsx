@@ -9,11 +9,13 @@ import { useParams } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
 import { TicketSelector } from "@/components/ticketing";
+import { SeatingChart } from "@/components/seating";
 import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
 import { CheckoutModal } from "@/components/CheckoutModal";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
+import { seatingService, AvailableSeat } from "@/lib/services/SeatingService";
 
 interface EventImageData {
   original?: string;
@@ -39,6 +41,9 @@ const EventDetail = () => {
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [seatingCharts, setSeatingCharts] = useState<any[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<AvailableSeat[]>([]);
+  const [showSeating, setShowSeating] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -54,6 +59,16 @@ const EventDetail = () => {
           // Ticket types are already loaded with the event
           setTicketTypes(foundEvent.ticket_types || []);
           setTicketsLoading(false);
+          
+          // Load seating charts for premium events
+          if (foundEvent.event_type === 'premium') {
+            try {
+              const charts = await seatingService.getSeatingCharts(foundEvent.id);
+              setSeatingCharts(charts);
+            } catch (error) {
+              console.error('Error loading seating charts:', error);
+            }
+          }
         } else {
           setTicketsLoading(false);
         }
@@ -153,6 +168,26 @@ const EventDetail = () => {
         variant: "destructive"
       });
     }
+  };
+
+  // Handle seat selection for premium events
+  const handleSeatsSelected = (seats: AvailableSeat[]) => {
+    setSelectedSeats(seats);
+  };
+
+  const handleSeatPurchase = () => {
+    if (selectedSeats.length === 0) {
+      toast({
+        title: "No seats selected",
+        description: "Please select at least one seat before proceeding.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // For now, just open the checkout modal
+    // TODO: Integrate seat purchases with checkout flow
+    setIsCheckoutOpen(true);
   };
 
   // Handle simple event registration (free events)
@@ -402,6 +437,51 @@ const EventDetail = () => {
                         {eventPrice > 0 ? 'Buy Tickets' : 'Register Now'}
                       </Button>
                     </>
+                  ) : event.event_type === 'premium' && seatingCharts.length > 0 ? (
+                    <>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Premium Seating</h3>
+                          <Badge className="bg-purple-100 text-purple-800">Premium Event</Badge>
+                        </div>
+                        
+                        {!showSeating ? (
+                          <div className="text-center space-y-4">
+                            <p className="text-gray-600 dark:text-gray-400">
+                              This premium event features reserved seating. Select your preferred seats from our interactive seating chart.
+                            </p>
+                            <Button 
+                              onClick={() => setShowSeating(true)}
+                              className="w-full"
+                            >
+                              Choose Your Seats
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <SeatingChart
+                              eventId={event.id}
+                              seatingChartId={seatingCharts[0].id}
+                              onSeatsSelected={handleSeatsSelected}
+                              maxSeats={8}
+                            />
+                            
+                            {selectedSeats.length > 0 && (
+                              <div className="border-t pt-4">
+                                <Button 
+                                  onClick={handleSeatPurchase}
+                                  className="w-full"
+                                  size="lg"
+                                >
+                                  Purchase {selectedSeats.length} Seat{selectedSeats.length !== 1 ? 's' : ''} - 
+                                  ${selectedSeats.reduce((sum, seat) => sum + (seat.current_price || 0), 0).toFixed(2)}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
                   ) : (
                     <>
                       <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Select Tickets</h3>
@@ -456,13 +536,6 @@ const EventDetail = () => {
       <CheckoutModal 
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
-        event={{
-          id: parseInt(event.id),
-          title: event.title,
-          date: event.date,
-          time: event.time,
-          price: eventPrice
-        }}
       />
 
       <ImageGalleryModal

@@ -12,6 +12,9 @@ import { AdminRoute } from "@/components/auth/AdminRoute";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
+import Magazine from "./pages/Magazine";
+import Classes from "./pages/Classes";
+import Community from "./pages/Community";
 import CreateEvent from "./pages/CreateEvent";
 import CreateEventWizard from "./pages/CreateEventWizard";
 import EditEvent from "./pages/EditEvent";
@@ -81,6 +84,9 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/events/:id" element={<EventDetail />} />
+                <Route path="/magazine" element={<Magazine />} />
+                <Route path="/classes" element={<Classes />} />
+                <Route path="/community" element={<Community />} />
                 <Route path="/my-tickets" element={<MyTickets />} />
                 <Route path="/payment-test" element={<PaymentTestPage />} />
                 <Route path="/create-event" element={

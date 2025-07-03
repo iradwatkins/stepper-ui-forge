@@ -1,0 +1,1 @@
+export { SeatingChart } from './SeatingChart';
