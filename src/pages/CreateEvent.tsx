@@ -128,7 +128,8 @@ export default function CreateEvent() {
         max_attendees: data.maxAttendees || null,
         is_public: data.isPublic,
         status: status,
-        owner_id: user.id
+        owner_id: user.id,
+        categories: [] // Add empty categories array
       };
 
       console.log("Inserting event data:", eventData);

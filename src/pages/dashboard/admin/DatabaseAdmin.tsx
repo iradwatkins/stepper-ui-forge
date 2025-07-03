@@ -10,9 +10,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Search, Trash2, AlertTriangle, Database, Filter, Eye } from 'lucide-react'
+import { Search, Trash2, AlertTriangle, Database, Filter, Eye, Broom } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminRoute } from '@/components/auth/AdminRoute'
+import { cleanupAllDemoData, verifyCleanup } from '@/lib/utils/cleanup-demo-data'
 
 interface DatabaseEvent {
   id: string
@@ -53,6 +54,7 @@ function DatabaseAdminContent() {
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [selectedEvent, setSelectedEvent] = useState<DatabaseEvent | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isCleaningUp, setIsCleaningUp] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -151,6 +153,38 @@ function DatabaseAdminContent() {
     }
   }
 
+  const handleCleanupDemoData = async () => {
+    if (!confirm('Are you sure you want to delete ALL demo/test data? This action cannot be undone.')) {
+      return
+    }
+
+    setIsCleaningUp(true)
+    try {
+      const result = await cleanupAllDemoData()
+      
+      if (result.errors.length > 0) {
+        toast.error(`Cleanup completed with ${result.errors.length} errors. Check console for details.`)
+        console.error('Cleanup errors:', result.errors)
+      } else {
+        toast.success(`Successfully removed ${result.deleted} demo events!`)
+      }
+      
+      // Refresh the data
+      await loadData()
+      
+      // Verify cleanup
+      const isClean = await verifyCleanup()
+      if (isClean) {
+        toast.success('Verification passed - all demo data removed!')
+      }
+    } catch (error) {
+      console.error('Error during cleanup:', error)
+      toast.error('Failed to cleanup demo data. Check console for details.')
+    } finally {
+      setIsCleaningUp(false)
+    }
+  }
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = 
       event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -232,10 +266,16 @@ function DatabaseAdminContent() {
             Manage database records and remove test/demo data
           </p>
         </div>
-        <Button onClick={loadData} variant="outline">
-          <Database className="mr-2 h-4 w-4" />
-          Refresh Data
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleCleanupDemoData} variant="destructive" disabled={isCleaningUp}>
+            <Broom className="mr-2 h-4 w-4" />
+            {isCleaningUp ? 'Cleaning...' : 'Remove All Demo Data'}
+          </Button>
+          <Button onClick={loadData} variant="outline">
+            <Database className="mr-2 h-4 w-4" />
+            Refresh Data
+          </Button>
+        </div>
       </div>
 
       {/* Warning Alert */}

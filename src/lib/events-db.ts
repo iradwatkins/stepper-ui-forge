@@ -118,7 +118,10 @@ export class EventsService {
   }
 
   static async getPublicEvents(limit = 20, offset = 0): Promise<EventWithStats[]> {
+    console.log('getPublicEvents called with limit:', limit, 'offset:', offset)
+    
     try {
+      console.log('Attempting to fetch public events from database...')
       const { data, error } = await supabase
         .from('events')
         .select(`
@@ -137,10 +140,12 @@ export class EventsService {
         `)
         .eq('is_public', true)
         .eq('status', 'published')
-        .gte('date', new Date().toISOString().split('T')[0])
+        // .gte('date', new Date().toISOString().split('T')[0]) // Commented out to show all events for now
         .order('date', { ascending: true })
         .range(offset, offset + limit - 1)
 
+      console.log('Database response - data:', data?.length || 0, 'events, error:', error)
+      
       if (error) {
         console.error('Error fetching public events:', error)
         throw error
