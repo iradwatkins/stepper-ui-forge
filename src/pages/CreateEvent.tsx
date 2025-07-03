@@ -119,9 +119,7 @@ export default function CreateEvent() {
         max_attendees: data.maxAttendees || null,
         is_public: data.isPublic,
         status: status,
-        owner_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        owner_id: user.id
       };
 
       console.log("Inserting event data:", eventData);
