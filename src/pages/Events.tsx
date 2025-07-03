@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SearchIcon, MapPinIcon, CalendarIcon, UsersIcon, Eye, EyeOff } from "lucide-react";
+import { SearchIcon, MapPinIcon, CalendarIcon, UsersIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
@@ -13,7 +13,6 @@ const Events = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [events, setEvents] = useState<EventWithStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hideDemoData, setHideDemoData] = useState(true);
 
   const categories = [
     { id: "all", label: "All Events" },
@@ -31,10 +30,12 @@ const Events = () => {
     const loadEvents = async () => {
       setLoading(true);
       try {
+        console.log('🔍 Loading events from Events page...');
         const publicEvents = await EventsService.getPublicEvents(50, 0);
+        console.log('📊 Loaded events:', publicEvents);
         setEvents(publicEvents);
       } catch (error) {
-        console.error('Error loading events:', error);
+        console.error('❌ Error loading events:', error);
         setEvents([]);
       } finally {
         setLoading(false);
@@ -44,32 +45,6 @@ const Events = () => {
     loadEvents();
   }, []);
 
-  // Function to detect demo/test data patterns
-  const isDemoData = (event: EventWithStats) => {
-    const demoPatterns = [
-      'Spring Art Exhibition',
-      'Winter Networking Event', 
-      'Summer Music Festival',
-      'Tech Conference 2024',
-      'Food & Wine Expo',
-      'Charity Gala',
-      'Weekend Market',
-      'Downtown Gallery',
-      'Business Center',
-      'Convention Center',
-      'Central Park',
-      'Demo Event',
-      'Test Event',
-      'Sample Event'
-    ]
-    
-    return demoPatterns.some(pattern => 
-      event.title.toLowerCase().includes(pattern.toLowerCase()) ||
-      event.description?.toLowerCase().includes(pattern.toLowerCase()) ||
-      event.location?.toLowerCase().includes(pattern.toLowerCase()) ||
-      event.organization_name?.toLowerCase().includes(pattern.toLowerCase())
-    )
-  }
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -78,12 +53,6 @@ const Events = () => {
                          event.location?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || 
                            event.categories?.includes(selectedCategory);
-    const isDemo = isDemoData(event);
-    
-    // If hiding demo data and this is demo data, filter it out
-    if (hideDemoData && isDemo) {
-      return false;
-    }
     
     return matchesSearch && matchesCategory;
   });
@@ -142,15 +111,6 @@ const Events = () => {
             <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
               Find amazing events happening near you
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setHideDemoData(!hideDemoData)}
-              className="flex items-center gap-2"
-            >
-              {hideDemoData ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-              {hideDemoData ? 'Show Demo' : 'Hide Demo'}
-            </Button>
           </div>
 
           {/* Search Bar */}

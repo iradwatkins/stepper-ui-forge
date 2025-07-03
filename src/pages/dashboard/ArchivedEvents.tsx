@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Calendar, ArchiveIcon, RotateCcw, Eye, EyeOff } from 'lucide-react'
+import { Search, Calendar, ArchiveIcon, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ArchivedEvent {
@@ -24,7 +24,6 @@ export default function ArchivedEvents() {
   const [events, setEvents] = useState<ArchivedEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [hideDemoData, setHideDemoData] = useState(true)
 
   useEffect(() => {
     if (!user) return
@@ -80,40 +79,9 @@ export default function ArchivedEvents() {
     }
   }
 
-  // Function to detect demo/test data patterns
-  const isDemoData = (event: ArchivedEvent) => {
-    const demoPatterns = [
-      'Spring Art Exhibition',
-      'Winter Networking Event',
-      'Summer Music Festival', 
-      'Tech Conference 2024',
-      'Food & Wine Expo',
-      'Charity Gala',
-      'Weekend Market',
-      'Downtown Gallery',
-      'Business Center',
-      'Convention Center',
-      'Central Park',
-      'Demo Event',
-      'Test Event',
-      'Sample Event'
-    ]
-    
-    return demoPatterns.some(pattern => 
-      event.title.toLowerCase().includes(pattern.toLowerCase()) ||
-      event.location.toLowerCase().includes(pattern.toLowerCase())
-    )
-  }
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const isDemo = isDemoData(event)
-    
-    // If hiding demo data and this is demo data, filter it out
-    if (hideDemoData && isDemo) {
-      return false
-    }
-    
     return matchesSearch
   })
 

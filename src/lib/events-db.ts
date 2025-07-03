@@ -140,7 +140,7 @@ export class EventsService {
         `)
         .eq('is_public', true)
         .eq('status', 'published')
-        // .gte('date', new Date().toISOString().split('T')[0]) // Commented out to show all events for now
+        .gte('date', new Date().toISOString().split('T')[0])
         .order('date', { ascending: true })
         .range(offset, offset + limit - 1)
 

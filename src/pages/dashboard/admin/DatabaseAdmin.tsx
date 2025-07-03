@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Search, Trash2, AlertTriangle, Database, Filter, Eye, Broom } from 'lucide-react'
+import { Search, Trash2, AlertTriangle, Database, Filter, Eye, Trash } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminRoute } from '@/components/auth/AdminRoute'
 import { cleanupAllDemoData, verifyCleanup } from '@/lib/utils/cleanup-demo-data'
@@ -268,7 +268,7 @@ function DatabaseAdminContent() {
         </div>
         <div className="flex gap-2">
           <Button onClick={handleCleanupDemoData} variant="destructive" disabled={isCleaningUp}>
-            <Broom className="mr-2 h-4 w-4" />
+            <Trash className="mr-2 h-4 w-4" />
             {isCleaningUp ? 'Cleaning...' : 'Remove All Demo Data'}
           </Button>
           <Button onClick={loadData} variant="outline">
