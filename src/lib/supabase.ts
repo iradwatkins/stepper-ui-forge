@@ -37,8 +37,11 @@ const createMockClient = () => ({
   }
 } as unknown as SupabaseClient<Database>)
 
-export const supabase = isSupabaseConfigured 
+// Use real client if we have both URL and key (more permissive than original check)
+const shouldUseRealClient = supabaseUrl && supabaseAnonKey
+
+export const supabase = shouldUseRealClient
   ? createClient<Database>(supabaseUrl!, supabaseAnonKey!)
   : createMockClient()
 
-export const isSupabaseReady = isSupabaseConfigured
+export const isSupabaseReady = shouldUseRealClient

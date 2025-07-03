@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ProfileService } from '@/lib/profiles'
 import { TwoFactorService } from '@/lib/two-factor'
 import { Profile as ProfileType } from '@/types/database'
-import { SupabaseStatus } from '@/components/SupabaseStatus'
 import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -260,9 +259,6 @@ export default function Profile() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Supabase Status */}
-      <SupabaseStatus />
-
       {/* Profile Header */}
       <Card>
         <CardContent className="pt-6">
