@@ -60,6 +60,7 @@ export default function CreateEvent() {
 
   const validateForm = (): boolean => {
     const values = form.getValues();
+    console.log("Validating form values:", values);
     
     // Check required fields
     if (!values.title.trim()) {
@@ -84,11 +85,18 @@ export default function CreateEvent() {
 
     // Validate date is in future
     const eventDate = new Date(`${values.date}T${values.time}`);
-    if (eventDate <= new Date()) {
+    const currentDate = new Date();
+    console.log("Event date:", eventDate, "Current date:", currentDate);
+    
+    // Add 1 minute buffer to avoid timezone issues
+    const oneMinuteFromNow = new Date(currentDate.getTime() + 60000);
+    
+    if (eventDate <= oneMinuteFromNow) {
       toast.error("Event date and time must be in the future");
       return false;
     }
 
+    console.log("Form validation passed");
     return true;
   };
 
@@ -101,6 +109,7 @@ export default function CreateEvent() {
     }
 
     if (!validateForm()) {
+      console.log("Form validation failed, cannot publish event");
       return;
     }
 
