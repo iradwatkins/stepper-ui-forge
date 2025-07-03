@@ -21,7 +21,7 @@ const localStorageMock = {
   removeItem: jest.fn(),
   clear: jest.fn(),
 };
-global.localStorage = localStorageMock as Storage;
+global.localStorage = localStorageMock as unknown as Storage;
 
 const mockTicketType: TicketType = {
   id: 'ticket-1',

@@ -9,7 +9,7 @@ const localStorageMock = {
   removeItem: jest.fn(),
   clear: jest.fn(),
 };
-global.localStorage = localStorageMock as Storage;
+global.localStorage = localStorageMock as unknown as Storage;
 
 // Test component to access cart context
 const TestComponent = () => {

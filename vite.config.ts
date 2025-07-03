@@ -5,13 +5,14 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   server: {
-    port: 8080
+    host: "::",
+    port: 8080,
   },
   plugins: [
     react(),
-    // Remove development-only plugins
+    mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
@@ -56,7 +57,7 @@ export default defineConfig({
         ]
       }
     })
-  ],
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -77,4 +78,4 @@ export default defineConfig({
       }
     }
   }
-});
+}));
