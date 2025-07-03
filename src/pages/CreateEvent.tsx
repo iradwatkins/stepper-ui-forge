@@ -222,7 +222,9 @@ const CreateEvent = () => {
 
       console.log("Formatted event for database:", eventToSave);
       
+      console.log("Calling EventsService.createEvent...");
       const savedEvent = await EventsService.createEvent(eventToSave);
+      console.log("EventsService.createEvent returned:", savedEvent);
       
       if (savedEvent) {
         localStorage.removeItem('draft-event');
@@ -230,7 +232,8 @@ const CreateEvent = () => {
         navigate('/dashboard');
         return savedEvent;
       } else {
-        throw new Error('Failed to create event');
+        console.error('EventsService.createEvent returned null');
+        throw new Error('Failed to create event - service returned null');
       }
       
     } catch (error) {

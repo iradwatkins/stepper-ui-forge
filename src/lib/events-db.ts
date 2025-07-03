@@ -225,22 +225,34 @@ export class EventsService {
   }
 
   static async createEvent(eventData: EventInsert): Promise<Event | null> {
+    console.log('createEvent called with:', eventData);
+    console.log('isSupabaseReady:', isSupabaseReady);
+    
+    if (!isSupabaseReady) {
+      console.error('Supabase not configured - cannot create event');
+      throw new Error('Database not configured - cannot create events');
+    }
+
     try {
+      console.log('Attempting to insert event into database...');
       const { data, error } = await supabase
         .from('events')
         .insert(eventData)
         .select()
-        .single()
+        .single();
+
+      console.log('Database response - data:', data, 'error:', error);
 
       if (error) {
-        console.error('Error creating event:', error)
-        throw error
+        console.error('Error creating event:', error);
+        throw error;
       }
 
-      return data
+      console.log('Event created successfully:', data);
+      return data;
     } catch (error) {
-      console.error('Error in createEvent:', error)
-      throw error
+      console.error('Error in createEvent:', error);
+      throw error;
     }
   }
 
