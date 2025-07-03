@@ -7,9 +7,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // Supabase is properly configured for production
 const isSupabaseConfigured = true
 
-if (!isSupabaseConfigured) {
-  console.warn('Supabase environment variables not configured. Some features will be disabled.')
-}
+// Configuration is hardcoded for production - no warnings needed
 
 // Create a mock client for development when Supabase is not configured
 const createMockClient = () => ({
@@ -34,11 +32,9 @@ const createMockClient = () => ({
   }
 } as unknown as SupabaseClient<Database>)
 
-// Use real client if we have both URL and key (more permissive than original check)
-const shouldUseRealClient = supabaseUrl && supabaseAnonKey
+// Use real client - hardcoded configuration for production
+const shouldUseRealClient = true
 
-export const supabase = shouldUseRealClient
-  ? createClient<Database>(supabaseUrl!, supabaseAnonKey!)
-  : createMockClient()
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
-export const isSupabaseReady = shouldUseRealClient
+export const isSupabaseReady = true
