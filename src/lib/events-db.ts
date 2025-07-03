@@ -1,4 +1,4 @@
-import { supabase, isSupabaseReady } from './supabase'
+import { supabase } from './supabase'
 import { Event, EventInsert, EventUpdate, EventWithStats, TicketType, TicketTypeInsert } from '@/types/database'
 
 interface EventAnalytics {
@@ -25,10 +25,6 @@ interface DashboardStats {
 
 export class EventsService {
   static async getUserEvents(userId: string): Promise<EventWithStats[]> {
-    if (!isSupabaseReady) {
-      console.warn('Supabase not configured - returning empty events array')
-      return []
-    }
 
     try {
       const { data, error } = await supabase
@@ -74,10 +70,6 @@ export class EventsService {
   }
 
   static async getAllEvents(limit = 100, offset = 0): Promise<EventWithStats[]> {
-    if (!isSupabaseReady) {
-      console.warn('Supabase not configured - returning empty events array')
-      return []
-    }
 
     try {
       const { data, error } = await supabase
@@ -226,12 +218,6 @@ export class EventsService {
 
   static async createEvent(eventData: EventInsert): Promise<Event | null> {
     console.log('createEvent called with:', eventData);
-    console.log('isSupabaseReady:', isSupabaseReady);
-    
-    if (!isSupabaseReady) {
-      console.error('Supabase not configured - cannot create event');
-      throw new Error('Database not configured - cannot create events');
-    }
 
     try {
       console.log('Attempting to insert event into database...');
@@ -427,10 +413,6 @@ export class EventsService {
   }
 
   static async getUserEventsByStatus(userId: string, status: string): Promise<EventWithStats[]> {
-    if (!isSupabaseReady) {
-      console.warn('Supabase not configured - returning empty events array')
-      return []
-    }
 
     try {
       const { data, error } = await supabase

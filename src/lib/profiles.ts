@@ -1,12 +1,8 @@
-import { supabase, isSupabaseReady } from './supabase'
+import { supabase } from './supabase'
 import { Profile, ProfileInsert, ProfileUpdate } from '@/types/database'
 
 export class ProfileService {
   static async getProfile(userId: string): Promise<Profile | null> {
-    if (!isSupabaseReady) {
-      console.warn('Supabase not configured - returning mock profile')
-      return null
-    }
 
     try {
       const { data, error } = await supabase
@@ -69,20 +65,6 @@ export class ProfileService {
   }
 
   static async uploadAvatar(userId: string, file: File): Promise<string | null> {
-    if (!isSupabaseReady) {
-      console.warn('Supabase not configured - using fallback avatar storage')
-      // Use fallback storage (localStorage for demo)
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          const base64String = reader.result as string
-          localStorage.setItem(`avatar_${userId}`, base64String)
-          resolve(base64String)
-        }
-        reader.onerror = () => reject(new Error('Failed to read file'))
-        reader.readAsDataURL(file)
-      })
-    }
 
     try {
       const fileExt = file.name.split('.').pop()
