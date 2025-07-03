@@ -32,9 +32,7 @@ const createMockClient = () => ({
   }
 } as unknown as SupabaseClient<Database>)
 
-// Use real client - hardcoded configuration for production
-const shouldUseRealClient = true
-
+// Always use real client with production configuration
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 export const isSupabaseReady = true
