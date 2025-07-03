@@ -15,6 +15,8 @@ export interface PaymentRequest {
   description: string;
   customerEmail: string;
   customerName?: string;
+  gatewayType: PaymentGateway;
+  sourceId?: string;
   successUrl?: string;
   cancelUrl?: string;
   webhookUrl?: string;
@@ -46,9 +48,12 @@ export interface PaymentError {
 
 // Payment method information
 export interface PaymentMethod {
+  id: string;
+  type: PaymentGateway;
   gateway: PaymentGateway;
   name: string;
   description: string;
+  icon?: string;
   enabled: boolean;
   supportedCurrencies: Currency[];
   fees?: {
@@ -61,6 +66,7 @@ export interface PaymentMethod {
 
 // Refund request structure
 export interface RefundRequest {
+  paymentId: string;
   transactionId: string;
   amount?: number; // Partial refund if specified
   reason?: string;
@@ -68,14 +74,16 @@ export interface RefundRequest {
 
 // Refund response structure
 export interface RefundResponse {
+  success: boolean;
   refundId: string;
   transactionId: string;
   amount: number;
-  currency: Currency;
+  currency?: Currency;
   status: PaymentStatus;
-  gateway: PaymentGateway;
+  gateway?: PaymentGateway;
+  error?: string;
   refundedAt?: Date;
-  rawResponse?: any;
+  gatewayResponse?: any;
 }
 
 // Webhook payload structure
@@ -110,9 +118,15 @@ export interface GatewayInitOptions {
 // Payment processing result
 export interface PaymentResult {
   success: boolean;
+  paymentId?: string;
+  status?: PaymentStatus;
+  amount?: number;
+  currency?: Currency;
+  gatewayType: PaymentGateway;
   payment?: PaymentResponse;
-  error?: PaymentError;
+  error?: string | PaymentError;
   requiresAction?: boolean; // For 3D Secure, additional verification
   actionUrl?: string;
   redirectUrl?: string;
+  gatewayResponse?: any;
 }

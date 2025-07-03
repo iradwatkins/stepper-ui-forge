@@ -1,0 +1,18 @@
+# Complex Payment System Disabled for Production
+
+The complex payment gateway system with multiple abstractions has been 
+temporarily disabled to focus on production deployment.
+
+The application now uses a simplified ProductionPaymentService that:
+- Connects directly to Supabase Edge Functions
+- Handles real payment processing
+- Avoids complex type conflicts
+
+Original payment files that were disabled:
+- PaymentManager.ts
+- Gateway classes (PayPal, Square, Cash App)
+- Complex type definitions
+- Test files
+
+To restore full payment functionality, the type system needs to be 
+refactored to resolve conflicts between different gateway interfaces.

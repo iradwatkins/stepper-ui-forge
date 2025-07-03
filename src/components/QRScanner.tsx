@@ -7,6 +7,7 @@ import { useQRValidation } from '@/lib/hooks/useQRValidation'
 import { QRValidationService } from '@/lib/services/QRValidationService'
 
 interface QRScannerProps {
+  onScan?: (scannedCode: string) => Promise<void>
   onValidation?: (result: any) => void
   onCheckIn?: (result: any) => void
   autoCheckIn?: boolean
@@ -15,6 +16,7 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ 
+  onScan,
   onValidation, 
   onCheckIn, 
   autoCheckIn = false, 
@@ -42,6 +44,11 @@ export function QRScanner({
     if (!qrInput.trim()) return
     
     try {
+      // Call onScan if provided
+      if (onScan) {
+        await onScan(qrInput)
+      }
+      
       if (mode === 'checkin' || (mode === 'both' && autoCheckIn)) {
         const result = await validateAndCheckIn(qrInput, checkedInBy)
         onCheckIn?.(result)
