@@ -166,15 +166,15 @@ export const BasicInformation = ({
             </div>
 
             <div>
-              <Label htmlFor="address" className="text-sm font-medium">Event Address *</Label>
+              <Label htmlFor="address" className="text-sm font-medium">Event Location/Address *</Label>
               <Input
                 id="address"
-                placeholder="123 Main St, City, State, ZIP Code"
+                placeholder="e.g., Central Park, 123 Main St, New York, NY 10001"
                 {...form.register('address')}
                 className={`mt-1 ${form.formState.errors.address ? 'border-red-500' : ''}`}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Enter complete address to help people find events by location
+                <strong>Include city and state/region for better search results.</strong> Can be venue name, street address, or area.
               </p>
               {form.formState.errors.address && (
                 <p className="text-xs text-red-500">{form.formState.errors.address.message}</p>

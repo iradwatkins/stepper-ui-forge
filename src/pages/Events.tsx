@@ -46,7 +46,8 @@ const Events = () => {
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.organization_name?.toLowerCase().includes(searchQuery.toLowerCase());
+                         event.organization_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         event.location?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || 
                            event.categories?.includes(selectedCategory);
     return matchesSearch && matchesCategory;
@@ -110,7 +111,7 @@ const Events = () => {
           <div className="relative mb-4 sm:mb-6 events-search">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             <Input
-              placeholder="Search events..."
+              placeholder="Search events by title, location, or organizer..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 sm:pl-10 h-10 sm:h-12 text-sm sm:text-base lg:text-lg border-border focus:border-primary/50 focus:ring-primary/20"

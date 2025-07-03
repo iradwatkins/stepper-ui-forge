@@ -150,7 +150,9 @@ export const ReviewStep = ({ eventData, eventType, eventTypes }: ReviewStepProps
               <h4 className="font-medium text-sm text-muted-foreground mb-1">Location</h4>
               <div className="flex items-start gap-2">
                 <MapPinIcon className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <p className="text-sm">{eventData.location}</p>
+                <p className="text-sm">
+                  {eventData.location || "No location specified"}
+                </p>
               </div>
             </div>
 
