@@ -1,96 +1,131 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { EventsService } from '@/lib/events-db'
-import { EventWithStats } from '@/types/database'
+import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Edit3,
-  Eye,
-  Trash2,
-  MoreVertical,
-  Plus,
-  Search,
-  Calendar,
-  MapPin,
-  Users
-} from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Search, Calendar, FileTextIcon, Edit, Eye, MoreHorizontal, Trash2, Send } from 'lucide-react'
+import { toast } from 'sonner'
+
+interface DraftEvent {
+  id: string
+  title: string
+  description: string | null
+  date: string
+  time: string
+  location: string
+  event_type: 'simple' | 'ticketed' | 'premium'
+  organization_name: string | null
+  max_attendees: number | null
+  created_at: string
+  updated_at: string
+}
 
 export default function DraftEvents() {
   const { user } = useAuth()
-  const [draftEvents, setDraftEvents] = useState<EventWithStats[]>([])
+  const [events, setEvents] = useState<DraftEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
+    if (!user) return
     loadDraftEvents()
-  }, [user?.id])
+  }, [user])
 
   const loadDraftEvents = async () => {
-    if (!user?.id) return
-
+    if (!user) return
+    
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      const draftEvents = await EventsService.getDraftEvents(user.id)
-      setDraftEvents(draftEvents)
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('owner_id', user.id)
+        .eq('status', 'draft')
+        .order('updated_at', { ascending: false })
+
+      if (error) {
+        console.error('Error loading draft events:', error)
+        toast.error('Failed to load draft events')
+        return
+      }
+
+      setEvents(data || [])
     } catch (error) {
       console.error('Error loading draft events:', error)
+      toast.error('Failed to load draft events')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleDeleteDraft = async (eventId: string) => {
+  const publishEvent = async (eventId: string, eventTitle: string) => {
     try {
-      await EventsService.deleteEvent(eventId)
-      setDraftEvents(prev => prev.filter(event => event.id !== eventId))
+      const { error } = await supabase
+        .from('events')
+        .update({ status: 'published' })
+        .eq('id', eventId)
+        .eq('owner_id', user?.id)
+
+      if (error) {
+        console.error('Error publishing event:', error)
+        toast.error('Failed to publish event')
+        return
+      }
+
+      toast.success(`Event "${eventTitle}" has been published successfully!`)
+      loadDraftEvents() // Refresh the list
     } catch (error) {
-      console.error('Error deleting draft event:', error)
+      console.error('Error publishing event:', error)
+      toast.error('Failed to publish event')
     }
   }
 
-  const filteredEvents = draftEvents.filter(event =>
-    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.location.toLowerCase().includes(searchTerm.toLowerCase())
+  const deleteEvent = async (eventId: string, eventTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${eventTitle}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId)
+        .eq('owner_id', user?.id)
+
+      if (error) {
+        console.error('Error deleting event:', error)
+        toast.error('Failed to delete event')
+        return
+      }
+
+      toast.success(`Event "${eventTitle}" has been deleted successfully`)
+      loadDraftEvents() // Refresh the list
+    } catch (error) {
+      console.error('Error deleting event:', error)
+      toast.error('Failed to delete event')
+    }
+  }
+
+  const filteredEvents = events.filter(event =>
+    event.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Draft Events</h1>
-        </div>
-        <div className="grid gap-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'simple':
+        return 'bg-gray-100 text-gray-800'
+      case 'ticketed':
+        return 'bg-blue-100 text-blue-800'
+      case 'premium':
+        return 'bg-purple-100 text-purple-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
   }
 
   return (
@@ -98,132 +133,192 @@ export default function DraftEvents() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Draft Events</h1>
-          <p className="text-muted-foreground">
-            Manage your event drafts and continue editing
+          <h1 className="text-3xl font-bold text-gray-900">Draft Events</h1>
+          <p className="mt-2 text-gray-600">
+            Events that are saved but not yet published
           </p>
         </div>
         <Link to="/create-event">
           <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Event
+            <FileTextIcon className="mr-2 h-4 w-4" />
+            Create New Event
           </Button>
         </Link>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search draft events..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      {/* Events List */}
-      {filteredEvents.length === 0 ? (
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardContent className="p-12 text-center">
-            <Edit3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium mb-2">No draft events</h3>
-            <p className="text-muted-foreground mb-4">
-              You don't have any draft events yet. Create your first event to get started.
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Drafts</CardTitle>
+            <FileTextIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{events.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Unpublished events
             </p>
-            <Link to="/create-event">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Event
-              </Button>
-            </Link>
           </CardContent>
         </Card>
-      ) : (
+        
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Event</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Last Modified</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEvents.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{event.title}</div>
-                      <div className="text-sm text-muted-foreground line-clamp-1">
-                        {event.description}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center text-sm">
-                      <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <div>
-                        <div>{new Date(event.date).toLocaleDateString()}</div>
-                        <div className="text-muted-foreground">{event.time}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center text-sm">
-                      <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {event.location}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="capitalize">
-                      {event.event_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(event.updated_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link to={`/dashboard/events/edit/${event.id}`}>
-                            <Edit3 className="w-4 h-4 mr-2" />
-                            Continue Editing
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={`/events/${event.id}`}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            Preview
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteDraft(event.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Draft
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Drafts</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {events.filter(e => {
+                const weekAgo = new Date()
+                weekAgo.setDate(weekAgo.getDate() - 7)
+                return new Date(e.updated_at) > weekAgo
+              }).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Updated this week
+            </p>
+          </CardContent>
         </Card>
-      )}
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ready to Publish</CardTitle>
+            <Send className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {events.filter(e => e.title && e.date && e.location).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Complete drafts
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Events Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Draft Events</CardTitle>
+              <CardDescription>
+                Events that are saved but not yet published
+              </CardDescription>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search draft events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 w-[300px]"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                  <TableHead>Capacity</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEvents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {searchQuery ? 'No draft events found matching your search.' : 'No draft events yet. Create your first event!'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredEvents.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{event.title}</div>
+                          {event.description && (
+                            <div className="text-sm text-muted-foreground truncate max-w-[200px]">
+                              {event.description}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {new Date(event.date).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {event.time}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[150px] truncate" title={event.location}>
+                          {event.location}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getTypeColor(event.event_type)}>
+                          {event.event_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(event.updated_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {event.max_attendees ? `${event.max_attendees} people` : 'Unlimited'}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link to={`/dashboard/events/edit/${event.id}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Draft
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => publishEvent(event.id, event.title)}
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              Publish Event
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => deleteEvent(event.id, event.title)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Draft
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
