@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { toast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import {
   Plus,
   Search,
@@ -122,17 +122,10 @@ export default function EventsManagement() {
     try {
       await EventsService.deleteEvent(eventToDelete.id)
       setEvents(prev => prev.filter(e => e.id !== eventToDelete.id))
-      toast({
-        title: "Event deleted",
-        description: `"${eventToDelete.title}" has been successfully deleted.`,
-      })
+      toast.success(`Event "${eventToDelete.title}" has been successfully deleted.`)
     } catch (error) {
       console.error('Error deleting event:', error)
-      toast({
-        title: "Error",
-        description: "Failed to delete event. Please try again.",
-        variant: "destructive",
-      })
+      toast.error("Failed to delete event. Please try again.")
     } finally {
       setIsDeleting(false)
       setDeleteDialogOpen(false)
@@ -150,18 +143,11 @@ export default function EventsManagement() {
         // Refresh events list to include the new duplicate
         const userEvents = await EventsService.getUserEvents(user.id)
         setEvents(userEvents)
-        toast({
-          title: "Event duplicated",
-          description: `"${event.title}" has been duplicated successfully.`,
-        })
+        toast.success(`Event "${event.title}" has been duplicated successfully.`)
       }
     } catch (error) {
       console.error('Error duplicating event:', error)
-      toast({
-        title: "Error",
-        description: "Failed to duplicate event. Please try again.",
-        variant: "destructive",
-      })
+      toast.error("Failed to duplicate event. Please try again.")
     } finally {
       setIsDuplicating(false)
     }
@@ -173,18 +159,11 @@ export default function EventsManagement() {
       const updatedEvent = await EventsService.publishEvent(event.id)
       if (updatedEvent) {
         setEvents(prev => prev.map(e => e.id === event.id ? { ...e, status: 'published', is_public: true } : e))
-        toast({
-          title: "Event published",
-          description: `"${event.title}" is now live and visible to the public.`,
-        })
+        toast.success(`Event "${event.title}" is now live and visible to the public.`)
       }
     } catch (error) {
       console.error('Error publishing event:', error)
-      toast({
-        title: "Error",
-        description: "Failed to publish event. Please try again.",
-        variant: "destructive",
-      })
+      toast.error("Failed to publish event. Please try again.")
     } finally {
       setIsUpdatingStatus(false)
     }
@@ -196,18 +175,11 @@ export default function EventsManagement() {
       const updatedEvent = await EventsService.unpublishEvent(event.id)
       if (updatedEvent) {
         setEvents(prev => prev.map(e => e.id === event.id ? { ...e, status: 'draft', is_public: false } : e))
-        toast({
-          title: "Event unpublished",
-          description: `"${event.title}" is now a draft and hidden from public.`,
-        })
+        toast.success(`Event "${event.title}" is now a draft and hidden from public.`)
       }
     } catch (error) {
       console.error('Error unpublishing event:', error)
-      toast({
-        title: "Error",
-        description: "Failed to unpublish event. Please try again.",
-        variant: "destructive",
-      })
+      toast.error("Failed to unpublish event. Please try again.")
     } finally {
       setIsUpdatingStatus(false)
     }
