@@ -1,14 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = 'https://aszzhlgwfbijaotfddsh.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzenpobGd3ZmJpamFvdGZkZHNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExNDMwODgsImV4cCI6MjA2NjcxOTA4OH0.ilfdDmbwme7oACe4TxsAJVko3O-DgPl-QWIHKbfZop0'
 
-// Check if environment variables are properly configured
-const isSupabaseConfigured = supabaseUrl && 
-  supabaseAnonKey && 
-  supabaseUrl !== 'your_supabase_project_url_here' &&
-  supabaseAnonKey !== 'your_supabase_anon_key_here'
+// Supabase is properly configured for production
+const isSupabaseConfigured = true
 
 if (!isSupabaseConfigured) {
   console.warn('Supabase environment variables not configured. Some features will be disabled.')
