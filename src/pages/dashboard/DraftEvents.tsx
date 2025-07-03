@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Search, Calendar, FileTextIcon, Edit, Eye, MoreHorizontal, Trash2, Send } from 'lucide-react'
+import { Search, Calendar, FileTextIcon, Edit, Eye, MoreHorizontal, Trash2, Send, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface DraftEvent {
@@ -114,6 +114,53 @@ export default function DraftEvents() {
     }
   }
 
+  const cleanupDraftEvents = async () => {
+    if (!user) return
+    
+    try {
+      console.log('🧹 Cleaning up incomplete draft events...')
+      
+      // Find draft events that are missing required fields
+      const { data: incompleteEvents, error: selectError } = await supabase
+        .from('events')
+        .select('id, title, date, location')
+        .eq('owner_id', user.id)
+        .eq('status', 'draft')
+      
+      if (selectError) {
+        console.error('Error finding incomplete events:', selectError)
+        return
+      }
+
+      const eventsToDelete = incompleteEvents?.filter(event => 
+        !event.title?.trim() || !event.date || !event.location?.trim()
+      ) || []
+
+      if (eventsToDelete.length > 0) {
+        console.log('🗑️ Deleting incomplete events:', eventsToDelete)
+        
+        const deletePromises = eventsToDelete.map(event => 
+          supabase
+            .from('events')
+            .delete()
+            .eq('id', event.id)
+            .eq('owner_id', user.id)
+        )
+
+        await Promise.all(deletePromises)
+        
+        toast.success(`Cleaned up ${eventsToDelete.length} incomplete draft events`)
+      } else {
+        toast.info('No incomplete draft events found')
+      }
+      
+      loadDraftEvents() // Refresh the list
+    } catch (error) {
+      console.error('Error cleaning up draft events:', error)
+      toast.error('Failed to cleanup draft events')
+    }
+  }
+
   const filteredEvents = events.filter(event =>
     event.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -141,12 +188,18 @@ export default function DraftEvents() {
             Events that are saved but not yet published
           </p>
         </div>
-        <Link to="/create-event">
-          <Button>
-            <FileTextIcon className="mr-2 h-4 w-4" />
-            Create New Event
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={cleanupDraftEvents}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Cleanup Drafts
           </Button>
-        </Link>
+          <Link to="/create-event">
+            <Button>
+              <FileTextIcon className="mr-2 h-4 w-4" />
+              Create New Event
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
@@ -250,7 +303,7 @@ export default function DraftEvents() {
                     <TableRow key={event.id}>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{event.title}</div>
+                          <div className="font-medium">{event.title || 'Untitled Event'}</div>
                           {event.description && (
                             <div className="text-sm text-muted-foreground truncate max-w-[200px]">
                               {event.description}
@@ -261,16 +314,16 @@ export default function DraftEvents() {
                       <TableCell>
                         <div>
                           <div className="font-medium">
-                            {new Date(event.date).toLocaleDateString()}
+                            {event.date ? new Date(event.date).toLocaleDateString() : 'No date set'}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {event.time}
+                            {event.time || 'No time set'}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-[150px] truncate" title={event.location}>
-                          {event.location}
+                        <div className="max-w-[150px] truncate" title={event.location || 'No location'}>
+                          {event.location || 'No location set'}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -299,13 +352,14 @@ export default function DraftEvents() {
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => publishEvent(event.id, event.title)}
+                              onClick={() => publishEvent(event.id, event.title || 'Untitled Event')}
+                              disabled={!event.title?.trim() || !event.date || !event.location?.trim()}
                             >
                               <Send className="mr-2 h-4 w-4" />
                               Publish Event
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => deleteEvent(event.id, event.title)}
+                              onClick={() => deleteEvent(event.id, event.title || 'Untitled Event')}
                               className="text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />

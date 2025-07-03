@@ -1,0 +1,342 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWizardNavigation } from "@/hooks/useWizardNavigation";
+import { useImageUpload } from "@/hooks/useImageUpload";
+import { EventFormData, eventFormSchema } from "@/types/event-form";
+import { WizardNavigator } from "@/components/create-event/wizard/WizardNavigator";
+import { WizardControls } from "@/components/create-event/wizard/WizardControls";
+import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
+import { BasicInformation } from "@/components/create-event/BasicInformation";
+import { TicketConfigurationWizard } from "@/components/create-event/TicketConfigurationWizard";
+import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+export default function CreateEventWizard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [eventType, setEventType] = useState<'simple' | 'ticketed' | 'premium' | ''>('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize form with validation
+  const form = useForm<EventFormData>({
+    resolver: zodResolver(eventFormSchema),
+    mode: 'onChange',
+    defaultValues: {
+      title: '',
+      description: '',
+      organizationName: '',
+      date: '',
+      time: '',
+      endDate: '',
+      endTime: '',
+      address: '',
+      categories: [],
+      capacity: undefined,
+      displayPrice: {
+        amount: 0,
+        label: ''
+      },
+      isPublic: true,
+      tags: [],
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      images: {}
+    }
+  });
+
+  // Image upload functionality
+  const {
+    uploadedImages,
+    isProcessingImage,
+    processingProgress,
+    uploadImage,
+    removeImage,
+    clearAllImages
+  } = useImageUpload();
+
+  // Wizard navigation with enhanced validation
+  const {
+    currentStep,
+    currentStepInfo,
+    visibleSteps,
+    progress,
+    canGoForward,
+    canGoBackward,
+    nextStep,
+    prevStep,
+    goToStep,
+    validateCurrentStep,
+    getStepStatus,
+    getValidationSummary
+  } = useWizardNavigation({
+    form,
+    eventType,
+    selectedCategories,
+    onStepChange: (stepId, direction) => {
+      console.log(`Navigating ${direction} to step: ${stepId}`);
+    },
+    onValidationError: (errors, stepId) => {
+      toast.error(`Please fix the following issues: ${errors.join(', ')}`);
+    }
+  });
+
+  // Redirect non-authenticated users
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
+
+  // Sync form categories with selected categories
+  useEffect(() => {
+    form.setValue('categories', selectedCategories);
+  }, [selectedCategories, form]);
+
+  // Sync form images with uploaded images
+  useEffect(() => {
+    form.setValue('images', uploadedImages);
+  }, [uploadedImages, form]);
+
+  // Category management
+  const handleCategoryToggle = (categoryId: string) => {
+    setSelectedCategories(prev => {
+      const isSelected = prev.includes(categoryId);
+      if (isSelected) {
+        return prev.filter(id => id !== categoryId);
+      } else {
+        return [...prev, categoryId];
+      }
+    });
+  };
+
+  // Image upload handlers
+  const handleImageUpload = async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {
+    if (files.length > 0) {
+      const file = files[0];
+      try {
+        await uploadImage(file, imageType);
+        toast.success(`${imageType} image uploaded successfully!`);
+      } catch (error) {
+        console.error('Image upload error:', error);
+        toast.error(`Failed to upload ${imageType} image. Please try again.`);
+      }
+    }
+  };
+
+  const handleRemoveImage = (imageType: 'banner' | 'postcard') => {
+    removeImage(imageType);
+    toast.success(`${imageType} image removed`);
+  };
+
+  // Save event function
+  const saveEvent = async (status: 'draft' | 'published' = 'draft') => {
+    const validation = validateCurrentStep();
+    if (!validation.isValid && status === 'published') {
+      toast.error('Please fix all validation errors before publishing');
+      return false;
+    }
+
+    setIsSaving(true);
+    try {
+      const formData = form.getValues();
+      
+      const eventData = {
+        title: formData.title.trim(),
+        description: formData.description?.trim() || null,
+        organization_name: formData.organizationName?.trim() || null,
+        date: formData.date,
+        time: formData.time,
+        end_date: formData.endDate || null,
+        end_time: formData.endTime || null,
+        location: formData.address.trim(),
+        event_type: eventType,
+        max_attendees: formData.capacity || null,
+        is_public: formData.isPublic,
+        status: status,
+        owner_id: user!.id,
+        categories: selectedCategories,
+        tags: formData.tags || [],
+        timezone: formData.timezone,
+        images: uploadedImages || {},
+        display_price: eventType === 'simple' && formData.displayPrice?.amount 
+          ? formData.displayPrice 
+          : null
+      };
+
+      console.log('Saving event with data:', eventData);
+
+      const { data: event, error } = await supabase
+        .from("events")
+        .insert(eventData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase error creating event:", error);
+        toast.error(`Failed to create event: ${error.message}`);
+        return false;
+      }
+
+      if (!event) {
+        toast.error("Event creation failed - no data returned");
+        return false;
+      }
+
+      console.log("Event created successfully:", event);
+      toast.success(`Event ${status === 'published' ? 'published' : 'saved as draft'} successfully!`);
+      
+      // Reset form and navigate
+      form.reset();
+      clearAllImages();
+      setSelectedCategories([]);
+      setEventType('');
+      
+      if (status === "published") {
+        navigate(`/events/${event.id}`);
+      } else {
+        navigate("/dashboard/events/drafts");
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error creating event:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error(`Failed to create event: ${errorMessage}`);
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Get current validation state
+  const validationSummary = getValidationSummary();
+
+  if (!user) {
+    return null;
+  }
+
+  const renderCurrentStep = () => {
+    if (!currentStepInfo) return null;
+
+    switch (currentStepInfo.id) {
+      case 'event-type':
+        return (
+          <EventTypeSelection
+            eventType={eventType}
+            setEventType={setEventType}
+          />
+        );
+        
+      case 'basic-info':
+        return (
+          <BasicInformation
+            form={form}
+            selectedCategories={selectedCategories}
+            onCategoryToggle={handleCategoryToggle}
+            uploadedImages={uploadedImages}
+            onImageUpload={handleImageUpload}
+            onRemoveImage={handleRemoveImage}
+            isProcessingImage={isProcessingImage}
+            eventType={eventType}
+          />
+        );
+        
+      case 'ticketing':
+        return (
+          <TicketConfigurationWizard
+            form={form}
+            eventType={eventType}
+          />
+        );
+        
+      case 'review':
+        return (
+          <ReviewStepWizard
+            form={form}
+            eventType={eventType}
+            selectedCategories={selectedCategories}
+            uploadedImages={uploadedImages}
+            onSave={(status) => saveEvent(status)}
+            isSaving={isSaving}
+          />
+        );
+        
+      default:
+        return <div>Unknown step</div>;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+        {/* Header */}
+        <div className="mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/dashboard")}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          
+          <h1 className="text-4xl font-bold mb-4 text-foreground">Create Event</h1>
+          <p className="text-xl text-muted-foreground mb-6">
+            Create your event step by step with our guided wizard
+          </p>
+        </div>
+
+        {/* Wizard Navigator */}
+        <WizardNavigator
+          steps={visibleSteps}
+          currentStep={currentStep}
+          getStepStatus={getStepStatus}
+          onStepClick={goToStep}
+          isNavigating={false}
+          validationErrors={validationSummary.currentStepErrors}
+          validationWarnings={validationSummary.currentStepWarnings}
+          className="mb-8"
+        />
+
+        {/* Step Content */}
+        <div className="mb-8">
+          {renderCurrentStep()}
+        </div>
+
+        {/* Navigation Controls - Only show if not on review step */}
+        {currentStepInfo?.id !== 'review' && (
+          <WizardControls
+            canGoBack={canGoBackward}
+            canGoForward={canGoForward}
+            onBack={prevStep}
+            onNext={nextStep}
+            isFirstStep={currentStep === 1}
+            isLastStep={currentStep === visibleSteps.length}
+            isNavigating={false}
+            nextButtonText={currentStepInfo?.id === 'event-type' ? 'Continue' : 'Next Step'}
+            backButtonText="Previous"
+            errors={validationSummary.currentStepErrors}
+            warnings={validationSummary.currentStepWarnings}
+            className="mt-8"
+          />
+        )}
+
+        {/* Progress indicator */}
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          Step {currentStep} of {visibleSteps.length} • {progress}% complete
+          {isProcessingImage && (
+            <div className="mt-2 text-primary">
+              Processing image... {processingProgress.stage} ({processingProgress.current}/{processingProgress.total})
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import CreateEvent from "./pages/CreateEvent";
+import CreateEventWizard from "./pages/CreateEventWizard";
 import EditEvent from "./pages/EditEvent";
 import Dashboard from "./pages/Dashboard";
 import DashboardHome from "./pages/DashboardHome";
@@ -83,6 +84,11 @@ const App = () => (
                 <Route path="/my-tickets" element={<MyTickets />} />
                 <Route path="/payment-test" element={<PaymentTestPage />} />
                 <Route path="/create-event" element={
+                  <ProtectedRoute>
+                    <CreateEventWizard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/create-event-simple" element={
                   <ProtectedRoute>
                     <CreateEvent />
                   </ProtectedRoute>

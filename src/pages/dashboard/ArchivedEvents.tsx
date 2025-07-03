@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Calendar, ArchiveIcon, RotateCcw } from 'lucide-react'
+import { Search, Calendar, ArchiveIcon, RotateCcw, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ArchivedEvent {
@@ -24,6 +24,7 @@ export default function ArchivedEvents() {
   const [events, setEvents] = useState<ArchivedEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [hideDemoData, setHideDemoData] = useState(false)
 
   useEffect(() => {
     if (!user) return

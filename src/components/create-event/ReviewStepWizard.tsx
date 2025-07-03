@@ -1,0 +1,338 @@
+import { UseFormReturn } from "react-hook-form";
+import { EventFormData } from "@/types/event-form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  CalendarIcon, 
+  MapPinIcon, 
+  UsersIcon, 
+  DollarSignIcon, 
+  BuildingIcon,
+  ImageIcon,
+  TagIcon,
+  EyeIcon,
+  SaveIcon,
+  CheckCircleIcon,
+  AlertCircleIcon
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+interface ProcessedImages {
+  banner?: {
+    original: string;
+    thumbnail: string;
+    metadata: {
+      dimensions: { width: number; height: number; };
+      compressionRatio: number;
+    };
+  };
+  postcard?: {
+    original: string;
+    thumbnail: string;
+    metadata: {
+      dimensions: { width: number; height: number; };
+      compressionRatio: number;
+    };
+  };
+}
+
+interface ReviewStepWizardProps {
+  form: UseFormReturn<EventFormData>;
+  eventType: 'simple' | 'ticketed' | 'premium' | '';
+  selectedCategories: string[];
+  uploadedImages: ProcessedImages;
+  onSave: (status: 'draft' | 'published') => Promise<boolean>;
+  isSaving: boolean;
+}
+
+const categoryLabels: Record<string, string> = {
+  'workshops': 'Workshops',
+  'sets': 'Sets',
+  'in-the-park': 'In the park',
+  'trips': 'Trips',
+  'cruises': 'Cruises',
+  'holiday': 'Holiday',
+  'competitions': 'Competitions'
+};
+
+const eventTypeLabels: Record<string, string> = {
+  'simple': 'Simple Event (Free)',
+  'ticketed': 'Ticketed Event',
+  'premium': 'Premium Event'
+};
+
+export const ReviewStepWizard = ({ 
+  form, 
+  eventType, 
+  selectedCategories, 
+  uploadedImages,
+  onSave,
+  isSaving
+}: ReviewStepWizardProps) => {
+  const formData = form.getValues();
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const handleSaveDraft = () => {
+    onSave('draft');
+  };
+
+  const handlePublish = () => {
+    onSave('published');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-bold mb-2">Review & Publish</h2>
+        <p className="text-sm text-muted-foreground">
+          Review your event details and publish when ready
+        </p>
+      </div>
+
+      {/* Event Summary Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl">{formData.title}</CardTitle>
+            <Badge variant={eventType === 'simple' ? 'secondary' : eventType === 'premium' ? 'default' : 'outline'}>
+              {eventTypeLabels[eventType] || 'Unknown'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">{formData.description}</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <div className="font-medium">{formatDate(formData.date)}</div>
+                <div className="text-sm text-muted-foreground">
+                  {formatTime(formData.time)}
+                  {formData.endDate && formData.endTime && (
+                    <span> - {formData.endDate === formData.date ? formatTime(formData.endTime) : `${formatDate(formData.endDate)} ${formatTime(formData.endTime)}`}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <MapPinIcon className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <div className="font-medium">Location</div>
+                <div className="text-sm text-muted-foreground">{formData.address}</div>
+              </div>
+            </div>
+
+            {formData.organizationName && (
+              <div className="flex items-center gap-2">
+                <BuildingIcon className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium">Organizer</div>
+                  <div className="text-sm text-muted-foreground">{formData.organizationName}</div>
+                </div>
+              </div>
+            )}
+
+            {formData.capacity && (
+              <div className="flex items-center gap-2">
+                <UsersIcon className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <div className="font-medium">Capacity</div>
+                  <div className="text-sm text-muted-foreground">{formData.capacity} attendees</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Categories */}
+      {selectedCategories.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TagIcon className="w-5 h-5" />
+              Categories
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {selectedCategories.map(categoryId => (
+                <Badge key={categoryId} variant="secondary">
+                  {categoryLabels[categoryId] || categoryId}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Images */}
+      {(uploadedImages.banner || uploadedImages.postcard) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="w-5 h-5" />
+              Event Images
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {uploadedImages.banner && (
+                <div>
+                  <h4 className="font-medium mb-2">Banner Image</h4>
+                  <img
+                    src={uploadedImages.banner.thumbnail}
+                    alt="Event banner"
+                    className="w-full h-32 object-cover rounded-lg border"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {uploadedImages.banner.metadata.dimensions.width}x{uploadedImages.banner.metadata.dimensions.height} • 
+                    {uploadedImages.banner.metadata.compressionRatio}% compressed
+                  </p>
+                </div>
+              )}
+              {uploadedImages.postcard && (
+                <div>
+                  <h4 className="font-medium mb-2">Postcard Image</h4>
+                  <img
+                    src={uploadedImages.postcard.thumbnail}
+                    alt="Event postcard"
+                    className="w-full h-32 object-cover rounded-lg border"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {uploadedImages.postcard.metadata.dimensions.width}x{uploadedImages.postcard.metadata.dimensions.height} • 
+                    {uploadedImages.postcard.metadata.compressionRatio}% compressed
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Display Price for Simple Events */}
+      {eventType === 'simple' && formData.displayPrice && formData.displayPrice.amount > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSignIcon className="w-5 h-5" />
+              Display Price
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">${formData.displayPrice.amount}</span>
+              <span className="text-muted-foreground">({formData.displayPrice.label})</span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              This is a display price only - no payment processing for simple events
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Visibility Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Event Visibility</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            {formData.isPublic ? (
+              <>
+                <EyeIcon className="w-4 h-4 text-green-600" />
+                <span className="text-green-600 font-medium">Public Event</span>
+                <span className="text-muted-foreground">- Will appear in search results and event listings</span>
+              </>
+            ) : (
+              <>
+                <EyeIcon className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground font-medium">Private Event</span>
+                <span className="text-muted-foreground">- Only accessible via direct link</span>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Validation Check */}
+      <Alert>
+        <CheckCircleIcon className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Ready to publish!</strong> All required information has been provided. 
+          You can save as draft to continue editing later, or publish to make your event live.
+        </AlertDescription>
+      </Alert>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleSaveDraft}
+          disabled={isSaving}
+          className="flex items-center gap-2"
+        >
+          {isSaving ? (
+            <>
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <SaveIcon className="w-4 h-4" />
+              Save as Draft
+            </>
+          )}
+        </Button>
+        
+        <Button
+          type="button"
+          onClick={handlePublish}
+          disabled={isSaving}
+          className="flex items-center gap-2 min-w-[140px]"
+        >
+          {isSaving ? (
+            <>
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Publishing...
+            </>
+          ) : (
+            <>
+              <EyeIcon className="w-4 h-4" />
+              Publish Event
+            </>
+          )}
+        </Button>
+      </div>
+
+      <div className="text-center text-sm text-muted-foreground">
+        <p>
+          💡 <strong>Tip:</strong> You can always edit your event details after publishing from your dashboard.
+        </p>
+      </div>
+    </div>
+  );
+};
