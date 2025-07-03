@@ -12,18 +12,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, AlertCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 const eventSchema = z.object({
   title: z.string().min(1, "Event title is required").max(100, "Title must be under 100 characters"),
   description: z.string().optional(),
   organizationName: z.string().optional(),
-  date: z.string().min(1, "Event date is required"),
+  date: z.string().min(1, "Event date is required").refine(
+    (date) => new Date(date) > new Date(),
+    "Event date must be in the future"
+  ),
   time: z.string().min(1, "Event time is required"),
   location: z.string().min(1, "Event location is required"),
   eventType: z.enum(["simple", "ticketed", "premium"]).default("ticketed"),
-  maxAttendees: z.number().min(1).optional(),
+  maxAttendees: z.number().min(1, "Must be at least 1").optional(),
   isPublic: z.boolean().default(true)
 });
 
@@ -32,8 +35,8 @@ type EventFormData = z.infer<typeof eventSchema>;
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -55,27 +58,73 @@ export default function CreateEvent() {
     }
   }, [user, navigate]);
 
+  const validateForm = (): boolean => {
+    const values = form.getValues();
+    
+    // Check required fields
+    if (!values.title.trim()) {
+      toast.error("Event title is required");
+      return false;
+    }
+    
+    if (!values.date) {
+      toast.error("Event date is required");
+      return false;
+    }
+    
+    if (!values.time) {
+      toast.error("Event time is required");
+      return false;
+    }
+    
+    if (!values.location.trim()) {
+      toast.error("Event location is required");
+      return false;
+    }
+
+    // Validate date is in future
+    const eventDate = new Date(`${values.date}T${values.time}`);
+    if (eventDate <= new Date()) {
+      toast.error("Event date and time must be in the future");
+      return false;
+    }
+
+    return true;
+  };
+
   const saveEvent = async (data: EventFormData, status: "draft" | "published" = "draft") => {
+    console.log("Saving event with data:", data, "status:", status);
+    
     if (!user) {
       toast.error("You must be logged in to create an event");
       return;
     }
 
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSaving(true);
+    setSaveError(null);
+
     try {
       const eventData = {
-        title: data.title,
-        description: data.description || null,
-        organization_name: data.organizationName || null,
+        title: data.title.trim(),
+        description: data.description?.trim() || null,
+        organization_name: data.organizationName?.trim() || null,
         date: data.date,
         time: data.time,
-        location: data.location,
+        location: data.location.trim(),
         event_type: data.eventType,
         max_attendees: data.maxAttendees || null,
         is_public: data.isPublic,
         status: status,
-        owner_id: user.id
+        owner_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
+
+      console.log("Inserting event data:", eventData);
 
       const { data: event, error } = await supabase
         .from("events")
@@ -84,31 +133,47 @@ export default function CreateEvent() {
         .single();
 
       if (error) {
-        console.error("Error creating event:", error);
-        toast.error("Failed to create event: " + error.message);
+        console.error("Supabase error creating event:", error);
+        setSaveError(error.message);
+        toast.error(`Failed to create event: ${error.message}`);
         return;
       }
 
+      if (!event) {
+        console.error("No event returned from insert");
+        toast.error("Event creation failed - no data returned");
+        return;
+      }
+
+      console.log("Event created successfully:", event);
       toast.success(`Event ${status === 'published' ? 'published' : 'saved as draft'} successfully!`);
       
+      // Reset form after successful save
+      form.reset();
+      
+      // Navigate based on status
       if (status === "published") {
         navigate(`/events/${event.id}`);
       } else {
-        navigate("/dashboard/events");
+        navigate("/dashboard/events/drafts");
       }
     } catch (error) {
       console.error("Error creating event:", error);
-      toast.error("Failed to create event");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      setSaveError(errorMessage);
+      toast.error(`Failed to create event: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
   };
 
   const onSubmitDraft = async (data: EventFormData) => {
+    console.log("Submitting as draft:", data);
     await saveEvent(data, "draft");
   };
 
   const onSubmitPublish = async (data: EventFormData) => {
+    console.log("Submitting as published:", data);
     await saveEvent(data, "published");
   };
 
@@ -120,11 +185,29 @@ export default function CreateEvent() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/dashboard")}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          
           <h1 className="text-4xl font-bold mb-4 text-foreground">Create Event</h1>
           <p className="text-xl text-muted-foreground mb-6">
             Create your event and share it with the world
           </p>
         </div>
+
+        {saveError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Error saving event: {saveError}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <form className="space-y-6">
           <Card>
@@ -185,6 +268,7 @@ export default function CreateEvent() {
                   <Input
                     id="date"
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     {...form.register("date")}
                     className={form.formState.errors.date ? "border-destructive" : ""}
                   />
@@ -261,9 +345,16 @@ export default function CreateEvent() {
                   <Input
                     id="maxAttendees"
                     type="number"
-                    placeholder="Enter max capacity"
+                    min="1"
+                    placeholder="Enter max capacity (optional)"
                     {...form.register("maxAttendees", { valueAsNumber: true })}
+                    className={form.formState.errors.maxAttendees ? "border-destructive" : ""}
                   />
+                  {form.formState.errors.maxAttendees && (
+                    <p className="text-sm text-destructive mt-1">
+                      {form.formState.errors.maxAttendees.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
