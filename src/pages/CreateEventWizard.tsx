@@ -55,9 +55,8 @@ export default function CreateEventWizard() {
     uploadedImages,
     isProcessingImage,
     processingProgress,
-    uploadImage,
-    removeImage,
-    clearAllImages
+    handleImageUpload,
+    removeImage
   } = useImageUpload();
 
   // Wizard navigation with enhanced validation
@@ -116,11 +115,10 @@ export default function CreateEventWizard() {
   };
 
   // Image upload handlers
-  const handleImageUpload = async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {
+  const handleImageUploadWrapper = async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {
     if (files.length > 0) {
-      const file = files[0];
       try {
-        await uploadImage(file, imageType);
+        await handleImageUpload(files, imageType);
         toast.success(`${imageType} image uploaded successfully!`);
       } catch (error) {
         console.error('Image upload error:', error);
@@ -152,8 +150,6 @@ export default function CreateEventWizard() {
         organization_name: formData.organizationName?.trim() || null,
         date: formData.date,
         time: formData.time,
-        end_date: formData.endDate || null,
-        end_time: formData.endTime || null,
         location: formData.address.trim(),
         event_type: eventType,
         max_attendees: formData.capacity || null,
@@ -161,12 +157,7 @@ export default function CreateEventWizard() {
         status: status,
         owner_id: user!.id,
         categories: selectedCategories,
-        tags: formData.tags || [],
-        timezone: formData.timezone,
-        images: uploadedImages || {},
-        display_price: eventType === 'simple' && formData.displayPrice?.amount 
-          ? formData.displayPrice 
-          : null
+        images: uploadedImages || {}
       };
 
       console.log('Saving event with data:', eventData);
@@ -193,7 +184,9 @@ export default function CreateEventWizard() {
       
       // Reset form and navigate
       form.reset();
-      clearAllImages();
+      // Clear images manually since clearAllImages doesn't exist
+      if (uploadedImages.banner) removeImage('banner');
+      if (uploadedImages.postcard) removeImage('postcard');
       setSelectedCategories([]);
       setEventType('');
       
@@ -240,7 +233,7 @@ export default function CreateEventWizard() {
             selectedCategories={selectedCategories}
             onCategoryToggle={handleCategoryToggle}
             uploadedImages={uploadedImages}
-            onImageUpload={handleImageUpload}
+            onImageUpload={handleImageUploadWrapper}
             onRemoveImage={handleRemoveImage}
             isProcessingImage={isProcessingImage}
             eventType={eventType}

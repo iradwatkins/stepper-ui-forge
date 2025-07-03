@@ -12,9 +12,9 @@ CREATE TYPE order_status AS ENUM (
   'refunded'          -- Order refunded
 );
 
--- Add order_status column to orders table
+-- Add order_status column to orders table (only if it doesn't exist)
 ALTER TABLE orders 
-ADD COLUMN order_status order_status DEFAULT 'pending';
+ADD COLUMN IF NOT EXISTS order_status order_status DEFAULT 'pending';
 
 -- Update existing orders to have appropriate status based on payment_status
 UPDATE orders 

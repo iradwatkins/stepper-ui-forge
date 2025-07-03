@@ -268,152 +268,154 @@ const EventDetail = () => {
                      event.ticket_types && event.ticket_types.length > 0 ? Math.min(...event.ticket_types.map(t => t.price)) : 0;
 
   return (
-    <div className="min-h-screen">
-      {/* Image Gallery Section */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid gap-4">
-          {/* Main Image */}
-          <div 
-            className="relative aspect-video md:aspect-[21/9] overflow-hidden rounded-lg cursor-pointer group"
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Hero Image Section */}
+      <div className="relative h-96 md:h-[500px] overflow-hidden">
+        <img
+          src={primaryImage}
+          alt={event.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 flex items-end">
+          <div className="w-full p-6 md:p-8">
+            <div className="max-w-7xl mx-auto">
+              <Badge className={`${getEventTypeColor(event.event_type)} mb-4`}>
+                {event.event_type}
+              </Badge>
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{event.title}</h1>
+              <p className="text-xl text-gray-200 max-w-2xl">{event.description}</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Image Gallery Button */}
+        {eventImages.length > 1 && (
+          <button
             onClick={() => {
               setGalleryStartIndex(0);
               setIsGalleryOpen(true);
             }}
+            className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-xl font-medium transition-all duration-200 hover:shadow-md"
           >
-            <img
-              src={primaryImage}
-              alt={event.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-            {eventImages.length > 1 && (
-              <div className="absolute top-4 right-4 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                +{eventImages.length - 1} more
+            View Gallery (+{eventImages.length - 1})
+          </button>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content Column */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Event Details Card */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Event Details</h2>
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
+                      <CalendarIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Date & Time</h3>
+                      <p className="text-gray-600 dark:text-gray-300">{event.date}</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm">{event.time}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-xl">
+                      <MapPinIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Location</h3>
+                      <p className="text-gray-600 dark:text-gray-300">{event.location}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl">
+                      <UsersIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Attendance</h3>
+                      <p className="text-gray-600 dark:text-gray-300">{event.attendee_count || 0} attending</p>
+                      {event.max_attendees && (
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">{event.max_attendees - (event.attendee_count || 0)} spots remaining</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* About Event Card */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">About This Event</h2>
+                <div className="prose dark:prose-invert max-w-none">
+                  <p className="whitespace-pre-line text-gray-600 dark:text-gray-300 leading-relaxed">{event.description}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Categories Card */}
+            {event.categories && event.categories.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+                <div className="p-6">
+                  <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Categories</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {event.categories.map((category, index) => (
+                      <Badge key={index} variant="secondary" className="px-3 py-1 text-sm">
+                        {category}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Secondary Images Grid */}
-          {eventImages.length > 1 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {eventImages.slice(1, 5).map((image, index) => (
-                <div
-                  key={index}
-                  className="aspect-square overflow-hidden rounded-lg cursor-pointer group"
-                  onClick={() => {
-                    setGalleryStartIndex(index + 1);
-                    setIsGalleryOpen(true);
-                  }}
-                >
-                  <img
-                    src={image}
-                    alt={`${event.title} ${index + 2}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Event Header */}
-        <div className="mt-6">
-          <div className="flex justify-between items-start mb-4">
-            <Badge className={`${getEventTypeColor(event.event_type)} mb-2`}>
-              {event.event_type}
-            </Badge>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">{event.title}</h1>
-          <p className="text-lg text-muted-foreground mb-6">{event.description}</p>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Event Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <CalendarIcon className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{event.date}</p>
-                    <p className="text-sm text-muted-foreground">{event.time}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MapPinIcon className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Location</p>
-                    <p className="text-sm text-muted-foreground">{event.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <UsersIcon className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{event.attendee_count || 0} attending</p>
-                    {event.max_attendees && (
-                      <p className="text-sm text-muted-foreground">{event.max_attendees - (event.attendee_count || 0)} spots remaining</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Description */}
-            <Card>
-              <CardHeader>
-                <CardTitle>About This Event</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="prose dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-line">{event.description}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Categories */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Categories</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {event.categories?.map((category, index) => (
-                    <Badge key={index} variant="secondary">
-                      {category}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Ticket Selection */}
-            {event.event_type === 'simple' ? (
-              /* Simple Event Ticket Card */
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">
-                    {eventPrice > 0 ? `$${eventPrice}` : 'Free'}
-                    {eventPrice > 0 && <span className="text-base font-normal text-muted-foreground ml-2">per ticket</span>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button 
-                    className="w-full" 
-                    size="lg"
-                    onClick={() => eventPrice > 0 ? setIsCheckoutOpen(true) : handleSimpleEventRegistration()}
-                  >
-                    {eventPrice > 0 ? 'Buy Tickets' : 'Register'}
-                  </Button>
-                  <div className="flex gap-2">
+            {/* Sticky Container */}
+            <div className="sticky top-8 space-y-6">
+              {/* Ticket Selection Card */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+                <div className="p-6">
+                  {event.event_type === 'simple' ? (
+                    <>
+                      <div className="text-center mb-6">
+                        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                          {eventPrice > 0 ? `$${eventPrice}` : 'Free'}
+                        </div>
+                        {eventPrice > 0 && (
+                          <p className="text-gray-500 dark:text-gray-400">per ticket</p>
+                        )}
+                      </div>
+                      <Button 
+                        className="w-full mb-4" 
+                        size="lg"
+                        onClick={() => eventPrice > 0 ? setIsCheckoutOpen(true) : handleSimpleEventRegistration()}
+                      >
+                        {eventPrice > 0 ? 'Buy Tickets' : 'Register Now'}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Select Tickets</h3>
+                      <TicketSelector
+                        eventId={event.id}
+                        ticketTypes={ticketTypes}
+                        onAddToCart={handleAddToCart}
+                        isLoading={ticketsLoading}
+                      />
+                    </>
+                  )}
+                  
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 mt-4">
                     <Button variant="outline" size="sm" className="flex-1">
                       <HeartIcon className="w-4 h-4 mr-2" />
                       Save
@@ -423,54 +425,30 @@ const EventDetail = () => {
                       Share
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              /* Ticketed/Premium Event Ticket Selector */
-              <div className="space-y-4">
-                <TicketSelector
-                  eventId={event.id}
-                  ticketTypes={ticketTypes}
-                  onAddToCart={handleAddToCart}
-                  isLoading={ticketsLoading}
-                />
-                
-                {/* Action Buttons for Ticketed Events */}
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <HeartIcon className="w-4 h-4 mr-2" />
-                    Save
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <ShareIcon className="w-4 h-4 mr-2" />
-                    Share
+                </div>
+              </div>
+
+              {/* Organizer Card */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+                <div className="p-6">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Organizer</h3>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-xl font-bold text-white">
+                        {event.organization_name?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">{event.organization_name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Event Organizer</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" className="w-full">
+                    Contact Organizer
                   </Button>
                 </div>
               </div>
-            )}
-
-            {/* Organizer Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Organizer</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-lg font-bold text-primary">
-                      {event.organization_name?.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium">{event.organization_name}</p>
-                    <p className="text-sm text-muted-foreground">Event Organizer</p>
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full mt-4">
-                  Contact Organizer
-                </Button>
-              </CardContent>
-            </Card>
+            </div>
           </div>
         </div>
       </div>
