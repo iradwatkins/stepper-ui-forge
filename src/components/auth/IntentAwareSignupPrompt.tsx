@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserPlus, ShoppingCart, Calendar, Users, Loader2 } from 'lucide-react'
-import { useRouter } from 'next/router'
+import { useNavigate } from 'react-router-dom'
 
 interface IntentAwareSignupPromptProps {
   className?: string
@@ -26,7 +26,7 @@ export const IntentAwareSignupPrompt: React.FC<IntentAwareSignupPromptProps> = (
     isExecutingIntent,
     intentMessage 
   } = useSignupIntent()
-  const router = useRouter()
+  const navigate = useNavigate()
 
   if (!shouldShowSignupPrompt && !isExecutingIntent && !intentMessage) {
     return null
@@ -95,12 +95,12 @@ export const IntentAwareSignupPrompt: React.FC<IntentAwareSignupPromptProps> = (
   }
 
   const handleSignUp = () => {
-    router.push('/auth/signup')
+    navigate('/auth')
     onClose?.()
   }
 
   const handleSignIn = () => {
-    router.push('/auth/signin')
+    navigate('/auth')
     onClose?.()
   }
 
@@ -156,7 +156,7 @@ export const IntentAwareSignupPrompt: React.FC<IntentAwareSignupPromptProps> = (
 // Compact version for inline use
 export const CompactSignupPrompt: React.FC<{ className?: string }> = ({ className }) => {
   const { shouldShowSignupPrompt, signupPromptMessage } = useSignupIntent()
-  const router = useRouter()
+  const navigate = useNavigate()
 
   if (!shouldShowSignupPrompt) {
     return null
@@ -170,14 +170,14 @@ export const CompactSignupPrompt: React.FC<{ className?: string }> = ({ classNam
         <div className="space-x-2 ml-4">
           <Button 
             size="sm" 
-            onClick={() => router.push('/auth/signup')}
+            onClick={() => navigate('/auth')}
           >
             Sign Up
           </Button>
           <Button 
             size="sm" 
             variant="outline"
-            onClick={() => router.push('/auth/signin')}
+            onClick={() => navigate('/auth')}
           >
             Sign In
           </Button>
@@ -190,14 +190,14 @@ export const CompactSignupPrompt: React.FC<{ className?: string }> = ({ classNam
 // Hook for showing signup prompt in existing components
 export const useSignupPrompt = () => {
   const { shouldShowSignupPrompt, signupPromptMessage, intentType } = useSignupIntent()
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const showSignupModal = () => {
-    router.push('/auth/signup')
+    navigate('/auth')
   }
 
   const showSigninModal = () => {
-    router.push('/auth/signin')
+    navigate('/auth')
   }
 
   return {

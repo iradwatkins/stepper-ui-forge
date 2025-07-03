@@ -2,21 +2,22 @@
 // Automatically tracks referral clicks and stores intent for unauthenticated users
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/router'
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSignupIntent } from '@/lib/hooks/useSignupIntent'
 import { ReferralService } from '@/lib/services/ReferralService'
 
 export const ReferralTracker: React.FC = () => {
-  const router = useRouter()
+  const [searchParams] = useSearchParams()
+  const location = useLocation()
   const { user } = useAuth()
   const { storeReferralIntent } = useSignupIntent()
 
   useEffect(() => {
     const handleReferralCode = async () => {
-      const { ref } = router.query
+      const ref = searchParams.get('ref')
       
-      if (!ref || typeof ref !== 'string') {
+      if (!ref) {
         return
       }
 
@@ -34,7 +35,7 @@ export const ReferralTracker: React.FC = () => {
           await ReferralService.trackReferralClick(ref)
         } else {
           // User is not authenticated, store intent for after signup
-          storeReferralIntent(ref, router.asPath)
+          storeReferralIntent(ref, location.pathname)
         }
 
         // Store referral code in session for checkout process
@@ -45,10 +46,8 @@ export const ReferralTracker: React.FC = () => {
       }
     }
 
-    if (router.isReady) {
-      handleReferralCode()
-    }
-  }, [router.isReady, router.query.ref, router.asPath, user, storeReferralIntent])
+    handleReferralCode()
+  }, [searchParams, location.pathname, user, storeReferralIntent])
 
   // This component doesn't render anything
   return null
@@ -56,12 +55,12 @@ export const ReferralTracker: React.FC = () => {
 
 // Hook for getting current referral code
 export const useReferralCode = () => {
-  const router = useRouter()
+  const [searchParams] = useSearchParams()
   
   const getCurrentReferralCode = (): string | null => {
     // First check URL parameter
-    const { ref } = router.query
-    if (ref && typeof ref === 'string') {
+    const ref = searchParams.get('ref')
+    if (ref) {
       return ref
     }
 
@@ -103,7 +102,7 @@ export const TrackedLink: React.FC<TrackedLinkProps> = ({
   className,
   onClick 
 }) => {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -117,7 +116,7 @@ export const TrackedLink: React.FC<TrackedLinkProps> = ({
     }
     
     onClick?.()
-    router.push(href)
+    navigate(href)
   }
 
   return (

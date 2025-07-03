@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { SignupIntentService, SignupIntentType } from '@/lib/services/SignupIntentService'
-import { useRouter } from 'next/router'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export interface UseSignupIntentResult {
   // Intent state
@@ -30,7 +30,8 @@ export interface UseSignupIntentResult {
 
 export const useSignupIntent = (): UseSignupIntentResult => {
   const { user } = useAuth()
-  const router = useRouter()
+  const location = useLocation()
+  const navigate = useNavigate()
   
   const [hasPendingIntent, setHasPendingIntent] = useState(false)
   const [intentType, setIntentType] = useState<SignupIntentType | null>(null)
@@ -99,18 +100,18 @@ export const useSignupIntent = (): UseSignupIntentResult => {
         setIntentMessage(result.message || 'Welcome!')
         
         // Redirect if needed
-        if (result.redirectPath && result.redirectPath !== router.asPath) {
+        if (result.redirectPath && result.redirectPath !== location.pathname) {
           setTimeout(() => {
-            router.push(result.redirectPath!)
+            navigate(result.redirectPath!)
           }, 1000) // Give user time to see the message
         }
       } else {
         setIntentMessage(result.error || 'Something went wrong')
         
         // Still redirect on error if path is provided
-        if (result.redirectPath && result.redirectPath !== router.asPath) {
+        if (result.redirectPath && result.redirectPath !== location.pathname) {
           setTimeout(() => {
-            router.push(result.redirectPath!)
+            navigate(result.redirectPath!)
           }, 2000)
         }
       }
@@ -132,7 +133,7 @@ export const useSignupIntent = (): UseSignupIntentResult => {
         setIntentMessage(null)
       }, 5000)
     }
-  }, [user, router])
+  }, [user, location, navigate])
 
   const clearIntent = useCallback(() => {
     SignupIntentService.clearIntent()
@@ -164,34 +165,35 @@ export const useSignupIntent = (): UseSignupIntentResult => {
 export const useAuthRequiredAction = () => {
   const { user } = useAuth()
   const { storeFollowIntent, storePurchaseIntent, storeCreateEventIntent } = useSignupIntent()
-  const router = useRouter()
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const handleFollowAction = useCallback((organizerId: string, organizerName: string) => {
     if (!user) {
-      storeFollowIntent(organizerId, organizerName, router.asPath)
-      router.push('/auth/signup')
+      storeFollowIntent(organizerId, organizerName, location.pathname)
+      navigate('/auth')
       return false
     }
     return true
-  }, [user, storeFollowIntent, router])
+  }, [user, storeFollowIntent, location, navigate])
 
   const handlePurchaseAction = useCallback((eventId: string, cartItems: any[], referralCode?: string) => {
     if (!user) {
-      storePurchaseIntent(eventId, cartItems, referralCode, router.asPath)
-      router.push('/auth/signup')
+      storePurchaseIntent(eventId, cartItems, referralCode, location.pathname)
+      navigate('/auth')
       return false
     }
     return true
-  }, [user, storePurchaseIntent, router])
+  }, [user, storePurchaseIntent, location, navigate])
 
   const handleCreateEventAction = useCallback(() => {
     if (!user) {
       storeCreateEventIntent('/create-event')
-      router.push('/auth/signup')
+      navigate('/auth')
       return false
     }
     return true
-  }, [user, storeCreateEventIntent, router])
+  }, [user, storeCreateEventIntent, navigate])
 
   return {
     handleFollowAction,

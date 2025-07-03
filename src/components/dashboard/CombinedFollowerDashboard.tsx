@@ -2,8 +2,8 @@
 // Integrates ticket selling and team member functionalities
 
 import React, { useState, useEffect } from 'react'
-import { DollarSign, Calendar, Users, TrendingUp, ShoppingCart, QrCode, Tabs as TabsIcon } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DollarSign, Calendar, Users, TrendingUp, ShoppingCart, QrCode } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { TicketSellerDashboard } from './TicketSellerDashboard'

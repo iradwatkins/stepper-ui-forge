@@ -167,9 +167,9 @@ export function MobilePWAScanner({
         const track = streamRef.current.getVideoTracks()[0]
         const capabilities = track.getCapabilities()
         
-        if (capabilities.torch) {
+        if ((capabilities as any).torch) {
           await track.applyConstraints({
-            advanced: [{ torch: !flashlightOn }]
+            advanced: [{ torch: !flashlightOn } as any]
           })
           setFlashlightOn(!flashlightOn)
         }
