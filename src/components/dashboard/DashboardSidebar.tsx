@@ -31,7 +31,8 @@ import {
   Clock,
   PieChart,
   Briefcase,
-  Monitor
+  Monitor,
+  Database
 } from 'lucide-react'
 
 interface NavigationItem {
@@ -225,6 +226,11 @@ const getAdminNavigation = (): NavigationItem[] => [
         title: 'System Monitor',
         href: '/dashboard/admin/monitor',
         icon: Monitor
+      },
+      {
+        title: 'Database Admin',
+        href: '/dashboard/admin/database',
+        icon: Database
       }
     ]
   }

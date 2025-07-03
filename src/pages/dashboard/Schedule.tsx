@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +24,7 @@ import {
   Plus
 } from 'lucide-react'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO } from 'date-fns'
+import { toast } from 'sonner'
 
 interface ScheduleEvent {
   id: string
@@ -39,6 +41,21 @@ interface ScheduleEvent {
   duration: number // in hours
 }
 
+interface TeamMemberAssignment {
+  id: string
+  event_id: string
+  role: string
+  events: {
+    id: string
+    title: string
+    date: string
+    time: string
+    location: string
+    organization_name: string | null
+    status: string
+  }
+}
+
 export default function Schedule() {
   const { user } = useAuth()
   const [events, setEvents] = useState<ScheduleEvent[]>([])
@@ -46,94 +63,80 @@ export default function Schedule() {
   const [currentWeek, setCurrentWeek] = useState<Date>(new Date())
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for demonstration
+  // Load real schedule data from database
   useEffect(() => {
-    const loadSchedule = async () => {
-      setIsLoading(true)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockEvents: ScheduleEvent[] = [
-        {
-          id: '1',
-          eventTitle: 'Summer Music Festival',
-          role: 'check_in',
-          startTime: '14:00',
-          endTime: '22:00',
-          date: '2024-07-15',
-          location: 'Main Gate',
-          venue: 'Central Park Amphitheater',
-          organizer: 'Music Events Co.',
-          status: 'upcoming',
-          attendees: 500,
-          duration: 8
-        },
-        {
-          id: '2',
-          eventTitle: 'Tech Conference 2024',
-          role: 'usher',
-          startTime: '08:00',
-          endTime: '17:00',
-          date: '2024-02-20',
-          location: 'Main Hall',
-          venue: 'Convention Center',
-          organizer: 'TechEvents Inc.',
-          status: 'upcoming',
-          attendees: 200,
-          duration: 9
-        },
-        {
-          id: '3',
-          eventTitle: 'Food & Wine Expo',
-          role: 'check_in',
-          startTime: '10:00',
-          endTime: '18:00',
-          date: format(new Date(), 'yyyy-MM-dd'), // Today
-          location: 'Front Desk',
-          venue: 'Expo Center',
-          organizer: 'Culinary Events',
-          status: 'in_progress',
-          attendees: 150,
-          duration: 8
-        },
-        {
-          id: '4',
-          eventTitle: 'Charity Gala',
-          role: 'coordinator',
-          startTime: '17:00',
-          endTime: '23:00',
-          date: '2024-02-18',
-          location: 'VIP Area',
-          venue: 'Grand Hotel Ballroom',
-          organizer: 'Charity Foundation',
-          status: 'upcoming',
-          attendees: 100,
-          duration: 6
-        },
-        {
-          id: '5',
-          eventTitle: 'Weekend Market',
-          role: 'setup',
-          startTime: '06:00',
-          endTime: '09:00',
-          date: '2024-02-17',
-          location: 'Market Square',
-          venue: 'Downtown Plaza',
-          organizer: 'Market Association',
-          status: 'upcoming',
-          attendees: 50,
-          duration: 3
+    if (!user) return
+    loadSchedule()
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadSchedule = async () => {
+    if (!user) return
+    
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      // Query team_members table to get user's event assignments
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('team_members')
+        .select(`
+          id,
+          event_id,
+          role,
+          events (
+            id,
+            title,
+            date,
+            time,
+            location,
+            organization_name,
+            status
+          )
+        `)
+        .eq('user_id', user.id)
+        .not('events', 'is', null)
+        .order('events(date)', { ascending: true })
+
+      if (assignmentsError) {
+        console.error('Error loading schedule:', assignmentsError)
+        setError('Failed to load schedule data')
+        toast.error('Failed to load your schedule')
+        return
+      }
+
+      // Transform database data to ScheduleEvent format
+      const scheduleEvents: ScheduleEvent[] = (assignments as TeamMemberAssignment[]).map(assignment => {
+        const event = assignment.events
+        const eventDate = new Date(`${event.date}T${event.time}`)
+        const endTime = new Date(eventDate.getTime() + 8 * 60 * 60 * 1000) // Default 8 hour duration
+        
+        return {
+          id: assignment.id,
+          eventTitle: event.title,
+          role: assignment.role as 'check_in' | 'usher' | 'security' | 'coordinator' | 'setup',
+          startTime: event.time,
+          endTime: format(endTime, 'HH:mm'),
+          date: event.date,
+          location: event.location || 'TBD',
+          venue: event.location || 'TBD',
+          organizer: event.organization_name || 'Unknown',
+          status: event.status === 'published' ? 'upcoming' : 'cancelled' as 'upcoming' | 'in_progress' | 'completed' | 'cancelled',
+          attendees: 0, // This would need to be calculated from ticket sales
+          duration: 8 // Default duration, could be calculated from event data
         }
-      ]
-      
-      setEvents(mockEvents)
+      })
+
+      setEvents(scheduleEvents)
+    } catch (error) {
+      console.error('Error loading schedule:', error)
+      setError('Failed to load schedule data')
+      toast.error('Failed to load your schedule')
+    } finally {
       setIsLoading(false)
     }
-
-    loadSchedule()
-  }, [])
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -221,6 +224,53 @@ export default function Schedule() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading schedule...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <Calendar className="h-12 w-12 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Schedule</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={loadSchedule}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Work Schedule</h1>
+            <p className="mt-2 text-gray-600">
+              View and manage your event work schedule
+            </p>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">No Schedule Assignments</h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              You don't have any event assignments yet. Contact event organizers to get assigned to events as a team member.
+            </p>
+            <Button onClick={loadSchedule} variant="outline">
+              Refresh Schedule
+            </Button>
+          </div>
         </div>
       </div>
     )

@@ -36,6 +36,7 @@ import AdminAnalytics from "./pages/dashboard/admin/AdminAnalytics";
 import AdminSettings from "./pages/dashboard/admin/AdminSettings";
 import AdminMonitor from "./pages/dashboard/admin/AdminMonitor";
 import AdminEvents from "./pages/dashboard/admin/AdminEvents";
+import DatabaseAdmin from "./pages/dashboard/admin/DatabaseAdmin";
 import EditEventsManage from "./pages/dashboard/EditEventsManage";
 import Following from "./pages/dashboard/Following";
 import FollowerManagement from "./pages/dashboard/FollowerManagement";
@@ -151,6 +152,11 @@ const App = () => (
                   <Route path="admin/monitor" element={
                     <AdminRoute>
                       <AdminMonitor />
+                    </AdminRoute>
+                  } />
+                  <Route path="admin/database" element={
+                    <AdminRoute>
+                      <DatabaseAdmin />
                     </AdminRoute>
                   } />
                 </Route>
