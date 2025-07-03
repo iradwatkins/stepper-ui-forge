@@ -90,6 +90,8 @@ export default function DraftEvents() {
       return
     }
 
+    console.log('Attempting to delete event:', { eventId, eventTitle, userId: user?.id })
+
     try {
       const { error } = await supabase
         .from('events')
@@ -99,10 +101,11 @@ export default function DraftEvents() {
 
       if (error) {
         console.error('Error deleting event:', error)
-        toast.error('Failed to delete event')
+        toast.error(`Failed to delete event: ${error.message}`)
         return
       }
 
+      console.log('Event deleted successfully:', eventId)
       toast.success(`Event "${eventTitle}" has been deleted successfully`)
       loadDraftEvents() // Refresh the list
     } catch (error) {
