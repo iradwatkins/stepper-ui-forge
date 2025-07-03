@@ -80,6 +80,13 @@ export class ApiPaymentService {
     };
   }
 
+  async getStatus() {
+    return {
+      initialized: true,
+      hasAvailableGateways: true
+    };
+  }
+
   isInitialized(): boolean {
     return true;
   }

@@ -389,7 +389,7 @@ export default function Schedule() {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <h4 className="font-medium text-sm">{event.eventTitle}</h4>
-                                      <Badge size="sm" className={getRoleColor(event.role)}>
+                                       <Badge className={getRoleColor(event.role)}>
                                         {getRoleName(event.role)}
                                       </Badge>
                                     </div>
@@ -479,7 +479,7 @@ export default function Schedule() {
                       <div key={event.id} className="border rounded p-3">
                         <div className="flex items-center gap-2 mb-2">
                           <h4 className="font-medium text-sm">{event.eventTitle}</h4>
-                          <Badge size="sm" className={getRoleColor(event.role)}>
+                          <Badge className={getRoleColor(event.role)}>
                             {getRoleName(event.role)}
                           </Badge>
                         </div>

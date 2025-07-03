@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CartItem as CartItemComponent } from './CartItem';
 import { useCart } from '@/contexts/CartContext';
 import { ShoppingBag, X, CreditCard } from 'lucide-react';
-import CheckoutModal from '@/components/CheckoutModal';
+import { CheckoutModal } from '@/components/CheckoutModal';
 
 interface CartDrawerProps {
   open: boolean;
@@ -132,7 +132,6 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
       <CheckoutModal 
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
-        useCartMode={true}
       />
     </>
   );

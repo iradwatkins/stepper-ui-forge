@@ -14,14 +14,21 @@ export class AtomicOrderService {
   }
 
   // Legacy method for compatibility
-  async extendReservations(reservationIds: string[]) {
-    console.log('Extending reservations:', reservationIds);
+  static async extendReservations(reservationIds: string[], duration: number = 300) {
+    console.log('Extending reservations:', reservationIds, 'for', duration, 'seconds');
     return { success: true };
   }
 
   // Legacy method for compatibility
-  async createAtomicOrder(orderData: any) {
-    return this.processOrder(orderData);
+  static async createAtomicOrder(customer: any, payment: any, cartItems: any[]) {
+    const instance = AtomicOrderService.getInstance();
+    return instance.processOrder({
+      eventId: cartItems[0]?.event_id || '',
+      items: cartItems,
+      customerInfo: customer,
+      paymentMethod: payment.gateway || 'unknown',
+      totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    });
   }
 
   async processOrder(orderData: {

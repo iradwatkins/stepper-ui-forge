@@ -147,7 +147,7 @@ export default function TeamInvite() {
           <CardContent>
             <TeamMemberInvite 
               eventId={eventId}
-              onInviteSent={handleInviteSent}
+              onInviteSent={() => console.log('Invitation sent')}
             />
           </CardContent>
         </Card>

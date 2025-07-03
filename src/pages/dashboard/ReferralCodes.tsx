@@ -383,7 +383,6 @@ export default function ReferralCodes() {
                       <Switch
                         checked={code.isActive}
                         onCheckedChange={() => toggleCodeStatus(code.id)}
-                        size="sm"
                       />
                     </div>
                   </TableCell>

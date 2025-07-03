@@ -72,7 +72,7 @@ export default function CashPaymentDashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <CashPaymentDashboard organizerId={userId} />
+      <CashPaymentDashboard />
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { TicketSelector } from "@/components/ticketing";
 import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
-import CheckoutModal from "@/components/CheckoutModal";
+import { CheckoutModal } from "@/components/CheckoutModal";
 
 const EventDetail = () => {
   const { id } = useParams();
