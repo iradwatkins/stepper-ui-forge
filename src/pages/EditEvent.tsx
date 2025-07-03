@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, ArrowLeft, LoaderIcon, AlertCircle } from "lucide-react";
+import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, ArrowLeft, LoaderIcon, AlertCircle, ImageIcon, UploadIcon, XIcon } from "lucide-react";
+import { useImageUpload } from "@/hooks/useImageUpload";
 import { toast } from "sonner";
 
 const eventSchema = z.object({
@@ -37,6 +38,16 @@ export default function EditEvent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use the original image upload system
+  const {
+    uploadedImages,
+    setUploadedImages,
+    isProcessingImage,
+    processingProgress,
+    handleImageUpload,
+    removeImage
+  } = useImageUpload();
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -109,6 +120,11 @@ export default function EditEvent() {
         isPublic: event.is_public,
         status: event.status
       });
+
+      // Set existing images if they exist
+      if (event.images) {
+        setUploadedImages(event.images);
+      }
     } catch (error) {
       console.error("Error loading event:", error);
       setError("Failed to load event");
@@ -116,6 +132,7 @@ export default function EditEvent() {
       setIsLoading(false);
     }
   };
+
 
   const saveEvent = async (data: EventFormData) => {
     if (!user || !id) {
@@ -136,6 +153,7 @@ export default function EditEvent() {
         max_attendees: data.maxAttendees || null,
         is_public: data.isPublic,
         status: data.status,
+        images: uploadedImages,
         updated_at: new Date().toISOString()
       };
 
@@ -260,6 +278,150 @@ export default function EditEvent() {
                   {...form.register("organizationName")}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5" />
+                Event Images
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Banner Image */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Banner Image</Label>
+                  <span className="text-xs text-muted-foreground">Recommended: 1200x600px</span>
+                </div>
+                
+                {!uploadedImages.banner ? (
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      id="banner-upload"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleImageUpload(e.target.files, 'banner');
+                        }
+                      }}
+                      className="hidden"
+                      disabled={isProcessingImage}
+                    />
+                    <label
+                      htmlFor="banner-upload"
+                      className="cursor-pointer flex flex-col items-center gap-2"
+                    >
+                      <UploadIcon className="w-8 h-8 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {isProcessingImage ? "Processing banner..." : "Upload banner image"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PNG, JPG, WebP up to 10MB - Auto-optimized to WebP
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <img
+                      src={uploadedImages.banner.thumbnail}
+                      alt="Event banner"
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                      <div className="text-white text-center text-xs space-y-1">
+                        <p>Compression: {uploadedImages.banner.metadata.compressionRatio}%</p>
+                        <p>Size: {(uploadedImages.banner.metadata.compressedSize / 1024 / 1024).toFixed(2)}MB</p>
+                        <p>{uploadedImages.banner.metadata.dimensions.width}x{uploadedImages.banner.metadata.dimensions.height}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeImage('banner')}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Postcard Image */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Postcard Image</Label>
+                  <span className="text-xs text-muted-foreground">Recommended: 600x400px</span>
+                </div>
+                
+                {!uploadedImages.postcard ? (
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      id="postcard-upload"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleImageUpload(e.target.files, 'postcard');
+                        }
+                      }}
+                      className="hidden"
+                      disabled={isProcessingImage}
+                    />
+                    <label
+                      htmlFor="postcard-upload"
+                      className="cursor-pointer flex flex-col items-center gap-2"
+                    >
+                      <UploadIcon className="w-6 h-6 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {isProcessingImage ? "Processing postcard..." : "Upload postcard image"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Optional - For social sharing and listings
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <img
+                      src={uploadedImages.postcard.thumbnail}
+                      alt="Event postcard"
+                      className="w-full h-24 object-cover rounded-lg border"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                      <div className="text-white text-center text-xs space-y-1">
+                        <p>Compression: {uploadedImages.postcard.metadata.compressionRatio}%</p>
+                        <p>Size: {(uploadedImages.postcard.metadata.compressedSize / 1024 / 1024).toFixed(2)}MB</p>
+                        <p>{uploadedImages.postcard.metadata.dimensions.width}x{uploadedImages.postcard.metadata.dimensions.height}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeImage('postcard')}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Processing Progress */}
+              {isProcessingImage && (
+                <div className="text-center p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Processing image optimization...
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Converting to WebP format and generating multiple sizes
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

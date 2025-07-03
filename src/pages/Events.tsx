@@ -8,6 +8,19 @@ import { Link } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
 
+interface EventImageData {
+  original?: string;
+  medium?: string;
+  small?: string;
+  thumbnail?: string;
+  url?: string;
+}
+
+interface EventImages {
+  banner?: EventImageData;
+  postcard?: EventImageData;
+}
+
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -143,54 +156,52 @@ const Events = () => {
           </div>
         </div>
 
-        {/* Events Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 events-grid">
-          {filteredEvents.map((event) => (
-            <Link key={event.id} to={`/events/${event.id}`}>
-              <Card className="overflow-hidden card-hover border-border bg-card event-card">
-                <div className="aspect-video overflow-hidden">
-                  {(event.images as Record<string, ImageMetadata>)?.banner?.url || (event.images as Record<string, ImageMetadata>)?.postcard?.url ? (
-                    <img
-                      src={(event.images as Record<string, ImageMetadata>)?.banner?.url || (event.images as Record<string, ImageMetadata>)?.postcard?.url}
-                      alt={event.title}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <span className="text-muted-foreground">No image</span>
+        {/* Events Masonry Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 events-masonry">
+          {Array.from({ length: 4 }, (_, columnIndex) => (
+            <div key={columnIndex} className="grid gap-4">
+              {filteredEvents
+                .filter((_, index) => index % 4 === columnIndex)
+                .map((event) => (
+                  <Link key={event.id} to={`/events/${event.id}`}>
+                    <div className="group cursor-pointer">
+                      <div className="relative overflow-hidden rounded-lg">
+                        {(event.images as EventImages)?.banner?.thumbnail || (event.images as EventImages)?.postcard?.thumbnail ? (
+                          <img
+                            src={(event.images as EventImages)?.banner?.thumbnail || (event.images as EventImages)?.postcard?.thumbnail}
+                            alt={event.title}
+                            className="h-auto max-w-full rounded-lg object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="h-40 bg-muted flex items-center justify-center rounded-lg">
+                            <span className="text-muted-foreground">No image</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 rounded-lg" />
+                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent rounded-b-lg">
+                          <div className="text-white space-y-1">
+                            <div className="flex justify-between items-start gap-2">
+                              <Badge className={`${getEventTypeColor(event.event_type)} text-xs px-1.5 py-0.5`}>
+                                {event.event_type}
+                              </Badge>
+                              <span className="text-sm font-bold text-white">{getEventPrice(event)}</span>
+                            </div>
+                            <h3 className="font-semibold text-sm line-clamp-2">{event.title}</h3>
+                            <div className="flex items-center gap-1 text-xs text-white/80">
+                              <CalendarIcon className="w-3 h-3" />
+                              <span>{formatDate(event.date)}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-white/80">
+                              <MapPinIcon className="w-3 h-3" />
+                              <span className="truncate">{event.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-4">
-                  <div className="flex justify-between items-start mb-1 sm:mb-2 gap-2">
-                    <Badge className={`${getEventTypeColor(event.event_type)} text-xs px-1.5 py-0.5`}>
-                      {event.event_type}
-                    </Badge>
-                    <span className="text-sm sm:text-base lg:text-lg font-bold text-primary flex-shrink-0">{getEventPrice(event)}</span>
-                  </div>
-                  <CardTitle className="line-clamp-2 text-foreground text-sm sm:text-base leading-tight">{event.title}</CardTitle>
-                  <CardDescription className="line-clamp-2 text-muted-foreground text-xs sm:text-sm leading-relaxed">
-                    {event.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0 p-3 sm:p-4">
-                  <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      <span className="truncate">{formatDate(event.date)} at {event.time}</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <MapPinIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      <span className="truncate">{event.location}</span>
-                    </div>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <UsersIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                      <span>{event.attendee_count || 0} attending</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </Link>
+                ))}
+            </div>
           ))}
         </div>
 

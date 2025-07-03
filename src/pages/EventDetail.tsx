@@ -13,12 +13,28 @@ import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
 import { CheckoutModal } from "@/components/CheckoutModal";
+import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
+
+interface EventImageData {
+  original?: string;
+  medium?: string;
+  small?: string;
+  thumbnail?: string;
+  url?: string;
+}
+
+interface EventImages {
+  banner?: EventImageData;
+  postcard?: EventImageData;
+}
 
 const EventDetail = () => {
   const { id } = useParams();
   const { addItem } = useCart();
   const { toast } = useToast();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [galleryStartIndex, setGalleryStartIndex] = useState(0);
   const [event, setEvent] = useState<EventWithStats | null>(null);
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +121,7 @@ const EventDetail = () => {
   };
 
   // Handle adding tickets to cart
-  const handleAddToCart = (selections: any[]) => {
+  const handleAddToCart = (selections: Array<{ ticketType: TicketType; quantity: number }>) => {
     if (!event) {
       toast({
         title: "Error",
@@ -178,6 +194,44 @@ const EventDetail = () => {
     }
   };
 
+  // Helper function to get event images
+  const getEventImages = (event: EventWithStats) => {
+    const images: string[] = [];
+    const eventImages = event.images as EventImages;
+    
+    // Add banner image (original or medium quality)
+    if (eventImages?.banner?.original) {
+      images.push(eventImages.banner.original);
+    } else if (eventImages?.banner?.medium) {
+      images.push(eventImages.banner.medium);
+    } else if (eventImages?.banner?.url) {
+      images.push(eventImages.banner.url);
+    }
+    
+    // Add postcard image (original or medium quality)
+    if (eventImages?.postcard?.original) {
+      images.push(eventImages.postcard.original);
+    } else if (eventImages?.postcard?.medium) {
+      images.push(eventImages.postcard.medium);
+    } else if (eventImages?.postcard?.url) {
+      images.push(eventImages.postcard.url);
+    }
+    
+    return images;
+  };
+
+  // Helper function to get primary display image
+  const getPrimaryImage = (event: EventWithStats) => {
+    const eventImages = event.images as EventImages;
+    return eventImages?.banner?.medium || 
+           eventImages?.banner?.original || 
+           eventImages?.banner?.url ||
+           eventImages?.postcard?.medium || 
+           eventImages?.postcard?.original || 
+           eventImages?.postcard?.url || 
+           '/placeholder-event.jpg';
+  };
+
   const getEventTypeColor = (type: string) => {
     switch (type) {
       case "simple": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
@@ -208,28 +262,69 @@ const EventDetail = () => {
     );
   }
 
-  const eventImage = (event.images as Record<string, ImageMetadata>)?.banner?.url || (event.images as Record<string, ImageMetadata>)?.postcard?.url || '/placeholder-event.jpg';
+  const eventImages = getEventImages(event);
+  const primaryImage = getPrimaryImage(event);
   const eventPrice = event.event_type === 'simple' ? 0 : 
                      event.ticket_types && event.ticket_types.length > 0 ? Math.min(...event.ticket_types.map(t => t.price)) : 0;
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <div className="relative h-80 md:h-96 overflow-hidden">
-        <img
-          src={eventImage}
-          alt={event.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute bottom-4 left-4 right-4 text-white">
-          <div className="container mx-auto">
+      {/* Image Gallery Section */}
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid gap-4">
+          {/* Main Image */}
+          <div 
+            className="relative aspect-video md:aspect-[21/9] overflow-hidden rounded-lg cursor-pointer group"
+            onClick={() => {
+              setGalleryStartIndex(0);
+              setIsGalleryOpen(true);
+            }}
+          >
+            <img
+              src={primaryImage}
+              alt={event.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+            {eventImages.length > 1 && (
+              <div className="absolute top-4 right-4 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                +{eventImages.length - 1} more
+              </div>
+            )}
+          </div>
+
+          {/* Secondary Images Grid */}
+          {eventImages.length > 1 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {eventImages.slice(1, 5).map((image, index) => (
+                <div
+                  key={index}
+                  className="aspect-square overflow-hidden rounded-lg cursor-pointer group"
+                  onClick={() => {
+                    setGalleryStartIndex(index + 1);
+                    setIsGalleryOpen(true);
+                  }}
+                >
+                  <img
+                    src={image}
+                    alt={`${event.title} ${index + 2}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Event Header */}
+        <div className="mt-6">
+          <div className="flex justify-between items-start mb-4">
             <Badge className={`${getEventTypeColor(event.event_type)} mb-2`}>
               {event.event_type}
             </Badge>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">{event.title}</h1>
-            <p className="text-lg opacity-90">{event.description}</p>
           </div>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">{event.title}</h1>
+          <p className="text-lg text-muted-foreground mb-6">{event.description}</p>
         </div>
       </div>
 
@@ -390,6 +485,14 @@ const EventDetail = () => {
           time: event.time,
           price: eventPrice
         }}
+      />
+
+      <ImageGalleryModal
+        isOpen={isGalleryOpen}
+        onClose={() => setIsGalleryOpen(false)}
+        images={eventImages}
+        initialIndex={galleryStartIndex}
+        alt={event.title}
       />
     </div>
   );
