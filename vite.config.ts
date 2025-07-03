@@ -6,7 +6,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Remove server config - not needed for production builds
+  server: {
+    port: 8080
+  },
   plugins: [
     react(),
     // Remove development-only plugins
