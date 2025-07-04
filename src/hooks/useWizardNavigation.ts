@@ -50,84 +50,115 @@ export const useWizardNavigation = ({
   const [lastValidationResult, setLastValidationResult] = useState<ValidationResult | null>(null);
 
   // Define wizard steps configuration
-  const wizardSteps: WizardStep[] = useMemo(() => [
-    {
-      id: 'event-type',
-      title: 'Event Type',
-      description: 'Choose your event tier',
-      icon: 'Settings',
-      isRequired: () => true,
-      canNavigateForward: () => !!eventType,
-      canNavigateBackward: () => false // First step
-    },
-    {
-      id: 'basic-info',
-      title: 'Event Details',
-      description: 'Add event information',
-      icon: 'FileText',
-      isRequired: () => true,
-      canNavigateForward: (data) => {
-        // Check required fields for basic information
-        const isValid = !!(
-          data.title?.trim() &&
-          data.description?.trim() &&
-          data.organizationName?.trim() &&
-          data.date &&
-          data.time &&
-          data.address?.trim() &&
-          selectedCategories.length > 0
-        );
-        console.log("Basic info validation:", {
-          title: !!data.title?.trim(),
-          description: !!data.description?.trim(),
-          organizationName: !!data.organizationName?.trim(),
-          date: !!data.date,
-          time: !!data.time,
-          address: !!data.address?.trim(),
-          categories: selectedCategories.length > 0,
-          canNavigate: isValid
-        });
-        return isValid;
+  const wizardSteps: WizardStep[] = useMemo(() => {
+    console.log('🔄 Recalculating wizard steps for eventType:', eventType);
+    
+    const steps = [
+      {
+        id: 'event-type',
+        title: 'Event Type',
+        description: 'Choose your event tier',
+        icon: 'Settings',
+        isRequired: () => true,
+        canNavigateForward: () => !!eventType,
+        canNavigateBackward: () => false // First step
       },
-      canNavigateBackward: () => true
-    },
-    {
-      id: 'ticketing',
-      title: 'Ticketing',
-      description: 'Configure ticket sales',
-      icon: 'Ticket',
-      isRequired: (eventType) => eventType !== 'simple',
-      canNavigateForward: () => true, // Will be validated by TicketConfiguration component
-      canNavigateBackward: () => true
-    },
-    {
-      id: 'seating-setup',
-      title: 'Seating Setup',
-      description: 'Configure interactive seating',
-      icon: 'LayoutGrid',
-      isRequired: (eventType) => eventType === 'premium',
-      canNavigateForward: () => true, // Will be validated by SeatingChartWizard component
-      canNavigateBackward: () => true
-    },
-    {
-      id: 'review',
-      title: 'Review & Publish',
-      description: 'Review and publish event',
-      icon: 'CheckCircle',
-      isRequired: () => true,
-      canNavigateForward: () => false, // Final step
-      canNavigateBackward: () => true
-    }
-  ], [eventType, selectedCategories]);
+      {
+        id: 'basic-info',
+        title: 'Event Details',
+        description: 'Add event information',
+        icon: 'FileText',
+        isRequired: () => true,
+        canNavigateForward: (data) => {
+          // Check required fields for basic information
+          const isValid = !!(
+            data.title?.trim() &&
+            data.description?.trim() &&
+            data.organizationName?.trim() &&
+            data.venueName?.trim() &&
+            data.date &&
+            data.time &&
+            data.address?.trim() &&
+            selectedCategories.length > 0
+          );
+          console.log("Basic info validation:", {
+            title: !!data.title?.trim(),
+            description: !!data.description?.trim(),
+            organizationName: !!data.organizationName?.trim(),
+            venueName: !!data.venueName?.trim(),
+            date: !!data.date,
+            time: !!data.time,
+            address: !!data.address?.trim(),
+            categories: selectedCategories.length > 0,
+            canNavigate: isValid
+          });
+          return isValid;
+        },
+        canNavigateBackward: () => true
+      },
+      {
+        id: 'ticketing',
+        title: 'Ticketing',
+        description: 'Configure ticket sales',
+        icon: 'Ticket',
+        isRequired: (eventType) => {
+          const required = eventType !== 'simple';
+          console.log(`📋 Ticketing step required for eventType "${eventType}":`, required);
+          return required;
+        },
+        canNavigateForward: () => true, // Will be validated by TicketConfiguration component
+        canNavigateBackward: () => true
+      },
+      {
+        id: 'seating-setup',
+        title: 'Seating Setup',
+        description: 'Configure interactive seating',
+        icon: 'LayoutGrid',
+        isRequired: (eventType) => {
+          const required = eventType === 'premium';
+          console.log(`🪑 Seating setup step required for eventType "${eventType}":`, required);
+          return required;
+        },
+        canNavigateForward: () => true, // Will be validated by SeatingChartWizard component
+        canNavigateBackward: () => true
+      },
+      {
+        id: 'review',
+        title: 'Review & Publish',
+        description: 'Review and publish event',
+        icon: 'CheckCircle',
+        isRequired: () => true,
+        canNavigateForward: () => false, // Final step
+        canNavigateBackward: () => true
+      }
+    ];
+    
+    console.log('📋 All defined steps:', steps.map(s => s.id));
+    return steps;
+  }, [eventType, selectedCategories]);
 
   // Get visible steps based on event type
   const visibleSteps = useMemo(() => {
-    return wizardSteps.filter(step => step.isRequired(eventType));
+    console.log(`👁️ Calculating visible steps for eventType: "${eventType}"`);
+    
+    const filtered = wizardSteps.filter(step => {
+      const isRequired = step.isRequired(eventType);
+      console.log(`  • Step "${step.id}": ${isRequired ? '✅ INCLUDED' : '❌ EXCLUDED'}`);
+      return isRequired;
+    });
+    
+    console.log(`📊 Final visible steps for "${eventType}":`, filtered.map(s => s.id));
+    console.log(`📈 Total visible steps: ${filtered.length}`);
+    
+    return filtered;
   }, [wizardSteps, eventType]);
 
   // Get current step info
   const currentStepInfo = useMemo(() => {
-    return visibleSteps[currentStep - 1];
+    const stepInfo = visibleSteps[currentStep - 1];
+    console.log(`🎯 Current step ${currentStep}: ${stepInfo?.id || 'UNDEFINED'}`);
+    console.log(`📋 Available visible steps:`, visibleSteps.map((s, i) => `${i + 1}. ${s.id}`));
+    return stepInfo;
   }, [visibleSteps, currentStep]);
 
   // Calculate progress
@@ -262,11 +293,19 @@ export const useWizardNavigation = ({
   }, [visibleSteps, currentStep, currentStepInfo, form, onValidationError, enableHistory, addToHistory, onStepChange, getCurrentStepErrors]);
 
   const nextStep = useCallback(() => {
+    console.log(`🔄 NextStep called - Current: ${currentStep}, Max: ${visibleSteps.length}, CanGoForward: ${canGoForward}`);
+    console.log(`📋 Visible steps when navigating next:`, visibleSteps.map(s => s.id));
+    
     if (canGoForward && currentStep < visibleSteps.length) {
-      return goToStep(currentStep + 1);
+      const nextStepNum = currentStep + 1;
+      const nextStepInfo = visibleSteps[nextStepNum - 1];
+      console.log(`➡️ Navigating to step ${nextStepNum}: ${nextStepInfo?.id || 'UNDEFINED'}`);
+      return goToStep(nextStepNum);
     }
+    
+    console.log(`🚫 Cannot navigate forward - canGoForward: ${canGoForward}, currentStep: ${currentStep}, maxSteps: ${visibleSteps.length}`);
     return false;
-  }, [canGoForward, currentStep, visibleSteps.length, goToStep]);
+  }, [canGoForward, currentStep, visibleSteps.length, visibleSteps, goToStep]);
 
   const prevStep = useCallback(() => {
     if (canGoBackward) {

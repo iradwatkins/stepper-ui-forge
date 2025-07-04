@@ -27,6 +27,11 @@ export default function CreateEventWizard() {
   const [seatingConfig, setSeatingConfig] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Debug eventType changes
+  useEffect(() => {
+    console.log('🔄 EventType changed to:', eventType);
+  }, [eventType]);
+
   // Initialize form with validation
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventFormSchema),
@@ -82,12 +87,22 @@ export default function CreateEventWizard() {
     eventType,
     selectedCategories,
     onStepChange: (stepId, direction) => {
-      console.log(`Navigating ${direction} to step: ${stepId}`);
+      console.log(`🧭 Wizard navigating ${direction} to step: ${stepId}`);
     },
     onValidationError: (errors, stepId) => {
+      console.log(`❌ Validation error on step ${stepId}:`, errors);
       toast.error(`Please fix the following issues: ${errors.join(', ')}`);
     }
   });
+
+  // Debug wizard state changes
+  useEffect(() => {
+    console.log('🧭 Wizard state update:');
+    console.log('  Current step:', currentStep);
+    console.log('  Current step info:', currentStepInfo?.id);
+    console.log('  Visible steps:', visibleSteps.map(s => s.id));
+    console.log('  Progress:', progress + '%');
+  }, [currentStep, currentStepInfo, visibleSteps, progress]);
 
   // Redirect non-authenticated users
   useEffect(() => {
