@@ -62,15 +62,16 @@ const eventTypes: EventType[] = [
       "All Simple Event features",
       "Paid ticketing system",
       "Multiple ticket types",
-      "Payment processing (PayPal, Square, Stripe)",
+      "Payment processing (PayPal, Square, Cash App)",
+      "QR code check-in system",
       "Ticket validation",
       "Sales analytics",
+      "Team member assignments",
       "Discount codes"
     ],
     limitations: [
-      "No custom seating",
-      "No team management",
-      "No QR check-in"
+      "No custom seating charts",
+      "No advanced team management"
     ],
     nextSteps: [
       "Event details",
@@ -79,7 +80,7 @@ const eventTypes: EventType[] = [
     ],
     upgrade: {
       to: "Premium",
-      benefits: ["Custom seating charts", "Team management", "QR check-in system"]
+      benefits: ["Interactive seating charts", "Advanced team management", "Custom branding"]
     }
   },
   {
