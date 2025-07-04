@@ -11,6 +11,9 @@ import { AlertCircle, CreditCard, Loader2, ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { productionPaymentService } from "@/lib/payments/ProductionPaymentService";
+import { OrderService } from "@/lib/services/OrderService";
+import { TicketService } from "@/lib/services/TicketService";
+import { EmailService } from "@/lib/services/EmailService";
 import { toast } from "sonner";
 
 interface CheckoutModalProps {
@@ -25,7 +28,7 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<string>('paypal');
   const [customerEmail, setCustomerEmail] = useState(user?.email || '');
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string; available: boolean }[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,9 +76,68 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       const result = await productionPaymentService.processPayment(paymentData);
 
       if (result.success) {
-        toast.success("Payment successful! Your tickets have been purchased.");
-        clearCart();
-        onClose();
+        try {
+          // Create order after successful payment
+          console.log('Creating order for payment:', result);
+          const order = await OrderService.createOrder({
+            customer_email: customerEmail,
+            customer_name: user?.user_metadata?.full_name || null,
+            total_amount: total,
+            payment_intent_id: result.transactionId || null,
+            payment_method: selectedGateway,
+            order_status: 'completed',
+            payment_status: 'completed'
+          }, items);
+
+          console.log('Order created:', order);
+
+          // Generate tickets for the order
+          const tickets = await TicketService.generateTicketsForOrder(order.id);
+          console.log('Tickets generated:', tickets);
+
+          if (!tickets || tickets.length === 0) {
+            throw new Error('Failed to generate tickets after payment');
+          }
+
+          // Send email notification
+          try {
+            const emailData = {
+              customerName: order.customer_name || 'Valued Customer',
+              customerEmail: customerEmail,
+              eventTitle: tickets[0]?.ticket_types?.events?.title || 'Event',
+              eventDate: tickets[0]?.ticket_types?.events?.date || new Date().toISOString(),
+              eventTime: new Date(tickets[0]?.ticket_types?.events?.date || new Date()).toLocaleTimeString(),
+              eventLocation: tickets[0]?.ticket_types?.events?.venue || tickets[0]?.ticket_types?.events?.location || 'TBD',
+              tickets: tickets.map(ticket => ({
+                id: ticket.id,
+                ticketType: ticket.ticket_types?.name || 'General',
+                qrCode: ticket.qr_code || '',
+                holderName: ticket.holder_name || 'Ticket Holder'
+              })),
+              orderTotal: order.total_amount,
+              orderId: order.id
+            };
+            await EmailService.sendTicketConfirmation(emailData);
+            console.log('Email sent successfully');
+            
+            toast.success("Payment successful! Your tickets have been purchased and sent to your email.");
+          } catch (emailError) {
+            console.error('Email failed but tickets created:', emailError);
+            toast.success("Payment successful! Your tickets have been purchased. Check your My Tickets page to view them.");
+          }
+
+          clearCart();
+          onClose();
+        } catch (orderError) {
+          console.error('Order/ticket creation failed after payment:', orderError);
+          
+          // Payment succeeded but order/ticket creation failed
+          // This is a critical error that needs manual intervention
+          toast.error("Payment processed but ticket creation failed. Please contact support with your payment confirmation.");
+          
+          // Don't clear cart or close modal so user can retry or contact support
+          throw new Error('Ticket generation failed after payment. Please contact support.');
+        }
       } else {
         throw new Error(result.error || 'Payment failed');
       }
