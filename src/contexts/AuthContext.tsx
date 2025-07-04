@@ -3,6 +3,23 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 
+// Helper function to get the correct redirect URL for different environments
+const getRedirectUrl = (): string => {
+  const origin = window.location.origin
+  const isDev = origin.includes('localhost') || origin.includes('127.0.0.1')
+  const isLovable = origin.includes('lovable.app') || origin.includes('lovable.dev')
+  
+  console.log('🔐 Current origin:', origin, { isDev, isLovable })
+  
+  // For development and Lovable preview environments, use dashboard
+  if (isDev || isLovable) {
+    return `${origin}/dashboard`
+  }
+  
+  // For production or custom domains, also use dashboard
+  return `${origin}/dashboard`
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
@@ -45,6 +62,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state change:', event, session ? 'logged in' : 'logged out')
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -62,34 +80,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }
 
   const signUp = async (email: string, password: string) => {
+    const redirectUrl = getRedirectUrl()
+    console.log('🔐 Sign up redirect URL:', redirectUrl)
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
+        emailRedirectTo: redirectUrl
       }
     })
+    
+    if (error) {
+      console.error('🔐 Sign up error:', error)
+    }
     return { error }
   }
 
   const signInWithGoogle = async () => {
+    const redirectUrl = getRedirectUrl()
+    console.log('🔐 Google sign in redirect URL:', redirectUrl)
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`
+        redirectTo: redirectUrl
       }
     })
+    
+    if (error) {
+      console.error('🔐 Google sign in error:', error)
+    }
     return { error }
   }
 
   const signInWithMagicLink = async (email: string) => {
+    const redirectUrl = getRedirectUrl()
+    console.log('🔐 Magic link redirect URL:', redirectUrl)
+    
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: redirectUrl,
         shouldCreateUser: true
       }
     })
+    
+    if (error) {
+      console.error('🔐 Magic link error:', error)
+    }
     return { error }
   }
 
