@@ -12,6 +12,7 @@ import { EventTypeSelection } from "@/components/create-event/EventTypeSelection
 import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
 import { SeatingChartWizard } from "@/components/create-event/SeatingChartWizard";
+import { TeamManagementWizard } from "@/components/create-event/TeamManagementWizard";
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -25,6 +26,7 @@ export default function CreateEventWizard() {
   const [eventType, setEventType] = useState<'simple' | 'ticketed' | 'premium' | ''>('');
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [seatingConfig, setSeatingConfig] = useState<any>(null);
+  const [teamConfig, setTeamConfig] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form with validation
@@ -266,6 +268,7 @@ export default function CreateEventWizard() {
       setTicketTypes([]);
       setEventType('');
       setSeatingConfig(null);
+      setTeamConfig(null);
       
       if (status === "published") {
         navigate(`/events/${event.id}`);
@@ -323,6 +326,18 @@ export default function CreateEventWizard() {
             form={form}
             eventType={eventType}
             onTicketsChange={handleTicketsChange}
+          />
+        );
+        
+      case 'team-management':
+        return (
+          <TeamManagementWizard
+            form={form}
+            eventType={eventType}
+            onTeamConfigured={(teamData) => {
+              console.log('Team configured:', teamData);
+              setTeamConfig(teamData);
+            }}
           />
         );
         
