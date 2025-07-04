@@ -301,7 +301,7 @@ const Events = () => {
   // Render event card component
   const renderEventCard = (event: EventWithStats) => (
     <Link key={event.id} to={`/events/${event.id}`}>
-      <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-200">
+      <div className="bg-card rounded-xl border-2 border-border overflow-hidden hover:shadow-lg transition-shadow duration-200">
         {/* Image Container */}
         <div className="relative">
           {(event.images as EventImages)?.banner?.thumbnail || (event.images as EventImages)?.postcard?.thumbnail ? (
@@ -311,13 +311,13 @@ const Events = () => {
               className="w-full h-56 object-cover"
             />
           ) : (
-            <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-400">No image</span>
+            <div className="w-full h-56 bg-muted flex items-center justify-center">
+              <span className="text-muted-foreground">No image</span>
             </div>
           )}
           
           {/* Price Badge */}
-          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-gray-900">
+          <div className="absolute top-3 left-3 bg-card/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-foreground border border-border">
             {getEventPrice(event)}
           </div>
         </div>
@@ -325,12 +325,12 @@ const Events = () => {
         {/* Content Container */}
         <div className="p-6 flex flex-col gap-4">
           {/* Title */}
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">
             {event.title}
           </h2>
           
           {/* Date */}
-          <div className="flex items-center gap-3 text-gray-600">
+          <div className="flex items-center gap-3 text-muted-foreground">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
             </svg>
@@ -338,7 +338,7 @@ const Events = () => {
           </div>
 
           {/* Location */}
-          <div className="flex items-center gap-3 text-gray-600">
+          <div className="flex items-center gap-3 text-muted-foreground">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
             </svg>
@@ -346,7 +346,7 @@ const Events = () => {
           </div>
 
           {/* Tickets Button */}
-          <button className="w-full mt-4 py-3 px-6 bg-gray-900 text-white font-semibold rounded-full hover:bg-gray-700 transition-colors">
+          <button className="w-full mt-4 py-3 px-6 bg-primary text-primary-foreground font-semibold rounded-full hover:bg-primary/90 transition-colors">
             Tickets
           </button>
         </div>
@@ -372,7 +372,7 @@ const Events = () => {
           <div className="space-y-4">
             {eventsToShow.map((event) => (
               <Link key={event.id} to={`/events/${event.id}`}>
-                <div className="bg-white rounded-xl border-2 border-gray-200 p-4 md:p-6 flex flex-col sm:flex-row gap-4 md:gap-6 hover:shadow-lg transition-shadow duration-200">
+                <div className="bg-card rounded-xl border-2 border-border p-4 md:p-6 flex flex-col sm:flex-row gap-4 md:gap-6 hover:shadow-lg transition-shadow duration-200">
                   {/* Image */}
                   <div className="w-full sm:w-32 h-48 sm:h-32 flex-shrink-0">
                     {(event.images as EventImages)?.banner?.thumbnail || (event.images as EventImages)?.postcard?.thumbnail ? (
@@ -382,8 +382,8 @@ const Events = () => {
                         className="w-full h-full object-cover rounded-lg"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
-                        <span className="text-gray-400 text-sm">No image</span>
+                      <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center">
+                        <span className="text-muted-foreground text-sm">No image</span>
                       </div>
                     )}
                   </div>
@@ -391,21 +391,21 @@ const Events = () => {
                   {/* Content */}
                   <div className="flex-1">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-xl font-bold text-gray-900">{event.title}</h3>
-                      <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-semibold">
+                      <h3 className="text-xl font-bold text-foreground">{event.title}</h3>
+                      <span className="bg-muted text-foreground px-3 py-1 rounded-full text-sm font-semibold border border-border">
                         {getEventPrice(event)}
                       </span>
                     </div>
                     
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-2 text-muted-foreground">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
                         </svg>
                         <span className="text-sm">{formatDate(event.date)} {event.time}</span>
                       </div>
                       
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-2 text-muted-foreground">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
                         </svg>
@@ -450,13 +450,13 @@ const Events = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <div className="container mx-auto px-4 py-12 events-container">
 
         {/* Featured Event Hero Section */}
         {featuredEvent && (
           <div className="mb-12">
-            <div className="bg-white rounded-3xl border-2 border-gray-200 overflow-hidden shadow-lg">
+            <div className="bg-card rounded-3xl border-2 border-border overflow-hidden shadow-lg">
               <div className="relative">
                 {/* Hero Image */}
                 <div className="relative h-96 md:h-[500px]">
@@ -467,8 +467,8 @@ const Events = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                      <span className="text-gray-500 text-xl">Featured Event</span>
+                    <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                      <span className="text-muted-foreground text-xl">Featured Event</span>
                     </div>
                   )}
                   
@@ -481,7 +481,7 @@ const Events = () => {
                   </div>
                   
                   {/* Price Badge */}
-                  <div className="absolute top-6 right-6 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-full text-lg font-bold text-gray-900">
+                  <div className="absolute top-6 right-6 bg-card/95 backdrop-blur-sm px-4 py-2 rounded-full text-lg font-bold text-foreground">
                     {getEventPrice(featuredEvent)}
                   </div>
                 </div>
@@ -518,7 +518,7 @@ const Events = () => {
 
                     {/* CTA Button */}
                     <Link to={`/events/${featuredEvent.id}`}>
-                      <button className="bg-white text-gray-900 px-8 py-4 rounded-full text-lg font-semibold hover:bg-gray-100 transition-colors">
+                      <button className="bg-card text-foreground px-8 py-4 rounded-full text-lg font-semibold hover:bg-accent hover:text-accent-foreground transition-colors border border-border">
                         Get Tickets
                       </button>
                     </Link>
