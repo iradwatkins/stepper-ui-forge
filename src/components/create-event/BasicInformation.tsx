@@ -192,7 +192,20 @@ export const BasicInformation = ({
             </div>
 
             <div>
-              <Label htmlFor="address" className="text-sm font-medium">Event Location/Address *</Label>
+              <Label htmlFor="venueName" className="text-sm font-medium">Venue Name *</Label>
+              <Input
+                id="venueName"
+                placeholder="Enter venue or location name..."
+                {...form.register('venueName')}
+                className={`mt-1 ${form.formState.errors.venueName ? 'border-red-500' : ''}`}
+              />
+              {form.formState.errors.venueName && (
+                <p className="text-xs text-red-500 mt-1">{form.formState.errors.venueName.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="address" className="text-sm font-medium">Venue Address *</Label>
               <div className="mt-1">
                 <GooglePlacesInput
                   value={form.watch('address') || ''}

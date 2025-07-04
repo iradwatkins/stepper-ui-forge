@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { RealTimeAnalyticsDashboard } from '@/components/dashboard/RealTimeAnalyticsDashboard'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -29,11 +29,25 @@ export default function LiveAnalytics() {
     setAlertCount(prev => prev + 1)
   }
 
-  const mockEventData = {
-    name: 'Demo Event',
+  const [eventData, setEventData] = useState({
+    name: 'Loading...',
     date: new Date().toLocaleDateString(),
-    status: 'active'
-  }
+    status: 'loading' as 'loading' | 'active' | 'inactive'
+  })
+
+  useEffect(() => {
+    // Load real event data
+    const loadEventData = async () => {
+      // TODO: Replace with actual API call to get event data
+      setEventData({
+        name: 'No event selected',
+        date: new Date().toLocaleDateString(),
+        status: 'inactive'
+      })
+    }
+    
+    loadEventData()
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -74,7 +88,7 @@ export default function LiveAnalytics() {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm text-muted-foreground">Monitoring analytics for:</div>
-            <div className="font-medium">{mockEventData.name} (ID: {eventId})</div>
+            <div className="font-medium">{eventData.name} (ID: {eventId})</div>
           </div>
           <div className="flex items-center space-x-2">
             <Badge variant="default" className="bg-green-100 text-green-800">

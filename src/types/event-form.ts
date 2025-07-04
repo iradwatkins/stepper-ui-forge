@@ -10,6 +10,7 @@ export const eventFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(100, "Title too long"),
   description: z.string().min(10, "Description must be at least 10 characters").max(2000, "Description too long"),
   organizationName: z.string().min(2, "Organization/Promoter name is required").max(100, "Name too long"),
+  venueName: z.string().min(2, "Venue name is required").max(100, "Venue name too long"),
   date: z.string().refine(date => new Date(date) > new Date(), "Event date must be in the future"),
   time: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format"),
   endDate: z.string().optional(),

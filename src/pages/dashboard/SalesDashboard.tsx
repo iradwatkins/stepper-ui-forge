@@ -57,72 +57,36 @@ export default function SalesDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('30d')
 
-  // Mock data for demonstration
+  // Load sales data from API
   useEffect(() => {
     const loadSalesData = async () => {
       setIsLoading(true)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockStats: SalesStats = {
-        totalEarnings: 1245.75,
-        totalSales: 87,
-        monthlyEarnings: 425.50,
-        commissionsEarned: 245.75,
-        averageCommissionRate: 8.5,
-        topEvent: 'Summer Music Festival'
+      try {
+        // TODO: Replace with actual API calls
+        // const salesData = await CommissionService.getUserSales(user?.id, selectedPeriod)
+        // const salesStats = await CommissionService.getUserSalesStats(user?.id, selectedPeriod)
+        
+        // For now, initialize with empty data
+        setStats({
+          totalEarnings: 0,
+          totalSales: 0,
+          monthlyEarnings: 0,
+          commissionsEarned: 0,
+          averageCommissionRate: 0,
+          topEvent: ''
+        })
+        setSales([])
+        
+      } catch (error) {
+        console.error('Error loading sales data:', error)
+      } finally {
+        setIsLoading(false)
       }
-      
-      const mockSales: Sale[] = [
-        {
-          id: '1',
-          eventTitle: 'Summer Music Festival',
-          ticketType: 'VIP Pass',
-          quantity: 2,
-          unitPrice: 150.00,
-          commission: 25.50,
-          total: 300.00,
-          purchaserName: 'John Smith',
-          purchaseDate: '2024-01-15',
-          referralCode: 'SELLER001',
-          status: 'completed'
-        },
-        {
-          id: '2',
-          eventTitle: 'Tech Conference 2024',
-          ticketType: 'General Admission',
-          quantity: 1,
-          unitPrice: 99.00,
-          commission: 9.90,
-          total: 99.00,
-          purchaserName: 'Sarah Johnson',
-          purchaseDate: '2024-01-14',
-          referralCode: 'SELLER001',
-          status: 'completed'
-        },
-        {
-          id: '3',
-          eventTitle: 'Food & Wine Expo',
-          ticketType: 'Tasting Pass',
-          quantity: 3,
-          unitPrice: 75.00,
-          commission: 22.50,
-          total: 225.00,
-          purchaserName: 'Mike Davis',
-          purchaseDate: '2024-01-13',
-          referralCode: 'SELLER002',
-          status: 'pending'
-        }
-      ]
-      
-      setStats(mockStats)
-      setSales(mockSales)
-      setIsLoading(false)
     }
 
     loadSalesData()
-  }, [selectedPeriod])
+  }, [selectedPeriod, user?.id])
 
   const getStatusColor = (status: string) => {
     switch (status) {

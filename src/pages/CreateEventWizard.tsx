@@ -12,7 +12,6 @@ import { EventTypeSelection } from "@/components/create-event/EventTypeSelection
 import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
 import { SeatingChartWizard } from "@/components/create-event/SeatingChartWizard";
-import { TeamManagementWizard } from "@/components/create-event/TeamManagementWizard";
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -26,7 +25,6 @@ export default function CreateEventWizard() {
   const [eventType, setEventType] = useState<'simple' | 'ticketed' | 'premium' | ''>('');
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [seatingConfig, setSeatingConfig] = useState<any>(null);
-  const [teamConfig, setTeamConfig] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form with validation
@@ -37,6 +35,7 @@ export default function CreateEventWizard() {
       title: '',
       description: '',
       organizationName: '',
+      venueName: '',
       date: '',
       time: '',
       endDate: '',
@@ -168,6 +167,7 @@ export default function CreateEventWizard() {
         title: formData.title.trim(),
         description: description || null,
         organization_name: formData.organizationName?.trim() || null,
+        venue_name: formData.venueName?.trim() || null,
         date: formData.date,
         time: formData.time,
         location: formData.address.trim(),
@@ -268,7 +268,6 @@ export default function CreateEventWizard() {
       setTicketTypes([]);
       setEventType('');
       setSeatingConfig(null);
-      setTeamConfig(null);
       
       if (status === "published") {
         navigate(`/events/${event.id}`);
@@ -329,23 +328,12 @@ export default function CreateEventWizard() {
           />
         );
         
-      case 'team-management':
-        return (
-          <TeamManagementWizard
-            form={form}
-            eventType={eventType}
-            onTeamConfigured={(teamData) => {
-              console.log('Team configured:', teamData);
-              setTeamConfig(teamData);
-            }}
-          />
-        );
-        
       case 'seating-setup':
         return (
           <SeatingChartWizard
             form={form}
             eventType={eventType}
+            ticketTypes={ticketTypes}
             onSeatingConfigured={(seatingData) => {
               console.log('Seating configured:', seatingData);
               setSeatingConfig(seatingData);

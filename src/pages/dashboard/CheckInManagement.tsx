@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CheckinDashboard } from '@/components/dashboard/CheckinDashboard'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -10,14 +10,39 @@ import { Link } from 'react-router-dom'
 
 export default function CheckInManagement() {
   const [searchParams] = useSearchParams()
-  const eventId = searchParams.get('eventId') || 'demo-event-123'
+  const eventId = searchParams.get('eventId')
   const [qrScannerActive, setQrScannerActive] = useState(false)
+  const [stats, setStats] = useState({
+    activeStaff: 0,
+    totalCheckins: 0,
+    lastCheckinTime: '',
+    duplicateAttempts: 0
+  })
 
-  const mockStats = {
-    activeStaff: 3,
-    totalCheckins: 87,
-    lastCheckinTime: new Date(Date.now() - 5 * 60 * 1000).toLocaleTimeString(),
-    duplicateAttempts: 2
+  // Load real check-in stats
+  useEffect(() => {
+    if (!eventId) return
+    
+    const loadStats = async () => {
+      // TODO: Replace with actual API call to get check-in statistics
+      // This would fetch real data from your check-in service
+      setStats({
+        activeStaff: 0,
+        totalCheckins: 0,
+        lastCheckinTime: 'No recent activity',
+        duplicateAttempts: 0
+      })
+    }
+    
+    loadStats()
+  }, [eventId])
+
+  if (!eventId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Please select an event to manage check-ins</p>
+      </div>
+    )
   }
 
   return (
@@ -60,7 +85,7 @@ export default function CheckInManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Staff</p>
-                <p className="text-2xl font-bold text-green-600">{mockStats.activeStaff}</p>
+                <p className="text-2xl font-bold text-green-600">{stats.activeStaff}</p>
               </div>
               <Users className="h-8 w-8 text-green-500" />
             </div>
@@ -71,7 +96,7 @@ export default function CheckInManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Check-ins</p>
-                <p className="text-2xl font-bold">{mockStats.totalCheckins}</p>
+                <p className="text-2xl font-bold">{stats.totalCheckins}</p>
               </div>
               <QrCode className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -82,7 +107,7 @@ export default function CheckInManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Last Check-in</p>
-                <p className="text-2xl font-bold text-blue-600">{mockStats.lastCheckinTime}</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.lastCheckinTime}</p>
               </div>
               <Clock className="h-8 w-8 text-blue-500" />
             </div>
@@ -93,7 +118,7 @@ export default function CheckInManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Duplicate Attempts</p>
-                <p className="text-2xl font-bold text-orange-600">{mockStats.duplicateAttempts}</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.duplicateAttempts}</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-orange-500" />
             </div>

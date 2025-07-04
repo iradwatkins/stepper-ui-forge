@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { CheckoutModal } from "@/components/CheckoutModal";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
 import { seatingService, AvailableSeat } from "@/lib/services/SeatingService";
+import { EventLikeService } from "@/lib/services/EventLikeService";
 
 interface EventImageData {
   original?: string;
@@ -44,6 +45,9 @@ const EventDetail = () => {
   const [seatingCharts, setSeatingCharts] = useState<any[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<AvailableSeat[]>([]);
   const [showSeating, setShowSeating] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [likesLoading, setLikesLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -84,56 +88,33 @@ const EventDetail = () => {
     loadEvent();
   }, [id]);
 
-  // Mock function to load ticket types - replace with actual API call
-  const loadTicketTypes = async (eventId: string) => {
-    setTicketsLoading(true);
-    try {
-      // Mock ticket types data - replace with actual API call
-      const mockTicketTypes: TicketType[] = [
-        {
-          id: `${eventId}-general`,
-          event_id: eventId,
-          name: 'General Admission',
-          description: 'Standard access to the event',
-          price: 25.00,
-          early_bird_price: 20.00,
-          early_bird_until: '2024-12-01T23:59:59Z',
-          quantity: 100,
-          sold_quantity: 15,
-          max_per_person: 4,
-          sale_start: null,
-          sale_end: null,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: `${eventId}-vip`,
-          event_id: eventId,
-          name: 'VIP Access',
-          description: 'Premium access with special perks and reserved seating',
-          price: 75.00,
-          early_bird_price: null,
-          early_bird_until: null,
-          quantity: 50,
-          sold_quantity: 8,
-          max_per_person: 2,
-          sale_start: null,
-          sale_end: null,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+  // Load event like status and count
+  useEffect(() => {
+    if (!event) return;
+
+    const loadLikeInfo = async () => {
+      try {
+        // Get like status and count
+        const [likeStatusResult, likeCountResult] = await Promise.all([
+          EventLikeService.isEventLiked(event.id),
+          EventLikeService.getEventLikeCount(event.id)
+        ]);
+
+        if (!likeStatusResult.error) {
+          setIsLiked(likeStatusResult.isLiked);
         }
-      ];
-      
-      setTicketTypes(mockTicketTypes);
-    } catch (error) {
-      console.error('Error loading ticket types:', error);
-      setTicketTypes([]);
-    } finally {
-      setTicketsLoading(false);
-    }
-  };
+
+        if (!likeCountResult.error) {
+          setLikeCount(likeCountResult.count);
+        }
+      } catch (error) {
+        console.error('Error loading like info:', error);
+      }
+    };
+
+    loadLikeInfo();
+  }, [event]);
+
 
   // Handle adding tickets to cart
   const handleAddToCart = (selections: Array<{ ticketType: TicketType; quantity: number }>) => {
@@ -194,39 +175,9 @@ const EventDetail = () => {
   const handleSimpleEventRegistration = () => {
     if (!event) return;
 
-    // For simple events, create a mock ticket type and add to cart
-    const simpleTicketType: TicketType = {
-      id: `${event.id}-simple`,
-      event_id: event.id,
-      name: 'Registration',
-      description: 'Free event registration',
-      price: 0,
-      early_bird_price: null,
-      early_bird_until: null,
-      quantity: 1000, // Large number for simple events
-      sold_quantity: 0,
-      max_per_person: 1,
-      sale_start: null,
-      sale_end: null,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    try {
-      addItem(simpleTicketType, event, 1);
-      toast({
-        title: "Added to Cart",
-        description: "Registration added to your cart",
-      });
-    } catch (error) {
-      console.error('Error registering for event:', error);
-      toast({
-        title: "Error",
-        description: "Failed to register for event. Please try again.",
-        variant: "destructive"
-      });
-    }
+    // For simple events, proceed directly to checkout
+    // The checkout process will handle free event registrations
+    setIsCheckoutOpen(true);
   };
 
   // Helper function to get event images
@@ -327,6 +278,43 @@ const EventDetail = () => {
   const getCleanDescription = () => {
     if (!event.description) return null;
     return event.description.replace(/\[PRICE:.*?\]/, '').trim();
+  };
+
+  // Handle like toggle
+  const handleLikeToggle = async () => {
+    if (!event || likesLoading) return;
+
+    setLikesLoading(true);
+    try {
+      const result = await EventLikeService.toggleEventLike(event.id);
+      
+      if (result.success) {
+        setIsLiked(result.isLiked);
+        setLikeCount(prev => result.isLiked ? prev + 1 : prev - 1);
+        
+        toast({
+          title: result.isLiked ? "Event Liked" : "Event Unliked",
+          description: result.isLiked 
+            ? "This event has been added to your liked events" 
+            : "This event has been removed from your liked events",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to update like status",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update like status. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLikesLoading(false);
+    }
   };
 
   return (
@@ -522,9 +510,15 @@ const EventDetail = () => {
                   
                   {/* Action Buttons */}
                   <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <HeartIcon className="w-4 h-4 mr-2" />
-                      Save
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={handleLikeToggle}
+                      disabled={likesLoading}
+                    >
+                      <HeartIcon className={`w-4 h-4 mr-2 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                      {isLiked ? 'Liked' : 'Like'} {likeCount > 0 && `(${likeCount})`}
                     </Button>
                     <Button variant="outline" size="sm" className="flex-1">
                       <ShareIcon className="w-4 h-4 mr-2" />

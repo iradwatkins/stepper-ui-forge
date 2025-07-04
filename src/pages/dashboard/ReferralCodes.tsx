@@ -80,68 +80,34 @@ export default function ReferralCodes() {
     expiryDate: ''
   })
 
-  // Mock data for demonstration
+  // Load referral codes from API
   useEffect(() => {
     const loadReferralData = async () => {
       setIsLoading(true)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockStats: ReferralStats = {
-        totalCodes: 5,
-        activeCodes: 3,
-        totalEarnings: 425.50,
-        totalUses: 47
+      try {
+        // TODO: Replace with actual API calls
+        // const referralData = await ReferralService.getUserReferralCodes(user?.id)
+        // const referralStats = await ReferralService.getUserReferralStats(user?.id)
+        
+        // For now, initialize with empty data
+        setStats({
+          totalCodes: 0,
+          activeCodes: 0,
+          totalEarnings: 0,
+          totalUses: 0
+        })
+        setCodes([])
+        
+      } catch (error) {
+        console.error('Error loading referral data:', error)
+      } finally {
+        setIsLoading(false)
       }
-      
-      const mockCodes: ReferralCode[] = [
-        {
-          id: '1',
-          code: 'SUMMER2024',
-          eventTitle: 'Summer Music Festival',
-          eventId: 'event-1',
-          commissionRate: 10,
-          usageLimit: 100,
-          usageCount: 23,
-          totalEarnings: 230.50,
-          isActive: true,
-          createdDate: '2024-01-10',
-          expiryDate: '2024-07-31'
-        },
-        {
-          id: '2',
-          code: 'TECH50',
-          eventTitle: 'Tech Conference 2024',
-          eventId: 'event-2',
-          commissionRate: 15,
-          usageCount: 12,
-          totalEarnings: 118.00,
-          isActive: true,
-          createdDate: '2024-01-05'
-        },
-        {
-          id: '3',
-          code: 'FOODIE25',
-          eventTitle: 'Food & Wine Expo',
-          eventId: 'event-3',
-          commissionRate: 8,
-          usageLimit: 50,
-          usageCount: 12,
-          totalEarnings: 77.00,
-          isActive: false,
-          createdDate: '2024-01-01',
-          expiryDate: '2024-03-15'
-        }
-      ]
-      
-      setStats(mockStats)
-      setCodes(mockCodes)
-      setIsLoading(false)
     }
 
     loadReferralData()
-  }, [])
+  }, [user?.id])
 
   const handleCreateCode = () => {
     // Generate a random code if none provided

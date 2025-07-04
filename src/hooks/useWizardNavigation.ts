@@ -101,15 +101,6 @@ export const useWizardNavigation = ({
       canNavigateBackward: () => true
     },
     {
-      id: 'team-management',
-      title: 'Team Management',
-      description: 'Set up team members and roles',
-      icon: 'Users',
-      isRequired: (eventType) => eventType === 'ticketed' || eventType === 'premium',
-      canNavigateForward: () => true, // Optional step - can be skipped
-      canNavigateBackward: () => true
-    },
-    {
       id: 'seating-setup',
       title: 'Seating Setup',
       description: 'Configure interactive seating',

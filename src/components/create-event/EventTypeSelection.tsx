@@ -76,7 +76,6 @@ const eventTypes: EventType[] = [
     nextSteps: [
       "Event details",
       "Ticket configuration",
-      "Team management",
       "Review & publish"
     ],
     upgrade: {
@@ -103,7 +102,6 @@ const eventTypes: EventType[] = [
     nextSteps: [
       "Event details",
       "Ticket configuration",
-      "Team management",
       "Seating setup",
       "Review & publish"
     ]

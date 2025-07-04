@@ -67,67 +67,41 @@ export default function AudienceInsights() {
   const [selectedPeriod, setSelectedPeriod] = useState('12m')
   const [isLoading, setIsLoading] = useState(true)
 
-  // Mock data for demonstration
+  // Load audience data from API
   useEffect(() => {
     const loadAudienceData = async () => {
       setIsLoading(true)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockData: AudienceData = {
-        totalAttendees: 2847,
-        repeatAttendees: 1342,
-        averageAge: 32,
-        genderDistribution: {
-          male: 45,
-          female: 52,
-          other: 3
-        },
-        locationDistribution: [
-          { city: 'New York', count: 1250, percentage: 44 },
-          { city: 'Brooklyn', count: 485, percentage: 17 },
-          { city: 'Queens', count: 342, percentage: 12 },
-          { city: 'Manhattan', count: 298, percentage: 10 },
-          { city: 'Bronx', count: 225, percentage: 8 },
-          { city: 'Other', count: 247, percentage: 9 }
-        ],
-        eventPreferences: [
-          { category: 'Music', count: 1580, percentage: 56 },
-          { category: 'Technology', count: 852, percentage: 30 },
-          { category: 'Food & Drink', count: 568, percentage: 20 },
-          { category: 'Arts & Culture', count: 341, percentage: 12 },
-          { category: 'Sports', count: 284, percentage: 10 },
-          { category: 'Business', count: 156, percentage: 5 }
-        ],
-        attendancePattern: [
-          { month: 'Jan', count: 180 },
-          { month: 'Feb', count: 220 },
-          { month: 'Mar', count: 280 },
-          { month: 'Apr', count: 350 },
-          { month: 'May', count: 420 },
-          { month: 'Jun', count: 480 },
-          { month: 'Jul', count: 520 },
-          { month: 'Aug', count: 490 },
-          { month: 'Sep', count: 380 },
-          { month: 'Oct', count: 320 },
-          { month: 'Nov', count: 250 },
-          { month: 'Dec', count: 290 }
-        ],
-        socialEngagement: {
-          shares: 1245,
-          likes: 8934,
-          comments: 2156,
-          followers: 12847
-        }
+      try {
+        // TODO: Replace with actual API calls
+        // const audienceData = await AnalyticsService.getAudienceInsights(user?.id, selectedEvent, selectedPeriod)
+        
+        // For now, initialize with empty data
+        setAudienceData({
+          totalAttendees: 0,
+          repeatAttendees: 0,
+          averageAge: 0,
+          genderDistribution: { male: 0, female: 0, other: 0 },
+          locationDistribution: [],
+          eventPreferences: [],
+          attendancePattern: [],
+          socialEngagement: {
+            shares: 0,
+            likes: 0,
+            comments: 0,
+            followers: 0
+          }
+        })
+        
+      } catch (error) {
+        console.error('Error loading audience data:', error)
+      } finally {
+        setIsLoading(false)
       }
-      
-      setAudienceData(mockData)
-      setIsLoading(false)
     }
 
     loadAudienceData()
-  }, [selectedEvent, selectedPeriod])
+  }, [selectedEvent, selectedPeriod, user?.id])
 
   const genderChartData: DemographicChart[] = audienceData ? [
     { name: 'Female', value: audienceData.genderDistribution.female, color: '#ec4899' },

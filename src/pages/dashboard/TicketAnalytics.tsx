@@ -39,31 +39,18 @@ export default function TicketAnalytics() {
   const loadAnalyticsData = async () => {
     try {
       setIsLoading(true)
-      // Mock data - replace with actual service call
-      const mockData: AnalyticsData = {
-        salesTrend: Array.from({ length: 30 }, (_, i) => ({
-          date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          sales: Math.floor(Math.random() * 50) + 10,
-          revenue: Math.floor(Math.random() * 2000) + 500
-        })),
-        topEvents: [
-          { name: 'Summer Music Festival', tickets_sold: 485, revenue: 24250 },
-          { name: 'Tech Conference 2024', tickets_sold: 320, revenue: 63800 },
-          { name: 'Art Gallery Opening', tickets_sold: 150, revenue: 3750 },
-          { name: 'Business Networking', tickets_sold: 95, revenue: 4750 }
-        ],
-        salesByType: [
-          { type: 'General Admission', count: 650, percentage: 65 },
-          { type: 'VIP', count: 200, percentage: 20 },
-          { type: 'Early Bird', count: 100, percentage: 10 },
-          { type: 'Student', count: 50, percentage: 5 }
-        ],
-        timeDistribution: Array.from({ length: 24 }, (_, i) => ({
-          hour: i,
-          sales: Math.floor(Math.random() * 30) + (i >= 9 && i <= 17 ? 20 : 5)
-        }))
-      }
-      setAnalyticsData(mockData)
+      
+      // TODO: Replace with actual API calls
+      // const analyticsData = await AnalyticsService.getTicketAnalytics(user?.id, timeRange)
+      
+      // For now, initialize with empty data
+      setAnalyticsData({
+        salesTrend: [],
+        topEvents: [],
+        salesByType: [],
+        timeDistribution: []
+      })
+      
     } catch (error) {
       console.error('Error loading analytics data:', error)
     } finally {
