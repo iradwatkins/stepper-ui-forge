@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Navigation, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { loadGoogleMapsAPI } from '@/lib/config/google-maps';
 
 interface PlaceResult {
   place_id: string;
@@ -47,25 +48,36 @@ export const GooglePlacesInput = ({
   const [suggestions, setSuggestions] = useState<PlaceResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+  const [apiLoaded, setApiLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
+  // Load Google Maps API on component mount
+  useEffect(() => {
+    const initGoogleMaps = async () => {
+      try {
+        await loadGoogleMapsAPI();
+        setApiLoaded(true);
+        console.log('✅ Google Maps API loaded successfully');
+      } catch (error) {
+        console.error('❌ Failed to load Google Maps API:', error);
+        setApiLoaded(false);
+      }
+    };
+
+    initGoogleMaps();
+  }, []);
+
   // Check if Google Places API is available
   const isGoogleMapsLoaded = () => {
-    return typeof window !== 'undefined' && 
+    return apiLoaded && 
+           typeof window !== 'undefined' && 
            window.google && 
            window.google.maps && 
            window.google.maps.places;
   };
 
-  // Check if new Places API is available
-  const isNewPlacesAPIAvailable = () => {
-    return isGoogleMapsLoaded() && 
-           window.google.maps.places.Place && 
-           typeof window.google.maps.places.Place.searchByText === 'function';
-  };
-
-  // Search for places using Google Places API (New API)
+  // Search for places using legacy PlacesService (most compatible)
   const searchPlaces = async (query: string) => {
     if (!query.trim() || query.length < 3) {
       setSuggestions([]);
@@ -81,94 +93,46 @@ export const GooglePlacesInput = ({
     setIsLoading(true);
     
     try {
-      // Check if new Places API is available
-      if (isNewPlacesAPIAvailable()) {
-        console.log('Using new Places API (Place.searchByText)');
-        // Use new Places API (recommended)
-        const request = {
-          textQuery: query,
-          fields: ['id', 'formattedAddress', 'displayName', 'location', 'types', 'addressComponents'],
-          maxResultCount: 5
-        };
+      // Use legacy PlacesService for better compatibility
+      const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+      const request = {
+        query: query,
+        fields: ['place_id', 'formatted_address', 'name', 'geometry', 'types', 'address_components']
+      };
 
-        const response = await google.maps.places.Place.searchByText(request);
-        
+      service.textSearch(request, (results, status) => {
         setIsLoading(false);
         
-        if (response && response.places && response.places.length > 0) {
-          const places = response.places.map(place => ({
-            place_id: place.id || '',
-            formatted_address: place.formattedAddress || '',
-            name: place.displayName || '',
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+          const places = results.slice(0, 5).map(place => ({
+            place_id: place.place_id || '',
+            formatted_address: place.formatted_address || '',
+            name: place.name || '',
             geometry: {
               location: {
-                lat: place.location?.lat || 0,
-                lng: place.location?.lng || 0
+                lat: place.geometry?.location?.lat() || 0,
+                lng: place.geometry?.location?.lng() || 0
               }
             },
             types: place.types || [],
-            address_components: place.addressComponents?.map(component => ({
-              long_name: component.longText,
-              short_name: component.shortText,
+            address_components: place.address_components?.map(component => ({
+              long_name: component.long_name,
+              short_name: component.short_name,
               types: component.types
             })) || []
           })) as PlaceResult[];
           
           setSuggestions(places);
           setIsOpen(true);
-          return; // Exit early if new API works
         } else {
+          console.warn('Places search failed:', status);
           setSuggestions([]);
-          return;
         }
-      } else {
-        console.log('New Places API not available, using legacy API');
-      }
+      });
     } catch (error) {
-      console.error('Error searching places with new API:', error);
-      console.log('Falling back to legacy API...');
-      
-      // Fallback to legacy API if new API fails
-      try {
-        const service = new google.maps.places.PlacesService(document.createElement('div'));
-        const request = {
-          query: query,
-          fields: ['place_id', 'formatted_address', 'name', 'geometry', 'types', 'address_components']
-        };
-
-        service.textSearch(request, (results, status) => {
-          setIsLoading(false);
-          
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            const places = results.slice(0, 5).map(place => ({
-              place_id: place.place_id || '',
-              formatted_address: place.formatted_address || '',
-              name: place.name || '',
-              geometry: {
-                location: {
-                  lat: place.geometry?.location?.lat() || 0,
-                  lng: place.geometry?.location?.lng() || 0
-                }
-              },
-              types: place.types || [],
-              address_components: place.address_components?.map(component => ({
-                long_name: component.long_name,
-                short_name: component.short_name,
-                types: component.types
-              })) || []
-            })) as PlaceResult[];
-            
-            setSuggestions(places);
-            setIsOpen(true);
-          } else {
-            setSuggestions([]);
-          }
-        });
-      } catch (legacyError) {
-        console.error('Legacy API also failed:', legacyError);
-        setIsLoading(false);
-        setSuggestions([]);
-      }
+      console.error('Error searching places:', error);
+      setIsLoading(false);
+      setSuggestions([]);
     }
   };
 
@@ -191,8 +155,8 @@ export const GooglePlacesInput = ({
         }
 
         try {
-          const geocoder = new google.maps.Geocoder();
-          const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
+          const geocoder = new window.google.maps.Geocoder();
+          const result = await new Promise<any[]>((resolve, reject) => {
             geocoder.geocode(
               { location: { lat: latitude, lng: longitude } },
               (results, status) => {
@@ -218,7 +182,7 @@ export const GooglePlacesInput = ({
                 }
               },
               types: place.types,
-              address_components: place.address_components.map(component => ({
+              address_components: place.address_components.map((component: any) => ({
                 long_name: component.long_name,
                 short_name: component.short_name,
                 types: component.types
@@ -320,7 +284,7 @@ export const GooglePlacesInput = ({
             placeholder={placeholder}
             className={cn(
               "pl-10 pr-10",
-              error && "border-red-500",
+              error && "border-destructive",
               className
             )}
             disabled={disabled}
@@ -348,7 +312,7 @@ export const GooglePlacesInput = ({
           variant="outline"
           size="sm"
           onClick={getCurrentLocation}
-          disabled={useCurrentLocation || disabled}
+          disabled={useCurrentLocation || disabled || !apiLoaded}
           className="flex items-center gap-1"
         >
           <Navigation className="h-4 w-4" />
@@ -405,8 +369,19 @@ export const GooglePlacesInput = ({
         </div>
       )}
 
+      {/* API loading status */}
+      {!apiLoaded && value.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1">
+          <Card>
+            <CardContent className="p-3 text-center text-sm text-amber-600">
+              Loading location search... Please wait or enter address manually.
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* No Google Maps API warning */}
-      {!isGoogleMapsLoaded() && value.length > 0 && (
+      {apiLoaded && !isGoogleMapsLoaded() && value.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1">
           <Card>
             <CardContent className="p-3 text-center text-sm text-amber-600">

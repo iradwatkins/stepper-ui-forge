@@ -32,7 +32,7 @@ export const loadGoogleMapsAPI = (): Promise<void> => {
       return;
     }
 
-    // Create script element with async loading
+    // Create script element with proper async loading
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_CONFIG.apiKey}&libraries=${GOOGLE_MAPS_CONFIG.libraries.join(',')}&v=${GOOGLE_MAPS_CONFIG.version}&loading=async`;
     script.async = true;
