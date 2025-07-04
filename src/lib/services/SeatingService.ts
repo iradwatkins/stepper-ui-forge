@@ -353,6 +353,37 @@ export class SeatingService {
     return data || [];
   }
 
+  // Seat Category Management
+  async createSeatCategory(category: Omit<SeatCategory, 'id'>): Promise<SeatCategory> {
+    const { data, error } = await supabase
+      .from('seat_categories')
+      .insert(category)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating seat category:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async getSeatCategories(seatingChartId: string): Promise<SeatCategory[]> {
+    const { data, error } = await supabase
+      .from('seat_categories')
+      .select('*')
+      .eq('seating_chart_id', seatingChartId)
+      .order('sort_order');
+
+    if (error) {
+      console.error('Error fetching seat categories:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
+
   // Generate a session ID for seat holds
   generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

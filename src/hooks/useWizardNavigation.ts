@@ -101,6 +101,15 @@ export const useWizardNavigation = ({
       canNavigateBackward: () => true
     },
     {
+      id: 'seating-setup',
+      title: 'Seating Setup',
+      description: 'Configure interactive seating',
+      icon: 'LayoutGrid',
+      isRequired: (eventType) => eventType === 'premium',
+      canNavigateForward: () => true, // Will be validated by SeatingChartWizard component
+      canNavigateBackward: () => true
+    },
+    {
       id: 'review',
       title: 'Review & Publish',
       description: 'Review and publish event',

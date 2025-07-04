@@ -11,6 +11,7 @@ import { WizardControls } from "@/components/create-event/wizard/WizardControls"
 import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
 import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
+import { SeatingChartWizard } from "@/components/create-event/SeatingChartWizard";
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -23,6 +24,7 @@ export default function CreateEventWizard() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [eventType, setEventType] = useState<'simple' | 'ticketed' | 'premium' | ''>('');
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [seatingConfig, setSeatingConfig] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form with validation
@@ -234,6 +236,25 @@ export default function CreateEventWizard() {
         }
       }
 
+      // Associate seating chart with event for Premium events
+      if (eventType === 'premium' && seatingConfig?.seatingChartId) {
+        try {
+          const { error: seatingError } = await supabase
+            .from('seating_charts')
+            .update({ event_id: event.id })
+            .eq('id', seatingConfig.seatingChartId);
+
+          if (seatingError) {
+            console.error('Error linking seating chart to event:', seatingError);
+            toast.error('Event created but failed to link seating chart');
+          } else {
+            console.log('Seating chart successfully linked to event');
+          }
+        } catch (error) {
+          console.error('Error updating seating chart:', error);
+        }
+      }
+
       toast.success(`Event ${status === 'published' ? 'published' : 'saved as draft'} successfully!`);
       
       // Reset form and navigate
@@ -244,6 +265,7 @@ export default function CreateEventWizard() {
       setSelectedCategories([]);
       setTicketTypes([]);
       setEventType('');
+      setSeatingConfig(null);
       
       if (status === "published") {
         navigate(`/events/${event.id}`);
@@ -301,6 +323,18 @@ export default function CreateEventWizard() {
             form={form}
             eventType={eventType}
             onTicketsChange={handleTicketsChange}
+          />
+        );
+        
+      case 'seating-setup':
+        return (
+          <SeatingChartWizard
+            form={form}
+            eventType={eventType}
+            onSeatingConfigured={(seatingData) => {
+              console.log('Seating configured:', seatingData);
+              setSeatingConfig(seatingData);
+            }}
           />
         );
         

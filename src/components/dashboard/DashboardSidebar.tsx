@@ -135,6 +135,11 @@ const getOrganizerNavigation = (): NavigationItem[] => [
         title: 'Archived',
         href: '/dashboard/events/archived',
         icon: Trash2
+      },
+      {
+        title: 'Seating Management',
+        href: '/dashboard/seating',
+        icon: LayoutDashboard
       }
     ]
   },
