@@ -112,6 +112,39 @@ export type Database = {
           },
         ]
       }
+      follower_promotions: {
+        Row: {
+          created_at: string
+          discount_percentage: number | null
+          follower_id: string
+          id: string
+          is_active: boolean
+          organizer_id: string
+          promotion_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discount_percentage?: number | null
+          follower_id: string
+          id?: string
+          is_active?: boolean
+          organizer_id: string
+          promotion_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discount_percentage?: number | null
+          follower_id?: string
+          id?: string
+          is_active?: boolean
+          organizer_id?: string
+          promotion_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
