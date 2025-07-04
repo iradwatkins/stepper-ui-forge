@@ -328,7 +328,7 @@ export const BasicInformation = ({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="displayPriceLabel" className="text-sm font-medium">Label *</Label>
+                  <Label htmlFor="displayPriceLabel" className="text-sm font-medium">Label</Label>
                   <Input
                     id="displayPriceLabel"
                     placeholder="e.g., Suggested donation, Entry fee"

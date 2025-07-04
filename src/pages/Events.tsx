@@ -241,6 +241,25 @@ const Events = () => {
 
   const getEventPrice = (event: EventWithStats) => {
     if (event.event_type === 'simple') {
+      // Extract price from description field (stored as [PRICE:amount|label])
+      if (event.description) {
+        const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
+        if (priceMatch && priceMatch[1]) {
+          const priceParts = priceMatch[1].split('|');
+          const amount = parseFloat(priceParts[0]) || 0;
+          const label = priceParts[1]?.trim() || '';
+          
+          if (amount > 0) {
+            const price = `$${amount.toFixed(2)}`;
+            console.log(`✅ Simple event showing: "${price}"`);
+            return price;
+          } else if (label) {
+            console.log(`✅ Simple event showing label: "${label}"`);
+            return label;
+          }
+        }
+      }
+      console.log(`ℹ️ Simple event showing: Free (no price in description)`);
       return "Free";
     }
     
@@ -252,7 +271,10 @@ const Events = () => {
         .map(t => t.price)
         .filter(price => typeof price === 'number' && price >= 0);
       
+      console.log(`🎫 Ticketed event valid prices:`, validPrices);
+      
       if (validPrices.length === 0) {
+        console.log(`⚠️ Ticketed event showing: Free (no valid prices)`);
         return "Free";
       }
       
@@ -261,15 +283,32 @@ const Events = () => {
       
       // Format price display based on price range
       if (minPrice === 0) {
-        return maxPrice > 0 ? `Free - $${maxPrice.toFixed(2)}` : "Free";
+        const result = maxPrice > 0 ? `Free - $${maxPrice.toFixed(2)}` : "Free";
+        console.log(`✅ Ticketed event showing: ${result}`);
+        return result;
       } else if (minPrice === maxPrice) {
-        return `$${minPrice.toFixed(2)}`;
+        const result = `$${minPrice.toFixed(2)}`;
+        console.log(`✅ Ticketed event showing: ${result}`);
+        return result;
       } else {
-        return `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+        const result = `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+        console.log(`✅ Ticketed event showing: ${result}`);
+        return result;
       }
     }
     
+    console.log(`ℹ️ Event showing: Free (fallback)`);
     return "Free";
+  };
+
+  const shouldShowTicketsButton = (event: EventWithStats) => {
+    // Always hide tickets button for Simple Events (information only)
+    if (event.event_type === 'simple') {
+      return false;
+    }
+    
+    // Show tickets button for all other event types
+    return true;
   };
 
   const formatDate = (date: string) => {
@@ -278,6 +317,15 @@ const Events = () => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const formatTime = (time: string) => {
+    // Convert 24-hour time (e.g., "14:30") to 12-hour format (e.g., "2:30 PM")
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   // Advanced filters handlers
@@ -334,7 +382,7 @@ const Events = () => {
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
             </svg>
-            <span className="font-medium">{formatDate(event.date)} {event.time}</span>
+            <span className="font-medium">{formatDate(event.date)} {formatTime(event.time)}</span>
           </div>
 
           {/* Location */}
@@ -345,10 +393,28 @@ const Events = () => {
             <span className="font-medium">{event.location}</span>
           </div>
 
+          {/* Organizer */}
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span className="font-medium">{event.organization_name || 'Event Organizer'}</span>
+          </div>
+
+          {/* Followers */}
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span className="font-medium">{event.follower_count || 0} followers</span>
+          </div>
+
           {/* Tickets Button */}
-          <button className="w-full mt-4 py-3 px-6 bg-primary text-primary-foreground font-semibold rounded-full hover:bg-primary/90 transition-colors">
-            Tickets
-          </button>
+          {shouldShowTicketsButton(event) && (
+            <button className="w-full mt-4 py-3 px-6 bg-primary text-primary-foreground font-semibold rounded-full hover:bg-primary/90 transition-colors">
+              Tickets
+            </button>
+          )}
         </div>
       </div>
     </Link>
@@ -402,7 +468,7 @@ const Events = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
                         </svg>
-                        <span className="text-sm">{formatDate(event.date)} {event.time}</span>
+                        <span className="text-sm">{formatDate(event.date)} {formatTime(event.time)}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 text-muted-foreground">
@@ -410,6 +476,20 @@ const Events = () => {
                           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
                         </svg>
                         <span className="text-sm">{event.location}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span className="text-sm">{event.organization_name || 'Event Organizer'}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span className="text-sm">{event.follower_count || 0} followers</span>
                       </div>
                     </div>
                   </div>
@@ -499,7 +579,7 @@ const Events = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
                         </svg>
-                        <span className="text-lg font-medium">{formatDate(featuredEvent.date)} {featuredEvent.time}</span>
+                        <span className="text-lg font-medium">{formatDate(featuredEvent.date)} {formatTime(featuredEvent.time)}</span>
                       </div>
 
                       {/* Location */}

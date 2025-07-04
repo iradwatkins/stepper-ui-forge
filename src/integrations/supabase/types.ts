@@ -50,6 +50,7 @@ export type Database = {
           created_at: string | null
           date: string
           description: string | null
+          display_price: Json | null
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           images: Json | null
@@ -69,6 +70,7 @@ export type Database = {
           created_at?: string | null
           date: string
           description?: string | null
+          display_price?: Json | null
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           images?: Json | null
@@ -88,6 +90,7 @@ export type Database = {
           created_at?: string | null
           date?: string
           description?: string | null
+          display_price?: Json | null
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           images?: Json | null

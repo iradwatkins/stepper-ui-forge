@@ -120,6 +120,7 @@ export interface Database {
           is_public: boolean
           max_attendees: number | null
           registration_deadline: string | null
+          display_price: { amount?: number; label?: string } | null
           created_at: string
           updated_at: string
         }
@@ -139,6 +140,7 @@ export interface Database {
           is_public?: boolean
           max_attendees?: number | null
           registration_deadline?: string | null
+          display_price?: { amount?: number; label?: string } | null
           created_at?: string
           updated_at?: string
         }
@@ -158,6 +160,7 @@ export interface Database {
           is_public?: boolean
           max_attendees?: number | null
           registration_deadline?: string | null
+          display_price?: { amount?: number; label?: string } | null
           created_at?: string
           updated_at?: string
         }
@@ -727,6 +730,7 @@ export type EventWithStats = Event & {
   tickets_sold?: number
   total_revenue?: number
   attendee_count?: number
+  follower_count?: number
 }
 
 export type ProfileWithEvents = Profile & {

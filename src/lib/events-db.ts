@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { Event, EventInsert, EventUpdate, EventWithStats, TicketType, TicketTypeInsert } from '@/types/database'
+import { FollowerService } from './services/FollowerService'
 
 interface EventAnalytics {
   totalTicketsSold: number
@@ -150,19 +151,23 @@ export class EventsService {
         throw error
       }
 
-      const eventsWithStats: EventWithStats[] = data.map(event => {
+      const eventsWithStats: EventWithStats[] = await Promise.all(data.map(async event => {
         const ticketTypes = event.ticket_types as TicketType[]
         const tickets_sold = ticketTypes?.reduce((sum, tt) => sum + tt.sold_quantity, 0) || 0
         const total_revenue = ticketTypes?.reduce((sum, tt) => sum + (tt.price * tt.sold_quantity), 0) || 0
+        
+        // Get follower count for the event organizer
+        const follower_count = await FollowerService.getFollowerCount(event.owner_id)
 
         return {
           ...event,
           ticket_types: ticketTypes,
           tickets_sold,
           total_revenue,
-          attendee_count: tickets_sold
+          attendee_count: tickets_sold,
+          follower_count
         }
-      })
+      }))
 
       return eventsWithStats
     } catch (error) {

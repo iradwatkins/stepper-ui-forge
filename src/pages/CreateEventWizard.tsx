@@ -151,9 +151,18 @@ export default function CreateEventWizard() {
     try {
       const formData = form.getValues();
       
+      // For Simple Events, append display price to description
+      let description = formData.description?.trim() || '';
+      if (eventType === 'simple' && (formData.displayPrice?.amount !== undefined || formData.displayPrice?.label)) {
+        const amount = formData.displayPrice.amount || 0;
+        const label = formData.displayPrice.label?.trim() || '';
+        const priceText = `[PRICE:${amount}|${label}]`;
+        description = description ? `${description}\n\n${priceText}` : priceText;
+      }
+
       const eventData = {
         title: formData.title.trim(),
-        description: formData.description?.trim() || null,
+        description: description || null,
         organization_name: formData.organizationName?.trim() || null,
         date: formData.date,
         time: formData.time,

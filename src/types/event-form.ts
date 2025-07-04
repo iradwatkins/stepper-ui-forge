@@ -19,7 +19,7 @@ export const eventFormSchema = z.object({
   capacity: z.number().positive().optional(),
   displayPrice: z.object({
     amount: z.number().min(0, "Price cannot be negative"),
-    label: z.string().min(1, "Price label is required")
+    label: z.string().optional()
   }).optional(),
   isPublic: z.boolean().default(true),
   tags: z.array(z.string()).optional(),

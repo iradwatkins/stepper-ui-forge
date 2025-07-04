@@ -301,6 +301,33 @@ const EventDetail = () => {
   const primaryImage = getPrimaryImage(event);
   const eventPrice = event.event_type === 'simple' ? 0 : 
                      event.ticket_types && event.ticket_types.length > 0 ? Math.min(...event.ticket_types.map(t => t.price)) : 0;
+  
+  // Get display price for Simple Events
+  const getSimpleEventDisplayPrice = () => {
+    if (event.event_type !== 'simple') return null;
+    // Extract price from description field (stored as [PRICE:amount|label])
+    if (event.description) {
+      const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
+      if (priceMatch && priceMatch[1]) {
+        const priceParts = priceMatch[1].split('|');
+        const amount = parseFloat(priceParts[0]) || 0;
+        const label = priceParts[1]?.trim() || '';
+        
+        if (amount > 0) {
+          return `$${amount.toFixed(2)}`;
+        } else if (label) {
+          return label;
+        }
+      }
+    }
+    return "Free";
+  };
+
+  // Get clean description without price tag
+  const getCleanDescription = () => {
+    if (!event.description) return null;
+    return event.description.replace(/\[PRICE:.*?\]/, '').trim();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -319,7 +346,7 @@ const EventDetail = () => {
                 {event.event_type}
               </Badge>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{event.title}</h1>
-              <p className="text-xl text-gray-200 max-w-2xl">{event.description}</p>
+              <p className="text-xl text-gray-200 max-w-2xl">{getCleanDescription()}</p>
             </div>
           </div>
         </div>
@@ -390,7 +417,7 @@ const EventDetail = () => {
               <div className="p-6">
                 <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">About This Event</h2>
                 <div className="prose dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-line text-gray-600 dark:text-gray-300 leading-relaxed">{event.description}</p>
+                  <p className="whitespace-pre-line text-gray-600 dark:text-gray-300 leading-relaxed">{getCleanDescription()}</p>
                 </div>
               </div>
             </div>
@@ -423,19 +450,18 @@ const EventDetail = () => {
                     <>
                       <div className="text-center mb-6">
                         <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                          {eventPrice > 0 ? `$${eventPrice}` : 'Free'}
+                          {getSimpleEventDisplayPrice()}
                         </div>
-                        {eventPrice > 0 && (
-                          <p className="text-gray-500 dark:text-gray-400">per ticket</p>
-                        )}
                       </div>
-                      <Button 
-                        className="w-full mb-4" 
-                        size="lg"
-                        onClick={() => eventPrice > 0 ? setIsCheckoutOpen(true) : handleSimpleEventRegistration()}
-                      >
-                        {eventPrice > 0 ? 'Buy Tickets' : 'Register Now'}
-                      </Button>
+                      {eventPrice > 0 && (
+                        <Button 
+                          className="w-full mb-4" 
+                          size="lg"
+                          onClick={() => setIsCheckoutOpen(true)}
+                        >
+                          Buy Tickets
+                        </Button>
+                      )}
                     </>
                   ) : event.event_type === 'premium' && seatingCharts.length > 0 ? (
                     <>

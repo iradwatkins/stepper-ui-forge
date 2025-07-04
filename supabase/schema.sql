@@ -53,6 +53,7 @@ CREATE TABLE events (
     is_public BOOLEAN DEFAULT true,
     max_attendees INTEGER,
     registration_deadline TIMESTAMP WITH TIME ZONE,
+    display_price JSONB DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
