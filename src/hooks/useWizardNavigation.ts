@@ -49,6 +49,16 @@ export const useWizardNavigation = ({
   const [isNavigating] = useState(false);
   const [lastValidationResult, setLastValidationResult] = useState<ValidationResult | null>(null);
 
+  // Reset currentStep when eventType changes (but not on initial load)
+  const [previousEventType, setPreviousEventType] = useState(eventType);
+  useEffect(() => {
+    if (previousEventType !== eventType && previousEventType !== '') {
+      console.log(`🔄 EventType changed from "${previousEventType}" to "${eventType}" - Resetting currentStep to 1`);
+      setCurrentStep(1);
+    }
+    setPreviousEventType(eventType);
+  }, [eventType, previousEventType]);
+
   // Define wizard steps configuration
   const wizardSteps: WizardStep[] = useMemo(() => {
     console.log('🔄 Recalculating wizard steps for eventType:', eventType);
@@ -137,27 +147,50 @@ export const useWizardNavigation = ({
     return steps;
   }, [eventType, selectedCategories]);
 
-  // Get visible steps based on event type
+  // Get visible steps based on event type with enhanced debugging
   const visibleSteps = useMemo(() => {
-    console.log(`👁️ Calculating visible steps for eventType: "${eventType}"`);
+    console.log(`👁️ Calculating visible steps for eventType: "${eventType}" (currentStep: ${currentStep})`);
     
     const filtered = wizardSteps.filter(step => {
       const isRequired = step.isRequired(eventType);
-      console.log(`  • Step "${step.id}": ${isRequired ? '✅ INCLUDED' : '❌ EXCLUDED'}`);
+      console.log(`  • Step "${step.id}": ${isRequired ? '✅ INCLUDED' : '❌ EXCLUDED'} (for eventType: "${eventType}")`);
       return isRequired;
     });
     
     console.log(`📊 Final visible steps for "${eventType}":`, filtered.map(s => s.id));
     console.log(`📈 Total visible steps: ${filtered.length}`);
     
+    // Warning if currentStep might be out of bounds
+    if (currentStep > filtered.length) {
+      console.warn(`⚠️ CurrentStep ${currentStep} will exceed new visible steps length ${filtered.length}`);
+    }
+    
     return filtered;
-  }, [wizardSteps, eventType]);
+  }, [wizardSteps, eventType, currentStep]);
 
-  // Get current step info
+  // Get current step info with bounds checking
   const currentStepInfo = useMemo(() => {
+    // Bounds checking to prevent out-of-sync issues
+    if (currentStep > visibleSteps.length) {
+      console.warn(`⚠️ CurrentStep ${currentStep} exceeds visible steps length ${visibleSteps.length} - adjusting to last step`);
+      setCurrentStep(visibleSteps.length || 1);
+      return visibleSteps[visibleSteps.length - 1];
+    }
+    
+    if (currentStep < 1) {
+      console.warn(`⚠️ CurrentStep ${currentStep} is less than 1 - adjusting to first step`);
+      setCurrentStep(1);
+      return visibleSteps[0];
+    }
+
     const stepInfo = visibleSteps[currentStep - 1];
-    console.log(`🎯 Current step ${currentStep}: ${stepInfo?.id || 'UNDEFINED'}`);
+    console.log(`🎯 Current step ${currentStep}/${visibleSteps.length}: ${stepInfo?.id || 'UNDEFINED'}`);
     console.log(`📋 Available visible steps:`, visibleSteps.map((s, i) => `${i + 1}. ${s.id}`));
+    
+    if (!stepInfo) {
+      console.error(`❌ No step info found for currentStep ${currentStep} in visibleSteps:`, visibleSteps.map(s => s.id));
+    }
+    
     return stepInfo;
   }, [visibleSteps, currentStep]);
 
@@ -260,22 +293,33 @@ export const useWizardNavigation = ({
     });
   }, [enableHistory, form]);
 
-  // Simplified navigation to prevent infinite loops
+  // Enhanced navigation with synchronization debugging
   const goToStep = useCallback((stepNumber: number, skipValidation = false) => {
+    console.log(`🚀 GoToStep called: ${stepNumber} (current: ${currentStep}, max: ${visibleSteps.length})`);
+    console.log(`📊 Visible steps at navigation:`, visibleSteps.map((s, i) => `${i + 1}:${s.id}`));
+    
     const targetStep = Math.max(1, Math.min(stepNumber, visibleSteps.length));
     const targetStepInfo = visibleSteps[targetStep - 1];
     
-    if (!targetStepInfo) return false;
+    console.log(`🎯 Target step: ${targetStep}, Target step info: ${targetStepInfo?.id || 'UNDEFINED'}`);
+    
+    if (!targetStepInfo) {
+      console.error(`❌ No target step info found for step ${targetStep}`);
+      return false;
+    }
 
     // Validate current step before navigating forward
     if (targetStep > currentStep && !skipValidation && currentStepInfo) {
+      console.log(`✅ Validating current step "${currentStepInfo.id}" before moving forward`);
       const formData = form.getValues();
       const canNavigate = currentStepInfo.canNavigateForward(formData);
       if (!canNavigate) {
+        console.log(`❌ Validation failed for step "${currentStepInfo.id}"`);
         const errors = getCurrentStepErrors();
         onValidationError?.(errors, currentStepInfo.id);
         return false;
       }
+      console.log(`✅ Validation passed for step "${currentStepInfo.id}"`);
     }
 
     // Add to history
@@ -284,9 +328,11 @@ export const useWizardNavigation = ({
     }
     
     // Direct navigation without setTimeout to prevent loops
+    console.log(`➡️ Setting currentStep from ${currentStep} to ${targetStep}`);
     setCurrentStep(targetStep);
     
     const direction = targetStep > currentStep ? 'forward' : 'backward';
+    console.log(`🧭 Navigation direction: ${direction} to step "${targetStepInfo.id}"`);
     onStepChange?.(targetStepInfo.id, direction);
 
     return true;
