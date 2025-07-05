@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { EventFormData } from '@/types/event-form';
 
@@ -61,8 +61,6 @@ export const useWizardNavigation = ({
 
   // Define wizard steps configuration
   const wizardSteps: WizardStep[] = useMemo(() => {
-    console.log('🔄 Recalculating wizard steps for eventType:', eventType);
-    
     const steps = [
       {
         id: 'event-type',
@@ -111,11 +109,7 @@ export const useWizardNavigation = ({
         title: 'Ticketing',
         description: 'Configure ticket sales',
         icon: 'Ticket',
-        isRequired: (eventType) => {
-          const required = eventType !== 'simple';
-          console.log(`📋 Ticketing step required for eventType "${eventType}":`, required);
-          return required;
-        },
+        isRequired: (eventType) => eventType !== 'simple',
         canNavigateForward: () => true, // Will be validated by TicketConfiguration component
         canNavigateBackward: () => true
       },
@@ -124,11 +118,7 @@ export const useWizardNavigation = ({
         title: 'Seating Setup',
         description: 'Configure interactive seating',
         icon: 'LayoutGrid',
-        isRequired: (eventType) => {
-          const required = eventType === 'premium';
-          console.log(`🪑 Seating setup step required for eventType "${eventType}":`, required);
-          return required;
-        },
+        isRequired: (eventType) => eventType === 'premium',
         canNavigateForward: () => true, // Will be validated by SeatingChartWizard component
         canNavigateBackward: () => true
       },
@@ -143,54 +133,30 @@ export const useWizardNavigation = ({
       }
     ];
     
-    console.log('📋 All defined steps:', steps.map(s => s.id));
     return steps;
   }, [eventType, selectedCategories]);
 
-  // Get visible steps based on event type with enhanced debugging
+  // Get visible steps based on event type
   const visibleSteps = useMemo(() => {
-    console.log(`👁️ Calculating visible steps for eventType: "${eventType}" (currentStep: ${currentStep})`);
-    
-    const filtered = wizardSteps.filter(step => {
-      const isRequired = step.isRequired(eventType);
-      console.log(`  • Step "${step.id}": ${isRequired ? '✅ INCLUDED' : '❌ EXCLUDED'} (for eventType: "${eventType}")`);
-      return isRequired;
-    });
-    
-    console.log(`📊 Final visible steps for "${eventType}":`, filtered.map(s => s.id));
-    console.log(`📈 Total visible steps: ${filtered.length}`);
-    
-    // Warning if currentStep might be out of bounds
-    if (currentStep > filtered.length) {
-      console.warn(`⚠️ CurrentStep ${currentStep} will exceed new visible steps length ${filtered.length}`);
-    }
-    
+    const filtered = wizardSteps.filter(step => step.isRequired(eventType));
+    console.log(`📊 Visible steps for "${eventType}":`, filtered.map(s => s.id));
     return filtered;
-  }, [wizardSteps, eventType, currentStep]);
+  }, [wizardSteps, eventType]);
 
-  // Get current step info with bounds checking
-  const currentStepInfo = useMemo(() => {
-    // Bounds checking to prevent out-of-sync issues
-    if (currentStep > visibleSteps.length) {
+  // Bounds checking in useEffect to prevent infinite re-renders
+  useEffect(() => {
+    if (currentStep > visibleSteps.length && visibleSteps.length > 0) {
       console.warn(`⚠️ CurrentStep ${currentStep} exceeds visible steps length ${visibleSteps.length} - adjusting to last step`);
-      setCurrentStep(visibleSteps.length || 1);
-      return visibleSteps[visibleSteps.length - 1];
-    }
-    
-    if (currentStep < 1) {
+      setCurrentStep(visibleSteps.length);
+    } else if (currentStep < 1) {
       console.warn(`⚠️ CurrentStep ${currentStep} is less than 1 - adjusting to first step`);
       setCurrentStep(1);
-      return visibleSteps[0];
     }
+  }, [currentStep, visibleSteps.length]);
 
+  // Get current step info
+  const currentStepInfo = useMemo(() => {
     const stepInfo = visibleSteps[currentStep - 1];
-    console.log(`🎯 Current step ${currentStep}/${visibleSteps.length}: ${stepInfo?.id || 'UNDEFINED'}`);
-    console.log(`📋 Available visible steps:`, visibleSteps.map((s, i) => `${i + 1}. ${s.id}`));
-    
-    if (!stepInfo) {
-      console.error(`❌ No step info found for currentStep ${currentStep} in visibleSteps:`, visibleSteps.map(s => s.id));
-    }
-    
     return stepInfo;
   }, [visibleSteps, currentStep]);
 
