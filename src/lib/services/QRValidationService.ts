@@ -27,8 +27,36 @@ export interface BulkValidationSummary {
 export class QRValidationService {
   static async validateQRCode(qrCodeData: string): Promise<QRValidationResult> {
     try {
-      // Extract ticket ID from QR code data
-      const ticketId = qrCodeData.replace('QR_', '')
+      let ticketId: string;
+      let validationHash: string | null = null;
+      
+      // Handle both legacy format (QR_<ticketId>) and new JSON format
+      if (qrCodeData.startsWith('QR_')) {
+        // Legacy format
+        ticketId = qrCodeData.replace('QR_', '');
+      } else {
+        try {
+          // New JSON format from TicketService
+          const qrData = JSON.parse(qrCodeData);
+          ticketId = qrData.ticketId;
+          validationHash = qrData.validationHash;
+          
+          // Verify validation hash if present
+          if (validationHash) {
+            const expectedHash = this.generateValidationHash(ticketId, qrData.eventId, qrData.orderId);
+            if (validationHash !== expectedHash) {
+              return {
+                valid: false,
+                message: 'Invalid QR code - tampered data detected',
+                error: 'Validation hash mismatch'
+              };
+            }
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, treat as raw ticket ID
+          ticketId = qrCodeData;
+        }
+      }
       
       const { data: ticket, error } = await supabase
         .from('tickets')
@@ -178,5 +206,12 @@ export class QRValidationService {
       status: ticket.status,
       checkedInAt: ticket.checked_in_at ? new Date(ticket.checked_in_at).toLocaleString() : null
     }
+  }
+
+  private static generateValidationHash(ticketId: string, eventId: string, orderId: string): string {
+    // Generate deterministic hash for validation
+    // Note: This should match the TicketService implementation but be deterministic
+    const data = `${ticketId}:${eventId}:${orderId}:validation`
+    return btoa(data).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16)
   }
 }

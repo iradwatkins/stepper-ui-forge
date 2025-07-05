@@ -14,14 +14,17 @@ import { productionPaymentService } from "@/lib/payments/ProductionPaymentServic
 import { OrderService } from "@/lib/services/OrderService";
 import { TicketService } from "@/lib/services/TicketService";
 import { EmailService } from "@/lib/services/EmailService";
+import { seatingService } from "@/lib/services/SeatingService";
 import { toast } from "sonner";
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  eventId?: string;
+  selectedSeats?: string[]; // For seat-based checkout
 }
 
-export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
+export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: CheckoutModalProps) {
   const { items, total, subtotal, fees, clearCart } = useCart();
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,8 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
   const [selectedGateway, setSelectedGateway] = useState<string>('paypal');
   const [customerEmail, setCustomerEmail] = useState(user?.email || '');
   const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string; available: boolean }[]>([]);
+  const [seatCheckoutMode, setSeatCheckoutMode] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -36,12 +41,32 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
       setPaymentMethods(methods);
       setSelectedGateway(methods[0]?.id || 'paypal');
       setCustomerEmail(user?.email || '');
+      
+      // Determine checkout mode
+      const isSeatingCheckout = selectedSeats && selectedSeats.length > 0 && eventId;
+      setSeatCheckoutMode(isSeatingCheckout);
+      
+      // Get session ID for seat checkout
+      if (isSeatingCheckout) {
+        const storedSessionId = localStorage.getItem('seatHoldSessionId');
+        setSessionId(storedSessionId);
+      }
     }
-  }, [isOpen, user]);
+  }, [isOpen, user, selectedSeats, eventId]);
 
   const handleCheckout = async () => {
-    if (items.length === 0) {
-      setError("Your cart is empty");
+    // Check if we have items to purchase (cart or seats)
+    const hasCartItems = items.length > 0;
+    const hasSeatItems = seatCheckoutMode && selectedSeats && selectedSeats.length > 0;
+    
+    if (!hasCartItems && !hasSeatItems) {
+      setError("No items to purchase");
+      return;
+    }
+    
+    // For seat checkout, validate session
+    if (seatCheckoutMode && (!sessionId || !eventId)) {
+      setError("Invalid seat reservation. Please select seats again.");
       return;
     }
 
@@ -126,7 +151,31 @@ export function CheckoutModal({ isOpen, onClose }: CheckoutModalProps) {
             toast.success("Payment successful! Your tickets have been purchased. Check your My Tickets page to view them.");
           }
 
-          clearCart();
+          // Handle post-payment completion based on checkout mode
+          if (seatCheckoutMode && sessionId && eventId) {
+            // Complete seat purchase
+            try {
+              const completionResult = await seatingService.completeSeatPurchase(
+                sessionId,
+                eventId,
+                order.id,
+                customerEmail,
+                order.customer_name || 'Ticket Holder',
+                selectedGateway
+              );
+              console.log('Seat purchase completed:', completionResult);
+              
+              // Clear seat hold session
+              localStorage.removeItem('seatHoldSessionId');
+            } catch (seatError) {
+              console.error('Seat purchase completion failed:', seatError);
+              // Note: Payment already succeeded, so this is logged but not fatal
+            }
+          } else {
+            // Clear cart for regular purchases
+            clearCart();
+          }
+          
           onClose();
         } catch (orderError) {
           console.error('Order/ticket creation failed after payment:', orderError);

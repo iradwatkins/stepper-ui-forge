@@ -19,7 +19,8 @@ import {
   MapPin
 } from 'lucide-react';
 import { seatingService, SeatingChart, SeatCategory } from '@/lib/services/SeatingService';
-import { InteractiveSeatingEditor } from './InteractiveSeatingEditor';
+import { EnhancedSeatingChartSelector, SeatData, SeatCategory as EnhancedSeatCategory } from '@/components/seating';
+import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 
 // Import TicketType from the wizard component
@@ -92,6 +93,8 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
   const [uploadedChart, setUploadedChart] = useState<File | null>(null);
   const [chartPreview, setChartPreview] = useState<string | null>(null);
   const [placedSeats, setPlacedSeats] = useState<Seat[]>([]);
+  const [enhancedSeats, setEnhancedSeats] = useState<SeatData[]>([]);
+  const [enhancedCategories, setEnhancedCategories] = useState<EnhancedSeatCategory[]>([]);
   const [currentStep, setCurrentStep] = useState<'upload' | 'configure' | 'place-seats' | 'finalize'>('upload');
 
   useEffect(() => {
@@ -100,7 +103,7 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
     }
   }, [seatingConfig, onSeatingConfigured]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -110,15 +113,15 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
       return;
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB');
+    // Check file size (max 10MB to match storage bucket limit)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
       return;
     }
 
     setUploadedChart(file);
 
-    // Create preview URL
+    // Create preview URL for immediate display
     const reader = new FileReader();
     reader.onload = (e) => {
       setChartPreview(e.target?.result as string);
@@ -174,6 +177,49 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
     }));
   };
 
+  const handleEnhancedSeatingConfigured = (seats: SeatData[], categories: EnhancedSeatCategory[]) => {
+    setEnhancedSeats(seats);
+    setEnhancedCategories(categories);
+    
+    // Convert enhanced seats back to legacy format for compatibility
+    const legacySeats: Seat[] = seats.map((seat, index) => ({
+      id: seat.id,
+      x: seat.x,
+      y: seat.y,
+      ticketTypeId: seat.category,
+      sectionName: seat.section || '',
+      color: seat.categoryColor,
+      seatNumber: index + 1
+    }));
+    
+    setPlacedSeats(legacySeats);
+    
+    // Update seating config with actual seat counts
+    setSeatingConfig(prev => ({
+      ...prev,
+      ticketMappings: prev.ticketMappings.map(mapping => ({
+        ...mapping,
+        seats: seats.filter(seat => seat.category === mapping.ticketTypeId).length
+      }))
+    }));
+  };
+
+  const convertToEnhancedCategories = (): EnhancedSeatCategory[] => {
+    return seatingConfig.ticketMappings.map(mapping => {
+      const ticketType = ticketTypes.find(t => t.id === mapping.ticketTypeId);
+      return {
+        id: mapping.ticketTypeId,
+        name: mapping.sectionName,
+        color: mapping.color,
+        basePrice: ticketType?.price || 0,
+        maxCapacity: mapping.seats,
+        amenities: ['Standard seating'],
+        viewQuality: mapping.sectionName.toLowerCase().includes('vip') ? 'excellent' : 
+                    mapping.sectionName.toLowerCase().includes('premium') ? 'good' : 'fair'
+      };
+    });
+  };
+
   const handleProceedToSeatPlacement = () => {
     if (seatingConfig.ticketMappings.length === 0) {
       toast.error('Please configure at least one ticket type mapping');
@@ -205,11 +251,42 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
     try {
       setLoading(true);
       
+      // Create a basic venue first using form data
+      const venue = await seatingService.createVenue({
+        name: formData.venueName || formData.address,
+        address: formData.address,
+        capacity: getTotalSeats(),
+        description: `Venue for ${formData.title}`,
+        venue_type: 'general'
+      });
+
+      // Upload the seating chart image to Supabase Storage
+      let imageUrl = null;
+      if (uploadedChart) {
+        const uploadResult = await imageUploadService.uploadVenueImage(uploadedChart, venue.id);
+        if (uploadResult.success) {
+          imageUrl = uploadResult.url;
+          toast.success('Venue image uploaded successfully');
+        } else {
+          console.warn('Failed to upload venue image:', uploadResult.error);
+          toast.warning('Seating chart created but image upload failed. You can update it later.');
+        }
+      }
+      
       // Create seating chart with actual seat positions
       const chartData = {
         type: 'premium',
-        uploadedChart: uploadedChart.name,
+        uploadedChart: uploadedChart?.name,
         imageDimensions: { width: 800, height: 600 }, // Will be updated with actual dimensions
+        seats: placedSeats.map(seat => ({
+          id: seat.id,
+          x: seat.x,
+          y: seat.y,
+          seatNumber: seat.seatNumber,
+          ticketTypeId: seat.ticketTypeId,
+          price: ticketTypes.find(t => t.id === seat.ticketTypeId)?.price || 0,
+          available: true
+        })),
         sections: seatingConfig.ticketMappings.map(mapping => {
           const ticketType = ticketTypes.find(t => t.id === mapping.ticketTypeId);
           const sectionSeats = placedSeats.filter(seat => seat.ticketTypeId === mapping.ticketTypeId);
@@ -221,6 +298,7 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
             ticketTypeId: mapping.ticketTypeId,
             ticketTypeName: ticketType?.name,
             price: ticketType?.price || 0,
+            seatCount: sectionSeats.length,
             seats: sectionSeats.map(seat => ({
               id: seat.id,
               x: seat.x,
@@ -233,24 +311,14 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
         })
       };
 
-      const totalSeats = getTotalSeats();
-      
-      // Create a basic venue first using form data
-      const venue = await seatingService.createVenue({
-        name: formData.venueName,
-        address: formData.address,
-        capacity: totalSeats,
-        description: `Venue for ${formData.title}`,
-        venue_type: 'general'
-      });
-
       const seatingChart = await seatingService.createSeatingChart({
         venue_id: venue.id,
         name: `${formData.title} - Seating Chart`,
         description: `Interactive seating chart for ${formData.title}`,
         chart_data: chartData,
+        image_url: imageUrl,
         is_active: true,
-        total_seats: totalSeats,
+        total_seats: getTotalSeats(),
         version: 1
       });
 
@@ -496,11 +564,22 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
 
       case 'place-seats':
         return (
-          <InteractiveSeatingEditor
-            floorPlanImage={chartPreview!}
-            ticketMappings={seatingConfig.ticketMappings}
-            ticketTypes={ticketTypes}
-            onSeatsConfigured={handleSeatsConfigured}
+          <EnhancedSeatingChartSelector
+            venueImageUrl={chartPreview!}
+            onImageUpload={() => {}} // Already handled in upload step
+            onSeatingConfigurationChange={handleEnhancedSeatingConfigured}
+            initialSeats={enhancedSeats}
+            initialCategories={convertToEnhancedCategories()}
+            venueInfo={{
+              name: form.watch('venueName') || 'Event Venue',
+              address: form.watch('address') || '',
+              capacity: getTotalSeats(),
+              amenities: ['Standard seating', 'Accessible seating'],
+              accessibility: ['ADA compliant', 'Wheelchair accessible'],
+              parking: { available: true },
+              transit: { nearby: true }
+            }}
+            eventType="other"
           />
         );
 

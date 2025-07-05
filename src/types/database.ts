@@ -2,6 +2,8 @@ export type EventType = 'simple' | 'ticketed' | 'premium'
 export type EventStatus = 'draft' | 'published' | 'cancelled' | 'completed'
 export type TicketStatus = 'active' | 'used' | 'refunded' | 'cancelled'
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
+export type VenueType = 'theater' | 'arena' | 'stadium' | 'conference' | 'general'
+export type HoldStatus = 'active' | 'expired' | 'completed' | 'cancelled' | 'extended'
 
 export interface ImageMetadata {
   url: string
@@ -647,18 +649,356 @@ export interface Database {
           notes?: string | null
         }
       }
+      venues: {
+        Row: {
+          id: string
+          name: string
+          address: string | null
+          city: string | null
+          state: string | null
+          country: string | null
+          postal_code: string | null
+          description: string | null
+          capacity: number | null
+          venue_type: VenueType
+          layout_data: Record<string, any>
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          postal_code?: string | null
+          description?: string | null
+          capacity?: number | null
+          venue_type?: VenueType
+          layout_data?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          postal_code?: string | null
+          description?: string | null
+          capacity?: number | null
+          venue_type?: VenueType
+          layout_data?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+      }
+      seating_charts: {
+        Row: {
+          id: string
+          venue_id: string | null
+          event_id: string | null
+          name: string
+          description: string | null
+          chart_data: Record<string, any>
+          image_url: string | null
+          version: number
+          is_active: boolean
+          total_seats: number
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          venue_id?: string | null
+          event_id?: string | null
+          name: string
+          description?: string | null
+          chart_data?: Record<string, any>
+          image_url?: string | null
+          version?: number
+          is_active?: boolean
+          total_seats?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          venue_id?: string | null
+          event_id?: string | null
+          name?: string
+          description?: string | null
+          chart_data?: Record<string, any>
+          image_url?: string | null
+          version?: number
+          is_active?: boolean
+          total_seats?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+      }
+      seat_categories: {
+        Row: {
+          id: string
+          seating_chart_id: string
+          name: string
+          description: string | null
+          color_code: string
+          base_price: number
+          price_modifier: number
+          is_accessible: boolean
+          is_premium: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          seating_chart_id: string
+          name: string
+          description?: string | null
+          color_code?: string
+          base_price?: number
+          price_modifier?: number
+          is_accessible?: boolean
+          is_premium?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          seating_chart_id?: string
+          name?: string
+          description?: string | null
+          color_code?: string
+          base_price?: number
+          price_modifier?: number
+          is_accessible?: boolean
+          is_premium?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+      }
+      seats: {
+        Row: {
+          id: string
+          seating_chart_id: string
+          seat_category_id: string | null
+          section: string | null
+          row_label: string | null
+          seat_number: string | null
+          seat_identifier: string
+          x_position: number | null
+          y_position: number | null
+          rotation: number
+          base_price: number
+          current_price: number | null
+          is_available: boolean
+          is_accessible: boolean
+          is_premium: boolean
+          notes: string | null
+          metadata: Record<string, any>
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          seating_chart_id: string
+          seat_category_id?: string | null
+          section?: string | null
+          row_label?: string | null
+          seat_number?: string | null
+          seat_identifier: string
+          x_position?: number | null
+          y_position?: number | null
+          rotation?: number
+          base_price?: number
+          current_price?: number | null
+          is_available?: boolean
+          is_accessible?: boolean
+          is_premium?: boolean
+          notes?: string | null
+          metadata?: Record<string, any>
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          seating_chart_id?: string
+          seat_category_id?: string | null
+          section?: string | null
+          row_label?: string | null
+          seat_number?: string | null
+          seat_identifier?: string
+          x_position?: number | null
+          y_position?: number | null
+          rotation?: number
+          base_price?: number
+          current_price?: number | null
+          is_available?: boolean
+          is_accessible?: boolean
+          is_premium?: boolean
+          notes?: string | null
+          metadata?: Record<string, any>
+          created_at?: string
+        }
+      }
+      seat_holds: {
+        Row: {
+          id: string
+          seat_id: string
+          event_id: string
+          session_id: string
+          customer_email: string | null
+          held_at: string
+          expires_at: string
+          hold_duration_minutes: number
+          status: HoldStatus
+          hold_reason: string
+          metadata: Record<string, any>
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          seat_id: string
+          event_id: string
+          session_id: string
+          customer_email?: string | null
+          held_at?: string
+          expires_at: string
+          hold_duration_minutes?: number
+          status?: HoldStatus
+          hold_reason?: string
+          metadata?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          seat_id?: string
+          event_id?: string
+          session_id?: string
+          customer_email?: string | null
+          held_at?: string
+          expires_at?: string
+          hold_duration_minutes?: number
+          status?: HoldStatus
+          hold_reason?: string
+          metadata?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
-      [_ in never]: never
+      seat_availability_summary: {
+        Row: {
+          seating_chart_id: string
+          chart_name: string
+          event_id: string | null
+          total_seats: number
+          available_seats: number
+          unavailable_seats: number
+          held_seats: number
+          avg_price: number | null
+          min_price: number | null
+          max_price: number | null
+        }
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_available_seats: {
+        Args: {
+          event_id_param: string
+          seating_chart_id_param: string
+        }
+        Returns: {
+          seat_id: string
+          seat_identifier: string
+          section: string | null
+          row_label: string | null
+          seat_number: string | null
+          x_position: number | null
+          y_position: number | null
+          current_price: number | null
+          category_name: string | null
+          category_color: string | null
+          is_accessible: boolean
+          is_premium: boolean
+        }[]
+      }
+      get_best_available_seats: {
+        Args: {
+          event_id_param: string
+          seating_chart_id_param: string
+          quantity_param: number
+          prefer_together?: boolean
+          max_price?: number
+          section_preference?: string
+        }
+        Returns: {
+          seat_id: string
+          seat_identifier: string
+          section: string | null
+          row_label: string | null
+          seat_number: string | null
+          x_position: number | null
+          y_position: number | null
+          current_price: number | null
+          category_name: string | null
+          category_color: string | null
+          is_accessible: boolean
+          is_premium: boolean
+        }[]
+      }
+      hold_seats: {
+        Args: {
+          seat_ids: string[]
+          event_id_param: string
+          session_id_param: string
+          hold_duration_minutes?: number
+          customer_email_param?: string
+        }
+        Returns: string
+      }
+      release_seat_holds: {
+        Args: {
+          hold_ids?: string[]
+          session_id_param?: string
+          event_id_param?: string
+        }
+        Returns: number
+      }
+      complete_seat_purchase: {
+        Args: {
+          session_id_param: string
+          event_id_param: string
+          order_id_param: string
+          customer_email_param: string
+          customer_name_param: string
+          payment_method_param: string
+        }
+        Returns: string[]
+      }
+      cleanup_expired_seat_holds: {
+        Args: {}
+        Returns: number
+      }
     }
     Enums: {
       event_type: EventType
       event_status: EventStatus
       ticket_status: TicketStatus
       payment_status: PaymentStatus
+      venue_type: VenueType
+      hold_status: HoldStatus
     }
   }
 }
@@ -723,6 +1063,28 @@ export type OrganizerBankingInfoUpdate = Database['public']['Tables']['organizer
 export type PayoutRequest = Database['public']['Tables']['payout_requests']['Row']
 export type PayoutRequestInsert = Database['public']['Tables']['payout_requests']['Insert']
 export type PayoutRequestUpdate = Database['public']['Tables']['payout_requests']['Update']
+
+export type Venue = Database['public']['Tables']['venues']['Row']
+export type VenueInsert = Database['public']['Tables']['venues']['Insert']
+export type VenueUpdate = Database['public']['Tables']['venues']['Update']
+
+export type SeatingChart = Database['public']['Tables']['seating_charts']['Row']
+export type SeatingChartInsert = Database['public']['Tables']['seating_charts']['Insert']
+export type SeatingChartUpdate = Database['public']['Tables']['seating_charts']['Update']
+
+export type SeatCategory = Database['public']['Tables']['seat_categories']['Row']
+export type SeatCategoryInsert = Database['public']['Tables']['seat_categories']['Insert']
+export type SeatCategoryUpdate = Database['public']['Tables']['seat_categories']['Update']
+
+export type Seat = Database['public']['Tables']['seats']['Row']
+export type SeatInsert = Database['public']['Tables']['seats']['Insert']
+export type SeatUpdate = Database['public']['Tables']['seats']['Update']
+
+export type SeatHold = Database['public']['Tables']['seat_holds']['Row']
+export type SeatHoldInsert = Database['public']['Tables']['seat_holds']['Insert']
+export type SeatHoldUpdate = Database['public']['Tables']['seat_holds']['Update']
+
+export type SeatAvailabilitySummary = Database['public']['Views']['seat_availability_summary']['Row']
 
 // Extended types with relations
 export type EventWithStats = Event & {

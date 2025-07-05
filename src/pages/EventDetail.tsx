@@ -9,7 +9,7 @@ import { useParams } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
 import { TicketSelector } from "@/components/ticketing";
-import { SeatingChart } from "@/components/seating";
+import { InteractiveSeatingChart, SeatData, PriceCategory } from "@/components/seating";
 import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
@@ -17,6 +17,7 @@ import { CheckoutModal } from "@/components/CheckoutModal";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
 import { seatingService, AvailableSeat } from "@/lib/services/SeatingService";
 import { EventLikeService } from "@/lib/services/EventLikeService";
+import { convertWizardToInteractive } from "@/lib/utils/seatingDataConverter";
 
 interface EventImageData {
   original?: string;
@@ -45,6 +46,10 @@ const EventDetail = () => {
   const [seatingCharts, setSeatingCharts] = useState<any[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<AvailableSeat[]>([]);
   const [showSeating, setShowSeating] = useState(false);
+  const [seats, setSeats] = useState<SeatData[]>([]);
+  const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
+  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
+  const [venueImageUrl, setVenueImageUrl] = useState<string>('');
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [likesLoading, setLikesLoading] = useState(false);
@@ -69,6 +74,70 @@ const EventDetail = () => {
             try {
               const charts = await seatingService.getSeatingCharts(foundEvent.id);
               setSeatingCharts(charts);
+              
+              // Load detailed seating data for the professional component
+              if (charts.length > 0) {
+                const chart = charts[0];
+                
+                // Set venue image URL from chart image_url or chart data
+                if (chart.image_url) {
+                  setVenueImageUrl(chart.image_url);
+                } else if (chart.chart_data?.uploadedChart) {
+                  setVenueImageUrl(chart.chart_data.uploadedChart);
+                }
+                
+                try {
+                  // Load seat categories from database
+                  const categories = await seatingService.getSeatCategories(chart.id);
+                  
+                  // Use data converter for consistent format
+                  const { seats: convertedSeats, priceCategories } = convertWizardToInteractive(
+                    chart,
+                    categories
+                  );
+                  
+                  setSeats(convertedSeats);
+                  setPriceCategories(priceCategories);
+                } catch (error) {
+                  console.error('Error loading seat categories:', error);
+                  
+                  // Fallback to chart data if database loading fails
+                  const convertedSeats: SeatData[] = [];
+                  const categories: PriceCategory[] = [];
+                  
+                  if (chart.chart_data?.sections) {
+                    chart.chart_data.sections.forEach((section: any) => {
+                      categories.push({
+                        id: section.id,
+                        name: section.name,
+                        color: section.color,
+                        basePrice: section.price,
+                        description: `${section.name} seating`
+                      });
+                      
+                      if (section.seats) {
+                        section.seats.forEach((seat: any) => {
+                          convertedSeats.push({
+                            id: seat.id,
+                            x: seat.x,
+                            y: seat.y,
+                            seatNumber: seat.seatNumber,
+                            section: section.name,
+                            price: seat.price,
+                            category: section.id,
+                            categoryColor: section.color,
+                            isADA: false,
+                            status: seat.available ? 'available' : 'sold'
+                          });
+                        });
+                      }
+                    });
+                  }
+                  
+                  setSeats(convertedSeats);
+                  setPriceCategories(categories);
+                }
+              }
             } catch (error) {
               console.error('Error loading seating charts:', error);
             }
@@ -156,6 +225,25 @@ const EventDetail = () => {
     setSelectedSeats(seats);
   };
 
+  // New handler for professional InteractiveSeatingChart
+  const handleInteractiveSeatSelection = (seatIds: string[]) => {
+    setSelectedSeatIds(seatIds);
+    
+    // Convert to legacy format for compatibility
+    const legacySeats: AvailableSeat[] = seatIds.map(seatId => {
+      const seat = seats.find(s => s.id === seatId);
+      return {
+        id: seatId,
+        seat_number: seat?.seatNumber || '',
+        section_name: seat?.section || '',
+        current_price: seat?.price || 0,
+        row_name: seat?.row || '',
+        is_accessible: seat?.isADA || false
+      };
+    });
+    setSelectedSeats(legacySeats);
+  };
+
   const handleSeatPurchase = () => {
     if (selectedSeats.length === 0) {
       toast({
@@ -169,6 +257,63 @@ const EventDetail = () => {
     // For now, just open the checkout modal
     // TODO: Integrate seat purchases with checkout flow
     setIsCheckoutOpen(true);
+  };
+
+  const handleInteractivePurchase = async () => {
+    if (selectedSeatIds.length === 0) {
+      toast({
+        title: "No seats selected",
+        description: "Please select at least one seat before proceeding.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!event) return;
+    
+    try {
+      // Generate session ID for seat holds
+      const sessionId = seatingService.generateSessionId();
+      
+      // Hold the selected seats for 15 minutes
+      const holdResult = await seatingService.holdSeats(
+        selectedSeatIds,
+        event.id,
+        sessionId,
+        {
+          holdDurationMinutes: 15,
+          customerEmail: undefined // Will be set during checkout
+        }
+      );
+      
+      console.log('Seats held successfully:', holdResult);
+      
+      // Update seat status to 'held' in local state
+      setSeats(prevSeats => 
+        prevSeats.map(seat => 
+          selectedSeatIds.includes(seat.id) 
+            ? { ...seat, status: 'held', holdExpiry: new Date(Date.now() + 15 * 60 * 1000) }
+            : seat
+        )
+      );
+      
+      // Store session ID for checkout process
+      localStorage.setItem('seatHoldSessionId', sessionId);
+      
+      toast({
+        title: "Seats reserved",
+        description: `${selectedSeatIds.length} seats reserved for 15 minutes. Please complete your purchase.`,
+      });
+      
+      setIsCheckoutOpen(true);
+    } catch (error) {
+      console.error('Error holding seats:', error);
+      toast({
+        title: "Error reserving seats",
+        description: "Failed to reserve seats. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Handle simple event registration (free events)
@@ -473,23 +618,23 @@ const EventDetail = () => {
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            <SeatingChart
-                              eventId={event.id}
-                              seatingChartId={seatingCharts[0].id}
-                              onSeatsSelected={handleSeatsSelected}
-                              maxSeats={8}
-                            />
-                            
-                            {selectedSeats.length > 0 && (
-                              <div className="border-t pt-4">
-                                <Button 
-                                  onClick={handleSeatPurchase}
-                                  className="w-full"
-                                  size="lg"
-                                >
-                                  Purchase {selectedSeats.length} Seat{selectedSeats.length !== 1 ? 's' : ''} - 
-                                  ${selectedSeats.reduce((sum, seat) => sum + (seat.current_price || 0), 0).toFixed(2)}
-                                </Button>
+                            {venueImageUrl && seats.length > 0 ? (
+                              <InteractiveSeatingChart
+                                venueImageUrl={venueImageUrl}
+                                seats={seats}
+                                priceCategories={priceCategories}
+                                selectedSeats={selectedSeatIds}
+                                onSeatSelection={handleInteractiveSeatSelection}
+                                onPurchaseClick={handleInteractivePurchase}
+                                maxSelectableSeats={8}
+                                showPurchaseButton={true}
+                                disabled={false}
+                              />
+                            ) : (
+                              <div className="text-center py-8">
+                                <p className="text-gray-600 dark:text-gray-400">
+                                  Loading seating chart...
+                                </p>
                               </div>
                             )}
                           </div>
@@ -556,6 +701,8 @@ const EventDetail = () => {
       <CheckoutModal 
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
+        eventId={event?.id}
+        selectedSeats={selectedSeatIds}
       />
 
       <ImageGalleryModal

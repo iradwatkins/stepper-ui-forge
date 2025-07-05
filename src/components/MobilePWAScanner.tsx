@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { useQRValidation } from '@/lib/hooks/useQRValidation'
 import { TeamService } from '@/lib/services/TeamService'
 import { QRValidationService } from '@/lib/services/QRValidationService'
+import QrScanner from 'qr-scanner'
 
 interface MobilePWAScannerProps {
   eventId: string
@@ -91,6 +92,13 @@ export function MobilePWAScanner({
     }
   }, [eventId])
 
+  // Cleanup scanner on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera()
+    }
+  }, [])
+
   const startCheckInSession = async () => {
     try {
       const deviceInfo = {
@@ -125,65 +133,97 @@ export function MobilePWAScanner({
 
   const initializeCamera = async () => {
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
+      // Stop existing scanner if running
+      if (scannerRef.current) {
+        scannerRef.current.stop()
+        scannerRef.current.destroy()
+        scannerRef.current = null
       }
-
-      const constraints = {
-        video: {
-          facingMode: cameraFacing,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
-      streamRef.current = stream
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
-      }
+        // Initialize QR scanner
+        scannerRef.current = new QrScanner(
+          videoRef.current,
+          (result) => handleQRCodeDetected(result.data),
+          {
+            preferredCamera: cameraFacing,
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+            maxScansPerSecond: 1,
+            calculateScanRegion: (video) => {
+              // Create a centered scan region (80% of video dimensions)
+              const smallestDimension = Math.min(video.videoWidth, video.videoHeight)
+              const scanRegionSize = Math.round(0.8 * smallestDimension)
+              
+              return {
+                x: Math.round((video.videoWidth - scanRegionSize) / 2),
+                y: Math.round((video.videoHeight - scanRegionSize) / 2),
+                width: scanRegionSize,
+                height: scanRegionSize
+              }
+            }
+          }
+        )
 
-      // Initialize QR scanner (would need qr-scanner library)
-      // For now, this is a placeholder for the actual QR scanning implementation
-      setIsScanning(true)
+        // Start scanning
+        await scannerRef.current.start()
+        setIsScanning(true)
+      }
     } catch (error) {
       console.error('Camera initialization failed:', error)
+      setIsScanning(false)
     }
   }
 
   const stopCamera = () => {
+    // Stop QR scanner
+    if (scannerRef.current) {
+      scannerRef.current.stop()
+      scannerRef.current.destroy()
+      scannerRef.current = null
+    }
+    
+    // Stop media stream (if any)
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
+    
     setIsScanning(false)
   }
 
   const toggleFlashlight = async () => {
     try {
-      if (streamRef.current) {
-        const track = streamRef.current.getVideoTracks()[0]
-        const capabilities = track.getCapabilities()
-        
-        if ((capabilities as any).torch) {
-          await track.applyConstraints({
-            advanced: [{ torch: !flashlightOn } as any]
-          })
-          setFlashlightOn(!flashlightOn)
+      if (scannerRef.current) {
+        // Use QR scanner's flashlight control
+        if (flashlightOn) {
+          await scannerRef.current.turnFlashlightOff()
+        } else {
+          await scannerRef.current.turnFlashlightOn()
         }
+        setFlashlightOn(!flashlightOn)
       }
     } catch (error) {
       console.error('Flashlight toggle failed:', error)
     }
   }
 
-  const switchCamera = () => {
-    setCameraFacing(prev => prev === 'user' ? 'environment' : 'user')
-    if (isScanning) {
-      stopCamera()
-      setTimeout(initializeCamera, 100)
+  const switchCamera = async () => {
+    try {
+      const newFacing = cameraFacing === 'user' ? 'environment' : 'user'
+      setCameraFacing(newFacing)
+      
+      if (scannerRef.current && isScanning) {
+        // Switch camera using QR scanner's method
+        await scannerRef.current.setCamera(newFacing)
+      }
+    } catch (error) {
+      console.error('Camera switch failed:', error)
+      // Fallback to restart
+      if (isScanning) {
+        stopCamera()
+        setTimeout(initializeCamera, 100)
+      }
     }
   }
 

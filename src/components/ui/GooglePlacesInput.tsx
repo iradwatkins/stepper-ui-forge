@@ -52,21 +52,22 @@ export const GooglePlacesInput = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
-  // Load Google Maps API on component mount
-  useEffect(() => {
-    const initGoogleMaps = async () => {
-      try {
-        await loadGoogleMapsAPI();
-        setApiLoaded(true);
-        console.log('✅ Google Maps API loaded successfully');
-      } catch (error) {
-        console.error('❌ Failed to load Google Maps API:', error);
-        setApiLoaded(false);
-      }
-    };
-
-    initGoogleMaps();
-  }, []);
+  // Load Google Maps API only when needed (lazy loading)
+  const initGoogleMapsAPI = async () => {
+    if (apiLoaded || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      await loadGoogleMapsAPI();
+      setApiLoaded(true);
+      console.log('✅ Google Maps API loaded successfully');
+    } catch (error) {
+      console.error('❌ Failed to load Google Maps API:', error);
+      setApiLoaded(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Check if Google Places API is available
   const isGoogleMapsLoaded = () => {
@@ -84,8 +85,13 @@ export const GooglePlacesInput = ({
       return;
     }
 
+    // Load API if not already loaded
+    if (!apiLoaded) {
+      await initGoogleMapsAPI();
+    }
+
     if (!isGoogleMapsLoaded()) {
-      console.warn('Google Maps Places API not loaded');
+      console.warn('Google Maps Places API not loaded, using fallback');
       setSuggestions([]);
       return;
     }
@@ -165,17 +171,27 @@ export const GooglePlacesInput = ({
       console.error('Error searching places:', error);
       setIsLoading(false);
       setSuggestions([]);
+      
+      // If API error, provide fallback message
+      if (error instanceof Error && error.message.includes('PERMISSION_DENIED')) {
+        console.warn('Google Places API access denied. Component will work in basic mode.');
+      }
     }
   };
 
   // Get user's current location
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
       console.warn('Geolocation not supported');
       return;
     }
 
     setUseCurrentLocation(true);
+    
+    // Load API if not already loaded
+    if (!apiLoaded) {
+      await initGoogleMapsAPI();
+    }
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -344,7 +360,7 @@ export const GooglePlacesInput = ({
           variant="outline"
           size="sm"
           onClick={getCurrentLocation}
-          disabled={useCurrentLocation || disabled || !apiLoaded}
+          disabled={useCurrentLocation || disabled}
           className="flex items-center gap-1"
         >
           <Navigation className="h-4 w-4" />

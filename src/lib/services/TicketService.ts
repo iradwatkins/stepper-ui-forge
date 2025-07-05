@@ -232,8 +232,8 @@ export class TicketService {
   }
 
   private static generateValidationHash(ticketId: string, eventId: string, orderId: string): string {
-    // Simple hash generation for tamper detection
-    const data = `${ticketId}:${eventId}:${orderId}:${Date.now()}`
+    // Generate deterministic hash for tamper detection
+    const data = `${ticketId}:${eventId}:${orderId}:validation`
     return btoa(data).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16)
   }
 }
