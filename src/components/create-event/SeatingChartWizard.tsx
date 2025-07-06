@@ -381,15 +381,15 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
               </CardContent>
             </Card>
 
-            {/* Seating Chart Upload */}
+            {/* Venue Floor Plan Upload */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="w-5 h-5" />
-                  Upload Seating Chart
+                  Upload Venue Floor Plan
                 </CardTitle>
                 <CardDescription>
-                  Upload an image of your venue's seating layout (PNG, JPG, SVG)
+                  Upload an image of your venue's floor plan or seating layout. This is different from your event's marketing images and will be used for interactive seat selection.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -399,9 +399,12 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
                       <FileImage className="w-12 h-12 mx-auto text-muted-foreground" />
                       <div>
                         <Label htmlFor="chart-upload" className="cursor-pointer">
-                          <div className="text-lg font-medium mb-2">Upload Seating Chart</div>
+                          <div className="text-lg font-medium mb-2">Upload Venue Floor Plan</div>
                           <div className="text-sm text-muted-foreground mb-4">
-                            Drag and drop or click to select (PNG, JPG, SVG - Max 5MB)
+                            Upload a floor plan or seating layout image (PNG, JPG, SVG - Max 10MB)
+                          </div>
+                          <div className="text-xs text-muted-foreground mb-2 p-2 bg-blue-50 rounded">
+                            💡 This should be your venue's layout diagram, not marketing images
                           </div>
                           <Button variant="outline" className="pointer-events-none">
                             <Upload className="w-4 h-4 mr-2" />

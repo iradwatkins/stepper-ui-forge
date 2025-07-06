@@ -31,6 +31,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { 
+  calculateImageDrawInfo, 
+  clientToPercentageCoordinates, 
+  percentageToCanvasCoordinates,
+  getImageDimensions,
+  type ImageDrawInfo,
+  type Point,
+  type ImageDimensions
+} from '@/lib/utils/coordinateUtils';
 
 // Types for seat data structure
 export interface SeatData {
@@ -164,6 +173,10 @@ export default function EnhancedSeatingChartSelector({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // New state for proper coordinate handling
+  const [imageDimensions, setImageDimensions] = useState<ImageDimensions | null>(null);
+  const [imageDrawInfo, setImageDrawInfo] = useState<ImageDrawInfo | null>(null);
 
   // Get unique sections from seats
   const sections = React.useMemo(() => {
@@ -181,10 +194,57 @@ export default function EnhancedSeatingChartSelector({
     });
   }, [seats, filterSection, filterPriceRange, filterViewQuality]);
 
+  // Load and cache venue image with proper dimensions
+  useEffect(() => {
+    if (!venueImageUrl) return;
+    
+    const img = new Image();
+    img.onload = () => {
+      // Get actual image dimensions
+      const dimensions: ImageDimensions = {
+        width: img.naturalWidth,
+        height: img.naturalHeight
+      };
+      setImageDimensions(dimensions);
+      
+      // Calculate how image should be drawn on canvas
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const drawInfo = calculateImageDrawInfo(
+          dimensions.width,
+          dimensions.height,
+          canvas.width,
+          canvas.height
+        );
+        setImageDrawInfo(drawInfo);
+      }
+    };
+    img.onerror = () => {
+      console.error('Failed to load venue image:', venueImageUrl);
+    };
+    img.src = venueImageUrl;
+  }, [venueImageUrl]);
+
+  // Recalculate image draw info when canvas size changes
+  useEffect(() => {
+    if (!imageDimensions) return;
+    
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const drawInfo = calculateImageDrawInfo(
+        imageDimensions.width,
+        imageDimensions.height,
+        canvas.width,
+        canvas.height
+      );
+      setImageDrawInfo(drawInfo);
+    }
+  }, [imageDimensions]);
+
   // Draw canvas
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !venueImageUrl) return;
+    if (!canvas || !venueImageUrl || !imageDrawInfo) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -202,21 +262,32 @@ export default function EnhancedSeatingChartSelector({
       ctx.translate(pan.x, pan.y);
       ctx.scale(zoom, zoom);
       
-      // Draw background image
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Draw background image with proper aspect ratio
+      ctx.drawImage(
+        img,
+        imageDrawInfo.drawX,
+        imageDrawInfo.drawY,
+        imageDrawInfo.drawWidth,
+        imageDrawInfo.drawHeight
+      );
       
-      // Draw seats
+      // Draw seats using percentage coordinates
       filteredSeats.forEach(seat => {
         const category = categories.find(c => c.id === seat.category);
         if (!category) return;
 
-        const x = (seat.x / 100) * canvas.width;
-        const y = (seat.y / 100) * canvas.height;
+        // Convert percentage coordinates to canvas coordinates
+        const canvasCoords = percentageToCanvasCoordinates(
+          seat.x,
+          seat.y,
+          imageDrawInfo
+        );
+        
         const radius = 8;
 
         // Draw seat circle
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.arc(canvasCoords.x, canvasCoords.y, radius, 0, 2 * Math.PI);
         ctx.fillStyle = category.color;
         ctx.fill();
         
@@ -230,7 +301,7 @@ export default function EnhancedSeatingChartSelector({
           ctx.fillStyle = '#fff';
           ctx.font = '10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText('♿', x, y + 3);
+          ctx.fillText('♿', canvasCoords.x, canvasCoords.y + 3);
         }
 
         // Draw seat number
@@ -238,7 +309,7 @@ export default function EnhancedSeatingChartSelector({
           ctx.fillStyle = '#000';
           ctx.font = '8px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(seat.seatNumber, x, y - radius - 2);
+          ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - radius - 2);
         }
       });
 
@@ -246,20 +317,25 @@ export default function EnhancedSeatingChartSelector({
       ctx.restore();
     };
     img.src = venueImageUrl;
-  }, [venueImageUrl, filteredSeats, categories, zoom, pan]);
+  }, [venueImageUrl, filteredSeats, categories, zoom, pan, imageDrawInfo]);
 
   // Canvas event handlers
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || tool !== 'place') return;
+    if (!canvasRef.current || tool !== 'place' || !imageDrawInfo) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = ((event.clientX - rect.left - pan.x) / zoom / canvasRef.current.width) * 100;
-    const y = ((event.clientY - rect.top - pan.y) / zoom / canvasRef.current.height) * 100;
+    // Convert click coordinates to percentage coordinates
+    const percentageCoords = clientToPercentageCoordinates(
+      event.clientX,
+      event.clientY,
+      canvasRef.current,
+      imageDrawInfo,
+      { pan, zoom }
+    );
 
     // Check if clicking on existing seat
     const clickedSeat = seats.find(seat => {
-      const dx = Math.abs(seat.x - x);
-      const dy = Math.abs(seat.y - y);
+      const dx = Math.abs(seat.x - percentageCoords.x);
+      const dy = Math.abs(seat.y - percentageCoords.y);
       return dx < 2 && dy < 2; // 2% tolerance
     });
 
@@ -275,15 +351,15 @@ export default function EnhancedSeatingChartSelector({
 
       const newSeat: SeatData = {
         id: `seat_${Date.now()}_${Math.random()}`,
-        x,
-        y,
+        x: percentageCoords.x,
+        y: percentageCoords.y,
         seatNumber: `${category.name.charAt(0)}${seats.filter(s => s.category === selectedCategory).length + 1}`,
         category: selectedCategory,
         categoryColor: category.color,
         price: category.basePrice,
         isADA: selectedCategory === 'ada',
         status: 'available',
-        section: getSectionForPosition(x, y),
+        section: getSectionForPosition(percentageCoords.x, percentageCoords.y),
         viewQuality: category.viewQuality
       };
 
@@ -291,7 +367,7 @@ export default function EnhancedSeatingChartSelector({
       setSeats(newSeats);
       onSeatingConfigurationChange(newSeats, categories);
     }
-  }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange]);
+  }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, imageDrawInfo]);
 
   const handleCanvasMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === 'pan') {

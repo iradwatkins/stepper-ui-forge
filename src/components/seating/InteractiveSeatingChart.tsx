@@ -21,6 +21,15 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
+import { 
+  calculateImageDrawInfo, 
+  clientToPercentageCoordinates, 
+  percentageToCanvasCoordinates,
+  getImageDimensions,
+  type ImageDrawInfo,
+  type Point,
+  type ImageDimensions
+} from '@/lib/utils/coordinateUtils';
 
 // Types
 export interface SeatData {
@@ -89,6 +98,10 @@ export default function InteractiveSeatingChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const animationFrameRef = useRef<number>();
+  
+  // New state for proper coordinate handling
+  const [imageDimensions, setImageDimensions] = useState<ImageDimensions | null>(null);
+  const [imageDrawInfo, setImageDrawInfo] = useState<ImageDrawInfo | null>(null);
 
   // Memoized calculations
   const sections = useMemo(() => {
@@ -133,20 +146,61 @@ export default function InteractiveSeatingChart({
     return { total, available, selected, sold, avgPrice, totalPrice };
   }, [seats, selectedSeats]);
 
-  // Load and cache venue image
+  // Load and cache venue image with proper dimensions
   useEffect(() => {
+    if (!venueImageUrl) return;
+    
     const img = new Image();
     img.onload = () => {
       imageRef.current = img;
+      
+      // Get actual image dimensions
+      const dimensions: ImageDimensions = {
+        width: img.naturalWidth,
+        height: img.naturalHeight
+      };
+      setImageDimensions(dimensions);
+      
+      // Calculate how image should be drawn on canvas
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const drawInfo = calculateImageDrawInfo(
+          dimensions.width,
+          dimensions.height,
+          canvas.width,
+          canvas.height
+        );
+        setImageDrawInfo(drawInfo);
+      }
+      
       drawCanvas();
+    };
+    img.onerror = () => {
+      console.error('Failed to load venue image:', venueImageUrl);
     };
     img.src = venueImageUrl;
   }, [venueImageUrl]);
 
+  // Recalculate image draw info when canvas size changes
+  useEffect(() => {
+    if (!imageDimensions) return;
+    
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const drawInfo = calculateImageDrawInfo(
+        imageDimensions.width,
+        imageDimensions.height,
+        canvas.width,
+        canvas.height
+      );
+      setImageDrawInfo(drawInfo);
+    }
+  }, [imageDimensions]);
+
   // Canvas drawing function
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !imageRef.current) return;
+    if (!canvas || !imageRef.current || !imageDrawInfo) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -161,22 +215,33 @@ export default function InteractiveSeatingChart({
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
 
-    // Draw background image
-    ctx.drawImage(imageRef.current, 0, 0, canvas.width, canvas.height);
+    // Draw background image with proper aspect ratio
+    ctx.drawImage(
+      imageRef.current,
+      imageDrawInfo.drawX,
+      imageDrawInfo.drawY,
+      imageDrawInfo.drawWidth,
+      imageDrawInfo.drawHeight
+    );
 
-    // Draw seats
+    // Draw seats using percentage coordinates
     sortedSeats.forEach(seat => {
       if (!seat) return;
 
-      const x = (seat.x / 100) * canvas.width;
-      const y = (seat.y / 100) * canvas.height;
-      const radius = 10;
+      // Convert percentage coordinates to canvas coordinates
+      const canvasCoords = percentageToCanvasCoordinates(
+        seat.x,
+        seat.y,
+        imageDrawInfo
+      );
+      
+      const radius = 10 / zoom; // Adjust radius based on zoom
       const isSelected = selectedSeats.includes(seat.id);
       const isHovered = hoveredSeat === seat.id;
 
       // Seat circle with status-based styling
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      ctx.arc(canvasCoords.x, canvasCoords.y, radius, 0, 2 * Math.PI);
 
       // Fill color based on status
       switch (seat.status) {
@@ -208,7 +273,7 @@ export default function InteractiveSeatingChart({
       // Hover glow effect
       if (isHovered && seat.status === 'available') {
         ctx.beginPath();
-        ctx.arc(x, y, radius + 3, 0, 2 * Math.PI);
+        ctx.arc(canvasCoords.x, canvasCoords.y, radius + 3, 0, 2 * Math.PI);
         ctx.strokeStyle = 'rgba(34, 197, 94, 0.5)';
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -217,9 +282,9 @@ export default function InteractiveSeatingChart({
       // ADA indicator
       if (seat.isADA) {
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = `bold ${12 / zoom}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText('♿', x, y + 4);
+        ctx.fillText('♿', canvasCoords.x, canvasCoords.y + 4 / zoom);
       }
 
       // Hold timer indicator
@@ -227,34 +292,34 @@ export default function InteractiveSeatingChart({
         const timeLeft = seat.holdExpiry.getTime() - Date.now();
         if (timeLeft > 0) {
           ctx.fillStyle = '#fff';
-          ctx.font = '8px Arial';
+          ctx.font = `${8 / zoom}px Arial`;
           ctx.textAlign = 'center';
-          ctx.fillText('⏱', x, y - radius - 8);
+          ctx.fillText('⏱', canvasCoords.x, canvasCoords.y - radius - 8 / zoom);
         }
       }
 
       // Seat number (for hovered or selected seats)
       if ((isHovered || isSelected) && seat.seatNumber) {
         ctx.fillStyle = '#000';
-        ctx.font = 'bold 10px Arial';
+        ctx.font = `bold ${10 / zoom}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(seat.seatNumber, x, y - radius - 12);
+        ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - radius - 12 / zoom);
       }
 
       // Price display for hovered seats
       if (isHovered && seat.status === 'available') {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(x - 20, y + radius + 5, 40, 16);
+        ctx.fillRect(canvasCoords.x - 20 / zoom, canvasCoords.y + radius + 5 / zoom, 40 / zoom, 16 / zoom);
         ctx.fillStyle = '#fff';
-        ctx.font = '10px Arial';
+        ctx.font = `${10 / zoom}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(`$${seat.price}`, x, y + radius + 15);
+        ctx.fillText(`$${seat.price}`, canvasCoords.x, canvasCoords.y + radius + 15 / zoom);
       }
     });
 
     // Restore context
     ctx.restore();
-  }, [sortedSeats, selectedSeats, hoveredSeat, zoom, pan]);
+  }, [sortedSeats, selectedSeats, hoveredSeat, zoom, pan, imageDrawInfo]);
 
   // Animation loop for smooth updates
   useEffect(() => {
@@ -271,29 +336,35 @@ export default function InteractiveSeatingChart({
     };
   }, [drawCanvas]);
 
-  // Canvas event handlers
+  // Canvas event handlers using new coordinate system
   const getCanvasCoordinates = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas || !imageDrawInfo) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
     const x = ((event.clientX - rect.left - pan.x) / zoom);
     const y = ((event.clientY - rect.top - pan.y) / zoom);
     
     return { x, y };
-  }, [pan, zoom]);
+  }, [pan, zoom, imageDrawInfo]);
 
-  const findSeatAtPosition = useCallback((x: number, y: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
+  const findSeatAtPosition = useCallback((canvasX: number, canvasY: number) => {
+    if (!imageDrawInfo) return null;
 
     return sortedSeats.find(seat => {
-      const seatX = (seat.x / 100) * canvas.width;
-      const seatY = (seat.y / 100) * canvas.height;
-      const distance = Math.sqrt((x - seatX) ** 2 + (y - seatY) ** 2);
+      // Convert seat percentage coordinates to canvas coordinates
+      const seatCanvasCoords = percentageToCanvasCoordinates(
+        seat.x,
+        seat.y,
+        imageDrawInfo
+      );
+      
+      const distance = Math.sqrt(
+        (canvasX - seatCanvasCoords.x) ** 2 + (canvasY - seatCanvasCoords.y) ** 2
+      );
       return distance <= 15; // 15px click tolerance
     });
-  }, [sortedSeats]);
+  }, [sortedSeats, imageDrawInfo]);
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (disabled || isDragging) return;

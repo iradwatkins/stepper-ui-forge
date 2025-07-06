@@ -364,10 +364,10 @@ export const BasicInformation = ({
           <CardHeader className="pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <ImageIcon className="w-4 h-4" />
-              Event Images
+              Event Marketing Images
             </CardTitle>
             <CardDescription className="text-sm">
-              Upload high-quality images to make your event more appealing (optional)
+              Upload promotional images for marketing your event. These will appear on event listings and social media (optional).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -375,9 +375,12 @@ export const BasicInformation = ({
               {/* Banner Image Upload */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Banner Image</h4>
+                  <h4 className="text-sm font-medium">Event Banner Image</h4>
                   <span className="text-xs text-muted-foreground">Recommended: 1200x600px</span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  This promotional image will be displayed on your event page and listings
+                </p>
                 
                 {!uploadedImages.banner ? (
                   <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
@@ -432,9 +435,12 @@ export const BasicInformation = ({
               {/* Postcard Image Upload */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Postcard Image</h4>
+                  <h4 className="text-sm font-medium">Social Media Image</h4>
                   <span className="text-xs text-muted-foreground">Recommended: 600x400px</span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  This image will be used for social media sharing and smaller promotional displays
+                </p>
                 
                 {!uploadedImages.postcard ? (
                   <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
