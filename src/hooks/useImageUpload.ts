@@ -81,28 +81,28 @@ export const useImageUpload = () => {
       // Original optimized
       imageCompression(file, {
         maxWidthOrHeight: config.original,
-        initialQuality: 0.8,
+        initialQuality: 0.92,
         fileType: 'image/jpeg',
         useWebWorker: true
       }),
       // Medium
       imageCompression(file, {
         maxWidthOrHeight: config.medium,
-        initialQuality: 0.8,
+        initialQuality: 0.88,
         fileType: 'image/jpeg',
         useWebWorker: true
       }),
       // Small
       imageCompression(file, {
         maxWidthOrHeight: config.small,
-        initialQuality: 0.8,
+        initialQuality: 0.85,
         fileType: 'image/jpeg',
         useWebWorker: true
       }),
       // Thumbnail
       imageCompression(file, {
         maxWidthOrHeight: config.thumbnail,
-        initialQuality: 0.75,
+        initialQuality: 0.8,
         fileType: 'image/jpeg',
         useWebWorker: true
       })
@@ -115,14 +115,14 @@ export const useImageUpload = () => {
       // Original WebP
       imageCompression(file, {
         maxWidthOrHeight: config.original,
-        initialQuality: 0.85,
+        initialQuality: 0.92,
         fileType: 'image/webp',
         useWebWorker: true
       }),
       // Medium WebP
       imageCompression(file, {
         maxWidthOrHeight: config.medium,
-        initialQuality: 0.85,
+        initialQuality: 0.88,
         fileType: 'image/webp',
         useWebWorker: true
       }),
@@ -136,7 +136,7 @@ export const useImageUpload = () => {
       // Thumbnail WebP
       imageCompression(file, {
         maxWidthOrHeight: config.thumbnail,
-        initialQuality: 0.8,
+        initialQuality: 0.82,
         fileType: 'image/webp',
         useWebWorker: true
       })

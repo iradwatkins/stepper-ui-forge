@@ -413,7 +413,7 @@ export const BasicInformation = ({
                 ) : (
                   <div className="relative group">
                     <img
-                      src={uploadedImages.banner.thumbnail}
+                      src={uploadedImages.banner.medium || uploadedImages.banner.original}
                       alt="Main event image"
                       className="w-full h-32 object-cover rounded-lg border"
                     />
@@ -476,7 +476,7 @@ export const BasicInformation = ({
                 ) : (
                   <div className="relative group">
                     <img
-                      src={uploadedImages.postcard.thumbnail}
+                      src={uploadedImages.postcard.medium || uploadedImages.postcard.original}
                       alt="Additional event image"
                       className="w-full h-24 object-cover rounded-lg border"
                     />

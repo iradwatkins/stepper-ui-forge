@@ -332,22 +332,15 @@ const EventDetail = () => {
     const images: string[] = [];
     const eventImages = event.images as EventImages;
     
-    // Add banner image (original or medium quality)
-    if (eventImages?.banner?.original) {
-      images.push(eventImages.banner.original);
-    } else if (eventImages?.banner?.medium) {
-      images.push(eventImages.banner.medium);
-    } else if (eventImages?.banner?.url) {
-      images.push(eventImages.banner.url);
+    // Always prioritize original quality for gallery
+    const bannerImage = eventImages?.banner?.original || eventImages?.banner?.medium || eventImages?.banner?.url;
+    if (bannerImage) {
+      images.push(bannerImage);
     }
     
-    // Add postcard image (original or medium quality)
-    if (eventImages?.postcard?.original) {
-      images.push(eventImages.postcard.original);
-    } else if (eventImages?.postcard?.medium) {
-      images.push(eventImages.postcard.medium);
-    } else if (eventImages?.postcard?.url) {
-      images.push(eventImages.postcard.url);
+    const postcardImage = eventImages?.postcard?.original || eventImages?.postcard?.medium || eventImages?.postcard?.url;
+    if (postcardImage) {
+      images.push(postcardImage);
     }
     
     return images;
@@ -356,11 +349,11 @@ const EventDetail = () => {
   // Helper function to get primary display image
   const getPrimaryImage = (event: EventWithStats) => {
     const eventImages = event.images as EventImages;
-    return eventImages?.banner?.medium || 
-           eventImages?.banner?.original || 
+    return eventImages?.banner?.original || 
+           eventImages?.banner?.medium || 
            eventImages?.banner?.url ||
-           eventImages?.postcard?.medium || 
            eventImages?.postcard?.original || 
+           eventImages?.postcard?.medium || 
            eventImages?.postcard?.url || 
            '/placeholder-event.jpg';
   };
