@@ -583,6 +583,8 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
               transit: { nearby: true }
             }}
             eventType="other"
+            hasExistingImage={true}
+            startingTab="place"
           />
         );
 

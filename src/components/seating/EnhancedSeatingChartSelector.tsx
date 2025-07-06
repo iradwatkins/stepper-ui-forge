@@ -95,6 +95,8 @@ interface EnhancedSeatingChartSelectorProps {
   initialCategories?: SeatCategory[];
   venueInfo?: VenueInfo;
   eventType?: 'concert' | 'theater' | 'sports' | 'conference' | 'wedding' | 'other';
+  hasExistingImage?: boolean;
+  startingTab?: 'setup' | 'configure' | 'place' | 'info';
 }
 
 const DEFAULT_CATEGORIES: SeatCategory[] = [
@@ -152,9 +154,18 @@ export default function EnhancedSeatingChartSelector({
   initialSeats = [],
   initialCategories = DEFAULT_CATEGORIES,
   venueInfo,
-  eventType = 'other'
+  eventType = 'other',
+  hasExistingImage = false,
+  startingTab
 }: EnhancedSeatingChartSelectorProps) {
-  const [activeTab, setActiveTab] = useState('setup');
+  // Determine initial tab based on whether image exists
+  const getInitialTab = () => {
+    if (startingTab) return startingTab;
+    if (hasExistingImage || venueImageUrl) return 'place';
+    return 'setup';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab());
   const [seats, setSeats] = useState<SeatData[]>(initialSeats);
   const [categories, setCategories] = useState<SeatCategory[]>(initialCategories);
   const [selectedCategory, setSelectedCategory] = useState<string>(categories[0]?.id || '');
@@ -481,14 +492,21 @@ export default function EnhancedSeatingChartSelector({
     onSeatingConfigurationChange([], categories);
   };
 
+  // Determine which tabs to show
+  const shouldShowSetupTab = !hasExistingImage && !venueImageUrl;
+  const tabCount = shouldShowSetupTab ? 4 : 3;
+  const gridCols = shouldShowSetupTab ? 'grid-cols-4' : 'grid-cols-3';
+
   return (
     <div className="w-full space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="setup" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Setup
-          </TabsTrigger>
+        <TabsList className={`grid w-full ${gridCols}`}>
+          {shouldShowSetupTab && (
+            <TabsTrigger value="setup" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Setup
+            </TabsTrigger>
+          )}
           <TabsTrigger value="configure" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Configure
@@ -503,8 +521,9 @@ export default function EnhancedSeatingChartSelector({
           </TabsTrigger>
         </TabsList>
 
-        {/* Setup Tab */}
-        <TabsContent value="setup" className="space-y-4">
+        {/* Setup Tab - Only show if no existing image */}
+        {shouldShowSetupTab && (
+          <TabsContent value="setup" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Upload Venue Layout</CardTitle>
@@ -556,6 +575,7 @@ export default function EnhancedSeatingChartSelector({
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         {/* Configure Tab */}
         <TabsContent value="configure" className="space-y-4">
