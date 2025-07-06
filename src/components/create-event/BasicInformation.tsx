@@ -364,22 +364,22 @@ export const BasicInformation = ({
           <CardHeader className="pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <ImageIcon className="w-4 h-4" />
-              Event Marketing Images
+              Event Images
             </CardTitle>
             <CardDescription className="text-sm">
-              Upload promotional images for marketing your event. These will appear on event listings and social media (optional).
+              Upload your main event image and optionally an additional image for extra visual content.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {/* Banner Image Upload */}
+              {/* Main Event Image Upload */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Event Banner Image</h4>
-                  <span className="text-xs text-muted-foreground">Recommended: 1200x600px</span>
+                  <h4 className="text-sm font-medium">Event Image</h4>
+                  <span className="text-xs text-muted-foreground">Recommended: 1200×600px (2:1 ratio)</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  This promotional image will be displayed on your event page and listings
+                  Your main event image - used on event pages, listings, and social media sharing
                 </p>
                 
                 {!uploadedImages.banner ? (
@@ -399,11 +399,14 @@ export const BasicInformation = ({
                       <Upload className="w-8 h-8 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">
-                          {isProcessingImage ? "Processing banner..." : "Upload banner image"}
+                          {isProcessingImage ? "Processing event image..." : "Upload event image"}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           PNG, JPG, WebP up to 10MB - Auto-optimized to WebP
                         </p>
+                        <div className="mt-2 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                          💡 Recommended: 1200×600px (2:1 aspect ratio) for best display
+                        </div>
                       </div>
                     </label>
                   </div>
@@ -411,14 +414,14 @@ export const BasicInformation = ({
                   <div className="relative group">
                     <img
                       src={uploadedImages.banner.thumbnail}
-                      alt="Event banner"
+                      alt="Main event image"
                       className="w-full h-32 object-cover rounded-lg border"
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                       <div className="text-white text-center text-xs space-y-1">
-                        <p>Compression: {uploadedImages.banner.metadata.compressionRatio}%</p>
+                        <p>Dimensions: {uploadedImages.banner.metadata.dimensions.width}×{uploadedImages.banner.metadata.dimensions.height}</p>
                         <p>Size: {(uploadedImages.banner.metadata.compressedSize / 1024 / 1024).toFixed(2)}MB</p>
-                        <p>{uploadedImages.banner.metadata.dimensions.width}x{uploadedImages.banner.metadata.dimensions.height}</p>
+                        <p>Compression: {uploadedImages.banner.metadata.compressionRatio}%</p>
                       </div>
                     </div>
                     <button
@@ -432,14 +435,14 @@ export const BasicInformation = ({
                 )}
               </div>
 
-              {/* Postcard Image Upload */}
+              {/* Additional Image Upload */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Social Media Image</h4>
-                  <span className="text-xs text-muted-foreground">Recommended: 600x400px</span>
+                  <h4 className="text-sm font-medium">Additional Image <span className="font-normal text-muted-foreground">(optional)</span></h4>
+                  <span className="text-xs text-muted-foreground">Recommended: 600×400px (3:2 ratio)</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  This image will be used for social media sharing and smaller promotional displays
+                  Upload a second image for extra visual content (e.g., back of flyer, event details)
                 </p>
                 
                 {!uploadedImages.postcard ? (
@@ -459,11 +462,14 @@ export const BasicInformation = ({
                       <Upload className="w-6 h-6 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">
-                          {isProcessingImage ? "Processing postcard..." : "Upload postcard image"}
+                          {isProcessingImage ? "Processing additional image..." : "Upload additional image"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Optional - For social sharing and listings
+                          Optional - Extra visual content for viewers
                         </p>
+                        <div className="mt-2 text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
+                          💡 Recommended: 600×400px (3:2 aspect ratio)
+                        </div>
                       </div>
                     </label>
                   </div>
@@ -471,14 +477,14 @@ export const BasicInformation = ({
                   <div className="relative group">
                     <img
                       src={uploadedImages.postcard.thumbnail}
-                      alt="Event postcard"
+                      alt="Additional event image"
                       className="w-full h-24 object-cover rounded-lg border"
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                       <div className="text-white text-center text-xs space-y-1">
-                        <p>Compression: {uploadedImages.postcard.metadata.compressionRatio}%</p>
+                        <p>Dimensions: {uploadedImages.postcard.metadata.dimensions.width}×{uploadedImages.postcard.metadata.dimensions.height}</p>
                         <p>Size: {(uploadedImages.postcard.metadata.compressedSize / 1024 / 1024).toFixed(2)}MB</p>
-                        <p>{uploadedImages.postcard.metadata.dimensions.width}x{uploadedImages.postcard.metadata.dimensions.height}</p>
+                        <p>Compression: {uploadedImages.postcard.metadata.compressionRatio}%</p>
                       </div>
                     </div>
                     <button

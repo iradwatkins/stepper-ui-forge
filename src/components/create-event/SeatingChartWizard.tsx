@@ -18,7 +18,7 @@ import {
   CheckCircle,
   MapPin
 } from 'lucide-react';
-import { seatingService, SeatingChart, SeatCategory } from '@/lib/services/SeatingService';
+import { seatingService } from '@/lib/services/SeatingService';
 import { EnhancedSeatingChartSelector, SeatData, SeatCategory as EnhancedSeatCategory } from '@/components/seating';
 import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';

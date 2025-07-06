@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarIcon, MapPinIcon, UsersIcon, ShareIcon, HeartIcon } from "lucide-react";
+import { CalendarIcon, MapPinIcon, ShareIcon, HeartIcon } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
@@ -53,6 +53,8 @@ const EventDetail = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [likesLoading, setLikesLoading] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [totalPrice, setTotalPrice] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -363,14 +365,6 @@ const EventDetail = () => {
            '/placeholder-event.jpg';
   };
 
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case "simple": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "ticketed": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "premium": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
 
   if (loading) {
     return (
@@ -395,8 +389,6 @@ const EventDetail = () => {
 
   const eventImages = getEventImages(event);
   const primaryImage = getPrimaryImage(event);
-  const eventPrice = event.event_type === 'simple' ? 0 : 
-                     event.ticket_types && event.ticket_types.length > 0 ? Math.min(...event.ticket_types.map(t => t.price)) : 0;
   
   // Get display price for Simple Events
   const getSimpleEventDisplayPrice = () => {
@@ -424,6 +416,40 @@ const EventDetail = () => {
     if (!event.description) return null;
     return event.description.replace(/\[PRICE:.*?\]/, '').trim();
   };
+
+  // Handle quantity changes
+  const handleQuantityChange = (change: number) => {
+    const newQuantity = Math.max(1, quantity + change);
+    setQuantity(newQuantity);
+    
+    // Update total price based on event type
+    if (event.event_type === 'simple') {
+      const price = getSimpleEventPrice();
+      setTotalPrice(price * newQuantity);
+    }
+  };
+
+  // Get numeric price for simple events
+  const getSimpleEventPrice = (): number => {
+    if (event.event_type !== 'simple') return 0;
+    if (event.description) {
+      const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
+      if (priceMatch && priceMatch[1]) {
+        const priceParts = priceMatch[1].split('|');
+        const amount = parseFloat(priceParts[0]) || 0;
+        return amount;
+      }
+    }
+    return 0;
+  };
+
+  // Update total price when event loads
+  useEffect(() => {
+    if (event && event.event_type === 'simple') {
+      const price = getSimpleEventPrice();
+      setTotalPrice(price * quantity);
+    }
+  }, [event, quantity]);
 
   // Handle like toggle
   const handleLikeToggle = async () => {
@@ -463,240 +489,210 @@ const EventDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Image Section */}
-      <div className="relative h-96 md:h-[500px] overflow-hidden">
-        <img
-          src={primaryImage}
-          alt={event.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/30" />
-        <div className="absolute inset-0 flex items-end">
-          <div className="w-full p-6 md:p-8">
-            <div className="max-w-7xl mx-auto">
-              <Badge className={`${getEventTypeColor(event.event_type)} mb-4`}>
-                {event.event_type}
-              </Badge>
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{event.title}</h1>
-              <p className="text-xl text-gray-200 max-w-2xl">{getCleanDescription()}</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Image Gallery Button */}
-        {eventImages.length > 1 && (
-          <button
-            onClick={() => {
-              setGalleryStartIndex(0);
-              setIsGalleryOpen(true);
-            }}
-            className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-xl font-medium transition-all duration-200 hover:shadow-md"
-          >
-            View Gallery (+{eventImages.length - 1})
-          </button>
-        )}
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Event Details Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Event Details</h2>
-                <div className="space-y-6">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
-                      <CalendarIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Date & Time</h3>
-                      <p className="text-gray-600 dark:text-gray-300">{event.date}</p>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm">{event.time}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-4">
-                    <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-xl">
-                      <MapPinIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Location</h3>
-                      <p className="text-gray-600 dark:text-gray-300">{event.location}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-4">
-                    <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl">
-                      <UsersIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Attendance</h3>
-                      <p className="text-gray-600 dark:text-gray-300">{event.attendee_count || 0} attending</p>
-                      {event.max_attendees && (
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">{event.max_attendees - (event.attendee_count || 0)} spots remaining</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+    <div className="min-h-screen bg-white font-sans">
+      <main className="py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Two-column grid layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            
+            {/* Left Column - Poster-style Event Image */}
+            <div className="w-full">
+              <div className="relative">
+                <img 
+                  src={primaryImage} 
+                  alt={event.title}
+                  className="w-full h-auto object-cover rounded-lg shadow-lg"
+                />
+                
+                {/* Image Gallery Button */}
+                {eventImages.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setGalleryStartIndex(0);
+                      setIsGalleryOpen(true);
+                    }}
+                    className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-xl font-medium transition-all duration-200 hover:shadow-md"
+                  >
+                    View Gallery (+{eventImages.length - 1})
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* About Event Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">About This Event</h2>
-                <div className="prose dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-line text-gray-600 dark:text-gray-300 leading-relaxed">{getCleanDescription()}</p>
+            {/* Right Column - Event Information & Actions */}
+            <div className="w-full space-y-8">
+              
+              {/* Event Title and Details */}
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">{event.title}</h1>
+                <div className="mt-4 flex items-center text-gray-600">
+                  <CalendarIcon className="w-5 h-5 mr-2" />
+                  <span>{event.date} {event.time}</span>
+                </div>
+                <div className="mt-2 flex items-center text-gray-600">
+                  <MapPinIcon className="w-5 h-5 mr-2" />
+                  <span>{event.location}</span>
                 </div>
               </div>
-            </div>
 
-            {/* Categories Card */}
-            {event.categories && event.categories.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Categories</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {event.categories.map((category, index) => (
-                      <Badge key={index} variant="secondary" className="px-3 py-1 text-sm">
-                        {category}
-                      </Badge>
-                    ))}
+              {/* Ticket Selection Section */}
+              {event.event_type === 'simple' ? (
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex justify-between items-center">
+                    <p className="text-lg text-gray-800 uppercase font-medium">{event.title}</p>
+                    <div className="flex items-center border border-gray-300 rounded-md">
+                      <button 
+                        onClick={() => handleQuantityChange(-1)}
+                        className="px-3 py-1 text-lg text-gray-500 hover:text-gray-700"
+                        disabled={quantity <= 1}
+                      >
+                        -
+                      </button>
+                      <span className="px-4 py-1 text-lg font-medium">{quantity}</span>
+                      <button 
+                        onClick={() => handleQuantityChange(1)}
+                        className="px-3 py-1 text-lg text-gray-500 hover:text-gray-700"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
+                  <p className="text-xl font-bold text-gray-900 mt-1">{getSimpleEventDisplayPrice()}</p>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Sticky Container */}
-            <div className="sticky top-8 space-y-6">
-              {/* Ticket Selection Card */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-                <div className="p-6">
-                  {event.event_type === 'simple' ? (
-                    <>
-                      <div className="text-center mb-6">
-                        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                          {getSimpleEventDisplayPrice()}
-                        </div>
-                      </div>
-                      {eventPrice > 0 && (
+              ) : event.event_type === 'premium' && seatingCharts.length > 0 ? (
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-bold text-gray-900">Premium Seating</h3>
+                      <Badge className="bg-purple-100 text-purple-800">Premium Event</Badge>
+                    </div>
+                    
+                    {!showSeating ? (
+                      <div className="text-center space-y-4">
+                        <p className="text-gray-600">
+                          This premium event features reserved seating. Select your preferred seats from our interactive seating chart.
+                        </p>
                         <Button 
-                          className="w-full mb-4" 
-                          size="lg"
-                          onClick={() => setIsCheckoutOpen(true)}
+                          onClick={() => setShowSeating(true)}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300"
                         >
-                          Buy Tickets
+                          Choose Your Seats
                         </Button>
-                      )}
-                    </>
-                  ) : event.event_type === 'premium' && seatingCharts.length > 0 ? (
-                    <>
+                      </div>
+                    ) : (
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Premium Seating</h3>
-                          <Badge className="bg-purple-100 text-purple-800">Premium Event</Badge>
-                        </div>
-                        
-                        {!showSeating ? (
-                          <div className="text-center space-y-4">
-                            <p className="text-gray-600 dark:text-gray-400">
-                              This premium event features reserved seating. Select your preferred seats from our interactive seating chart.
-                            </p>
-                            <Button 
-                              onClick={() => setShowSeating(true)}
-                              className="w-full"
-                            >
-                              Choose Your Seats
-                            </Button>
-                          </div>
+                        {venueImageUrl && seats.length > 0 ? (
+                          <InteractiveSeatingChart
+                            venueImageUrl={venueImageUrl}
+                            seats={seats}
+                            priceCategories={priceCategories}
+                            selectedSeats={selectedSeatIds}
+                            onSeatSelection={handleInteractiveSeatSelection}
+                            onPurchaseClick={handleInteractivePurchase}
+                            maxSelectableSeats={8}
+                            showPurchaseButton={true}
+                            disabled={false}
+                          />
                         ) : (
-                          <div className="space-y-4">
-                            {venueImageUrl && seats.length > 0 ? (
-                              <InteractiveSeatingChart
-                                venueImageUrl={venueImageUrl}
-                                seats={seats}
-                                priceCategories={priceCategories}
-                                selectedSeats={selectedSeatIds}
-                                onSeatSelection={handleInteractiveSeatSelection}
-                                onPurchaseClick={handleInteractivePurchase}
-                                maxSelectableSeats={8}
-                                showPurchaseButton={true}
-                                disabled={false}
-                              />
-                            ) : (
-                              <div className="text-center py-8">
-                                <p className="text-gray-600 dark:text-gray-400">
-                                  Loading seating chart...
-                                </p>
-                              </div>
-                            )}
+                          <div className="text-center py-8">
+                            <p className="text-gray-600">Loading seating chart...</p>
                           </div>
                         )}
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Select Tickets</h3>
-                      <TicketSelector
-                        eventId={event.id}
-                        ticketTypes={ticketTypes}
-                        onAddToCart={handleAddToCart}
-                        isLoading={ticketsLoading}
-                      />
-                    </>
-                  )}
-                  
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 mt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1" 
-                      onClick={handleLikeToggle}
-                      disabled={likesLoading}
-                    >
-                      <HeartIcon className={`w-4 h-4 mr-2 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-                      {isLiked ? 'Liked' : 'Like'} {likeCount > 0 && `(${likeCount})`}
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <ShareIcon className="w-4 h-4 mr-2" />
-                      Share
-                    </Button>
+                    )}
                   </div>
                 </div>
+              ) : (
+                <div className="border-t border-gray-200 pt-6">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900">Select Tickets</h3>
+                  <TicketSelector
+                    eventId={event.id}
+                    ticketTypes={ticketTypes}
+                    onAddToCart={handleAddToCart}
+                    isLoading={ticketsLoading}
+                  />
+                </div>
+              )}
+
+              {/* Total and Buy Now Section */}
+              <div className="flex items-center justify-between bg-gray-100 p-4 rounded-lg">
+                <span className="text-2xl font-bold text-gray-900">
+                  {event.event_type === 'simple' ? `$${totalPrice.toFixed(2)}` : '$0'}
+                </span>
+                <Button 
+                  className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300"
+                  onClick={() => setIsCheckoutOpen(true)}
+                >
+                  Buy now
+                </Button>
               </div>
 
-              {/* Organizer Card */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-                <div className="p-6">
-                  <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Organizer</h3>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-xl font-bold text-white">
+              {/* Organizer Information */}
+              <div className="border-t border-gray-200 pt-8">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-4">
+                      <span className="text-lg font-bold text-white">
                         {event.organization_name?.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">{event.organization_name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Event Organizer</p>
+                      <h3 className="text-lg font-semibold text-gray-900">{event.organization_name}</h3>
+                      <p className="text-sm text-gray-500">For exchanges, refunds, tax receipts, and any event-related requests, please send a message to the organizer.</p>
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full">
-                    Contact Organizer
+                  <Button variant="outline" className="border border-gray-300 rounded-full px-6 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                    Send message
                   </Button>
                 </div>
               </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1" 
+                  onClick={handleLikeToggle}
+                  disabled={likesLoading}
+                >
+                  <HeartIcon className={`w-4 h-4 mr-2 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                  {isLiked ? 'Liked' : 'Like'} {likeCount > 0 && `(${likeCount})`}
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1">
+                  <ShareIcon className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+              </div>
             </div>
           </div>
+          
+          {/* About Section - Below main grid */}
+          <div className="mt-16 border-t border-gray-200 pt-10">
+            <div className="max-w-3xl">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">About the event</h2>
+              <div className="text-gray-700 space-y-4">
+                <p className="whitespace-pre-line leading-relaxed">{getCleanDescription()}</p>
+                
+                {/* Categories */}
+                {event.categories && event.categories.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Categories</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {event.categories.map((category, index) => (
+                        <Badge key={index} variant="secondary" className="px-3 py-1 text-sm">
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
         </div>
-      </div>
+      </main>
 
       <CheckoutModal 
         isOpen={isCheckoutOpen}
