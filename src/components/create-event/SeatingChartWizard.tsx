@@ -38,6 +38,8 @@ interface SeatingChartWizardProps {
   eventType: 'simple' | 'ticketed' | 'premium' | '';
   ticketTypes?: TicketType[];
   onSeatingConfigured?: (seatingData: any) => void;
+  startingTab?: 'setup' | 'configure' | 'place' | 'info';
+  showOnlyTab?: 'setup' | 'configure' | 'place' | 'info';
 }
 
 interface SeatingConfig {
@@ -76,7 +78,14 @@ const createDefaultTicketMappings = (ticketTypes: TicketType[]): TicketMapping[]
   }));
 };
 
-export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatingConfigured }: SeatingChartWizardProps) => {
+export const SeatingChartWizard = ({ 
+  form, 
+  eventType, 
+  ticketTypes = [], 
+  onSeatingConfigured,
+  startingTab,
+  showOnlyTab 
+}: SeatingChartWizardProps) => {
   const [loading, setLoading] = useState(false);
   const [seatingConfig, setSeatingConfig] = useState<SeatingConfig>(() => {
     // Create mappings from ticket types
@@ -95,7 +104,50 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
   const [placedSeats, setPlacedSeats] = useState<Seat[]>([]);
   const [enhancedSeats, setEnhancedSeats] = useState<SeatData[]>([]);
   const [enhancedCategories, setEnhancedCategories] = useState<EnhancedSeatCategory[]>([]);
-  const [currentStep, setCurrentStep] = useState<'upload' | 'configure' | 'place-seats' | 'finalize'>('upload');
+  const [currentStep, setCurrentStep] = useState<'upload' | 'configure' | 'place-seats' | 'finalize'>(
+    showOnlyTab ? 
+      (showOnlyTab === 'setup' ? 'upload' : 
+       showOnlyTab === 'configure' ? 'configure' : 
+       showOnlyTab === 'place' ? 'place-seats' : 'finalize') 
+      : (startingTab ? 
+          (startingTab === 'setup' ? 'upload' : 
+           startingTab === 'configure' ? 'configure' : 
+           startingTab === 'place' ? 'place-seats' : 'finalize') 
+          : 'upload')
+  );
+
+  // Load persisted data from form on component mount
+  useEffect(() => {
+    const formData = form.getValues();
+    
+    // Load venue image
+    if (formData.venueImageUrl) {
+      setChartPreview(formData.venueImageUrl);
+    }
+    
+    // Load seats and categories with proper type validation
+    if (formData.seats && Array.isArray(formData.seats)) {
+      // Filter out invalid seats and ensure all required fields exist
+      const validSeats = formData.seats.filter((seat): seat is SeatData => 
+        seat && typeof seat === 'object' && 
+        'id' in seat && 'x' in seat && 'y' in seat && 'seatNumber' in seat &&
+        'category' in seat && 'categoryColor' in seat && 'price' in seat &&
+        'status' in seat && 'isADA' in seat
+      );
+      setEnhancedSeats(validSeats);
+    }
+    
+    if (formData.seatCategories && Array.isArray(formData.seatCategories)) {
+      // Filter out invalid categories and ensure all required fields exist
+      const validCategories = formData.seatCategories.filter((category): category is EnhancedSeatCategory => 
+        category && typeof category === 'object' &&
+        'id' in category && 'name' in category && 'color' in category &&
+        'basePrice' in category && 'maxCapacity' in category && 'amenities' in category &&
+        'viewQuality' in category
+      );
+      setEnhancedCategories(validCategories);
+    }
+  }, [form]);
 
   useEffect(() => {
     if (onSeatingConfigured) {
@@ -124,7 +176,13 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
     // Create preview URL for immediate display
     const reader = new FileReader();
     reader.onload = (e) => {
-      setChartPreview(e.target?.result as string);
+      const imageUrl = e.target?.result as string;
+      setChartPreview(imageUrl);
+      
+      // Persist to form data
+      form.setValue('venueImageUrl', imageUrl);
+      form.setValue('hasVenueImage', true);
+      
       setCurrentStep('configure'); // Move to configuration step
     };
     reader.readAsDataURL(file);
@@ -193,6 +251,10 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
     }));
     
     setPlacedSeats(legacySeats);
+    
+    // Persist to form data for state management
+    form.setValue('seats', seats);
+    form.setValue('seatCategories', categories);
     
     // Update seating config with actual seat counts
     setSeatingConfig(prev => ({
@@ -660,6 +722,47 @@ export const SeatingChartWizard = ({ form, eventType, ticketTypes = [], onSeatin
         return null;
     }
   };
+
+  // If showOnlyTab is specified, render the EnhancedSeatingChartSelector with only that tab
+  if (showOnlyTab) {
+    const tabMap = {
+      'setup': 'setup',
+      'configure': 'configure', 
+      'place': 'place',
+      'info': 'info'
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold mb-2">
+            {showOnlyTab === 'setup' && 'Upload Venue Layout'}
+            {showOnlyTab === 'configure' && 'Configure Seat Categories'}
+            {showOnlyTab === 'place' && 'Place Seats on Layout'}
+            {showOnlyTab === 'info' && 'Finalize Venue Information'}
+          </h2>
+          <p className="text-muted-foreground">
+            {showOnlyTab === 'setup' && 'Upload your venue floor plan image to get started'}
+            {showOnlyTab === 'configure' && 'Set up seat categories and pricing tiers'}
+            {showOnlyTab === 'place' && 'Click on the layout to place seats in different categories'}
+            {showOnlyTab === 'info' && 'Review venue information and finalize your setup'}
+          </p>
+        </div>
+
+        <EnhancedSeatingChartSelector
+          venueImageUrl={chartPreview || undefined}
+          onImageUpload={(file) => handleFileUpload({ target: { files: [file] } } as any)}
+          onSeatingConfigurationChange={handleEnhancedSeatingConfigured}
+          initialSeats={enhancedSeats}
+          initialCategories={enhancedCategories}
+          eventType={eventType === 'premium' ? 'theater' : 'other'}
+          hasExistingImage={!!chartPreview}
+          startingTab={tabMap[showOnlyTab] as 'setup' | 'configure' | 'place' | 'info'}
+          showOnlyTab={showOnlyTab}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

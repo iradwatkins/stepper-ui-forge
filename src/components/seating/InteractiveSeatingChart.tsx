@@ -342,8 +342,18 @@ export default function InteractiveSeatingChart({
     if (!canvas || !imageDrawInfo) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
-    const x = ((event.clientX - rect.left - pan.x) / zoom);
-    const y = ((event.clientY - rect.top - pan.y) / zoom);
+    
+    // Account for canvas scaling (CSS vs actual canvas dimensions)
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // Convert client coordinates to actual canvas coordinates
+    const rawX = (event.clientX - rect.left) * scaleX;
+    const rawY = (event.clientY - rect.top) * scaleY;
+    
+    // Apply inverse transform to get coordinates in the original coordinate space
+    const x = (rawX - pan.x) / zoom;
+    const y = (rawY - pan.y) / zoom;
     
     return { x, y };
   }, [pan, zoom, imageDrawInfo]);
@@ -387,13 +397,21 @@ export default function InteractiveSeatingChart({
 
   const handleCanvasMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging) {
-      const deltaX = event.clientX - lastMousePos.x;
-      const deltaY = event.clientY - lastMousePos.y;
-      setPan(prev => ({ 
-        x: Math.min(100, Math.max(-200, prev.x + deltaX)), 
-        y: Math.min(100, Math.max(-200, prev.y + deltaY))
-      }));
-      setLastMousePos({ x: event.clientX, y: event.clientY });
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const deltaX = (event.clientX - lastMousePos.x) * scaleX;
+        const deltaY = (event.clientY - lastMousePos.y) * scaleY;
+        
+        setPan(prev => ({ 
+          x: Math.min(100, Math.max(-200, prev.x + deltaX)), 
+          y: Math.min(100, Math.max(-200, prev.y + deltaY))
+        }));
+        setLastMousePos({ x: event.clientX, y: event.clientY });
+      }
     } else {
       // Handle seat hover
       const { x, y } = getCanvasCoordinates(event);
@@ -443,13 +461,21 @@ export default function InteractiveSeatingChart({
     event.preventDefault();
     if (event.touches.length === 1 && isDragging) {
       const touch = event.touches[0];
-      const deltaX = touch.clientX - lastMousePos.x;
-      const deltaY = touch.clientY - lastMousePos.y;
-      setPan(prev => ({ 
-        x: Math.min(100, Math.max(-200, prev.x + deltaX)), 
-        y: Math.min(100, Math.max(-200, prev.y + deltaY))
-      }));
-      setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const deltaX = (touch.clientX - lastMousePos.x) * scaleX;
+        const deltaY = (touch.clientY - lastMousePos.y) * scaleY;
+        
+        setPan(prev => ({ 
+          x: Math.min(100, Math.max(-200, prev.x + deltaX)), 
+          y: Math.min(100, Math.max(-200, prev.y + deltaY))
+        }));
+        setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      }
     }
   }, [isDragging, lastMousePos]);
 
@@ -461,21 +487,37 @@ export default function InteractiveSeatingChart({
       );
       
       if (dragDistance < 10) {
-        // Simulate click for tap
+        // Simulate click for tap using proper coordinate transformation
         const canvas = canvasRef.current;
-        if (canvas) {
+        if (canvas && imageDrawInfo) {
           const rect = canvas.getBoundingClientRect();
-          const fakeEvent = {
-            clientX: touch.clientX,
-            clientY: touch.clientY,
-            preventDefault: () => {}
-          } as React.MouseEvent<HTMLCanvasElement>;
-          handleCanvasClick(fakeEvent);
+          
+          // Apply same coordinate transformation as mouse events
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          
+          const rawX = (touch.clientX - rect.left) * scaleX;
+          const rawY = (touch.clientY - rect.top) * scaleY;
+          
+          const x = (rawX - pan.x) / zoom;
+          const y = (rawY - pan.y) / zoom;
+          
+          const clickedSeat = findSeatAtPosition(x, y);
+          
+          if (clickedSeat && clickedSeat.status === 'available') {
+            if (selectedSeats.includes(clickedSeat.id)) {
+              const newSelection = selectedSeats.filter(id => id !== clickedSeat.id);
+              onSeatSelection?.(newSelection);
+            } else if (selectedSeats.length < maxSelectableSeats) {
+              const newSelection = [...selectedSeats, clickedSeat.id];
+              onSeatSelection?.(newSelection);
+            }
+          }
         }
       }
     }
     setIsDragging(false);
-  }, [lastMousePos, handleCanvasClick]);
+  }, [lastMousePos, pan, zoom, imageDrawInfo, findSeatAtPosition, selectedSeats, maxSelectableSeats, onSeatSelection]);
 
   return (
     <div className={`w-full space-y-4 ${className}`}>

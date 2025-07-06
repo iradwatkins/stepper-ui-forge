@@ -114,12 +114,48 @@ export const useWizardNavigation = ({
         canNavigateBackward: () => true
       },
       {
-        id: 'seating-setup',
-        title: 'Seating Setup',
-        description: 'Configure interactive seating',
-        icon: 'LayoutGrid',
+        id: 'seating-upload',
+        title: 'Seating: Upload Chart',
+        description: 'Upload venue layout image',
+        icon: 'Upload',
         isRequired: (eventType) => eventType === 'premium',
-        canNavigateForward: () => true, // Will be validated by SeatingChartWizard component
+        canNavigateForward: (data) => {
+          // Check if venue image is uploaded for premium events
+          return !!(data.venueImageUrl || data.hasVenueImage);
+        },
+        canNavigateBackward: () => true
+      },
+      {
+        id: 'seating-configure',
+        title: 'Seating: Configure Sections',
+        description: 'Set up seat categories and pricing',
+        icon: 'Settings',
+        isRequired: (eventType) => eventType === 'premium',
+        canNavigateForward: (data) => {
+          // Check if seat categories are configured
+          return !!(data.seatCategories && data.seatCategories.length > 0);
+        },
+        canNavigateBackward: () => true
+      },
+      {
+        id: 'seating-place',
+        title: 'Seating: Place Seats',
+        description: 'Position seats on venue layout',
+        icon: 'MousePointer',
+        isRequired: (eventType) => eventType === 'premium',
+        canNavigateForward: (data) => {
+          // Check if seats have been placed
+          return !!(data.seats && data.seats.length > 0);
+        },
+        canNavigateBackward: () => true
+      },
+      {
+        id: 'seating-finalize',
+        title: 'Seating: Finalize',
+        description: 'Review venue information and finalize setup',
+        icon: 'CheckCircle',
+        isRequired: (eventType) => eventType === 'premium',
+        canNavigateForward: () => true,
         canNavigateBackward: () => true
       },
       {
@@ -187,6 +223,30 @@ export const useWizardNavigation = ({
         }
         return basicErrors;
       }
+      
+      case 'seating-upload': {
+        const formData = form.getValues();
+        return (!formData.venueImageUrl && !formData.hasVenueImage) 
+          ? ['Please upload a venue layout image'] 
+          : [];
+      }
+      
+      case 'seating-configure': {
+        const formData = form.getValues();
+        return (!formData.seatCategories || formData.seatCategories.length === 0) 
+          ? ['Please configure at least one seat category'] 
+          : [];
+      }
+      
+      case 'seating-place': {
+        const formData = form.getValues();
+        return (!formData.seats || formData.seats.length === 0) 
+          ? ['Please place at least one seat on the venue layout'] 
+          : [];
+      }
+      
+      case 'seating-finalize':
+        return []; // No specific validation for finalize step
       
       default:
         return [];

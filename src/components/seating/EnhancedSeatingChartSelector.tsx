@@ -97,6 +97,7 @@ interface EnhancedSeatingChartSelectorProps {
   eventType?: 'concert' | 'theater' | 'sports' | 'conference' | 'wedding' | 'other';
   hasExistingImage?: boolean;
   startingTab?: 'setup' | 'configure' | 'place' | 'info';
+  showOnlyTab?: 'setup' | 'configure' | 'place' | 'info';
 }
 
 const DEFAULT_CATEGORIES: SeatCategory[] = [
@@ -156,7 +157,8 @@ export default function EnhancedSeatingChartSelector({
   venueInfo,
   eventType = 'other',
   hasExistingImage = false,
-  startingTab
+  startingTab,
+  showOnlyTab
 }: EnhancedSeatingChartSelectorProps) {
   // Determine initial tab based on whether image exists
   const getInitialTab = () => {
@@ -499,27 +501,29 @@ export default function EnhancedSeatingChartSelector({
 
   return (
     <div className="w-full space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${gridCols}`}>
-          {shouldShowSetupTab && (
-            <TabsTrigger value="setup" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Setup
+      <Tabs value={activeTab} onValueChange={showOnlyTab ? undefined : setActiveTab} className="w-full">
+        {!showOnlyTab && (
+          <TabsList className={`grid w-full ${gridCols}`}>
+            {shouldShowSetupTab && (
+              <TabsTrigger value="setup" className="flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                Setup
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="configure" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Configure
             </TabsTrigger>
-          )}
-          <TabsTrigger value="configure" className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            Configure
-          </TabsTrigger>
-          <TabsTrigger value="place" className="flex items-center gap-2">
-            <MousePointer className="h-4 w-4" />
-            Place Seats
-          </TabsTrigger>
-          <TabsTrigger value="info" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            Venue Info
-          </TabsTrigger>
-        </TabsList>
+            <TabsTrigger value="place" className="flex items-center gap-2">
+              <MousePointer className="h-4 w-4" />
+              Place Seats
+            </TabsTrigger>
+            <TabsTrigger value="info" className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Venue Info
+            </TabsTrigger>
+          </TabsList>
+        )}
 
         {/* Setup Tab - Only show if no existing image */}
         {shouldShowSetupTab && (

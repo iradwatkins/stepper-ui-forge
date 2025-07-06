@@ -70,7 +70,36 @@ export const eventFormSchema = z.object({
         })
       })
     }).optional()
-  }).optional()
+  }).optional(),
+  // Seating chart fields for premium events
+  venueImageUrl: z.string().optional(),
+  hasVenueImage: z.boolean().optional(),
+  seatCategories: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    color: z.string(),
+    basePrice: z.number(),
+    maxCapacity: z.number(),
+    amenities: z.array(z.string()),
+    viewQuality: z.enum(['excellent', 'good', 'fair', 'limited'])
+  })).optional(),
+  seats: z.array(z.object({
+    id: z.string(),
+    x: z.number(),
+    y: z.number(),
+    seatNumber: z.string(),
+    row: z.string().optional(),
+    section: z.string().optional(),
+    price: z.number(),
+    category: z.string(),
+    categoryColor: z.string(),
+    isADA: z.boolean(),
+    status: z.enum(['available', 'selected', 'sold', 'reserved', 'held']),
+    amenities: z.array(z.string()).optional(),
+    viewQuality: z.enum(['excellent', 'good', 'fair', 'limited']).optional(),
+    tableId: z.string().optional(),
+    groupSize: z.number().optional()
+  })).optional()
 }).refine((data) => {
   if (data.endDate && data.date) {
     return new Date(data.endDate) >= new Date(data.date);

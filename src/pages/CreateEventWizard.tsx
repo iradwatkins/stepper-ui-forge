@@ -343,7 +343,7 @@ export default function CreateEventWizard() {
           />
         );
         
-      case 'seating-setup':
+      case 'seating-upload':
         return (
           <SeatingChartWizard
             form={form}
@@ -353,6 +353,53 @@ export default function CreateEventWizard() {
               console.log('Seating configured:', seatingData);
               setSeatingConfig(seatingData);
             }}
+            startingTab="setup"
+            showOnlyTab="setup"
+          />
+        );
+        
+      case 'seating-configure':
+        return (
+          <SeatingChartWizard
+            form={form}
+            eventType={eventType}
+            ticketTypes={ticketTypes}
+            onSeatingConfigured={(seatingData) => {
+              console.log('Seating configured:', seatingData);
+              setSeatingConfig(seatingData);
+            }}
+            startingTab="configure"
+            showOnlyTab="configure"
+          />
+        );
+        
+      case 'seating-place':
+        return (
+          <SeatingChartWizard
+            form={form}
+            eventType={eventType}
+            ticketTypes={ticketTypes}
+            onSeatingConfigured={(seatingData) => {
+              console.log('Seating configured:', seatingData);
+              setSeatingConfig(seatingData);
+            }}
+            startingTab="place"
+            showOnlyTab="place"
+          />
+        );
+        
+      case 'seating-finalize':
+        return (
+          <SeatingChartWizard
+            form={form}
+            eventType={eventType}
+            ticketTypes={ticketTypes}
+            onSeatingConfigured={(seatingData) => {
+              console.log('Seating configured:', seatingData);
+              setSeatingConfig(seatingData);
+            }}
+            startingTab="info"
+            showOnlyTab="info"
           />
         );
         
