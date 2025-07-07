@@ -355,7 +355,20 @@ export default function CreateEventWizard() {
             }}
             startingTab="setup"
             showOnlyTab="setup"
-            onStepAdvance={nextStep}
+            onStepAdvance={() => {
+              console.log('🚀 onStepAdvance called from SeatingChartWizard');
+              const formData = form.getValues();
+              console.log('📊 Current form validation data:', {
+                venueImageUrl: formData.venueImageUrl ? 'SET' : 'NOT_SET',
+                hasVenueImage: formData.hasVenueImage,
+                canGoForward: canGoForward,
+                currentStep: currentStep,
+                visibleSteps: visibleSteps.length
+              });
+              const result = nextStep();
+              console.log('📈 nextStep result:', result);
+              return result;
+            }}
           />
         );
         

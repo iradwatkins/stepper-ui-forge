@@ -226,11 +226,24 @@ export const SeatingChartWizard = ({
       form.setValue('venueImageUrl', imageUrl);
       form.setValue('hasVenueImage', true);
       
+      // Trigger form validation to update navigation state
+      form.trigger(['venueImageUrl', 'hasVenueImage']);
+      
+      // Log form data for debugging
+      const currentValues = form.getValues();
+      console.log('Internal upload - Form data updated:', {
+        venueImageUrl: currentValues.venueImageUrl ? 'SET' : 'NOT_SET',
+        hasVenueImage: currentValues.hasVenueImage,
+        showOnlyTab,
+        onStepAdvance: !!onStepAdvance
+      });
+      
       // Auto-advance to next step if in setup-only mode
       if (showOnlyTab === 'setup' && onStepAdvance) {
+        console.log('Internal upload - Auto-advancing to next step...');
         setTimeout(() => {
           onStepAdvance();
-        }, 500); // Small delay to ensure form data is updated
+        }, 100); // Reduced delay for faster response
       } else {
         setCurrentStep('configure'); // Move to configuration step for internal wizard
       }
@@ -825,14 +838,29 @@ export const SeatingChartWizard = ({
               // Persist to form data
               form.setValue('venueImageUrl', imageUrl);
               form.setValue('hasVenueImage', true);
-              console.log('Form data updated with venue image');
+              
+              // Trigger form validation to update navigation state
+              form.trigger(['venueImageUrl', 'hasVenueImage']);
+              
+              // Log current form values for debugging
+              const currentValues = form.getValues();
+              console.log('Form data updated with venue image:', {
+                venueImageUrl: currentValues.venueImageUrl ? 'SET' : 'NOT_SET',
+                hasVenueImage: currentValues.hasVenueImage,
+                imageUrlLength: currentValues.venueImageUrl?.length || 0
+              });
               
               // Auto-advance to next step if in setup-only mode
               if (showOnlyTab === 'setup' && onStepAdvance) {
                 console.log('Auto-advancing to next step...');
                 setTimeout(() => {
+                  const finalValues = form.getValues();
+                  console.log('Final form values before step advance:', {
+                    venueImageUrl: finalValues.venueImageUrl ? 'SET' : 'NOT_SET',
+                    hasVenueImage: finalValues.hasVenueImage
+                  });
                   onStepAdvance();
-                }, 500); // Small delay to ensure form data is updated
+                }, 100); // Reduced delay for faster response
               }
             };
             reader.onerror = (error) => {

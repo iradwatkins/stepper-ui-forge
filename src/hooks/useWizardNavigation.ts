@@ -274,12 +274,22 @@ export const useWizardNavigation = ({
     return result;
   }, [currentStepInfo, form, getCurrentStepErrors]);
 
+  // Watch form values to trigger navigation validation updates
+  const formValues = form.watch();
+  
   // Navigation validation - stable dependencies
   const canGoForward = useMemo(() => {
     if (!currentStepInfo) return false;
     const formData = form.getValues();
-    return currentStepInfo.canNavigateForward(formData);
-  }, [currentStepInfo, form, selectedCategories, eventType]);
+    const result = currentStepInfo.canNavigateForward(formData);
+    console.log(`🔍 Navigation validation for step "${currentStepInfo.id}":`, {
+      canNavigate: result,
+      venueImageUrl: formData.venueImageUrl ? 'SET' : 'NOT_SET',
+      hasVenueImage: formData.hasVenueImage,
+      stepId: currentStepInfo.id
+    });
+    return result;
+  }, [currentStepInfo, formValues, selectedCategories, eventType]);
 
   const canGoBackward = useMemo(() => {
     if (!currentStepInfo) return false;
