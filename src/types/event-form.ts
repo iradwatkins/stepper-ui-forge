@@ -74,6 +74,8 @@ export const eventFormSchema = z.object({
   // Seating chart fields for premium events
   venueImageUrl: z.string().optional(),
   hasVenueImage: z.boolean().optional(),
+  seatingChartData: z.any().optional(),
+  seatingChartImageUrl: z.string().optional(),
   seatCategories: z.array(z.object({
     id: z.string(),
     name: z.string(),

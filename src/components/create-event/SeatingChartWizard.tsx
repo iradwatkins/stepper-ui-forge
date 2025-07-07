@@ -405,33 +405,14 @@ export const SeatingChartWizard = ({
     try {
       setLoading(true);
       
-      // Create a basic venue first using form data
-      const venue = await seatingService.createVenue({
-        name: formData.venueName || formData.address,
-        address: formData.address,
-        capacity: getTotalSeats(),
-        description: `Venue for ${formData.title}`,
-        venue_type: 'general'
-      });
-
-      // Upload the seating chart image to Supabase Storage
-      let imageUrl = null;
-      if (uploadedChart) {
-        const uploadResult = await imageUploadService.uploadVenueImage(uploadedChart, venue.id);
-        if (uploadResult.success) {
-          imageUrl = uploadResult.url;
-          toast.success('Venue image uploaded successfully');
-        } else {
-          console.warn('Failed to upload venue image:', uploadResult.error);
-          toast.warning('Seating chart created but image upload failed. You can update it later.');
-        }
-      }
+      console.log('🏟️ Saving seating chart configuration to form...');
       
-      // Create seating chart with actual seat positions
+      // For now, just save the seating configuration to form data
+      // The actual venue and seating chart creation will happen when the event is created
       const chartData = {
         type: 'premium',
         uploadedChart: uploadedChart?.name,
-        imageDimensions: { width: 800, height: 600 }, // Will be updated with actual dimensions
+        imageDimensions: { width: 800, height: 600 },
         seats: placedSeats.map(seat => ({
           id: seat.id,
           x: seat.x,
@@ -465,43 +446,21 @@ export const SeatingChartWizard = ({
         })
       };
 
-      const seatingChart = await seatingService.createSeatingChart({
-        venue_id: venue.id,
-        name: `${formData.title} - Seating Chart`,
-        description: `Interactive seating chart for ${formData.title}`,
-        chart_data: chartData,
-        image_url: imageUrl,
-        is_active: true,
-        total_seats: getTotalSeats(),
-        version: 1
-      });
-
-      // Create seat categories from ticket mappings
-      for (const mapping of seatingConfig.ticketMappings) {
-        const ticketType = ticketTypes.find(t => t.id === mapping.ticketTypeId);
-        await seatingService.createSeatCategory({
-          seating_chart_id: seatingChart.id,
-          name: mapping.sectionName,
-          description: mapping.description || `${mapping.sectionName} seating area`,
-          color_code: mapping.color,
-          base_price: ticketType?.price || 0,
-          price_modifier: 1.0,
-          is_accessible: false,
-          is_premium: ticketType?.name.toLowerCase().includes('vip') || false,
-          sort_order: seatingConfig.ticketMappings.indexOf(mapping)
-        });
-      }
-
+      // Store seating chart configuration in form for later use
+      form.setValue('seatingChartData', chartData);
+      form.setValue('seatingChartImageUrl', chartPreview);
+      
+      // Update local config
       setSeatingConfig(prev => ({
         ...prev,
-        venueId: venue.id,
-        seatingChartId: seatingChart.id
+        seatingChartData: chartData
       }));
 
-      toast.success('Seating chart created successfully');
+      console.log('✅ Seating chart configuration saved to form');
+      toast.success('Seating chart configuration saved successfully');
     } catch (error) {
-      console.error('Error creating seating chart:', error);
-      toast.error('Failed to create seating chart');
+      console.error('❌ Error saving seating chart configuration:', error);
+      toast.error('Failed to save seating chart configuration');
     } finally {
       setLoading(false);
     }

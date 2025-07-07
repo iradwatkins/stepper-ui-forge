@@ -112,7 +112,6 @@ export interface Database {
           title: string
           description: string | null
           organization_name: string | null
-          venue_name: string | null
           date: string
           time: string
           location: string
@@ -133,7 +132,6 @@ export interface Database {
           title: string
           description?: string | null
           organization_name?: string | null
-          venue_name?: string | null
           date: string
           time: string
           location: string
@@ -154,7 +152,6 @@ export interface Database {
           title?: string
           description?: string | null
           organization_name?: string | null
-          venue_name?: string | null
           date?: string
           time?: string
           location?: string
