@@ -162,6 +162,7 @@ export default function EnhancedSeatingChartSelector({
 }: EnhancedSeatingChartSelectorProps) {
   // Determine initial tab based on whether image exists
   const getInitialTab = () => {
+    if (showOnlyTab) return showOnlyTab;
     if (startingTab) return startingTab;
     if (hasExistingImage || venueImageUrl) return 'place';
     return 'setup';
@@ -190,6 +191,9 @@ export default function EnhancedSeatingChartSelector({
   // New state for proper coordinate handling
   const [imageDimensions, setImageDimensions] = useState<ImageDimensions | null>(null);
   const [imageDrawInfo, setImageDrawInfo] = useState<ImageDrawInfo | null>(null);
+  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
 
   // Get unique sections from seats
   const sections = React.useMemo(() => {
@@ -209,7 +213,25 @@ export default function EnhancedSeatingChartSelector({
 
   // Load and cache venue image with proper dimensions
   useEffect(() => {
-    if (!venueImageUrl) return;
+    if (!venueImageUrl) {
+      console.log('EnhancedSeatingChartSelector: No venue image URL provided');
+      setLoadedImage(null);
+      setImageDimensions(null);
+      setImageDrawInfo(null);
+      setImageLoading(false);
+      setImageLoadError(null);
+      return;
+    }
+    
+    console.log('EnhancedSeatingChartSelector: Loading venue image...', {
+      urlLength: venueImageUrl.length,
+      showOnlyTab,
+      startingTab,
+      hasExistingImage
+    });
+    
+    setImageLoading(true);
+    setImageLoadError(null);
     
     const img = new Image();
     img.onload = () => {
@@ -219,6 +241,12 @@ export default function EnhancedSeatingChartSelector({
         height: img.naturalHeight
       };
       setImageDimensions(dimensions);
+      setLoadedImage(img);
+      
+      console.log('EnhancedSeatingChartSelector: Image loaded successfully', {
+        dimensions,
+        activeTab: activeTab
+      });
       
       // Calculate how image should be drawn on canvas
       const canvas = canvasRef.current;
@@ -230,17 +258,25 @@ export default function EnhancedSeatingChartSelector({
           canvas.height
         );
         setImageDrawInfo(drawInfo);
+        console.log('EnhancedSeatingChartSelector: Image draw info calculated', drawInfo);
       }
+      
+      setImageLoading(false);
     };
     img.onerror = () => {
-      console.error('Failed to load venue image:', venueImageUrl);
+      console.error('Failed to load venue image:', venueImageUrl.substring(0, 100) + '...');
+      setImageLoadError('Failed to load venue image. Please try uploading a different image.');
+      setImageLoading(false);
+      setLoadedImage(null);
+      setImageDimensions(null);
+      setImageDrawInfo(null);
     };
     img.src = venueImageUrl;
-  }, [venueImageUrl]);
+  }, [venueImageUrl, activeTab, showOnlyTab, startingTab, hasExistingImage]);
 
-  // Recalculate image draw info when canvas size changes
+  // Recalculate image draw info when canvas size changes or image loads
   useEffect(() => {
-    if (!imageDimensions) return;
+    if (!imageDimensions || !loadedImage) return;
     
     const canvas = canvasRef.current;
     if (canvas) {
@@ -252,89 +288,99 @@ export default function EnhancedSeatingChartSelector({
       );
       setImageDrawInfo(drawInfo);
     }
-  }, [imageDimensions]);
+  }, [imageDimensions, loadedImage]);
 
   // Draw canvas
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !venueImageUrl || !imageDrawInfo) return;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx || !loadedImage || !imageDrawInfo) {
+      console.log('EnhancedSeatingChartSelector: Cannot draw canvas', {
+        hasCanvas: !!canvas,
+        hasCtx: !!ctx,
+        hasLoadedImage: !!loadedImage,
+        hasImageDrawInfo: !!imageDrawInfo,
+        activeTab
+      });
+      return;
+    }
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    console.log('EnhancedSeatingChartSelector: Drawing canvas', {
+      canvasSize: `${canvas.width}x${canvas.height}`,
+      imageSize: `${loadedImage.width}x${loadedImage.height}`,
+      drawInfo: imageDrawInfo,
+      seatCount: filteredSeats.length,
+      activeTab
+    });
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Create image
-    const img = new Image();
-    img.onload = () => {
-      // Save context
-      ctx.save();
-      
-      // Apply zoom and pan
-      ctx.translate(pan.x, pan.y);
-      ctx.scale(zoom, zoom);
-      
-      // Draw background image with proper aspect ratio
-      ctx.drawImage(
-        img,
-        imageDrawInfo.drawX,
-        imageDrawInfo.drawY,
-        imageDrawInfo.drawWidth,
-        imageDrawInfo.drawHeight
+    // Save context
+    ctx.save();
+    
+    // Apply zoom and pan
+    ctx.translate(pan.x, pan.y);
+    ctx.scale(zoom, zoom);
+    
+    // Draw background image with proper aspect ratio
+    ctx.drawImage(
+      loadedImage,
+      imageDrawInfo.drawX,
+      imageDrawInfo.drawY,
+      imageDrawInfo.drawWidth,
+      imageDrawInfo.drawHeight
+    );
+    
+    // Draw seats using percentage coordinates
+    filteredSeats.forEach(seat => {
+      const category = categories.find(c => c.id === seat.category);
+      if (!category) return;
+
+      // Convert percentage coordinates to canvas coordinates
+      const canvasCoords = percentageToCanvasCoordinates(
+        seat.x,
+        seat.y,
+        imageDrawInfo
       );
       
-      // Draw seats using percentage coordinates
-      filteredSeats.forEach(seat => {
-        const category = categories.find(c => c.id === seat.category);
-        if (!category) return;
+      const radius = 8;
 
-        // Convert percentage coordinates to canvas coordinates
-        const canvasCoords = percentageToCanvasCoordinates(
-          seat.x,
-          seat.y,
-          imageDrawInfo
-        );
-        
-        const radius = 8;
+      // Draw seat circle
+      ctx.beginPath();
+      ctx.arc(canvasCoords.x, canvasCoords.y, radius, 0, 2 * Math.PI);
+      ctx.fillStyle = category.color;
+      ctx.fill();
+      
+      // Draw seat border
+      ctx.strokeStyle = seat.status === 'selected' ? '#000' : '#fff';
+      ctx.lineWidth = seat.status === 'selected' ? 3 : 1;
+      ctx.stroke();
 
-        // Draw seat circle
-        ctx.beginPath();
-        ctx.arc(canvasCoords.x, canvasCoords.y, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = category.color;
-        ctx.fill();
-        
-        // Draw seat border
-        ctx.strokeStyle = seat.status === 'selected' ? '#000' : '#fff';
-        ctx.lineWidth = seat.status === 'selected' ? 3 : 1;
-        ctx.stroke();
+      // Draw ADA indicator
+      if (seat.isADA) {
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('♿', canvasCoords.x, canvasCoords.y + 3);
+      }
 
-        // Draw ADA indicator
-        if (seat.isADA) {
-          ctx.fillStyle = '#fff';
-          ctx.font = '10px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('♿', canvasCoords.x, canvasCoords.y + 3);
-        }
+      // Draw seat number
+      if (seat.seatNumber) {
+        ctx.fillStyle = '#000';
+        ctx.font = '8px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - radius - 2);
+      }
+    });
 
-        // Draw seat number
-        if (seat.seatNumber) {
-          ctx.fillStyle = '#000';
-          ctx.font = '8px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - radius - 2);
-        }
-      });
-
-      // Restore context
-      ctx.restore();
-    };
-    img.src = venueImageUrl;
-  }, [venueImageUrl, filteredSeats, categories, zoom, pan, imageDrawInfo]);
+    // Restore context
+    ctx.restore();
+  }, [loadedImage, filteredSeats, categories, zoom, pan, imageDrawInfo]);
 
   // Canvas event handlers
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || tool !== 'place' || !imageDrawInfo) return;
+    if (!canvasRef.current || tool !== 'place' || !imageDrawInfo || !loadedImage) return;
 
     // Convert click coordinates to percentage coordinates
     const percentageCoords = clientToPercentageCoordinates(
@@ -380,7 +426,7 @@ export default function EnhancedSeatingChartSelector({
       setSeats(newSeats);
       onSeatingConfigurationChange(newSeats, categories);
     }
-  }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, imageDrawInfo]);
+  }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, imageDrawInfo, loadedImage]);
 
   const handleCanvasMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === 'pan') {
@@ -476,6 +522,16 @@ export default function EnhancedSeatingChartSelector({
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
+
+  // Force canvas redraw when image loads
+  useEffect(() => {
+    if (loadedImage && imageDrawInfo) {
+      const timer = setTimeout(() => {
+        drawCanvas();
+      }, 100); // Small delay to ensure canvas is ready
+      return () => clearTimeout(timer);
+    }
+  }, [loadedImage, imageDrawInfo, drawCanvas]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -659,7 +715,28 @@ export default function EnhancedSeatingChartSelector({
 
         {/* Place Seats Tab */}
         <TabsContent value="place" className="space-y-4">
-          {venueImageUrl ? (
+          {imageLoadError ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <X className="mx-auto h-12 w-12 text-red-400" />
+                <p className="mt-2 text-red-600 font-medium">
+                  Image Loading Error
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {imageLoadError}
+                </p>
+              </CardContent>
+            </Card>
+          ) : imageLoading ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-gray-600">
+                  Loading venue image...
+                </p>
+              </CardContent>
+            </Card>
+          ) : venueImageUrl && loadedImage ? (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               {/* Controls Panel */}
               <div className="lg:col-span-1 space-y-4">
@@ -830,6 +907,7 @@ export default function EnhancedSeatingChartSelector({
                         onMouseMove={handleCanvasMouseMove}
                         onMouseUp={handleCanvasMouseUp}
                         onMouseLeave={handleCanvasMouseUp}
+                        style={{ cursor: tool === 'place' ? 'crosshair' : tool === 'pan' ? 'grab' : 'default' }}
                       />
                     </div>
                     
@@ -851,6 +929,9 @@ export default function EnhancedSeatingChartSelector({
                 <Upload className="mx-auto h-12 w-12 text-gray-400" />
                 <p className="mt-2 text-gray-600">
                   Please upload a venue layout first
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Use the "Setup" tab to upload your venue image
                 </p>
               </CardContent>
             </Card>

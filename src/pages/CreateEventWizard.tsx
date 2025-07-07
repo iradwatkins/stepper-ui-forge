@@ -385,6 +385,19 @@ export default function CreateEventWizard() {
             }}
             startingTab="place"
             showOnlyTab="place"
+            onStepAdvance={() => {
+              console.log('🚀 onStepAdvance called from SeatingChartWizard step 5');
+              const formData = form.getValues();
+              console.log('📊 Step 5 validation data:', {
+                seats: formData.seats ? `${formData.seats.length} seats` : 'NO_SEATS',
+                seatCategories: formData.seatCategories ? `${formData.seatCategories.length} categories` : 'NO_CATEGORIES',
+                canGoForward: canGoForward,
+                currentStep: currentStep
+              });
+              const result = nextStep();
+              console.log('📈 nextStep result:', result);
+              return result;
+            }}
           />
         );
         

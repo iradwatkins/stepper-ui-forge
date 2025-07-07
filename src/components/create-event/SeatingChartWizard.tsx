@@ -171,10 +171,10 @@ export const SeatingChartWizard = ({
 
   // Additional effect to ensure chart preview is loaded when in showOnlyTab mode
   useEffect(() => {
-    if (showOnlyTab === 'setup') {
+    if (showOnlyTab) {
       const formData = form.getValues();
       if (formData.venueImageUrl && !chartPreview) {
-        console.log('Syncing chart preview for showOnlyTab setup mode');
+        console.log(`Syncing chart preview for showOnlyTab ${showOnlyTab} mode`);
         setChartPreview(formData.venueImageUrl);
       }
     }
@@ -182,10 +182,10 @@ export const SeatingChartWizard = ({
 
   // Debug form data changes
   useEffect(() => {
-    if (showOnlyTab === 'setup') {
+    if (showOnlyTab) {
       const subscription = form.watch((value, { name }) => {
-        if (name === 'venueImageUrl' || name === 'hasVenueImage') {
-          console.log('Form field changed:', name, '=', value[name as keyof typeof value]);
+        if (name === 'venueImageUrl' || name === 'hasVenueImage' || name === 'seats' || name === 'seatCategories') {
+          console.log(`Form field changed in ${showOnlyTab} mode:`, name, '=', value[name as keyof typeof value] ? 'SET' : 'NOT_SET');
         }
       });
       return () => subscription.unsubscribe();
@@ -319,6 +319,16 @@ export const SeatingChartWizard = ({
     form.setValue('seats', seats);
     form.setValue('seatCategories', categories);
     
+    // Trigger form validation to update navigation state
+    form.trigger(['seats', 'seatCategories']);
+    
+    console.log(`Seats configured in ${showOnlyTab} mode:`, {
+      seatCount: seats.length,
+      categoryCount: categories.length,
+      showOnlyTab,
+      hasOnStepAdvance: !!onStepAdvance
+    });
+    
     // Update seating config with actual seat counts
     setSeatingConfig(prev => ({
       ...prev,
@@ -327,6 +337,14 @@ export const SeatingChartWizard = ({
         seats: seats.filter(seat => seat.category === mapping.ticketTypeId).length
       }))
     }));
+    
+    // Auto-advance to next step if in place-only mode and seats have been placed
+    if (showOnlyTab === 'place' && onStepAdvance && seats.length > 0) {
+      console.log('Auto-advancing from step 5 to step 6...');
+      setTimeout(() => {
+        onStepAdvance();
+      }, 100);
+    }
   };
 
   const convertToEnhancedCategories = (): EnhancedSeatCategory[] => {
