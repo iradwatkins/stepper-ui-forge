@@ -154,24 +154,34 @@ export class SeatingService {
 
   // Seating Chart Management
   async getSeatingCharts(eventId?: string): Promise<SeatingChart[]> {
-    let query = supabase
-      .from('seating_charts')
-      .select('*')
-      .eq('is_active', true)
-      .order('name');
+    try {
+      let query = supabase
+        .from('seating_charts')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
 
-    if (eventId) {
-      query = query.eq('event_id', eventId);
+      if (eventId) {
+        query = query.eq('event_id', eventId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        // Handle missing table gracefully
+        if (error.code === '42P01') {
+          console.warn('Seating charts table not available, returning empty array');
+          return [];
+        }
+        console.error('Error fetching seating charts:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error loading seating charts:', error);
+      return [];
     }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching seating charts:', error);
-      throw error;
-    }
-
-    return data || [];
   }
 
   async getSeatingChart(id: string): Promise<SeatingChart | null> {

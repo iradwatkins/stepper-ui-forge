@@ -137,6 +137,11 @@ export class EventLikeService {
       });
 
       if (error) {
+        // Handle missing function gracefully
+        if (error.code === 'PGRST202') {
+          console.warn('Event like function not available, returning false');
+          return { isLiked: false };
+        }
         throw error;
       }
 
@@ -157,6 +162,11 @@ export class EventLikeService {
       });
 
       if (error) {
+        // Handle missing function gracefully
+        if (error.code === 'PGRST202') {
+          console.warn('Event like count function not available, returning 0');
+          return { count: 0 };
+        }
         throw error;
       }
 

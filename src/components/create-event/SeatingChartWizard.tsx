@@ -322,17 +322,24 @@ export const SeatingChartWizard = ({
       form.setValue('seatCategories', categories);
       
       // Trigger form validation to update navigation state
-      const triggerResult = form.trigger(['seats', 'seatCategories']);
+      const triggerResult = form.trigger(['seats', 'seatCategories', 'venueImageUrl', 'hasVenueImage']);
       console.log('🔍 Form validation triggered, result:', triggerResult);
       
-      // Verify the data was saved correctly
-      const currentFormData = form.getValues();
-      console.log('✅ Form data verification:', {
-        hasSeats: Array.isArray(currentFormData.seats) && currentFormData.seats.length > 0,
-        seatCount: currentFormData.seats?.length || 0,
-        hasCategories: Array.isArray(currentFormData.seatCategories) && currentFormData.seatCategories.length > 0,
-        categoryCount: currentFormData.seatCategories?.length || 0
-      });
+      // Force a form value update to trigger wizard navigation recalculation
+      setTimeout(() => {
+        const currentFormData = form.getValues();
+        console.log('✅ Form data verification after delay:', {
+          hasSeats: Array.isArray(currentFormData.seats) && currentFormData.seats.length > 0,
+          seatCount: currentFormData.seats?.length || 0,
+          hasCategories: Array.isArray(currentFormData.seatCategories) && currentFormData.seatCategories.length > 0,
+          categoryCount: currentFormData.seatCategories?.length || 0,
+          hasVenueImage: currentFormData.hasVenueImage,
+          venueImageUrl: currentFormData.venueImageUrl ? 'SET' : 'NOT_SET'
+        });
+        
+        // Trigger another validation to ensure wizard navigation updates
+        form.trigger();
+      }, 100);
       
       // Update seating config with actual seat counts
       setSeatingConfig(prev => ({
@@ -343,12 +350,15 @@ export const SeatingChartWizard = ({
         }))
       }));
       
-      // Only auto-advance if in a single-tab mode (showOnlyTab specified)
-      if (showOnlyTab === 'place' && onStepAdvance && seats.length > 0) {
-        console.log('⏭️ Auto-advancing from step 5 to step 6...');
-        setTimeout(() => {
-          onStepAdvance();
-        }, 100);
+      // Auto-advance if seats are placed and onStepAdvance is available
+      if (onStepAdvance && seats.length > 0) {
+        // In combined mode (no showOnlyTab) or specific place mode
+        if (!showOnlyTab || showOnlyTab === 'place') {
+          console.log('⏭️ Auto-advancing to next step after placing seats...');
+          setTimeout(() => {
+            onStepAdvance();
+          }, 500); // Increased delay to ensure form updates are processed
+        }
       }
 
       console.log('✅ Seating configuration saved successfully');
