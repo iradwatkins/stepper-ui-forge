@@ -4,20 +4,20 @@ import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 
 // Helper function to get the correct redirect URL for different environments
-const getRedirectUrl = (): string => {
+const getRedirectUrl = (isAdmin?: boolean): string => {
   const origin = window.location.origin
   const isDev = origin.includes('localhost') || origin.includes('127.0.0.1')
   const isLovable = origin.includes('lovable.app') || origin.includes('lovable.dev')
   
-  console.log('🔐 Current origin:', origin, { isDev, isLovable })
+  console.log('🔐 Current origin:', origin, { isDev, isLovable, isAdmin })
   
-  // For development and Lovable preview environments, use dashboard
+  // For development and Lovable preview environments, use appropriate dashboard
   if (isDev || isLovable) {
-    return `${origin}/dashboard`
+    return isAdmin ? `${origin}/admin` : `${origin}/account`
   }
   
-  // For production or custom domains, also use dashboard
-  return `${origin}/dashboard`
+  // For production or custom domains, also use appropriate dashboard
+  return isAdmin ? `${origin}/admin` : `${origin}/account`
 }
 
 interface AuthContextType {

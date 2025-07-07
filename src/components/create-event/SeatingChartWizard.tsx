@@ -124,7 +124,10 @@ export const SeatingChartWizard = ({
     
     // Load venue image
     if (formData.venueImageUrl) {
+      console.log('Loading venue image from form data:', formData.venueImageUrl.substring(0, 50) + '...');
       setChartPreview(formData.venueImageUrl);
+    } else {
+      console.log('No venue image found in form data');
     }
     
     // Load seats and categories with proper type validation
@@ -165,6 +168,29 @@ export const SeatingChartWizard = ({
       setEnhancedCategories(validCategories);
     }
   }, [form, ticketTypes]);
+
+  // Additional effect to ensure chart preview is loaded when in showOnlyTab mode
+  useEffect(() => {
+    if (showOnlyTab === 'setup') {
+      const formData = form.getValues();
+      if (formData.venueImageUrl && !chartPreview) {
+        console.log('Syncing chart preview for showOnlyTab setup mode');
+        setChartPreview(formData.venueImageUrl);
+      }
+    }
+  }, [showOnlyTab, form, chartPreview]);
+
+  // Debug form data changes
+  useEffect(() => {
+    if (showOnlyTab === 'setup') {
+      const subscription = form.watch((value, { name }) => {
+        if (name === 'venueImageUrl' || name === 'hasVenueImage') {
+          console.log('Form field changed:', name, '=', value[name as keyof typeof value]);
+        }
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [form, showOnlyTab]);
 
   useEffect(() => {
     if (onSeatingConfigured) {
@@ -773,6 +799,7 @@ export const SeatingChartWizard = ({
           </p>
         </div>
 
+{/* Debug log */}
         <EnhancedSeatingChartSelector
           venueImageUrl={chartPreview || undefined}
           onImageUpload={(file) => {
@@ -792,18 +819,25 @@ export const SeatingChartWizard = ({
             const reader = new FileReader();
             reader.onload = (e) => {
               const imageUrl = e.target?.result as string;
+              console.log('Image uploaded and processed, URL length:', imageUrl.length);
               setChartPreview(imageUrl);
               
               // Persist to form data
               form.setValue('venueImageUrl', imageUrl);
               form.setValue('hasVenueImage', true);
+              console.log('Form data updated with venue image');
               
               // Auto-advance to next step if in setup-only mode
               if (showOnlyTab === 'setup' && onStepAdvance) {
+                console.log('Auto-advancing to next step...');
                 setTimeout(() => {
                   onStepAdvance();
                 }, 500); // Small delay to ensure form data is updated
               }
+            };
+            reader.onerror = (error) => {
+              console.error('Error reading file:', error);
+              toast.error('Failed to read the uploaded file');
             };
             reader.readAsDataURL(file);
 

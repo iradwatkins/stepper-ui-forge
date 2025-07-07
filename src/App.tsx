@@ -54,6 +54,10 @@ import PaymentTestPage from "./pages/PaymentTest";
 import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import AdminAuth from "./pages/AdminAuth";
+import AccountAuth from "./pages/AccountAuth";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminLayout from "./components/admin/AdminLayout";
 import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
@@ -61,8 +65,9 @@ const queryClient = new QueryClient();
 function ConditionalNavbar() {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith('/dashboard');
+  const isAdmin = location.pathname.startsWith('/admin');
   
-  if (isDashboard) {
+  if (isDashboard || isAdmin) {
     return null;
   }
   
@@ -172,7 +177,28 @@ const App = () => (
                     </AdminRoute>
                   } />
                 </Route>
-                <Route path="/auth" element={<Auth />} />
+                
+                {/* Admin Portal Routes */}
+                <Route path="/admin" element={<AdminAuth />} />
+                <Route path="/admin/*" element={
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                }>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="events" element={<AdminEvents />} />
+                  <Route path="analytics" element={<AdminAnalytics />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                  <Route path="monitor" element={<AdminMonitor />} />
+                  <Route path="database" element={<DatabaseAdmin />} />
+                </Route>
+                
+                {/* Customer Account Routes */}
+                <Route path="/account" element={<AccountAuth />} />
+                
+                {/* Legacy auth route - redirect to account */}
+                <Route path="/auth" element={<AccountAuth />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
