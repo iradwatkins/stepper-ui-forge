@@ -274,19 +274,69 @@ export default function EnhancedSeatingChartSelector({
     img.src = venueImageUrl;
   }, [venueImageUrl, activeTab, showOnlyTab, startingTab, hasExistingImage]);
 
+  // Set canvas size to match container size
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const resizeCanvas = () => {
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      // Set the actual canvas size in memory (scaled for high-DPI displays)
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
+      // Scale the canvas back down using CSS
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+      
+      // Scale the drawing context so everything draws at the correct size
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
+      
+      console.log('Canvas resized:', {
+        containerSize: { width: rect.width, height: rect.height },
+        canvasSize: { width: canvas.width, height: canvas.height },
+        devicePixelRatio: dpr
+      });
+    };
+
+    // Initial resize
+    resizeCanvas();
+
+    // Set up ResizeObserver for dynamic resizing
+    const resizeObserver = new ResizeObserver(resizeCanvas);
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // Recalculate image draw info when canvas size changes or image loads
   useEffect(() => {
     if (!imageDimensions || !loadedImage) return;
     
     const canvas = canvasRef.current;
     if (canvas) {
+      // Use the display size (CSS size) for draw info calculation
+      const rect = canvas.getBoundingClientRect();
       const drawInfo = calculateImageDrawInfo(
         imageDimensions.width,
         imageDimensions.height,
-        canvas.width,
-        canvas.height
+        rect.width,
+        rect.height
       );
       setImageDrawInfo(drawInfo);
+      console.log('Updated image draw info for canvas size:', {
+        canvasDisplaySize: { width: rect.width, height: rect.height },
+        imageSize: imageDimensions,
+        drawInfo
+      });
     }
   }, [imageDimensions, loadedImage]);
 
@@ -382,14 +432,42 @@ export default function EnhancedSeatingChartSelector({
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || tool !== 'place' || !imageDrawInfo || !loadedImage) return;
 
-    // Convert click coordinates to percentage coordinates
-    const percentageCoords = clientToPercentageCoordinates(
-      event.clientX,
-      event.clientY,
-      canvasRef.current,
-      imageDrawInfo,
-      { pan, zoom }
-    );
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Get raw client coordinates relative to canvas
+    const clientX = event.clientX - rect.left;
+    const clientY = event.clientY - rect.top;
+    
+    // Convert to canvas coordinates (accounting for CSS vs actual canvas size)
+    const canvasX = (clientX / rect.width) * rect.width;
+    const canvasY = (clientY / rect.height) * rect.height;
+    
+    // Apply inverse transform (pan and zoom)
+    const transformedX = (canvasX - pan.x) / zoom;
+    const transformedY = (canvasY - pan.y) / zoom;
+    
+    // Convert to image coordinates
+    const imageX = (transformedX - imageDrawInfo.drawX) / imageDrawInfo.scaleX;
+    const imageY = (transformedY - imageDrawInfo.drawY) / imageDrawInfo.scaleY;
+    
+    // Convert to percentage coordinates
+    const originalImageWidth = imageDrawInfo.drawWidth / imageDrawInfo.scaleX;
+    const originalImageHeight = imageDrawInfo.drawHeight / imageDrawInfo.scaleY;
+    
+    const percentageCoords = {
+      x: Math.max(0, Math.min(100, (imageX / originalImageWidth) * 100)),
+      y: Math.max(0, Math.min(100, (imageY / originalImageHeight) * 100))
+    };
+    
+    console.log('Click coordinate transformation:', {
+      clientCoords: { x: clientX, y: clientY },
+      canvasCoords: { x: canvasX, y: canvasY },
+      transformedCoords: { x: transformedX, y: transformedY },
+      imageCoords: { x: imageX, y: imageY },
+      percentageCoords,
+      pan, zoom, imageDrawInfo
+    });
 
     // Check if clicking on existing seat
     const clickedSeat = seats.find(seat => {
@@ -430,17 +508,34 @@ export default function EnhancedSeatingChartSelector({
 
   const handleCanvasMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === 'pan') {
-      setIsDragging(true);
-      setLastMousePos({ x: event.clientX, y: event.clientY });
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const canvasX = event.clientX - rect.left;
+        const canvasY = event.clientY - rect.top;
+        
+        setIsDragging(true);
+        setLastMousePos({ x: canvasX, y: canvasY });
+      }
     }
   }, [tool]);
 
   const handleCanvasMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging && tool === 'pan') {
-      const deltaX = event.clientX - lastMousePos.x;
-      const deltaY = event.clientY - lastMousePos.y;
-      setPan(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
-      setLastMousePos({ x: event.clientX, y: event.clientY });
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        
+        // Convert to canvas coordinate system
+        const currentX = event.clientX - rect.left;
+        const currentY = event.clientY - rect.top;
+        
+        const deltaX = currentX - lastMousePos.x;
+        const deltaY = currentY - lastMousePos.y;
+        
+        setPan(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
+        setLastMousePos({ x: currentX, y: currentY });
+      }
     }
   }, [isDragging, tool, lastMousePos]);
 
@@ -899,8 +994,6 @@ export default function EnhancedSeatingChartSelector({
                     <div ref={containerRef} className="relative w-full h-96 overflow-hidden rounded-lg border">
                       <canvas
                         ref={canvasRef}
-                        width={800}
-                        height={600}
                         className="w-full h-full cursor-pointer"
                         onClick={handleCanvasClick}
                         onMouseDown={handleCanvasMouseDown}

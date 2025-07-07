@@ -292,51 +292,69 @@ export const SeatingChartWizard = ({
   };
 
   const handleEnhancedSeatingConfigured = (seats: SeatData[], categories: EnhancedSeatCategory[]) => {
-    setEnhancedSeats(seats);
-    setEnhancedCategories(categories);
-    
-    // Convert enhanced seats back to legacy format for compatibility
-    const legacySeats: Seat[] = seats.map((seat, index) => ({
-      id: seat.id,
-      x: seat.x,
-      y: seat.y,
-      ticketTypeId: seat.category,
-      sectionName: seat.section || '',
-      color: seat.categoryColor,
-      seatNumber: index + 1
-    }));
-    
-    setPlacedSeats(legacySeats);
-    
-    // Persist to form data for state management
-    form.setValue('seats', seats);
-    form.setValue('seatCategories', categories);
-    
-    // Trigger form validation to update navigation state
-    form.trigger(['seats', 'seatCategories']);
-    
-    console.log(`Seats configured in ${showOnlyTab} mode:`, {
-      seatCount: seats.length,
-      categoryCount: categories.length,
-      showOnlyTab,
-      hasOnStepAdvance: !!onStepAdvance
-    });
-    
-    // Update seating config with actual seat counts
-    setSeatingConfig(prev => ({
-      ...prev,
-      ticketMappings: prev.ticketMappings.map(mapping => ({
-        ...mapping,
-        seats: seats.filter(seat => seat.category === mapping.ticketTypeId).length
-      }))
-    }));
-    
-    // Only auto-advance if in a single-tab mode (showOnlyTab specified)
-    if (showOnlyTab === 'place' && onStepAdvance && seats.length > 0) {
-      console.log('Auto-advancing from step 5 to step 6...');
-      setTimeout(() => {
-        onStepAdvance();
-      }, 100);
+    try {
+      console.log('🪑 Saving seating configuration:', {
+        seatCount: seats.length,
+        categoryCount: categories.length,
+        showOnlyTab,
+        hasOnStepAdvance: !!onStepAdvance
+      });
+
+      setEnhancedSeats(seats);
+      setEnhancedCategories(categories);
+      
+      // Convert enhanced seats back to legacy format for compatibility
+      const legacySeats: Seat[] = seats.map((seat, index) => ({
+        id: seat.id,
+        x: seat.x,
+        y: seat.y,
+        ticketTypeId: seat.category,
+        sectionName: seat.section || '',
+        color: seat.categoryColor,
+        seatNumber: index + 1
+      }));
+      
+      setPlacedSeats(legacySeats);
+      
+      // Persist to form data for state management
+      console.log('💾 Persisting seating data to form...');
+      form.setValue('seats', seats);
+      form.setValue('seatCategories', categories);
+      
+      // Trigger form validation to update navigation state
+      const triggerResult = form.trigger(['seats', 'seatCategories']);
+      console.log('🔍 Form validation triggered, result:', triggerResult);
+      
+      // Verify the data was saved correctly
+      const currentFormData = form.getValues();
+      console.log('✅ Form data verification:', {
+        hasSeats: Array.isArray(currentFormData.seats) && currentFormData.seats.length > 0,
+        seatCount: currentFormData.seats?.length || 0,
+        hasCategories: Array.isArray(currentFormData.seatCategories) && currentFormData.seatCategories.length > 0,
+        categoryCount: currentFormData.seatCategories?.length || 0
+      });
+      
+      // Update seating config with actual seat counts
+      setSeatingConfig(prev => ({
+        ...prev,
+        ticketMappings: prev.ticketMappings.map(mapping => ({
+          ...mapping,
+          seats: seats.filter(seat => seat.category === mapping.ticketTypeId).length
+        }))
+      }));
+      
+      // Only auto-advance if in a single-tab mode (showOnlyTab specified)
+      if (showOnlyTab === 'place' && onStepAdvance && seats.length > 0) {
+        console.log('⏭️ Auto-advancing from step 5 to step 6...');
+        setTimeout(() => {
+          onStepAdvance();
+        }, 100);
+      }
+
+      console.log('✅ Seating configuration saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving seating configuration:', error);
+      toast.error('Failed to save seating configuration. Please try again.');
     }
   };
 

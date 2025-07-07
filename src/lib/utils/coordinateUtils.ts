@@ -85,17 +85,43 @@ export function clientToPercentageCoordinates(
 ): Point {
   const rect = canvas.getBoundingClientRect();
   
-  // Convert to canvas coordinates accounting for transform
-  const canvasX = (clientX - rect.left - transform.pan.x) / transform.zoom;
-  const canvasY = (clientY - rect.top - transform.pan.y) / transform.zoom;
+  // Account for canvas scaling (CSS vs actual canvas dimensions)
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  
+  // Convert client coordinates to canvas coordinates
+  const rawCanvasX = (clientX - rect.left) * scaleX;
+  const rawCanvasY = (clientY - rect.top) * scaleY;
+  
+  // Apply transform (pan and zoom)
+  const canvasX = (rawCanvasX - transform.pan.x) / transform.zoom;
+  const canvasY = (rawCanvasY - transform.pan.y) / transform.zoom;
   
   // Convert to image coordinates (relative to actual image area)
   const imageX = (canvasX - imageDrawInfo.drawX) / imageDrawInfo.scaleX;
   const imageY = (canvasY - imageDrawInfo.drawY) / imageDrawInfo.scaleY;
   
   // Convert to percentage coordinates (0-100)
-  const percentageX = (imageX / (imageDrawInfo.drawWidth / imageDrawInfo.scaleX)) * 100;
-  const percentageY = (imageY / (imageDrawInfo.drawHeight / imageDrawInfo.scaleY)) * 100;
+  // Note: imageDrawInfo.drawWidth / imageDrawInfo.scaleX = original image width
+  // Note: imageDrawInfo.drawHeight / imageDrawInfo.scaleY = original image height
+  const originalImageWidth = imageDrawInfo.drawWidth / imageDrawInfo.scaleX;
+  const originalImageHeight = imageDrawInfo.drawHeight / imageDrawInfo.scaleY;
+  
+  const percentageX = (imageX / originalImageWidth) * 100;
+  const percentageY = (imageY / originalImageHeight) * 100;
+  
+  // Debug logging
+  console.log('Coordinate conversion debug:', {
+    clientX, clientY,
+    canvasRect: { width: rect.width, height: rect.height },
+    canvasSize: { width: canvas.width, height: canvas.height },
+    scaleFactors: { scaleX, scaleY },
+    rawCanvas: { x: rawCanvasX, y: rawCanvasY },
+    transformedCanvas: { x: canvasX, y: canvasY },
+    imageCoords: { x: imageX, y: imageY },
+    originalImageSize: { width: originalImageWidth, height: originalImageHeight },
+    percentageResult: { x: percentageX, y: percentageY }
+  });
   
   // Clamp to valid range
   return {
