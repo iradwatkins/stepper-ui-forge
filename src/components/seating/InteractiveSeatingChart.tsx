@@ -148,10 +148,20 @@ export default function InteractiveSeatingChart({
 
   // Load and cache venue image with proper dimensions
   useEffect(() => {
-    if (!venueImageUrl) return;
+    if (!venueImageUrl) {
+      console.log('❌ No venue image URL provided');
+      return;
+    }
+    
+    console.log('🖼️ Loading venue image:', venueImageUrl);
     
     const img = new Image();
     img.onload = () => {
+      console.log('✅ Venue image loaded successfully:', {
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight
+      });
+      
       imageRef.current = img;
       
       // Get actual image dimensions
@@ -170,13 +180,14 @@ export default function InteractiveSeatingChart({
           canvas.width,
           canvas.height
         );
+        console.log('📐 Image draw info calculated:', drawInfo);
         setImageDrawInfo(drawInfo);
       }
       
       drawCanvas();
     };
     img.onerror = () => {
-      console.error('Failed to load venue image:', venueImageUrl);
+      console.error('❌ Failed to load venue image:', venueImageUrl);
     };
     img.src = venueImageUrl;
   }, [venueImageUrl]);
@@ -359,9 +370,14 @@ export default function InteractiveSeatingChart({
   }, [pan, zoom, imageDrawInfo]);
 
   const findSeatAtPosition = useCallback((canvasX: number, canvasY: number) => {
-    if (!imageDrawInfo) return null;
+    if (!imageDrawInfo) {
+      console.log('❌ No imageDrawInfo available for seat finding');
+      return null;
+    }
 
-    return sortedSeats.find(seat => {
+    console.log('🔍 Finding seat at position:', { canvasX, canvasY, totalSeats: sortedSeats.length });
+
+    const foundSeat = sortedSeats.find(seat => {
       // Convert seat percentage coordinates to canvas coordinates
       const seatCanvasCoords = percentageToCanvasCoordinates(
         seat.x,
@@ -372,26 +388,70 @@ export default function InteractiveSeatingChart({
       const distance = Math.sqrt(
         (canvasX - seatCanvasCoords.x) ** 2 + (canvasY - seatCanvasCoords.y) ** 2
       );
+      
+      if (distance <= 15) {
+        console.log('🎯 Found seat within tolerance:', {
+          seatId: seat.id,
+          seatNumber: seat.seatNumber,
+          seatCoords: seatCanvasCoords,
+          clickCoords: { x: canvasX, y: canvasY },
+          distance,
+          tolerance: 15
+        });
+      }
+      
       return distance <= 15; // 15px click tolerance
     });
+
+    if (!foundSeat) {
+      console.log('❌ No seat found at position. Closest seats:');
+      const closestSeats = sortedSeats
+        .map(seat => {
+          const seatCanvasCoords = percentageToCanvasCoordinates(seat.x, seat.y, imageDrawInfo);
+          const distance = Math.sqrt((canvasX - seatCanvasCoords.x) ** 2 + (canvasY - seatCanvasCoords.y) ** 2);
+          return { seat, distance, coords: seatCanvasCoords };
+        })
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 3);
+      
+      console.log(closestSeats);
+    }
+
+    return foundSeat;
   }, [sortedSeats, imageDrawInfo]);
 
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (disabled || isDragging) return;
+    console.log('🖱️ Canvas click detected', { disabled, isDragging });
+    
+    if (disabled || isDragging) {
+      console.log('🚫 Click ignored - disabled or dragging', { disabled, isDragging });
+      return;
+    }
 
     const { x, y } = getCanvasCoordinates(event);
+    console.log('📍 Canvas coordinates:', { x, y });
+    
     const clickedSeat = findSeatAtPosition(x, y);
+    console.log('🪑 Clicked seat:', clickedSeat);
 
     if (clickedSeat && clickedSeat.status === 'available') {
+      console.log('✅ Valid seat click:', clickedSeat.id, clickedSeat.seatNumber);
+      
       if (selectedSeats.includes(clickedSeat.id)) {
         // Deselect seat
         const newSelection = selectedSeats.filter(id => id !== clickedSeat.id);
+        console.log('❌ Deselecting seat:', clickedSeat.id, 'New selection:', newSelection);
         onSeatSelection?.(newSelection);
       } else if (selectedSeats.length < maxSelectableSeats) {
         // Select seat
         const newSelection = [...selectedSeats, clickedSeat.id];
+        console.log('✅ Selecting seat:', clickedSeat.id, 'New selection:', newSelection);
         onSeatSelection?.(newSelection);
+      } else {
+        console.log('⚠️ Max seats reached:', maxSelectableSeats);
       }
+    } else {
+      console.log('❌ No valid seat found or seat not available');
     }
   }, [disabled, isDragging, getCanvasCoordinates, findSeatAtPosition, selectedSeats, maxSelectableSeats, onSeatSelection]);
 

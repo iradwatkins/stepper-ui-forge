@@ -48,6 +48,7 @@ import SalesDashboard from "./pages/dashboard/SalesDashboard";
 import ReferralCodes from "./pages/dashboard/ReferralCodes";
 import Earnings from "./pages/dashboard/Earnings";
 import EventAssignments from "./pages/dashboard/EventAssignments";
+import TestPremiumEvent from "./pages/TestPremiumEvent";
 import Schedule from "./pages/dashboard/Schedule";
 import AudienceInsights from "./pages/dashboard/AudienceInsights";
 import PaymentTestPage from "./pages/PaymentTest";
@@ -94,6 +95,11 @@ const App = () => (
                 <Route path="/community" element={<Community />} />
                 <Route path="/my-tickets" element={<MyTickets />} />
                 <Route path="/payment-test" element={<PaymentTestPage />} />
+                <Route path="/test-premium-event" element={
+                  <ProtectedRoute>
+                    <TestPremiumEvent />
+                  </ProtectedRoute>
+                } />
                 <Route path="/create-event" element={
                   <ProtectedRoute>
                     <CreateEventWizard />

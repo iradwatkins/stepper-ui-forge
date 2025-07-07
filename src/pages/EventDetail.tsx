@@ -56,6 +56,27 @@ const EventDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [totalPrice, setTotalPrice] = useState(0);
 
+  // Update total price when event loads
+  useEffect(() => {
+    if (event && event.event_type === 'simple') {
+      const getSimpleEventPrice = (): number => {
+        if (event.event_type !== 'simple') return 0;
+        if (event.description) {
+          const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
+          if (priceMatch && priceMatch[1]) {
+            const priceParts = priceMatch[1].split('|');
+            const amount = parseFloat(priceParts[0]) || 0;
+            return amount;
+          }
+        }
+        return 0;
+      };
+      
+      const price = getSimpleEventPrice();
+      setTotalPrice(price * quantity);
+    }
+  }, [event, quantity]);
+
   useEffect(() => {
     if (!id) return;
     
@@ -416,33 +437,26 @@ const EventDetail = () => {
     setQuantity(newQuantity);
     
     // Update total price based on event type
-    if (event.event_type === 'simple') {
+    if (event && event.event_type === 'simple') {
+      const getSimpleEventPrice = (): number => {
+        if (event.event_type !== 'simple') return 0;
+        if (event.description) {
+          const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
+          if (priceMatch && priceMatch[1]) {
+            const priceParts = priceMatch[1].split('|');
+            const amount = parseFloat(priceParts[0]) || 0;
+            return amount;
+          }
+        }
+        return 0;
+      };
+      
       const price = getSimpleEventPrice();
       setTotalPrice(price * newQuantity);
     }
   };
 
-  // Get numeric price for simple events
-  const getSimpleEventPrice = (): number => {
-    if (event.event_type !== 'simple') return 0;
-    if (event.description) {
-      const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
-      if (priceMatch && priceMatch[1]) {
-        const priceParts = priceMatch[1].split('|');
-        const amount = parseFloat(priceParts[0]) || 0;
-        return amount;
-      }
-    }
-    return 0;
-  };
 
-  // Update total price when event loads
-  useEffect(() => {
-    if (event && event.event_type === 'simple') {
-      const price = getSimpleEventPrice();
-      setTotalPrice(price * quantity);
-    }
-  }, [event, quantity]);
 
   // Handle like toggle
   const handleLikeToggle = async () => {
