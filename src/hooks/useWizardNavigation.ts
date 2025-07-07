@@ -114,26 +114,18 @@ export const useWizardNavigation = ({
         canNavigateBackward: () => true
       },
       {
-        id: 'seating-upload',
-        title: 'Seating: Upload Chart',
-        description: 'Upload venue layout image',
-        icon: 'Upload',
-        isRequired: (eventType) => eventType === 'premium',
-        canNavigateForward: (data) => {
-          // Check if venue image is uploaded for premium events
-          return !!(data.venueImageUrl || data.hasVenueImage);
-        },
-        canNavigateBackward: () => true
-      },
-      {
-        id: 'seating-place',
-        title: 'Seating: Place Seats',
-        description: 'Position seats on venue layout',
+        id: 'seating-setup',
+        title: 'Seating Chart',
+        description: 'Upload venue layout and place seats',
         icon: 'MousePointer',
         isRequired: (eventType) => eventType === 'premium',
         canNavigateForward: (data) => {
-          // Check if seats have been placed
-          return !!(data.seats && data.seats.length > 0);
+          // Check if venue image is uploaded AND seats have been placed
+          return !!(
+            (data.venueImageUrl || data.hasVenueImage) && 
+            data.seats && 
+            data.seats.length > 0
+          );
         },
         canNavigateBackward: () => true
       },
@@ -212,19 +204,19 @@ export const useWizardNavigation = ({
         return basicErrors;
       }
       
-      case 'seating-upload': {
+      case 'seating-setup': {
         const formData = form.getValues();
-        return (!formData.venueImageUrl && !formData.hasVenueImage) 
-          ? ['Please upload a venue layout image'] 
-          : [];
-      }
-      
-      
-      case 'seating-place': {
-        const formData = form.getValues();
-        return (!formData.seats || formData.seats.length === 0) 
-          ? ['Please place at least one seat on the venue layout'] 
-          : [];
+        const errors: string[] = [];
+        
+        if (!formData.venueImageUrl && !formData.hasVenueImage) {
+          errors.push('Please upload a venue layout image');
+        }
+        
+        if (!formData.seats || formData.seats.length === 0) {
+          errors.push('Please place at least one seat on the venue layout');
+        }
+        
+        return errors;
       }
       
       case 'seating-finalize':

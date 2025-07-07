@@ -343,7 +343,7 @@ export default function CreateEventWizard() {
           />
         );
         
-      case 'seating-upload':
+      case 'seating-setup':
         return (
           <SeatingChartWizard
             form={form}
@@ -354,41 +354,13 @@ export default function CreateEventWizard() {
               setSeatingConfig(seatingData);
             }}
             startingTab="setup"
-            showOnlyTab="setup"
+            // No showOnlyTab - allow full workflow in one step
             onStepAdvance={() => {
-              console.log('🚀 onStepAdvance called from SeatingChartWizard');
+              console.log('🚀 onStepAdvance called from combined SeatingChartWizard');
               const formData = form.getValues();
-              console.log('📊 Current form validation data:', {
+              console.log('📊 Combined seating step validation data:', {
                 venueImageUrl: formData.venueImageUrl ? 'SET' : 'NOT_SET',
                 hasVenueImage: formData.hasVenueImage,
-                canGoForward: canGoForward,
-                currentStep: currentStep,
-                visibleSteps: visibleSteps.length
-              });
-              const result = nextStep();
-              console.log('📈 nextStep result:', result);
-              return result;
-            }}
-          />
-        );
-        
-        
-      case 'seating-place':
-        return (
-          <SeatingChartWizard
-            form={form}
-            eventType={eventType}
-            ticketTypes={ticketTypes}
-            onSeatingConfigured={(seatingData) => {
-              console.log('Seating configured:', seatingData);
-              setSeatingConfig(seatingData);
-            }}
-            startingTab="place"
-            showOnlyTab="place"
-            onStepAdvance={() => {
-              console.log('🚀 onStepAdvance called from SeatingChartWizard step 5');
-              const formData = form.getValues();
-              console.log('📊 Step 5 validation data:', {
                 seats: formData.seats ? `${formData.seats.length} seats` : 'NO_SEATS',
                 seatCategories: formData.seatCategories ? `${formData.seatCategories.length} categories` : 'NO_CATEGORIES',
                 canGoForward: canGoForward,

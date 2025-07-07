@@ -238,15 +238,8 @@ export const SeatingChartWizard = ({
         onStepAdvance: !!onStepAdvance
       });
       
-      // Auto-advance to next step if in setup-only mode
-      if (showOnlyTab === 'setup' && onStepAdvance) {
-        console.log('Internal upload - Auto-advancing to next step...');
-        setTimeout(() => {
-          onStepAdvance();
-        }, 100); // Reduced delay for faster response
-      } else {
-        setCurrentStep('configure'); // Move to configuration step for internal wizard
-      }
+      // Move to configuration step for internal wizard (no auto-advance in combined mode)
+      setCurrentStep('configure');
     };
     reader.readAsDataURL(file);
 
@@ -338,7 +331,7 @@ export const SeatingChartWizard = ({
       }))
     }));
     
-    // Auto-advance to next step if in place-only mode and seats have been placed
+    // Only auto-advance if in a single-tab mode (showOnlyTab specified)
     if (showOnlyTab === 'place' && onStepAdvance && seats.length > 0) {
       console.log('Auto-advancing from step 5 to step 6...');
       setTimeout(() => {
@@ -868,7 +861,7 @@ export const SeatingChartWizard = ({
                 imageUrlLength: currentValues.venueImageUrl?.length || 0
               });
               
-              // Auto-advance to next step if in setup-only mode
+              // Only auto-advance if in setup-only mode (single-tab)
               if (showOnlyTab === 'setup' && onStepAdvance) {
                 console.log('Auto-advancing to next step...');
                 setTimeout(() => {
