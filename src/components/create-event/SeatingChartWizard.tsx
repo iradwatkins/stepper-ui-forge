@@ -40,6 +40,7 @@ interface SeatingChartWizardProps {
   onSeatingConfigured?: (seatingData: any) => void;
   startingTab?: 'setup' | 'configure' | 'place' | 'info';
   showOnlyTab?: 'setup' | 'configure' | 'place' | 'info';
+  onStepAdvance?: () => boolean;
 }
 
 interface SeatingConfig {
@@ -84,7 +85,8 @@ export const SeatingChartWizard = ({
   ticketTypes = [], 
   onSeatingConfigured,
   startingTab,
-  showOnlyTab 
+  showOnlyTab,
+  onStepAdvance
 }: SeatingChartWizardProps) => {
   const [loading, setLoading] = useState(false);
   const [seatingConfig, setSeatingConfig] = useState<SeatingConfig>(() => {
@@ -137,7 +139,22 @@ export const SeatingChartWizard = ({
       setEnhancedSeats(validSeats);
     }
     
-    if (formData.seatCategories && Array.isArray(formData.seatCategories)) {
+    // Convert ticket types to seat categories if no seat categories exist
+    if ((!formData.seatCategories || formData.seatCategories.length === 0) && ticketTypes.length > 0) {
+      const colors = ['#10B981', '#F59E0B', '#8B5CF6', '#3B82F6', '#F87171'];
+      const categoriesFromTickets: EnhancedSeatCategory[] = ticketTypes.map((ticket, index) => ({
+        id: ticket.id,
+        name: ticket.name,
+        color: colors[index % colors.length],
+        basePrice: ticket.price,
+        maxCapacity: ticket.quantity,
+        amenities: ticket.name.toLowerCase().includes('vip') ? ['VIP seating', 'Complimentary drinks'] : ['Standard seating'],
+        viewQuality: ticket.name.toLowerCase().includes('vip') ? 'excellent' : 
+                    ticket.name.toLowerCase().includes('premium') ? 'good' : 'fair'
+      }));
+      setEnhancedCategories(categoriesFromTickets);
+      form.setValue('seatCategories', categoriesFromTickets);
+    } else if (formData.seatCategories && Array.isArray(formData.seatCategories)) {
       // Filter out invalid categories and ensure all required fields exist
       const validCategories = formData.seatCategories.filter((category): category is EnhancedSeatCategory => 
         category && typeof category === 'object' &&
@@ -147,7 +164,7 @@ export const SeatingChartWizard = ({
       );
       setEnhancedCategories(validCategories);
     }
-  }, [form]);
+  }, [form, ticketTypes]);
 
   useEffect(() => {
     if (onSeatingConfigured) {
@@ -183,7 +200,14 @@ export const SeatingChartWizard = ({
       form.setValue('venueImageUrl', imageUrl);
       form.setValue('hasVenueImage', true);
       
-      setCurrentStep('configure'); // Move to configuration step
+      // Auto-advance to next step if in setup-only mode
+      if (showOnlyTab === 'setup' && onStepAdvance) {
+        setTimeout(() => {
+          onStepAdvance();
+        }, 500); // Small delay to ensure form data is updated
+      } else {
+        setCurrentStep('configure'); // Move to configuration step for internal wizard
+      }
     };
     reader.readAsDataURL(file);
 
@@ -751,7 +775,40 @@ export const SeatingChartWizard = ({
 
         <EnhancedSeatingChartSelector
           venueImageUrl={chartPreview || undefined}
-          onImageUpload={(file) => handleFileUpload({ target: { files: [file] } } as any)}
+          onImageUpload={(file) => {
+            // Handle file upload directly
+            if (!file.type.startsWith('image/')) {
+              toast.error('Please upload an image file (PNG, JPG, SVG)');
+              return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+              toast.error('File size must be less than 10MB');
+              return;
+            }
+
+            setUploadedChart(file);
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const imageUrl = e.target?.result as string;
+              setChartPreview(imageUrl);
+              
+              // Persist to form data
+              form.setValue('venueImageUrl', imageUrl);
+              form.setValue('hasVenueImage', true);
+              
+              // Auto-advance to next step if in setup-only mode
+              if (showOnlyTab === 'setup' && onStepAdvance) {
+                setTimeout(() => {
+                  onStepAdvance();
+                }, 500); // Small delay to ensure form data is updated
+              }
+            };
+            reader.readAsDataURL(file);
+
+            toast.success('Seating chart uploaded successfully');
+          }}
           onSeatingConfigurationChange={handleEnhancedSeatingConfigured}
           initialSeats={enhancedSeats}
           initialCategories={enhancedCategories}

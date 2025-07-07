@@ -99,82 +99,60 @@ export const GooglePlacesInput = ({
     setIsLoading(true);
     
     try {
-      // Use new Places API (recommended)
-      if (window.google.maps.places.Place && window.google.maps.places.Place.searchByText) {
-        const request = {
-          textQuery: query,
-          fields: ['id', 'formattedAddress', 'displayName', 'location', 'types', 'addressComponents'],
-          maxResultCount: 5
-        };
+      // Always use legacy PlacesService API since new API requires additional setup
+      const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+      const request = {
+        query: query,
+        fields: ['place_id', 'formatted_address', 'name', 'geometry', 'types', 'address_components']
+      };
 
-        const { places } = await window.google.maps.places.Place.searchByText(request);
-        
-        const placesData = places.map(place => ({
-          place_id: place.id || '',
-          formatted_address: place.formattedAddress || '',
-          name: place.displayName || '',
-          geometry: {
-            location: {
-              lat: place.location?.lat || 0,
-              lng: place.location?.lng || 0
-            }
-          },
-          types: place.types || [],
-          address_components: place.addressComponents?.map(component => ({
-            long_name: component.longText,
-            short_name: component.shortText,
-            types: component.types
-          })) || []
-        })) as PlaceResult[];
-
-        setSuggestions(placesData);
-        setIsOpen(true);
-      } else {
-        // Fallback to legacy PlacesService if new API not available
-        const service = new window.google.maps.places.PlacesService(document.createElement('div'));
-        const request = {
-          query: query,
-          fields: ['place_id', 'formatted_address', 'name', 'geometry', 'types', 'address_components']
-        };
-
-        service.textSearch(request, (results, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-            const places = results.slice(0, 5).map(place => ({
-              place_id: place.place_id || '',
-              formatted_address: place.formatted_address || '',
-              name: place.name || '',
-              geometry: {
-                location: {
-                  lat: place.geometry?.location?.lat() || 0,
-                  lng: place.geometry?.location?.lng() || 0
-                }
-              },
-              types: place.types || [],
-              address_components: place.address_components?.map(component => ({
-                long_name: component.long_name,
-                short_name: component.short_name,
-                types: component.types
-              })) || []
-            })) as PlaceResult[];
-            
-            setSuggestions(places);
-            setIsOpen(true);
-          } else {
-            console.warn('Places search failed:', status);
-            setSuggestions([]);
+      service.textSearch(request, (results, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+          const places = results.slice(0, 5).map(place => ({
+            place_id: place.place_id || '',
+            formatted_address: place.formatted_address || '',
+            name: place.name || '',
+            geometry: {
+              location: {
+                lat: place.geometry?.location?.lat() || 0,
+                lng: place.geometry?.location?.lng() || 0
+              }
+            },
+            types: place.types || [],
+            address_components: place.address_components?.map(component => ({
+              long_name: component.long_name,
+              short_name: component.short_name,
+              types: component.types
+            })) || []
+          })) as PlaceResult[];
+          
+          setSuggestions(places);
+          setIsOpen(true);
+        } else {
+          console.warn('Places search failed:', status);
+          setSuggestions([]);
+          
+          // Handle specific error statuses
+          if (status === window.google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+            console.warn('Google Places API request denied - check API key permissions');
+          } else if (status === window.google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT) {
+            console.warn('Google Places API quota exceeded');
           }
-        });
-      }
-      
-      setIsLoading(false);
+        }
+        setIsLoading(false);
+      });
     } catch (error) {
       console.error('Error searching places:', error);
       setIsLoading(false);
       setSuggestions([]);
       
       // If API error, provide fallback message
-      if (error instanceof Error && error.message.includes('PERMISSION_DENIED')) {
+      if (error instanceof Error && (error.message.includes('PERMISSION_DENIED') || error.message.includes('403'))) {
         console.warn('Google Places API access denied. Component will work in basic mode.');
+      } else if (error instanceof Error && error.message.includes('OVER_QUERY_LIMIT')) {
+        console.warn('Google Places API quota exceeded. Component will work in basic mode.');
+      } else {
+        console.warn('Google Places API error:', error);
       }
     }
   };

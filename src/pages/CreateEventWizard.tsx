@@ -355,23 +355,10 @@ export default function CreateEventWizard() {
             }}
             startingTab="setup"
             showOnlyTab="setup"
+            onStepAdvance={nextStep}
           />
         );
         
-      case 'seating-configure':
-        return (
-          <SeatingChartWizard
-            form={form}
-            eventType={eventType}
-            ticketTypes={ticketTypes}
-            onSeatingConfigured={(seatingData) => {
-              console.log('Seating configured:', seatingData);
-              setSeatingConfig(seatingData);
-            }}
-            startingTab="configure"
-            showOnlyTab="configure"
-          />
-        );
         
       case 'seating-place':
         return (

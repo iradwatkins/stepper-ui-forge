@@ -126,18 +126,6 @@ export const useWizardNavigation = ({
         canNavigateBackward: () => true
       },
       {
-        id: 'seating-configure',
-        title: 'Seating: Configure Sections',
-        description: 'Set up seat categories and pricing',
-        icon: 'Settings',
-        isRequired: (eventType) => eventType === 'premium',
-        canNavigateForward: (data) => {
-          // Check if seat categories are configured
-          return !!(data.seatCategories && data.seatCategories.length > 0);
-        },
-        canNavigateBackward: () => true
-      },
-      {
         id: 'seating-place',
         title: 'Seating: Place Seats',
         description: 'Position seats on venue layout',
@@ -231,12 +219,6 @@ export const useWizardNavigation = ({
           : [];
       }
       
-      case 'seating-configure': {
-        const formData = form.getValues();
-        return (!formData.seatCategories || formData.seatCategories.length === 0) 
-          ? ['Please configure at least one seat category'] 
-          : [];
-      }
       
       case 'seating-place': {
         const formData = form.getValues();
