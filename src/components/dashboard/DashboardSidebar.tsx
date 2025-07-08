@@ -8,10 +8,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import {
-  LayoutDashboard,
   User,
   Calendar,
-  Ticket,
   Users,
   Settings,
   ChevronDown,
@@ -28,6 +26,7 @@ import {
   DollarSign,
   QrCode,
   Heart,
+  Building2,
   Clock,
   PieChart,
   Briefcase,
@@ -137,9 +136,9 @@ const getOrganizerNavigation = (): NavigationItem[] => [
         icon: Trash2
       },
       {
-        title: 'Seating Management',
-        href: '/dashboard/seating',
-        icon: LayoutDashboard
+        title: 'Venue Management',
+        href: '/dashboard/venues',
+        icon: Building2
       }
     ]
   },

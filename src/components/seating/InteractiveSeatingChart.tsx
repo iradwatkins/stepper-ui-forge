@@ -84,24 +84,12 @@ export default function InteractiveSeatingChart({
   disabled = false,
   className = ''
 }: InteractiveSeatingChartProps) {
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
-  const [dragStartPan, setDragStartPan] = useState({ x: 0, y: 0 });
   const [hoveredSeat, setHoveredSeat] = useState<string | null>(null);
   const [filterSection, setFilterSection] = useState<string>('all');
   const [filterPriceRange, setFilterPriceRange] = useState<[number, number]>([0, 1000]);
   const [sortBy, setSortBy] = useState<'price' | 'section' | 'availability'>('price');
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
-  const animationFrameRef = useRef<number>();
-  
-  // New state for proper coordinate handling
-  const [imageDimensions, setImageDimensions] = useState<ImageDimensions | null>(null);
-  const [imageDrawInfo, setImageDrawInfo] = useState<ImageDrawInfo | null>(null);
 
   // Memoized calculations
   const sections = useMemo(() => {
@@ -146,67 +134,67 @@ export default function InteractiveSeatingChart({
     return { total, available, selected, sold, avgPrice, totalPrice };
   }, [seats, selectedSeats]);
 
-  // Load and cache venue image with proper dimensions
-  useEffect(() => {
-    if (!venueImageUrl) {
-      console.log('❌ No venue image URL provided');
+  // Simple seat click handler based on reference implementation
+  const handleSeatClick = useCallback((seat: SeatData) => {
+    console.log('🖱️ Seat clicked:', seat.seatNumber, seat.id);
+    
+    if (disabled || seat.status !== 'available') {
+      console.log('🚫 Click ignored - disabled or seat not available', { disabled, status: seat.status });
       return;
     }
-    
-    console.log('🖼️ Loading venue image:', venueImageUrl);
-    
-    const img = new Image();
-    img.onload = () => {
-      console.log('✅ Venue image loaded successfully:', {
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight
-      });
-      
-      imageRef.current = img;
-      
-      // Get actual image dimensions
-      const dimensions: ImageDimensions = {
-        width: img.naturalWidth,
-        height: img.naturalHeight
-      };
-      setImageDimensions(dimensions);
-      
-      // Calculate how image should be drawn on canvas
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const drawInfo = calculateImageDrawInfo(
-          dimensions.width,
-          dimensions.height,
-          canvas.width,
-          canvas.height
-        );
-        console.log('📐 Image draw info calculated:', drawInfo);
-        setImageDrawInfo(drawInfo);
-      }
-      
-      drawCanvas();
-    };
-    img.onerror = () => {
-      console.error('❌ Failed to load venue image:', venueImageUrl);
-    };
-    img.src = venueImageUrl;
-  }, [venueImageUrl]);
 
-  // Recalculate image draw info when canvas size changes
-  useEffect(() => {
-    if (!imageDimensions) return;
-    
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const drawInfo = calculateImageDrawInfo(
-        imageDimensions.width,
-        imageDimensions.height,
-        canvas.width,
-        canvas.height
-      );
-      setImageDrawInfo(drawInfo);
+    const isSelected = selectedSeats.includes(seat.id);
+
+    if (isSelected) {
+      // Deselect seat
+      const newSelection = selectedSeats.filter(id => id !== seat.id);
+      console.log('❌ Deselecting seat:', seat.id, 'New selection:', newSelection);
+      onSeatSelection?.(newSelection);
+    } else if (selectedSeats.length < maxSelectableSeats) {
+      // Select seat
+      const newSelection = [...selectedSeats, seat.id];
+      console.log('✅ Selecting seat:', seat.id, 'New selection:', newSelection);
+      onSeatSelection?.(newSelection);
+    } else {
+      console.log('⚠️ Max seats reached:', maxSelectableSeats);
     }
-  }, [imageDimensions]);
+  }, [disabled, selectedSeats, maxSelectableSeats, onSeatSelection]);
+
+  // Helper functions from reference implementation
+  const getPriceCategoryColor = (categoryId: string) => {
+    return priceCategories.find(cat => cat.id === categoryId)?.color || '#3B82F6';
+  };
+
+  const getSeatDisplayColor = (seat: SeatData) => {
+    const isSelected = selectedSeats.includes(seat.id);
+    
+    if (isSelected) return '#10B981'; // Green for selected
+    
+    switch (seat.status) {
+      case 'available': return seat.categoryColor || getPriceCategoryColor(seat.category);
+      case 'sold': return '#EF4444';
+      case 'reserved': return '#F59E0B';
+      case 'held': return '#6B7280';
+      default: return '#3B82F6';
+    }
+  };
+
+  const getTotalPrice = () => {
+    return seats
+      .filter(seat => selectedSeats.includes(seat.id))
+      .reduce((total, seat) => total + seat.price, 0);
+  };
+
+  const getSeatsByCategory = () => {
+    const categoryCounts: { [key: string]: number } = {};
+    seats
+      .filter(seat => selectedSeats.includes(seat.id))
+      .forEach(seat => {
+        const categoryName = priceCategories.find(cat => cat.id === seat.category)?.name || 'Unknown';
+        categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1;
+      });
+    return categoryCounts;
+  };
 
   // Canvas drawing function
   const drawCanvas = useCallback(() => {

@@ -51,6 +51,7 @@ import EventAssignments from "./pages/dashboard/EventAssignments";
 import TestPremiumEvent from "./pages/TestPremiumEvent";
 import Schedule from "./pages/dashboard/Schedule";
 import AudienceInsights from "./pages/dashboard/AudienceInsights";
+import VenueManagement from "./pages/dashboard/VenueManagement";
 import PaymentTestPage from "./pages/PaymentTest";
 import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
 import NotFound from "./pages/NotFound";
@@ -142,6 +143,7 @@ const App = () => (
                   <Route path="events/edit/:id" element={<EditEvent />} />
                   <Route path="events/drafts" element={<DraftEvents />} />
                   <Route path="events/archived" element={<ArchivedEvents />} />
+                  <Route path="venues" element={<VenueManagement />} />
                   <Route path="tickets" element={<TicketsOverview />} />
                   <Route path="tickets/:id" element={<TicketsOverview />} />
                   <Route path="tickets/analytics" element={<TicketAnalytics />} />

@@ -10,6 +10,7 @@ import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
 import { TicketSelector } from "@/components/ticketing";
 import { InteractiveSeatingChart, SeatData, PriceCategory } from "@/components/seating";
+import SimpleSeatingChart from "@/components/seating/SimpleSeatingChart";
 import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
@@ -589,7 +590,14 @@ const EventDetail = () => {
                     ) : (
                       <div className="space-y-4">
                         {venueImageUrl && seats.length > 0 ? (
-                          <InteractiveSeatingChart
+                          <SimpleSeatingChart
+                            eventId={event.id}
+                            seatingChart={{
+                              id: 'chart-1',
+                              name: 'Venue Layout',
+                              imageUrl: venueImageUrl,
+                              seats: seats
+                            }}
                             venueImageUrl={venueImageUrl}
                             seats={seats}
                             priceCategories={priceCategories}
@@ -599,6 +607,9 @@ const EventDetail = () => {
                             maxSelectableSeats={8}
                             showPurchaseButton={true}
                             disabled={false}
+                            allowHoldTimer={true}
+                            holdDurationMinutes={10}
+                            onSeatsSelected={() => {}} // Not used in new interface
                           />
                         ) : (
                           <div className="text-center py-8">
