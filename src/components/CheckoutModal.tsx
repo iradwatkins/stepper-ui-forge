@@ -415,6 +415,9 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
               
               {/* Continue with regular cart total display */}
               {!seatCheckoutMode && items.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Processing Fee:</span>
                       <span>${fees.toFixed(2)}</span>

@@ -105,8 +105,86 @@ export default function InteractiveSeatingChart({
   const [filterSection, setFilterSection] = useState<string>('all');
   const [filterPriceRange, setFilterPriceRange] = useState<[number, number]>([0, 1000]);
   const [sortBy, setSortBy] = useState<'price' | 'section' | 'availability'>('price');
-
+  
+  // Canvas and image refs
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  
+  // Zoom and pan state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  
+  // Drag state
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  const [dragStartPan, setDragStartPan] = useState({ x: 0, y: 0 });
+  
+  // Image loading state
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<ImageDimensions | null>(null);
+  const [imageDrawInfo, setImageDrawInfo] = useState<ImageDrawInfo | null>(null);
+
+  // Image loading effect
+  useEffect(() => {
+    if (!venueImageUrl) {
+      setImageLoaded(false);
+      setImageError(true);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      console.log('✅ Image loaded successfully:', { width: img.width, height: img.height });
+      imageRef.current = img;
+      setImageLoaded(true);
+      setImageError(false);
+      
+      const dimensions = getImageDimensions(img);
+      setImageDimensions(dimensions);
+      
+      // Calculate draw info for canvas
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const drawInfo = calculateImageDrawInfo(dimensions, {
+          width: canvas.width,
+          height: canvas.height
+        });
+        setImageDrawInfo(drawInfo);
+        console.log('📐 Image draw info calculated:', drawInfo);
+      }
+    };
+    
+    img.onerror = () => {
+      console.error('❌ Failed to load image:', venueImageUrl);
+      setImageLoaded(false);
+      setImageError(true);
+      imageRef.current = null;
+    };
+    
+    img.src = venueImageUrl;
+    
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [venueImageUrl]);
+
+  // Canvas resize effect
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !imageDimensions) return;
+
+    const drawInfo = calculateImageDrawInfo(imageDimensions, {
+      width: canvas.width,
+      height: canvas.height
+    });
+    setImageDrawInfo(drawInfo);
+  }, [imageDimensions]);
 
   // Premium event validation
   const validatePremiumEventAccess = useCallback(() => {
@@ -598,7 +676,7 @@ export default function InteractiveSeatingChart({
           ctx.fillStyle = '#fff';
           ctx.font = `${8 / zoom}px Arial`;
           ctx.textAlign = 'center';
-          ctx.fillText('⏱', canvasCoords.x, canvasCoords.y - radius - 8 / zoom);
+          ctx.fillText('⏱', canvasCoords.x, canvasCoords.y - seatHeight / 2 - 8 / zoom);
         }
       }
 
@@ -644,7 +722,7 @@ export default function InteractiveSeatingChart({
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         ctx.fillRect(
           canvasCoords.x - boxWidth / 2,
-          canvasCoords.y + radius + 5 / zoom,
+          canvasCoords.y + seatHeight / 2 + 5 / zoom,
           boxWidth,
           boxHeight
         );
@@ -653,13 +731,13 @@ export default function InteractiveSeatingChart({
         ctx.fillStyle = seat.isPremium ? '#FFD700' : '#fff';
         ctx.font = `bold ${10 / zoom}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(priceText, canvasCoords.x, canvasCoords.y + radius + 15 / zoom);
+        ctx.fillText(priceText, canvasCoords.x, canvasCoords.y + seatHeight / 2 + 15 / zoom);
         
         // Premium details
         if (seat.isPremium && tableText) {
           ctx.fillStyle = '#999';
           ctx.font = `${8 / zoom}px Arial`;
-          ctx.fillText(tableText, canvasCoords.x, canvasCoords.y + radius + 25 / zoom);
+          ctx.fillText(tableText, canvasCoords.x, canvasCoords.y + seatHeight / 2 + 25 / zoom);
         }
       }
     });
@@ -1424,11 +1502,21 @@ export default function InteractiveSeatingChart({
                 )}
                 
                 {/* Loading overlay */}
-                {!imageRef.current && (
+                {!imageLoaded && !imageError && (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                       <p className="mt-2 text-sm text-gray-600">Loading venue...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Error overlay */}
+                {imageError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                    <div className="text-center">
+                      <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
+                      <p className="mt-2 text-sm text-gray-600">Failed to load venue image</p>
                     </div>
                   </div>
                 )}

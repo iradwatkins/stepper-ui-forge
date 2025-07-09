@@ -19,7 +19,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { seatingService } from '@/lib/services/SeatingService';
-import { EnhancedSeatingChartSelector, SeatData, SeatCategory as EnhancedSeatCategory } from '@/components/seating';
+import PremiumSeatingManager, { SeatData, SeatCategory as EnhancedSeatCategory } from '@/components/seating/PremiumSeatingManager';
 import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 
@@ -37,7 +37,7 @@ interface SeatingChartWizardProps {
   form: UseFormReturn<EventFormData>;
   eventType: 'simple' | 'ticketed' | 'premium' | '';
   ticketTypes?: TicketType[];
-  onSeatingConfigured?: (seatingData: any) => void;
+  onSeatingConfigured?: (seatingData: SeatingConfig) => void;
   startingTab?: 'setup' | 'configure' | 'place' | 'info';
   showOnlyTab?: 'setup' | 'configure' | 'place' | 'info';
   onStepAdvance?: () => boolean;
@@ -215,35 +215,81 @@ export const SeatingChartWizard = ({
     }
 
     setUploadedChart(file);
+    setLoading(true);
 
-    // Create preview URL for immediate display
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageUrl = e.target?.result as string;
-      setChartPreview(imageUrl);
+    try {
+      // Generate unique venue ID for this event
+      const venueId = `venue_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       
-      // Persist to form data
-      form.setValue('venueImageUrl', imageUrl);
-      form.setValue('hasVenueImage', true);
+      // Upload image to Supabase Storage
+      console.log('🌅 Uploading venue image to Supabase Storage...');
+      const uploadResult = await imageUploadService.uploadVenueImage(file, venueId);
       
-      // Trigger form validation to update navigation state
-      form.trigger(['venueImageUrl', 'hasVenueImage']);
+      if (uploadResult.success && uploadResult.url) {
+        console.log('✅ Venue image uploaded successfully:', uploadResult.url);
+        
+        // Set both the permanent URL and preview
+        setChartPreview(uploadResult.url);
+        
+        // Persist permanent URL to form data
+        form.setValue('venueImageUrl', uploadResult.url);
+        form.setValue('hasVenueImage', true);
+        // Store venue ID in a custom field or skip if not needed
+        
+        // Trigger form validation to update navigation state
+        form.trigger(['venueImageUrl', 'hasVenueImage']);
+        
+        // Log form data for debugging
+        const currentValues = form.getValues();
+        console.log('✅ Supabase upload - Form data updated:', {
+          venueImageUrl: currentValues.venueImageUrl ? 'SET (Supabase URL)' : 'NOT_SET',
+          hasVenueImage: currentValues.hasVenueImage,
+          // venueId: venueId,
+          showOnlyTab,
+          onStepAdvance: !!onStepAdvance
+        });
+        
+        // Move to configuration step for internal wizard (no auto-advance in combined mode)
+        setCurrentStep('configure');
+        toast.success('Venue image uploaded successfully to cloud storage');
+      } else {
+        console.error('❌ Venue image upload failed:', uploadResult.error);
+        toast.error(`Upload failed: ${uploadResult.error || 'Unknown error'}`);
+        
+        // Fallback to base64 preview for immediate display
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageUrl = e.target?.result as string;
+          console.log('⚠️ Using base64 fallback for preview');
+          setChartPreview(imageUrl);
+          form.setValue('venueImageUrl', imageUrl);
+          form.setValue('hasVenueImage', true);
+          form.trigger(['venueImageUrl', 'hasVenueImage']);
+          setCurrentStep('configure');
+        };
+        reader.readAsDataURL(file);
+        toast.success('Using local preview (upload to cloud failed)');
+      }
+    } catch (error) {
+      console.error('❌ Error during venue image upload:', error);
+      toast.error('Failed to upload venue image');
       
-      // Log form data for debugging
-      const currentValues = form.getValues();
-      console.log('Internal upload - Form data updated:', {
-        venueImageUrl: currentValues.venueImageUrl ? 'SET' : 'NOT_SET',
-        hasVenueImage: currentValues.hasVenueImage,
-        showOnlyTab,
-        onStepAdvance: !!onStepAdvance
-      });
-      
-      // Move to configuration step for internal wizard (no auto-advance in combined mode)
-      setCurrentStep('configure');
-    };
-    reader.readAsDataURL(file);
-
-    toast.success('Seating chart uploaded successfully');
+      // Fallback to base64 preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        console.log('⚠️ Using base64 fallback due to error');
+        setChartPreview(imageUrl);
+        form.setValue('venueImageUrl', imageUrl);
+        form.setValue('hasVenueImage', true);
+        form.trigger(['venueImageUrl', 'hasVenueImage']);
+        setCurrentStep('configure');
+      };
+      reader.readAsDataURL(file);
+      toast.success('Using local preview (cloud upload error)');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateMapping = (index: number, field: keyof TicketMapping, value: string | number) => {
@@ -350,15 +396,18 @@ export const SeatingChartWizard = ({
         }))
       }));
       
-      // Auto-advance if seats are placed and onStepAdvance is available
-      if (onStepAdvance && seats.length > 0) {
+      // Auto-advance only when ALL seats are placed (complete ticket assignment)
+      const totalSeatsNeeded = ticketTypes.reduce((total, ticket) => total + ticket.quantity, 0);
+      if (onStepAdvance && totalSeatsNeeded > 0 && seats.length >= totalSeatsNeeded) {
         // In combined mode (no showOnlyTab) or specific place mode
         if (!showOnlyTab || showOnlyTab === 'place') {
-          console.log('⏭️ Auto-advancing to next step after placing seats...');
+          console.log(`⏭️ Auto-advancing to next step - ALL seats placed (${seats.length}/${totalSeatsNeeded})`);
           setTimeout(() => {
             onStepAdvance();
           }, 500); // Increased delay to ensure form updates are processed
         }
+      } else if (totalSeatsNeeded > 0) {
+        console.log(`📍 Seats progress: ${seats.length}/${totalSeatsNeeded} - waiting for completion before auto-advance`);
       }
 
       console.log('✅ Seating configuration saved successfully');
@@ -407,58 +456,78 @@ export const SeatingChartWizard = ({
       return;
     }
 
-    if (!uploadedChart) {
-      toast.error('Please upload a seating chart first');
+    if (!chartPreview) {
+      toast.error('Please upload a venue floor plan first');
+      return;
+    }
+
+    if (enhancedSeats.length === 0) {
+      toast.error('Please place at least one seat on the floor plan');
       return;
     }
     
     try {
       setLoading(true);
       
-      console.log('🏟️ Saving seating chart configuration to form...');
+      console.log('🏟️ Creating interactive seating chart...');
       
-      // For now, just save the seating configuration to form data
-      // The actual venue and seating chart creation will happen when the event is created
+      // Create comprehensive seating chart data using enhanced seats
       const chartData = {
         type: 'premium',
-        uploadedChart: uploadedChart?.name,
+        uploadedChart: uploadedChart?.name || 'venue-layout.png',
         imageDimensions: { width: 800, height: 600 },
-        seats: placedSeats.map(seat => ({
+        venueImageUrl: chartPreview,
+        seats: enhancedSeats.map(seat => ({
           id: seat.id,
           x: seat.x,
           y: seat.y,
           seatNumber: seat.seatNumber,
-          ticketTypeId: seat.ticketTypeId,
-          price: ticketTypes.find(t => t.id === seat.ticketTypeId)?.price || 0,
-          available: true
+          ticketTypeId: seat.category,
+          price: seat.price,
+          available: seat.status === 'available',
+          section: seat.section,
+          category: seat.category,
+          categoryColor: seat.categoryColor,
+          isADA: seat.isADA,
+          viewQuality: seat.viewQuality,
+          amenities: seat.amenities || []
         })),
-        sections: seatingConfig.ticketMappings.map(mapping => {
-          const ticketType = ticketTypes.find(t => t.id === mapping.ticketTypeId);
-          const sectionSeats = placedSeats.filter(seat => seat.ticketTypeId === mapping.ticketTypeId);
+        categories: enhancedCategories.map(category => ({
+          id: category.id,
+          name: category.name,
+          color: category.color,
+          basePrice: category.basePrice,
+          maxCapacity: category.maxCapacity,
+          amenities: category.amenities,
+          viewQuality: category.viewQuality
+        })),
+        sections: enhancedCategories.map(category => {
+          const categorySeats = enhancedSeats.filter(seat => seat.category === category.id);
           
           return {
-            id: mapping.ticketTypeId,
-            name: mapping.sectionName,
-            color: mapping.color,
-            ticketTypeId: mapping.ticketTypeId,
-            ticketTypeName: ticketType?.name,
-            price: ticketType?.price || 0,
-            seatCount: sectionSeats.length,
-            seats: sectionSeats.map(seat => ({
+            id: category.id,
+            name: category.name,
+            color: category.color,
+            ticketTypeId: category.id,
+            ticketTypeName: category.name,
+            price: category.basePrice,
+            seatCount: categorySeats.length,
+            seats: categorySeats.map(seat => ({
               id: seat.id,
               x: seat.x,
               y: seat.y,
               seatNumber: seat.seatNumber,
-              price: ticketType?.price || 0,
-              available: true
+              price: seat.price,
+              available: seat.status === 'available'
             }))
           };
         })
       };
 
-      // Store seating chart configuration in form for later use
+      // Store comprehensive seating chart configuration in form
       form.setValue('seatingChartData', chartData);
       form.setValue('seatingChartImageUrl', chartPreview);
+      form.setValue('hasInteractiveSeatingChart', true);
       
       // Update local config
       setSeatingConfig(prev => ({
@@ -466,11 +535,22 @@ export const SeatingChartWizard = ({
         seatingChartData: chartData
       }));
 
-      console.log('✅ Seating chart configuration saved to form');
-      toast.success('Seating chart configuration saved successfully');
+      // Trigger form validation
+      await form.trigger(['seatingChartData', 'seatingChartImageUrl', 'hasInteractiveSeatingChart']);
+
+      console.log('✅ Interactive seating chart created successfully');
+      toast.success('Interactive seating chart created successfully!');
+      
+      // Auto-advance to next wizard step if in combined mode
+      if (onStepAdvance) {
+        console.log('⏭️ Auto-advancing to next wizard step...');
+        setTimeout(() => {
+          onStepAdvance();
+        }, 1000);
+      }
     } catch (error) {
-      console.error('❌ Error saving seating chart configuration:', error);
-      toast.error('Failed to save seating chart configuration');
+      console.error('❌ Error creating interactive seating chart:', error);
+      toast.error('Failed to create interactive seating chart');
     } finally {
       setLoading(false);
     }
@@ -690,24 +770,16 @@ export const SeatingChartWizard = ({
 
       case 'place-seats':
         return (
-          <EnhancedSeatingChartSelector
+          <PremiumSeatingManager
             venueImageUrl={chartPreview!}
             onImageUpload={() => {}} // Already handled in upload step
             onSeatingConfigurationChange={handleEnhancedSeatingConfigured}
             initialSeats={enhancedSeats}
             initialCategories={convertToEnhancedCategories()}
-            venueInfo={{
-              name: form.watch('venueName') || 'Event Venue',
-              address: form.watch('address') || '',
-              capacity: getTotalSeats(),
-              amenities: ['Standard seating', 'Accessible seating'],
-              accessibility: ['ADA compliant', 'Wheelchair accessible'],
-              parking: { available: true },
-              transit: { nearby: true }
-            }}
-            eventType="other"
-            hasExistingImage={true}
+            maxTotalSeats={ticketTypes.reduce((total, ticket) => total + ticket.quantity, 0)}
+            ticketTypes={ticketTypes}
             startingTab="place"
+            showOnlyTab="place"
           />
         );
 
@@ -717,56 +789,108 @@ export const SeatingChartWizard = ({
             {/* Final Review */}
             <Card>
               <CardHeader>
-                <CardTitle>Finalize Seating Setup</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Finalize Seating Setup
+                </CardTitle>
                 <CardDescription>
                   Review your seating configuration and create the interactive seating chart
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium mb-2">Floor Plan</h4>
-                    <img 
-                      src={chartPreview!} 
-                      alt="Floor Plan" 
-                      className="w-full h-32 object-cover rounded border"
-                    />
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <FileImage className="w-4 h-4" />
+                      Venue Floor Plan
+                    </h4>
+                    {chartPreview ? (
+                      <img 
+                        src={chartPreview} 
+                        alt="Venue Floor Plan" 
+                        className="w-full h-48 object-contain rounded border bg-gray-50"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-100 rounded border flex items-center justify-center">
+                        <span className="text-gray-500">No floor plan uploaded</span>
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2">Seat Summary</h4>
-                    <div className="space-y-2">
-                      {seatingConfig.ticketMappings.map(mapping => {
-                        const seatCount = placedSeats.filter(seat => seat.ticketTypeId === mapping.ticketTypeId).length;
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Seat Configuration Summary
+                    </h4>
+                    <div className="space-y-3">
+                      {enhancedCategories.map(category => {
+                        const categorySeats = enhancedSeats.filter(seat => seat.category === category.id);
+                        const totalValue = categorySeats.length * category.basePrice;
                         return (
-                          <div key={mapping.ticketTypeId} className="flex justify-between items-center">
-                            <span className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: mapping.color }}
-                              />
-                              {mapping.sectionName}
-                            </span>
-                            <span className="text-sm text-muted-foreground">{seatCount} seats</span>
+                          <div key={category.id} className="bg-gray-50 p-3 rounded-lg">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="flex items-center gap-2">
+                                <div 
+                                  className="w-4 h-4 rounded-full border-2 border-white shadow-sm" 
+                                  style={{ backgroundColor: category.color }}
+                                />
+                                <span className="font-medium">{category.name}</span>
+                              </span>
+                              <Badge variant="outline">{category.viewQuality}</Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                              <div>Seats: {categorySeats.length}</div>
+                              <div>Price: ${category.basePrice}</div>
+                              <div>Max Capacity: {category.maxCapacity}</div>
+                              <div>Value: ${totalValue}</div>
+                            </div>
+                            {category.amenities.length > 0 && (
+                              <div className="mt-2 text-xs text-gray-500">
+                                {category.amenities.join(', ')}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                       <Separator />
-                      <div className="flex justify-between items-center font-medium">
-                        <span>Total Seats</span>
-                        <span>{placedSeats.length}</span>
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-center font-medium">
+                          <span>Total Seats Placed</span>
+                          <span>{enhancedSeats.length}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm text-gray-600">
+                          <span>Total Revenue Potential</span>
+                          <span>${enhancedSeats.reduce((sum, seat) => sum + seat.price, 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm text-gray-600">
+                          <span>Completion Status</span>
+                          <span className={enhancedSeats.length > 0 ? 'text-green-600' : 'text-yellow-600'}>
+                            {enhancedSeats.length > 0 ? '✅ Ready' : '⚠️ No seats placed'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <Button 
-                  onClick={handleCreateSeatingChart} 
-                  disabled={loading || !uploadedChart || placedSeats.length === 0}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? 'Creating Seating Chart...' : 'Create Interactive Seating Chart'}
-                </Button>
+                <div className="space-y-3">
+                  <Button 
+                    onClick={handleCreateSeatingChart} 
+                    disabled={loading || !chartPreview || enhancedSeats.length === 0}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {loading ? 'Creating Seating Chart...' : 'Create Interactive Seating Chart'}
+                  </Button>
+                  
+                  {enhancedSeats.length === 0 && (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        You need to place at least one seat before creating the interactive seating chart.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
                 
                 <Alert>
                   <Info className="h-4 w-4" />
@@ -784,7 +908,7 @@ export const SeatingChartWizard = ({
     }
   };
 
-  // If showOnlyTab is specified, render the EnhancedSeatingChartSelector with only that tab
+  // If showOnlyTab is specified, render the appropriate content
   if (showOnlyTab) {
     const tabMap = {
       'setup': 'setup',
@@ -810,11 +934,132 @@ export const SeatingChartWizard = ({
           </p>
         </div>
 
-{/* Debug log */}
-        <EnhancedSeatingChartSelector
+        {/* Show finalize step content for 'info' tab */}
+        {showOnlyTab === 'info' ? (
+          <>
+            {/* Final Review */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Finalize Seating Setup
+                </CardTitle>
+                <CardDescription>
+                  Review your seating configuration and create the interactive seating chart
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <FileImage className="w-4 h-4" />
+                      Venue Floor Plan
+                    </h4>
+                    {chartPreview ? (
+                      <img 
+                        src={chartPreview} 
+                        alt="Venue Floor Plan" 
+                        className="w-full h-48 object-contain rounded border bg-gray-50"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-100 rounded border flex items-center justify-center">
+                        <span className="text-gray-500">No floor plan uploaded</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Seat Configuration Summary
+                    </h4>
+                    <div className="space-y-3">
+                      {enhancedCategories.map(category => {
+                        const categorySeats = enhancedSeats.filter(seat => seat.category === category.id);
+                        const totalValue = categorySeats.length * category.basePrice;
+                        return (
+                          <div key={category.id} className="bg-gray-50 p-3 rounded-lg">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="flex items-center gap-2">
+                                <div 
+                                  className="w-4 h-4 rounded-full border-2 border-white shadow-sm" 
+                                  style={{ backgroundColor: category.color }}
+                                />
+                                <span className="font-medium">{category.name}</span>
+                              </span>
+                              <Badge variant="outline">{category.viewQuality}</Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                              <div>Seats: {categorySeats.length}</div>
+                              <div>Price: ${category.basePrice}</div>
+                              <div>Max Capacity: {category.maxCapacity}</div>
+                              <div>Value: ${totalValue}</div>
+                            </div>
+                            {category.amenities.length > 0 && (
+                              <div className="mt-2 text-xs text-gray-500">
+                                {category.amenities.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <Separator />
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-center font-medium">
+                          <span>Total Seats Placed</span>
+                          <span>{enhancedSeats.length}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm text-gray-600">
+                          <span>Total Revenue Potential</span>
+                          <span>${enhancedSeats.reduce((sum, seat) => sum + seat.price, 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm text-gray-600">
+                          <span>Completion Status</span>
+                          <span className={enhancedSeats.length > 0 ? 'text-green-600' : 'text-yellow-600'}>
+                            {enhancedSeats.length > 0 ? '✅ Ready' : '⚠️ No seats placed'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Button 
+                    onClick={handleCreateSeatingChart} 
+                    disabled={loading || !chartPreview || enhancedSeats.length === 0}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {loading ? 'Creating Seating Chart...' : 'Create Interactive Seating Chart'}
+                  </Button>
+                  
+                  {enhancedSeats.length === 0 && (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        You need to place at least one seat before creating the interactive seating chart.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+                
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    This will create your venue and interactive seating chart. Customers will be able to select specific seats based on their chosen ticket type.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          // Show PremiumSeatingManager for other tabs
+          <PremiumSeatingManager
           venueImageUrl={chartPreview || undefined}
-          onImageUpload={(file) => {
-            // Handle file upload directly
+          maxTotalSeats={ticketTypes.reduce((total, ticket) => total + ticket.quantity, 0)}
+          ticketTypes={ticketTypes}
+          onImageUpload={async (file) => {
+            // Handle file upload with proper Supabase upload
             if (!file.type.startsWith('image/')) {
               toast.error('Please upload an image file (PNG, JPG, SVG)');
               return;
@@ -826,57 +1071,102 @@ export const SeatingChartWizard = ({
             }
 
             setUploadedChart(file);
+            setLoading(true);
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const imageUrl = e.target?.result as string;
-              console.log('Image uploaded and processed, URL length:', imageUrl.length);
-              setChartPreview(imageUrl);
+            try {
+              // Generate unique venue ID for this event
+              const venueId = `venue_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
               
-              // Persist to form data
-              form.setValue('venueImageUrl', imageUrl);
-              form.setValue('hasVenueImage', true);
+              // Upload image to Supabase Storage
+              console.log('🌅 Uploading venue image to Supabase Storage (showOnlyTab)...');
+              const uploadResult = await imageUploadService.uploadVenueImage(file, venueId);
               
-              // Trigger form validation to update navigation state
-              form.trigger(['venueImageUrl', 'hasVenueImage']);
-              
-              // Log current form values for debugging
-              const currentValues = form.getValues();
-              console.log('Form data updated with venue image:', {
-                venueImageUrl: currentValues.venueImageUrl ? 'SET' : 'NOT_SET',
-                hasVenueImage: currentValues.hasVenueImage,
-                imageUrlLength: currentValues.venueImageUrl?.length || 0
-              });
-              
-              // Only auto-advance if in setup-only mode (single-tab)
-              if (showOnlyTab === 'setup' && onStepAdvance) {
-                console.log('Auto-advancing to next step...');
-                setTimeout(() => {
-                  const finalValues = form.getValues();
-                  console.log('Final form values before step advance:', {
-                    venueImageUrl: finalValues.venueImageUrl ? 'SET' : 'NOT_SET',
-                    hasVenueImage: finalValues.hasVenueImage
-                  });
-                  onStepAdvance();
-                }, 100); // Reduced delay for faster response
+              if (uploadResult.success && uploadResult.url) {
+                console.log('✅ Venue image uploaded successfully (showOnlyTab):', uploadResult.url);
+                setChartPreview(uploadResult.url);
+                
+                // Persist permanent URL to form data
+                form.setValue('venueImageUrl', uploadResult.url);
+                form.setValue('hasVenueImage', true);
+                // Store venue ID if needed
+                
+                // Trigger form validation to update navigation state
+                form.trigger(['venueImageUrl', 'hasVenueImage']);
+                
+                // Log current form values for debugging
+                const currentValues = form.getValues();
+                console.log('✅ Supabase upload (showOnlyTab) - Form data updated:', {
+                  venueImageUrl: currentValues.venueImageUrl ? 'SET (Supabase URL)' : 'NOT_SET',
+                  hasVenueImage: currentValues.hasVenueImage,
+                  // venueId: venueId
+                });
+                
+                // Only auto-advance if in setup-only mode (single-tab)
+                if (showOnlyTab === 'setup' && onStepAdvance) {
+                  console.log('⏭️ Auto-advancing to next step after Supabase upload...');
+                  setTimeout(() => {
+                    const finalValues = form.getValues();
+                    console.log('Final form values before step advance:', {
+                      venueImageUrl: finalValues.venueImageUrl ? 'SET' : 'NOT_SET',
+                      hasVenueImage: finalValues.hasVenueImage
+                    });
+                    onStepAdvance();
+                  }, 100);
+                }
+                
+                toast.success('Venue image uploaded successfully to cloud storage');
+              } else {
+                console.error('❌ Venue image upload failed (showOnlyTab):', uploadResult.error);
+                toast.error(`Upload failed: ${uploadResult.error || 'Unknown error'}`);
+                
+                // Fallback to base64 for immediate display
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const imageUrl = e.target?.result as string;
+                  console.log('⚠️ Using base64 fallback (showOnlyTab)');
+                  setChartPreview(imageUrl);
+                  form.setValue('venueImageUrl', imageUrl);
+                  form.setValue('hasVenueImage', true);
+                  form.trigger(['venueImageUrl', 'hasVenueImage']);
+                  
+                  if (showOnlyTab === 'setup' && onStepAdvance) {
+                    setTimeout(() => onStepAdvance(), 100);
+                  }
+                };
+                reader.readAsDataURL(file);
+                toast.success('Using local preview (cloud upload failed)');
               }
-            };
-            reader.onerror = (error) => {
-              console.error('Error reading file:', error);
-              toast.error('Failed to read the uploaded file');
-            };
-            reader.readAsDataURL(file);
-
-            toast.success('Seating chart uploaded successfully');
+            } catch (error) {
+              console.error('❌ Error during venue image upload (showOnlyTab):', error);
+              toast.error('Failed to upload venue image');
+              
+              // Fallback to base64
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                const imageUrl = e.target?.result as string;
+                console.log('⚠️ Using base64 fallback due to error (showOnlyTab)');
+                setChartPreview(imageUrl);
+                form.setValue('venueImageUrl', imageUrl);
+                form.setValue('hasVenueImage', true);
+                form.trigger(['venueImageUrl', 'hasVenueImage']);
+                
+                if (showOnlyTab === 'setup' && onStepAdvance) {
+                  setTimeout(() => onStepAdvance(), 100);
+                }
+              };
+              reader.readAsDataURL(file);
+              toast.success('Using local preview (cloud upload error)');
+            } finally {
+              setLoading(false);
+            }
           }}
           onSeatingConfigurationChange={handleEnhancedSeatingConfigured}
           initialSeats={enhancedSeats}
           initialCategories={enhancedCategories}
-          eventType={eventType === 'premium' ? 'theater' : 'other'}
-          hasExistingImage={!!chartPreview}
-          startingTab={tabMap[showOnlyTab] as 'setup' | 'configure' | 'place' | 'info'}
+          startingTab={tabMap[showOnlyTab] as 'setup' | 'configure' | 'place'}
           showOnlyTab={showOnlyTab}
         />
+        )}
       </div>
     );
   }

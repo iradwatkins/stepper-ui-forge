@@ -9,8 +9,7 @@ import { useParams } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
 import { TicketSelector } from "@/components/ticketing";
-import { InteractiveSeatingChart, SeatData, PriceCategory } from "@/components/seating";
-import SimpleSeatingChart from "@/components/seating/SimpleSeatingChart";
+import CustomerSeatingChart, { SeatData, PriceCategory } from "@/components/seating/CustomerSeatingChart";
 import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
@@ -257,12 +256,15 @@ const EventDetail = () => {
     const legacySeats: AvailableSeat[] = seatIds.map(seatId => {
       const seat = seats.find(s => s.id === seatId);
       return {
-        id: seatId,
-        seat_number: seat?.seatNumber || '',
+        seat_id: seatId,
+        seat_identifier: seat?.seatNumber || '',
         section_name: seat?.section || '',
         current_price: seat?.price || 0,
         row_name: seat?.row || '',
-        is_accessible: seat?.isADA || false
+        is_accessible: seat?.isADA || false,
+        is_premium: seat?.isPremium || false,
+        id: seatId,
+        seat_number: seat?.seatNumber || ''
       };
     });
     setSelectedSeats(legacySeats);
@@ -590,14 +592,7 @@ const EventDetail = () => {
                     ) : (
                       <div className="space-y-4">
                         {venueImageUrl && seats.length > 0 ? (
-                          <SimpleSeatingChart
-                            eventId={event.id}
-                            seatingChart={{
-                              id: 'chart-1',
-                              name: 'Venue Layout',
-                              imageUrl: venueImageUrl,
-                              seats: seats
-                            }}
+                          <CustomerSeatingChart
                             venueImageUrl={venueImageUrl}
                             seats={seats}
                             priceCategories={priceCategories}
@@ -607,9 +602,9 @@ const EventDetail = () => {
                             maxSelectableSeats={8}
                             showPurchaseButton={true}
                             disabled={false}
-                            allowHoldTimer={true}
-                            holdDurationMinutes={10}
-                            onSeatsSelected={() => {}} // Not used in new interface
+                            className="w-full"
+                            eventType="premium"
+                            eventId={event.id}
                           />
                         ) : (
                           <div className="text-center py-8">

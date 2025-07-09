@@ -98,6 +98,8 @@ interface EnhancedSeatingChartSelectorProps {
   hasExistingImage?: boolean;
   startingTab?: 'setup' | 'configure' | 'place' | 'info';
   showOnlyTab?: 'setup' | 'configure' | 'place' | 'info';
+  maxTotalSeats?: number; // Total number of tickets available for assignment
+  ticketTypes?: Array<{ id: string; name: string; quantity: number; price: number; }>; // Ticket types with quantities
 }
 
 const DEFAULT_CATEGORIES: SeatCategory[] = [
@@ -158,7 +160,9 @@ export default function EnhancedSeatingChartSelector({
   eventType = 'other',
   hasExistingImage = false,
   startingTab,
-  showOnlyTab
+  showOnlyTab,
+  maxTotalSeats,
+  ticketTypes = []
 }: EnhancedSeatingChartSelectorProps) {
   // Determine initial tab based on whether image exists
   const getInitialTab = () => {
@@ -194,6 +198,29 @@ export default function EnhancedSeatingChartSelector({
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageLoadError, setImageLoadError] = useState<string | null>(null);
+  
+  // Calculate total seats needed based on ticket quantities
+  const totalSeatsNeeded = React.useMemo(() => {
+    if (maxTotalSeats) return maxTotalSeats;
+    return ticketTypes.reduce((total, ticket) => total + ticket.quantity, 0);
+  }, [maxTotalSeats, ticketTypes]);
+  
+  // Track seat assignment progress
+  const seatProgress = React.useMemo(() => {
+    const placed = seats.length;
+    const remaining = Math.max(0, totalSeatsNeeded - placed);
+    const percentage = totalSeatsNeeded > 0 ? (placed / totalSeatsNeeded) * 100 : 0;
+    return { placed, remaining, percentage, total: totalSeatsNeeded };
+  }, [seats.length, totalSeatsNeeded]);
+
+  // Auto-select first category when categories load
+  useEffect(() => {
+    if (categories.length > 0 && !selectedCategory) {
+      const firstCategoryId = categories[0].id;
+      setSelectedCategory(firstCategoryId);
+      console.log('🎨 Auto-selected first category:', firstCategoryId, categories[0].name);
+    }
+  }, [categories, selectedCategory]);
 
   // Get unique sections from seats
   const sections = React.useMemo(() => {
@@ -383,7 +410,7 @@ export default function EnhancedSeatingChartSelector({
     );
     
     // Draw seats using percentage coordinates
-    filteredSeats.forEach(seat => {
+    filteredSeats.forEach((seat, index) => {
       const category = categories.find(c => c.id === seat.category);
       if (!category) return;
 
@@ -396,31 +423,42 @@ export default function EnhancedSeatingChartSelector({
       
       const radius = 8;
 
-      // Draw seat circle
+      // Draw seat circle with enhanced visual feedback
       ctx.beginPath();
       ctx.arc(canvasCoords.x, canvasCoords.y, radius, 0, 2 * Math.PI);
-      ctx.fillStyle = category.color;
+      // Use stored categoryColor with fallback to category lookup
+      ctx.fillStyle = seat.categoryColor || category?.color || '#10B981';
       ctx.fill();
       
-      // Draw seat border
+      // Draw seat border with status indication
       ctx.strokeStyle = seat.status === 'selected' ? '#000' : '#fff';
-      ctx.lineWidth = seat.status === 'selected' ? 3 : 1;
+      ctx.lineWidth = seat.status === 'selected' ? 3 : 2;
       ctx.stroke();
 
       // Draw ADA indicator
       if (seat.isADA) {
         ctx.fillStyle = '#fff';
-        ctx.font = '10px Arial';
+        ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('♿', canvasCoords.x, canvasCoords.y + 3);
       }
 
-      // Draw seat number
+      // Draw seat number with improved visibility
       if (seat.seatNumber) {
         ctx.fillStyle = '#000';
-        ctx.font = '8px Arial';
+        ctx.font = 'bold 8px Arial';
         ctx.textAlign = 'center';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeText(seat.seatNumber, canvasCoords.x, canvasCoords.y - radius - 2);
         ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - radius - 2);
+      }
+      
+      // Add placement order indicator for better tracking
+      if (index < 10) { // Show numbers for first 10 seats
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 6px Arial';
+        ctx.fillText((index + 1).toString(), canvasCoords.x + radius + 2, canvasCoords.y - radius);
       }
     });
 
@@ -435,23 +473,24 @@ export default function EnhancedSeatingChartSelector({
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Get raw client coordinates relative to canvas
+    // Get raw client coordinates relative to canvas display area
     const clientX = event.clientX - rect.left;
     const clientY = event.clientY - rect.top;
     
-    // Convert to canvas coordinates (accounting for CSS vs actual canvas size)
-    const canvasX = (clientX / rect.width) * rect.width;
-    const canvasY = (clientY / rect.height) * rect.height;
+    // FIXED: Use direct client coordinates (no unnecessary conversion)
+    // The bug was: (clientX / rect.width) * rect.width = clientX
+    const canvasX = clientX;
+    const canvasY = clientY;
     
-    // Apply inverse transform (pan and zoom)
+    // Apply inverse transform (pan and zoom) to get image-space coordinates
     const transformedX = (canvasX - pan.x) / zoom;
     const transformedY = (canvasY - pan.y) / zoom;
     
-    // Convert to image coordinates
+    // Convert to image coordinates (relative to the drawn image area)
     const imageX = (transformedX - imageDrawInfo.drawX) / imageDrawInfo.scaleX;
     const imageY = (transformedY - imageDrawInfo.drawY) / imageDrawInfo.scaleY;
     
-    // Convert to percentage coordinates
+    // Convert to percentage coordinates (0-100 based on original image dimensions)
     const originalImageWidth = imageDrawInfo.drawWidth / imageDrawInfo.scaleX;
     const originalImageHeight = imageDrawInfo.drawHeight / imageDrawInfo.scaleY;
     
@@ -460,13 +499,14 @@ export default function EnhancedSeatingChartSelector({
       y: Math.max(0, Math.min(100, (imageY / originalImageHeight) * 100))
     };
     
-    console.log('Click coordinate transformation:', {
+    console.log('FIXED Click coordinate transformation:', {
       clientCoords: { x: clientX, y: clientY },
       canvasCoords: { x: canvasX, y: canvasY },
       transformedCoords: { x: transformedX, y: transformedY },
       imageCoords: { x: imageX, y: imageY },
       percentageCoords,
-      pan, zoom, imageDrawInfo
+      pan, zoom, imageDrawInfo,
+      rect: { width: rect.width, height: rect.height }
     });
 
     // Check if clicking on existing seat
@@ -482,15 +522,27 @@ export default function EnhancedSeatingChartSelector({
       setSeats(newSeats);
       onSeatingConfigurationChange(newSeats, categories);
     } else {
+      // Check if we can add more seats
+      if (totalSeatsNeeded > 0 && seats.length >= totalSeatsNeeded) {
+        console.warn(`Cannot place more seats. Maximum ${totalSeatsNeeded} seats allowed.`);
+        return;
+      }
+      
       // Add new seat
       const category = categories.find(c => c.id === selectedCategory);
-      if (!category) return;
+      if (!category) {
+        console.warn('⚠️ No category selected for seat placement');
+        return;
+      }
+
+      // Generate sequential seat number based on total seats placed
+      const seatNumber = `${category.name.charAt(0)}${seats.length + 1}`;
 
       const newSeat: SeatData = {
         id: `seat_${Date.now()}_${Math.random()}`,
         x: percentageCoords.x,
         y: percentageCoords.y,
-        seatNumber: `${category.name.charAt(0)}${seats.filter(s => s.category === selectedCategory).length + 1}`,
+        seatNumber,
         category: selectedCategory,
         categoryColor: category.color,
         price: category.basePrice,
@@ -503,6 +555,8 @@ export default function EnhancedSeatingChartSelector({
       const newSeats = [...seats, newSeat];
       setSeats(newSeats);
       onSeatingConfigurationChange(newSeats, categories);
+      
+      console.log(`Seat placed: ${seatNumber} at (${percentageCoords.x.toFixed(1)}%, ${percentageCoords.y.toFixed(1)}%). Progress: ${newSeats.length}/${totalSeatsNeeded}`);
     }
   }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, imageDrawInfo, loadedImage]);
 
@@ -863,8 +917,51 @@ export default function EnhancedSeatingChartSelector({
 
                     <Separator />
 
+                    {/* Seat Progress Indicator */}
+                    {totalSeatsNeeded > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Seat Assignment Progress</Label>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span>Seats Placed: {seatProgress.placed}</span>
+                            <span>Remaining: {seatProgress.remaining}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                seatProgress.percentage === 100 ? 'bg-green-500' : 'bg-blue-500'
+                              }`}
+                              style={{ width: `${seatProgress.percentage}%` }}
+                            />
+                          </div>
+                          <div className="text-xs text-center text-gray-600">
+                            {seatProgress.percentage.toFixed(0)}% Complete ({seatProgress.placed}/{seatProgress.total})
+                          </div>
+                          {seatProgress.percentage === 100 && (
+                            <div className="text-xs text-center text-green-600 font-medium">
+                              ✅ All tickets have been assigned seats!
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
                     <div className="space-y-2">
                       <Label className="text-xs">Seat Category</Label>
+                      {/* Category Color Preview */}
+                      {selectedCategory && (
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <div 
+                            className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
+                            style={{ 
+                              backgroundColor: categories.find(c => c.id === selectedCategory)?.color || '#10B981' 
+                            }}
+                          />
+                          <span>Selected: {categories.find(c => c.id === selectedCategory)?.name || 'Category'}</span>
+                        </div>
+                      )}
                       <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                         <SelectTrigger className="h-8">
                           <SelectValue />
@@ -1000,17 +1097,42 @@ export default function EnhancedSeatingChartSelector({
                         onMouseMove={handleCanvasMouseMove}
                         onMouseUp={handleCanvasMouseUp}
                         onMouseLeave={handleCanvasMouseUp}
-                        style={{ cursor: tool === 'place' ? 'crosshair' : tool === 'pan' ? 'grab' : 'default' }}
+                        style={{ 
+                          cursor: tool === 'place' ? 'crosshair' : 
+                                 tool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : 'default' 
+                        }}
                       />
                     </div>
                     
-                    <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-                      <span>
-                        {tool === 'place' ? 'Click to place seats' : 'Drag to pan around'}
-                      </span>
-                      <span>
-                        Zoom: {Math.round(zoom * 100)}% | Seats: {filteredSeats.length}
-                      </span>
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <span>
+                          {tool === 'place' ? (
+                            totalSeatsNeeded > 0 && seats.length >= totalSeatsNeeded ? 
+                              '⚠️ Maximum seats reached' : 
+                              selectedCategory ? 
+                                `🎯 Click to place ${categories.find(c => c.id === selectedCategory)?.name || 'seats'} (${categories.find(c => c.id === selectedCategory)?.color || '#10B981'})` :
+                                '🎯 Select a category first'
+                          ) : 'Drag to pan around'}
+                        </span>
+                        <span>
+                          Zoom: {Math.round(zoom * 100)}% | Seats: {filteredSeats.length}
+                          {totalSeatsNeeded > 0 && `/${totalSeatsNeeded}`}
+                        </span>
+                      </div>
+                      {tool === 'place' && totalSeatsNeeded > 0 && (
+                        <div className="text-xs text-center">
+                          {seats.length < totalSeatsNeeded ? (
+                            <span className="text-blue-600">
+                              Place {totalSeatsNeeded - seats.length} more seats to complete ticket assignment
+                            </span>
+                          ) : (
+                            <span className="text-green-600 font-medium">
+                              ✅ All {totalSeatsNeeded} tickets have assigned seats!
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
