@@ -27,6 +27,10 @@ export interface SeatConfig {
   category: string;
   categoryColor: string;
   isADA: boolean;
+  tableId?: string;
+  tableType?: 'round' | 'square' | 'rectangular';
+  tableCapacity?: number;
+  isPremium?: boolean;
 }
 
 export async function createTestPremiumEvent() {
@@ -62,49 +66,108 @@ export async function createTestPremiumEvent() {
         description: 'Standard seating with great views of the stage'
       },
       {
-        name: 'VIP Experience',
-        price: 100,
-        quantity: 50,
-        description: 'Premium seating with complimentary drinks and meet & greet access'
+        name: 'Premium Round Table',
+        price: 150,
+        quantity: 25,
+        description: 'Premium 5-seat round table with table service and complimentary appetizers'
+      },
+      {
+        name: 'Premium Square Table',
+        price: 120,
+        quantity: 20,
+        description: 'Premium 4-seat square table with table service and priority ordering'
       }
     ];
 
-    // Step 4: Generate 100 Seats
+    // Step 4: Generate 95 Seats with Premium Table Configuration
     const seats: SeatConfig[] = [];
     
     // Generate 50 General Admission seats (left side of venue)
     for (let i = 0; i < 50; i++) {
       seats.push({
-        x: 20 + Math.random() * 30, // Left side: 20-50%
+        x: 15 + Math.random() * 25, // Left side: 15-40%
         y: 30 + Math.random() * 50, // Middle area: 30-80%
         seatNumber: `GA${i + 1}`,
         section: 'General Admission',
         price: 50,
         category: 'general',
         categoryColor: '#10B981',
-        isADA: i < 3 // First 3 seats are ADA accessible
+        isADA: i < 3, // First 3 seats are ADA accessible
+        isPremium: false
       });
     }
 
-    // Generate 50 VIP seats (right side of venue)
-    for (let i = 0; i < 50; i++) {
-      seats.push({
-        x: 50 + Math.random() * 30, // Right side: 50-80%
-        y: 25 + Math.random() * 40, // Premium area: 25-65%
-        seatNumber: `VIP${i + 1}`,
-        section: 'VIP Experience',
-        price: 100,
-        category: 'vip',
-        categoryColor: '#8B5CF6',
-        isADA: i < 2 // First 2 VIP seats are ADA accessible
-      });
+    // Generate 5 Premium Round Tables (5 seats each = 25 seats)
+    for (let tableNum = 1; tableNum <= 5; tableNum++) {
+      const tableId = `round_table_${tableNum}`;
+      const centerX = 50 + (tableNum - 1) * 8; // Spread tables horizontally
+      const centerY = 20 + Math.random() * 20; // Upper premium area
+      
+      for (let seatNum = 1; seatNum <= 5; seatNum++) {
+        // Arrange seats in a circle around table center
+        const angle = (seatNum - 1) * (2 * Math.PI / 5);
+        const radius = 3; // Small radius for table seating
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        seats.push({
+          x: Math.max(45, Math.min(85, x)), // Keep within venue bounds
+          y: Math.max(15, Math.min(40, y)),
+          seatNumber: `RT${tableNum}-${seatNum}`,
+          section: 'Premium Round Table',
+          price: 150,
+          category: 'premium_round',
+          categoryColor: '#F59E0B',
+          isADA: tableNum === 1 && seatNum === 1, // One ADA seat per venue
+          tableId,
+          tableType: 'round' as const,
+          tableCapacity: 5,
+          isPremium: true
+        });
+      }
     }
 
-    console.log('✅ Generated 100 seats:', {
+    // Generate 5 Premium Square Tables (4 seats each = 20 seats)
+    for (let tableNum = 1; tableNum <= 5; tableNum++) {
+      const tableId = `square_table_${tableNum}`;
+      const centerX = 50 + (tableNum - 1) * 8; // Spread tables horizontally
+      const centerY = 50 + Math.random() * 20; // Lower premium area
+      
+      // Square table positions (4 corners)
+      const positions = [
+        { x: centerX - 2, y: centerY - 2 }, // Top-left
+        { x: centerX + 2, y: centerY - 2 }, // Top-right
+        { x: centerX - 2, y: centerY + 2 }, // Bottom-left
+        { x: centerX + 2, y: centerY + 2 }  // Bottom-right
+      ];
+      
+      for (let seatNum = 1; seatNum <= 4; seatNum++) {
+        const pos = positions[seatNum - 1];
+        
+        seats.push({
+          x: Math.max(45, Math.min(85, pos.x)), // Keep within venue bounds
+          y: Math.max(45, Math.min(75, pos.y)),
+          seatNumber: `ST${tableNum}-${seatNum}`,
+          section: 'Premium Square Table',
+          price: 120,
+          category: 'premium_square',
+          categoryColor: '#EF4444',
+          isADA: tableNum === 1 && seatNum === 1, // One ADA seat per venue
+          tableId,
+          tableType: 'square' as const,
+          tableCapacity: 4,
+          isPremium: true
+        });
+      }
+    }
+
+    console.log('✅ Generated 95 seats with premium table configuration:', {
       totalSeats: seats.length,
       generalAdmission: seats.filter(s => s.category === 'general').length,
-      vipSeats: seats.filter(s => s.category === 'vip').length,
-      adaSeats: seats.filter(s => s.isADA).length
+      premiumRoundTables: seats.filter(s => s.category === 'premium_round').length,
+      premiumSquareTables: seats.filter(s => s.category === 'premium_square').length,
+      adaSeats: seats.filter(s => s.isADA).length,
+      premiumSeats: seats.filter(s => s.isPremium).length
     });
 
     // Step 5: Create Event in Database
@@ -118,7 +181,7 @@ export async function createTestPremiumEvent() {
       time: eventConfig.time,
       location: locationWithVenue,
       event_type: 'premium' as const,
-      max_attendees: 100,
+      max_attendees: 95,
       is_public: true,
       status: 'published' as const,
       owner_id: user.id,
@@ -192,16 +255,32 @@ export async function createTestPremiumEvent() {
           basePrice: 50,
           maxCapacity: 50,
           amenities: ['Standard seating'],
-          viewQuality: 'good' as const
+          viewQuality: 'good' as const,
+          isPremium: false
         },
         {
-          id: 'vip',
-          name: 'VIP Experience',
-          color: '#8B5CF6',
-          basePrice: 100,
-          maxCapacity: 50,
-          amenities: ['Premium seating', 'Complimentary drinks', 'Meet & greet'],
-          viewQuality: 'excellent' as const
+          id: 'premium_round',
+          name: 'Premium Round Table',
+          color: '#F59E0B',
+          basePrice: 150,
+          maxCapacity: 25,
+          amenities: ['5-seat round table', 'Table service', 'Complimentary appetizers', 'Priority ordering'],
+          viewQuality: 'excellent' as const,
+          isPremium: true,
+          tableType: 'round' as const,
+          tableCapacity: 5
+        },
+        {
+          id: 'premium_square',
+          name: 'Premium Square Table',
+          color: '#EF4444',
+          basePrice: 120,
+          maxCapacity: 20,
+          amenities: ['4-seat square table', 'Table service', 'Priority ordering', 'Premium location'],
+          viewQuality: 'excellent' as const,
+          isPremium: true,
+          tableType: 'square' as const,
+          tableCapacity: 4
         }
       ]
     };
@@ -257,8 +336,10 @@ export async function createTestPremiumEvent() {
       seating: {
         totalSeats: seatingConfiguration.totalSeats,
         generalAdmission: seatingConfiguration.seats.filter(s => s.category === 'general').length,
-        vipSeats: seatingConfiguration.seats.filter(s => s.category === 'vip').length,
+        premiumRoundTables: seatingConfiguration.seats.filter(s => s.category === 'premium_round').length,
+        premiumSquareTables: seatingConfiguration.seats.filter(s => s.category === 'premium_square').length,
         adaSeats: seatingConfiguration.seats.filter(s => s.isADA).length,
+        premiumSeats: seatingConfiguration.seats.filter(s => s.isPremium).length,
         categories: seatingConfiguration.categories.length
       }
     };

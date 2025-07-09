@@ -49,6 +49,9 @@ export interface SeatData {
   viewQuality?: 'excellent' | 'good' | 'fair' | 'limited';
   tableId?: string;
   groupSize?: number;
+  tableType?: 'round' | 'square' | 'rectangular';
+  tableCapacity?: number;
+  isPremium?: boolean;
 }
 
 export interface PriceCategory {
@@ -57,6 +60,10 @@ export interface PriceCategory {
   color: string;
   basePrice: number;
   description?: string;
+  isPremium?: boolean;
+  tableType?: 'round' | 'square' | 'rectangular';
+  tableCapacity?: number;
+  premiumAmenities?: string[];
 }
 
 interface InteractiveSeatingChartProps {
@@ -70,6 +77,8 @@ interface InteractiveSeatingChartProps {
   showPurchaseButton?: boolean;
   disabled?: boolean;
   className?: string;
+  eventType?: 'simple' | 'ticketed' | 'premium';
+  eventId?: string;
 }
 
 export default function InteractiveSeatingChart({
@@ -82,14 +91,158 @@ export default function InteractiveSeatingChart({
   maxSelectableSeats = 10,
   showPurchaseButton = true,
   disabled = false,
-  className = ''
+  className = '',
+  eventType = 'simple',
+  eventId
 }: InteractiveSeatingChartProps) {
   const [hoveredSeat, setHoveredSeat] = useState<string | null>(null);
+  const [tooltipData, setTooltipData] = useState<{
+    seat: SeatData;
+    x: number;
+    y: number;
+    visible: boolean;
+  } | null>(null);
   const [filterSection, setFilterSection] = useState<string>('all');
   const [filterPriceRange, setFilterPriceRange] = useState<[number, number]>([0, 1000]);
   const [sortBy, setSortBy] = useState<'price' | 'section' | 'availability'>('price');
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Premium event validation
+  const validatePremiumEventAccess = useCallback(() => {
+    if (eventType !== 'premium') {
+      return {
+        valid: false,
+        message: 'Airline-style seat selection is only available for premium events. Please upgrade your event type to access advanced seating features.'
+      };
+    }
+    return { valid: true };
+  }, [eventType]);
+
+  // Premium seating validation
+  const validatePremiumSeatSelection = useCallback((seat: SeatData) => {
+    // First check if this is a premium event
+    const eventValidation = validatePremiumEventAccess();
+    if (!eventValidation.valid) {
+      return eventValidation;
+    }
+    
+    if (!seat.isPremium) return { valid: true };
+    
+    // Check if user is trying to select individual seats from a table
+    if (seat.tableId && seat.tableCapacity) {
+      const tableSeats = seats.filter(s => s.tableId === seat.tableId);
+      const selectedTableSeats = tableSeats.filter(s => selectedSeats.includes(s.id));
+      
+      // For premium tables, must book entire table
+      if (selectedTableSeats.length > 0 && selectedTableSeats.length !== seat.tableCapacity) {
+        return {
+          valid: false,
+          message: `Premium ${seat.tableType} tables must be booked entirely (${seat.tableCapacity} seats)`
+        };
+      }
+    }
+    
+    return { valid: true };
+  }, [seats, selectedSeats, validatePremiumEventAccess]);
+
+  // Premium pricing calculation
+  const calculatePremiumPrice = useCallback((seat: SeatData) => {
+    if (!seat.isPremium) return seat.price;
+    
+    // Apply premium multiplier or fixed premium pricing
+    const basePrice = seat.price;
+    const premiumMultiplier = seat.tableType === 'round' ? 1.2 : 1.1;
+    
+    return Math.round(basePrice * premiumMultiplier);
+  }, []);
+
+  // Adjacency detection for multi-seat selection
+  const findAdjacentSeats = useCallback((seatId: string) => {
+    const seat = seats.find(s => s.id === seatId);
+    if (!seat) return [];
+    
+    const adjacentSeats: SeatData[] = [];
+    const adjacencyThreshold = 20; // Distance threshold for adjacency
+    
+    seats.forEach(otherSeat => {
+      if (otherSeat.id === seatId) return;
+      
+      // Calculate distance between seats
+      const distance = Math.sqrt(
+        Math.pow(seat.x - otherSeat.x, 2) + Math.pow(seat.y - otherSeat.y, 2)
+      );
+      
+      // Check if seats are adjacent (same row or very close)
+      const sameRow = seat.row === otherSeat.row;
+      const sameSection = seat.section === otherSeat.section;
+      const closeDistance = distance < adjacencyThreshold;
+      
+      if (sameSection && (sameRow || closeDistance)) {
+        adjacentSeats.push(otherSeat);
+      }
+    });
+    
+    return adjacentSeats.sort((a, b) => {
+      // Sort by distance from original seat
+      const distA = Math.sqrt(Math.pow(seat.x - a.x, 2) + Math.pow(seat.y - a.y, 2));
+      const distB = Math.sqrt(Math.pow(seat.x - b.x, 2) + Math.pow(seat.y - b.y, 2));
+      return distA - distB;
+    });
+  }, [seats]);
+
+  // Smart multi-seat selection with adjacency preference
+  const selectAdjacentSeats = useCallback((baseSeat: SeatData, quantity: number) => {
+    const adjacentSeats = findAdjacentSeats(baseSeat.id);
+    const availableAdjacent = adjacentSeats.filter(s => s.status === 'available');
+    
+    const selectedIds = [baseSeat.id];
+    let needed = quantity - 1;
+    
+    // Try to select adjacent seats first
+    for (const seat of availableAdjacent) {
+      if (needed <= 0) break;
+      if (!selectedSeats.includes(seat.id)) {
+        selectedIds.push(seat.id);
+        needed--;
+      }
+    }
+    
+    // If not enough adjacent seats, show warning
+    if (needed > 0) {
+      const message = `Only ${selectedIds.length} adjacent seats available. Continue with non-adjacent selection?`;
+      if (!confirm(message)) {
+        return selectedSeats;
+      }
+    }
+    
+    return selectedIds;
+  }, [seats, selectedSeats, findAdjacentSeats]);
+
+  // Check if selected seats are adjacent
+  const areSeatsAdjacent = useCallback((seatIds: string[]) => {
+    if (seatIds.length <= 1) return true;
+    
+    const seatPositions = seatIds.map(id => seats.find(s => s.id === id)).filter(Boolean);
+    if (seatPositions.length !== seatIds.length) return false;
+    
+    for (let i = 0; i < seatPositions.length; i++) {
+      const currentSeat = seatPositions[i];
+      const hasAdjacentSeat = seatPositions.some(otherSeat => {
+        if (otherSeat.id === currentSeat.id) return false;
+        const distance = Math.sqrt(
+          Math.pow(currentSeat.x - otherSeat.x, 2) + Math.pow(currentSeat.y - otherSeat.y, 2)
+        );
+        return distance < 20 && currentSeat.section === otherSeat.section;
+      });
+      
+      if (!hasAdjacentSeat && seatPositions.length > 1) {
+        return false;
+      }
+    }
+    
+    return true;
+  }, [seats]);
 
   // Memoized calculations
   const sections = useMemo(() => {
@@ -223,6 +376,60 @@ export default function InteractiveSeatingChart({
       imageDrawInfo.drawHeight
     );
 
+    // Draw tables first (behind seats)
+    const drawnTables = new Set<string>();
+    sortedSeats.forEach(seat => {
+      if (!seat.tableId || drawnTables.has(seat.tableId)) return;
+      
+      // Get all seats for this table
+      const tableSeats = sortedSeats.filter(s => s.tableId === seat.tableId);
+      if (tableSeats.length === 0) return;
+      
+      // Calculate table center based on seat positions
+      const centerX = tableSeats.reduce((sum, s) => sum + s.x, 0) / tableSeats.length;
+      const centerY = tableSeats.reduce((sum, s) => sum + s.y, 0) / tableSeats.length;
+      
+      const centerCoords = percentageToCanvasCoordinates(
+        centerX,
+        centerY,
+        imageDrawInfo
+      );
+      
+      const tableRadius = 25 / zoom;
+      
+      // Draw table based on type
+      ctx.beginPath();
+      if (seat.tableType === 'round') {
+        ctx.arc(centerCoords.x, centerCoords.y, tableRadius, 0, 2 * Math.PI);
+      } else if (seat.tableType === 'square') {
+        ctx.rect(
+          centerCoords.x - tableRadius,
+          centerCoords.y - tableRadius,
+          tableRadius * 2,
+          tableRadius * 2
+        );
+      }
+      
+      // Table styling
+      ctx.fillStyle = seat.isPremium ? 'rgba(245, 158, 11, 0.2)' : 'rgba(156, 163, 175, 0.2)';
+      ctx.fill();
+      ctx.strokeStyle = seat.isPremium ? '#F59E0B' : '#6B7280';
+      ctx.lineWidth = 2 / zoom;
+      ctx.stroke();
+      
+      // Table label
+      ctx.fillStyle = seat.isPremium ? '#F59E0B' : '#6B7280';
+      ctx.font = `bold ${10 / zoom}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        seat.tableType === 'round' ? '●' : '■',
+        centerCoords.x,
+        centerCoords.y + 3 / zoom
+      );
+      
+      drawnTables.add(seat.tableId);
+    });
+    
     // Draw seats using percentage coordinates
     sortedSeats.forEach(seat => {
       if (!seat) return;
@@ -234,13 +441,54 @@ export default function InteractiveSeatingChart({
         imageDrawInfo
       );
       
-      const radius = 10 / zoom; // Adjust radius based on zoom
+      const seatWidth = 16 / zoom; // Airline-style seat width
+      const seatHeight = 14 / zoom; // Airline-style seat height
+      const cornerRadius = 3 / zoom; // Rounded corners
       const isSelected = selectedSeats.includes(seat.id);
       const isHovered = hoveredSeat === seat.id;
 
-      // Seat circle with status-based styling
-      ctx.beginPath();
-      ctx.arc(canvasCoords.x, canvasCoords.y, radius, 0, 2 * Math.PI);
+      // Helper function to draw rounded rectangle (airline seat shape)
+      const drawRoundedRect = (x: number, y: number, width: number, height: number, radius: number) => {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+      };
+
+      // Airline-style seat shape
+      if (seat.isPremium && seat.tableType) {
+        // Premium table seats get special treatment
+        if (seat.tableType === 'round') {
+          // Round table seats remain circular but larger
+          ctx.beginPath();
+          ctx.arc(canvasCoords.x, canvasCoords.y, seatWidth / 2, 0, 2 * Math.PI);
+        } else if (seat.tableType === 'square') {
+          // Square table seats get rounded squares
+          drawRoundedRect(
+            canvasCoords.x - seatWidth / 2,
+            canvasCoords.y - seatHeight / 2,
+            seatWidth,
+            seatHeight,
+            cornerRadius
+          );
+        }
+      } else {
+        // Standard airline-style rectangular seats with rounded corners
+        drawRoundedRect(
+          canvasCoords.x - seatWidth / 2,
+          canvasCoords.y - seatHeight / 2,
+          seatWidth,
+          seatHeight,
+          cornerRadius
+        );
+      }
 
       // Fill color based on status
       switch (seat.status) {
@@ -264,26 +512,83 @@ export default function InteractiveSeatingChart({
       }
       ctx.fill();
 
-      // Seat border
+      // Enhanced seat border with adjacency indicators
       ctx.strokeStyle = isSelected ? '#000' : isHovered ? '#333' : '#fff';
       ctx.lineWidth = isSelected ? 3 : isHovered ? 2 : 1;
       ctx.stroke();
-
-      // Hover glow effect
-      if (isHovered && seat.status === 'available') {
-        ctx.beginPath();
-        ctx.arc(canvasCoords.x, canvasCoords.y, radius + 3, 0, 2 * Math.PI);
-        ctx.strokeStyle = 'rgba(34, 197, 94, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+      
+      // Show adjacent seat indicators when hovering
+      if (isHovered && selectedSeats.length > 0) {
+        const adjacentSeats = findAdjacentSeats(seat.id);
+        const isAdjacent = adjacentSeats.some(adjSeat => selectedSeats.includes(adjSeat.id));
+        
+        if (isAdjacent) {
+          // Draw connection line to adjacent selected seats
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(34, 197, 94, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          
+          adjacentSeats.forEach(adjSeat => {
+            if (selectedSeats.includes(adjSeat.id)) {
+              const adjCoords = percentageToCanvasCoordinates(
+                adjSeat.x,
+                adjSeat.y,
+                imageDrawInfo
+              );
+              ctx.moveTo(canvasCoords.x, canvasCoords.y);
+              ctx.lineTo(adjCoords.x, adjCoords.y);
+            }
+          });
+          
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
 
-      // ADA indicator
-      if (seat.isADA) {
-        ctx.fillStyle = '#fff';
-        ctx.font = `bold ${12 / zoom}px Arial`;
+      // Hover glow effect (airline-style)
+      if (isHovered && seat.status === 'available') {
+        ctx.save();
+        ctx.shadowColor = 'rgba(34, 197, 94, 0.6)';
+        ctx.shadowBlur = 8 / zoom;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        // Draw glow outline
+        ctx.beginPath();
+        ctx.moveTo(canvasCoords.x - seatWidth / 2 - 2 + cornerRadius + 1, canvasCoords.y - seatHeight / 2 - 2);
+        ctx.lineTo(canvasCoords.x + seatWidth / 2 + 2 - cornerRadius - 1, canvasCoords.y - seatHeight / 2 - 2);
+        ctx.quadraticCurveTo(canvasCoords.x + seatWidth / 2 + 2, canvasCoords.y - seatHeight / 2 - 2, canvasCoords.x + seatWidth / 2 + 2, canvasCoords.y - seatHeight / 2 - 2 + cornerRadius + 1);
+        ctx.lineTo(canvasCoords.x + seatWidth / 2 + 2, canvasCoords.y + seatHeight / 2 + 2 - cornerRadius - 1);
+        ctx.quadraticCurveTo(canvasCoords.x + seatWidth / 2 + 2, canvasCoords.y + seatHeight / 2 + 2, canvasCoords.x + seatWidth / 2 + 2 - cornerRadius - 1, canvasCoords.y + seatHeight / 2 + 2);
+        ctx.lineTo(canvasCoords.x - seatWidth / 2 - 2 + cornerRadius + 1, canvasCoords.y + seatHeight / 2 + 2);
+        ctx.quadraticCurveTo(canvasCoords.x - seatWidth / 2 - 2, canvasCoords.y + seatHeight / 2 + 2, canvasCoords.x - seatWidth / 2 - 2, canvasCoords.y + seatHeight / 2 + 2 - cornerRadius - 1);
+        ctx.lineTo(canvasCoords.x - seatWidth / 2 - 2, canvasCoords.y - seatHeight / 2 - 2 + cornerRadius + 1);
+        ctx.quadraticCurveTo(canvasCoords.x - seatWidth / 2 - 2, canvasCoords.y - seatHeight / 2 - 2, canvasCoords.x - seatWidth / 2 - 2 + cornerRadius + 1, canvasCoords.y - seatHeight / 2 - 2);
+        ctx.closePath();
+        
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Premium indicator (airline-style)
+      if (seat.isPremium) {
+        ctx.fillStyle = '#FFD700';
+        ctx.font = `bold ${6 / zoom}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText('♿', canvasCoords.x, canvasCoords.y + 4 / zoom);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', canvasCoords.x - seatWidth / 2 + 4 / zoom, canvasCoords.y - seatHeight / 2 + 4 / zoom);
+      }
+      
+      // ADA indicator (airline-style)
+      if (seat.isADA) {
+        ctx.fillStyle = '#0066CC';
+        ctx.font = `bold ${8 / zoom}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('♿', canvasCoords.x + seatWidth / 2 - 4 / zoom, canvasCoords.y - seatHeight / 2 + 4 / zoom);
       }
 
       // Hold timer indicator
@@ -297,22 +602,65 @@ export default function InteractiveSeatingChart({
         }
       }
 
-      // Seat number (for hovered or selected seats)
-      if ((isHovered || isSelected) && seat.seatNumber) {
-        ctx.fillStyle = '#000';
-        ctx.font = `bold ${10 / zoom}px Arial`;
+      // Seat number (always visible for airline-style)
+      if (seat.seatNumber) {
+        ctx.fillStyle = seat.status === 'sold' ? '#fff' : '#000';
+        ctx.font = `bold ${8 / zoom}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - radius - 12 / zoom);
+        ctx.textBaseline = 'middle';
+        
+        // Display seat number inside the seat
+        ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - 2 / zoom);
+        
+        // Display row information above seat if hovered
+        if (isHovered && seat.row) {
+          ctx.fillStyle = '#666';
+          ctx.font = `${7 / zoom}px Arial`;
+          ctx.fillText(`Row ${seat.row}`, canvasCoords.x, canvasCoords.y - seatHeight / 2 - 8 / zoom);
+        }
+        
+        // Show adjacency hint for multi-selection
+        if (isHovered && selectedSeats.length > 0 && seat.status === 'available') {
+          const adjacentSeats = findAdjacentSeats(seat.id);
+          const hasAdjacentSelected = adjacentSeats.some(adjSeat => selectedSeats.includes(adjSeat.id));
+          
+          if (hasAdjacentSelected) {
+            ctx.fillStyle = '#22C55E';
+            ctx.font = `${6 / zoom}px Arial`;
+            ctx.fillText('✓', canvasCoords.x + seatWidth / 2 - 2 / zoom, canvasCoords.y - seatHeight / 2 + 2 / zoom);
+          }
+        }
       }
 
-      // Price display for hovered seats
+      // Enhanced price display for hovered seats
       if (isHovered && seat.status === 'available') {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(canvasCoords.x - 20 / zoom, canvasCoords.y + radius + 5 / zoom, 40 / zoom, 16 / zoom);
-        ctx.fillStyle = '#fff';
-        ctx.font = `${10 / zoom}px Arial`;
+        const priceText = `$${seat.price}`;
+        const sectionText = seat.section || 'General';
+        const tableText = seat.tableType ? `${seat.tableType} table` : '';
+        
+        // Background box
+        const boxWidth = 60 / zoom;
+        const boxHeight = seat.isPremium ? 30 / zoom : 20 / zoom;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(
+          canvasCoords.x - boxWidth / 2,
+          canvasCoords.y + radius + 5 / zoom,
+          boxWidth,
+          boxHeight
+        );
+        
+        // Price text
+        ctx.fillStyle = seat.isPremium ? '#FFD700' : '#fff';
+        ctx.font = `bold ${10 / zoom}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(`$${seat.price}`, canvasCoords.x, canvasCoords.y + radius + 15 / zoom);
+        ctx.fillText(priceText, canvasCoords.x, canvasCoords.y + radius + 15 / zoom);
+        
+        // Premium details
+        if (seat.isPremium && tableText) {
+          ctx.fillStyle = '#999';
+          ctx.font = `${8 / zoom}px Arial`;
+          ctx.fillText(tableText, canvasCoords.x, canvasCoords.y + radius + 25 / zoom);
+        }
       }
     });
 
@@ -334,6 +682,95 @@ export default function InteractiveSeatingChart({
       }
     };
   }, [drawCanvas]);
+
+  // Enhanced seat selection with premium validation and adjacency detection
+  const handleSeatSelection = useCallback((seat: SeatData, multiSelectMode = false) => {
+    if (!seat || seat.status !== 'available' || disabled) return;
+    
+    // Validate premium event access first
+    const eventValidation = validatePremiumEventAccess();
+    if (!eventValidation.valid) {
+      // Show premium upgrade modal or redirect
+      const upgradeModal = document.createElement('div');
+      upgradeModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      upgradeModal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-md mx-4">
+          <h3 class="text-lg font-semibold mb-4">Premium Feature</h3>
+          <p class="text-gray-600 mb-6">${eventValidation.message}</p>
+          <div class="flex justify-end gap-3">
+            <button class="px-4 py-2 text-gray-600 hover:text-gray-800" onclick="this.closest('.fixed').remove()">Cancel</button>
+            <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick="window.location.href='/upgrade-event?eventId=${eventId}'">Upgrade Event</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(upgradeModal);
+      return;
+    }
+    
+    // Validate premium seat selection
+    const validation = validatePremiumSeatSelection(seat);
+    if (!validation.valid) {
+      alert(validation.message);
+      return;
+    }
+    
+    const isCurrentlySelected = selectedSeats.includes(seat.id);
+    let newSelection: string[];
+    
+    if (seat.tableId && seat.tableCapacity) {
+      // Handle table selection
+      const tableSeats = seats.filter(s => s.tableId === seat.tableId && s.status === 'available');
+      const tableSeatIds = tableSeats.map(s => s.id);
+      
+      if (isCurrentlySelected) {
+        // Deselect entire table
+        newSelection = selectedSeats.filter(id => !tableSeatIds.includes(id));
+      } else {
+        // Select entire table
+        newSelection = [...selectedSeats.filter(id => !tableSeatIds.includes(id)), ...tableSeatIds];
+      }
+    } else {
+      // Handle individual seat selection with adjacency detection
+      if (isCurrentlySelected) {
+        newSelection = selectedSeats.filter(id => id !== seat.id);
+      } else {
+        if (selectedSeats.length >= maxSelectableSeats) {
+          alert(`Maximum ${maxSelectableSeats} seats can be selected`);
+          return;
+        }
+        
+        // Multi-select mode with adjacency preference
+        if (multiSelectMode && selectedSeats.length > 0) {
+          const remainingSlots = maxSelectableSeats - selectedSeats.length;
+          const adjacentSelection = selectAdjacentSeats(seat, Math.min(remainingSlots + 1, 4));
+          newSelection = [...selectedSeats.filter(id => !adjacentSelection.includes(id)), ...adjacentSelection];
+        } else {
+          newSelection = [...selectedSeats, seat.id];
+        }
+      }
+    }
+    
+    // Check adjacency and show warning if seats are not adjacent
+    if (newSelection.length > 1 && !areSeatsAdjacent(newSelection)) {
+      const nonAdjacentWarning = document.createElement('div');
+      nonAdjacentWarning.className = 'bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded';
+      nonAdjacentWarning.innerHTML = `
+        <strong>Notice:</strong> Selected seats are not adjacent. 
+        <button onclick="this.parentElement.remove()" class="ml-2 text-yellow-800 hover:text-yellow-900">✕</button>
+      `;
+      
+      // Add warning to UI (this would be better as a proper React component)
+      setTimeout(() => {
+        const container = document.querySelector('.seating-warnings');
+        if (container) {
+          container.appendChild(nonAdjacentWarning);
+          setTimeout(() => nonAdjacentWarning.remove(), 5000);
+        }
+      }, 100);
+    }
+    
+    onSeatSelection?.(newSelection);
+  }, [seats, selectedSeats, maxSelectableSeats, disabled, validatePremiumSeatSelection, selectAdjacentSeats, areSeatsAdjacent, onSeatSelection]);
 
   // Canvas event handlers using new coordinate system
   const getCanvasCoordinates = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -425,23 +862,13 @@ export default function InteractiveSeatingChart({
     if (clickedSeat && clickedSeat.status === 'available') {
       console.log('✅ Valid seat click:', clickedSeat.id, clickedSeat.seatNumber);
       
-      if (selectedSeats.includes(clickedSeat.id)) {
-        // Deselect seat
-        const newSelection = selectedSeats.filter(id => id !== clickedSeat.id);
-        console.log('❌ Deselecting seat:', clickedSeat.id, 'New selection:', newSelection);
-        onSeatSelection?.(newSelection);
-      } else if (selectedSeats.length < maxSelectableSeats) {
-        // Select seat
-        const newSelection = [...selectedSeats, clickedSeat.id];
-        console.log('✅ Selecting seat:', clickedSeat.id, 'New selection:', newSelection);
-        onSeatSelection?.(newSelection);
-      } else {
-        console.log('⚠️ Max seats reached:', maxSelectableSeats);
-      }
+      // Check for multi-select mode (Ctrl/Cmd + Click)
+      const multiSelectMode = event.ctrlKey || event.metaKey;
+      handleSeatSelection(clickedSeat, multiSelectMode);
     } else {
       console.log('❌ No valid seat found or seat not available');
     }
-  }, [disabled, isDragging, getCanvasCoordinates, findSeatAtPosition, selectedSeats, maxSelectableSeats, onSeatSelection]);
+  }, [disabled, isDragging, getCanvasCoordinates, findSeatAtPosition, handleSeatSelection]);
 
   const handleCanvasMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging) {
@@ -461,10 +888,25 @@ export default function InteractiveSeatingChart({
         setLastMousePos({ x: event.clientX, y: event.clientY });
       }
     } else {
-      // Handle seat hover
+      // Handle seat hover with tooltip
       const { x, y } = getCanvasCoordinates(event);
       const hoveredSeat = findSeatAtPosition(x, y);
       setHoveredSeat(hoveredSeat?.id || null);
+      
+      // Update tooltip data
+      if (hoveredSeat) {
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (rect) {
+          setTooltipData({
+            seat: hoveredSeat,
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+            visible: true
+          });
+        }
+      } else {
+        setTooltipData(null);
+      }
     }
   }, [isDragging, lastMousePos, getCanvasCoordinates, findSeatAtPosition]);
 
@@ -620,6 +1062,27 @@ export default function InteractiveSeatingChart({
             Purchase ${statistics.totalPrice}
           </Button>
         )}
+        
+        {/* Multi-select instructions */}
+        {statistics.selected === 0 && eventType === 'premium' && (
+          <div className="text-xs text-gray-500 flex items-center gap-1">
+            <span>💡 Tip: Hold Ctrl/Cmd + Click for smart adjacent selection</span>
+          </div>
+        )}
+        
+        {/* Non-premium event notice */}
+        {eventType !== 'premium' && (
+          <div className="text-xs text-blue-600 flex items-center gap-1">
+            <span>ℹ️ Upgrade to Premium for airline-style seat selection</span>
+          </div>
+        )}
+        
+        {/* Premium event badge */}
+        {eventType === 'premium' && (
+          <div className="text-xs text-green-600 flex items-center gap-1">
+            <span>✈️ Premium Event: Airline-style seat selection enabled</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -678,46 +1141,111 @@ export default function InteractiveSeatingChart({
             </CardContent>
           </Card>
 
-          {/* Legend */}
+          {/* Airline-Style Seat Legend */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Legend</CardTitle>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Seat Guide
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {priceCategories.map((category) => (
-                <div key={category.id} className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-full border"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <span className="text-xs">{category.name}</span>
-                  <span className="text-xs text-gray-600 ml-auto">${category.basePrice}</span>
-                </div>
-              ))}
+            <CardContent className="space-y-3">
+              {/* Seat Categories */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-700">Seat Categories</p>
+                {priceCategories.map((category) => (
+                  <div key={category.id} className="flex items-center gap-2">
+                    <div 
+                      className="w-5 h-4 rounded-sm border border-gray-300 relative"
+                      style={{ backgroundColor: category.color }}
+                    >
+                      {category.isPremium && (
+                        <span className="absolute top-0 left-0 text-yellow-500 text-xs leading-none">★</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-xs font-medium">{category.name}</span>
+                      <span className="text-xs text-gray-600 ml-2">${category.basePrice}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
               
               <Separator className="my-2" />
               
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-red-600" />
-                  <span>Sold</span>
+              {/* Seat Status */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-700">Seat Status</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-4 rounded-sm bg-green-600 border border-gray-300 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">A1</span>
+                    </div>
+                    <span>Available - Click to select</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-4 rounded-sm bg-blue-600 border border-gray-300 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">A2</span>
+                    </div>
+                    <span>Selected by you</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-4 rounded-sm bg-red-600 border border-gray-300 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">A3</span>
+                    </div>
+                    <span>Sold / Unavailable</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-4 rounded-sm bg-yellow-500 border border-gray-300 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">A4</span>
+                    </div>
+                    <span>Reserved</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-4 rounded-sm bg-purple-600 border border-gray-300 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">A5</span>
+                    </div>
+                    <span>Held by another user</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-yellow-500" />
-                  <span>Reserved</span>
+              </div>
+              
+              <Separator className="my-2" />
+              
+              {/* Seat Features */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-700">Seat Features</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-500 text-sm">★</span>
+                    <span>Premium seat with extra amenities</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-600 text-sm">♿</span>
+                    <span>ADA accessible seating</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600 text-sm">●</span>
+                    <span>Round table seating (5 seats)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600 text-sm">■</span>
+                    <span>Square table seating (4 seats)</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-purple-600" />
-                  <span>Held</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-green-600" />
-                  <span>Selected</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4" />
-                  <span>ADA Accessible</span>
-                </div>
+              </div>
+              
+              <Separator className="my-2" />
+              
+              {/* Instructions */}
+              <div className="bg-blue-50 p-2 rounded-md">
+                <p className="text-xs text-blue-800">
+                  <strong>How to select seats:</strong><br/>
+                  1. Click on available seats to select<br/>
+                  2. Premium tables must be booked entirely<br/>
+                  3. Selected seats are held for 15 minutes<br/>
+                  4. Complete purchase to confirm booking
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -772,17 +1300,128 @@ export default function InteractiveSeatingChart({
                   width={800}
                   height={600}
                   className={`w-full h-full ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  onClick={handleCanvasClick}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
                   onMouseLeave={() => {
                     setIsDragging(false);
                     setHoveredSeat(null);
+                    setTooltipData(null);
                   }}
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                 />
+                
+                {/* Airline-Style Seat Tooltip */}
+                {tooltipData && tooltipData.visible && (
+                  <div 
+                    className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-xs pointer-events-none"
+                    style={{
+                      left: Math.min(tooltipData.x + 10, 800 - 250),
+                      top: Math.max(tooltipData.y - 80, 10),
+                      transform: tooltipData.x > 600 ? 'translateX(-100%)' : 'translateX(0)'
+                    }}
+                  >
+                    <div className="space-y-2">
+                      {/* Seat Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-5 h-4 rounded-sm border border-gray-300 flex items-center justify-center"
+                            style={{ backgroundColor: tooltipData.seat.categoryColor }}
+                          >
+                            <span className="text-white text-xs font-bold">
+                              {tooltipData.seat.seatNumber}
+                            </span>
+                          </div>
+                          <span className="font-medium text-sm">
+                            Seat {tooltipData.seat.seatNumber}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {tooltipData.seat.isPremium && (
+                            <span className="text-yellow-500 text-sm">★</span>
+                          )}
+                          {tooltipData.seat.isADA && (
+                            <span className="text-blue-600 text-sm">♿</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Seat Details */}
+                      <div className="text-xs text-gray-600 space-y-1">
+                        {tooltipData.seat.section && (
+                          <div>Section: <span className="font-medium">{tooltipData.seat.section}</span></div>
+                        )}
+                        {tooltipData.seat.row && (
+                          <div>Row: <span className="font-medium">{tooltipData.seat.row}</span></div>
+                        )}
+                        <div>Category: <span className="font-medium">{tooltipData.seat.category}</span></div>
+                        {tooltipData.seat.tableType && (
+                          <div>Table: <span className="font-medium">{tooltipData.seat.tableType} ({tooltipData.seat.tableCapacity} seats)</span></div>
+                        )}
+                        {tooltipData.seat.viewQuality && (
+                          <div>View: <span className="font-medium capitalize">{tooltipData.seat.viewQuality}</span></div>
+                        )}
+                      </div>
+                      
+                      {/* Price */}
+                      <div className="border-t pt-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Price:</span>
+                          <span className="text-lg font-bold text-green-600">
+                            ${tooltipData.seat.price}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Amenities */}
+                      {tooltipData.seat.amenities && tooltipData.seat.amenities.length > 0 && (
+                        <div className="border-t pt-2">
+                          <div className="text-xs text-gray-600 mb-1">Amenities:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {tooltipData.seat.amenities.map((amenity, index) => (
+                              <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                {amenity}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Status */}
+                      <div className="border-t pt-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            tooltipData.seat.status === 'available' ? 'bg-green-500' :
+                            tooltipData.seat.status === 'selected' ? 'bg-blue-500' :
+                            tooltipData.seat.status === 'sold' ? 'bg-red-500' :
+                            tooltipData.seat.status === 'reserved' ? 'bg-yellow-500' :
+                            'bg-purple-500'
+                          }`} />
+                          <span className="text-xs capitalize">
+                            {tooltipData.seat.status === 'available' ? 'Available - Click to select' :
+                             tooltipData.seat.status === 'selected' ? 'Selected by you' :
+                             tooltipData.seat.status === 'sold' ? 'Sold' :
+                             tooltipData.seat.status === 'reserved' ? 'Reserved' :
+                             'Held by another user'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Premium Table Info */}
+                      {tooltipData.seat.isPremium && tooltipData.seat.tableId && (
+                        <div className="border-t pt-2 bg-yellow-50 rounded p-2">
+                          <div className="text-xs text-yellow-800">
+                            <strong>Premium Table:</strong> Must book entire table ({tooltipData.seat.tableCapacity} seats)
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Loading overlay */}
                 {!imageRef.current && (

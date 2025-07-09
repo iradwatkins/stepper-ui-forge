@@ -17,14 +17,34 @@ import { EmailService } from "@/lib/services/EmailService";
 import { seatingService } from "@/lib/services/SeatingService";
 import { toast } from "sonner";
 
+interface SeatDetails {
+  id: string;
+  seatNumber: string;
+  section?: string;
+  row?: string;
+  price: number;
+  category: string;
+  categoryColor: string;
+  isPremium?: boolean;
+  tableType?: 'round' | 'square';
+  tableCapacity?: number;
+  amenities?: string[];
+  isADA?: boolean;
+}
+
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   eventId?: string;
   selectedSeats?: string[]; // For seat-based checkout
+  seatDetails?: SeatDetails[]; // Detailed seat information
+  eventTitle?: string;
+  eventDate?: string;
+  eventTime?: string;
+  eventLocation?: string;
 }
 
-export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: CheckoutModalProps) {
+export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDetails, eventTitle, eventDate, eventTime, eventLocation }: CheckoutModalProps) {
   const { items, total, subtotal, fees, clearCart } = useCart();
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +54,8 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: Check
   const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string; available: boolean }[]>([]);
   const [seatCheckoutMode, setSeatCheckoutMode] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [seatSubtotal, setSeatSubtotal] = useState(0);
+  const [seatTotal, setSeatTotal] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -46,13 +68,23 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: Check
       const isSeatingCheckout = selectedSeats && selectedSeats.length > 0 && eventId;
       setSeatCheckoutMode(isSeatingCheckout);
       
+      // Calculate seat pricing
+      if (isSeatingCheckout && seatDetails) {
+        const subtotal = seatDetails.reduce((sum, seat) => sum + seat.price, 0);
+        const processingFee = Math.max(subtotal * 0.03, 1.50); // 3% with minimum $1.50
+        const serviceFee = seatDetails.length * 2; // $2 per seat
+        
+        setSeatSubtotal(subtotal);
+        setSeatTotal(subtotal + processingFee + serviceFee);
+      }
+      
       // Get session ID for seat checkout
       if (isSeatingCheckout) {
         const storedSessionId = localStorage.getItem('seatHoldSessionId');
         setSessionId(storedSessionId);
       }
     }
-  }, [isOpen, user, selectedSeats, eventId]);
+  }, [isOpen, user, selectedSeats, eventId, seatDetails]);
 
   const handleCheckout = async () => {
     // Check if we have items to purchase (cart or seats)
@@ -82,11 +114,23 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: Check
       const orderId = `order_${Date.now()}_${user?.id || 'guest'}`;
       
       const paymentData = {
-        amount: total,
+        amount: seatCheckoutMode ? seatTotal : total,
         gateway: selectedGateway,
         orderId,
         customerEmail,
-        items: items.map(item => ({
+        items: seatCheckoutMode ? seatDetails?.map(seat => ({
+          seatId: seat.id,
+          seatNumber: seat.seatNumber,
+          section: seat.section,
+          row: seat.row,
+          price: seat.price,
+          category: seat.category,
+          eventId: eventId!,
+          eventTitle: eventTitle || 'Event',
+          isPremium: seat.isPremium,
+          tableType: seat.tableType,
+          amenities: seat.amenities
+        })) || [] : items.map(item => ({
           ticketTypeId: item.ticketTypeId,
           eventId: item.eventId,
           quantity: item.quantity,
@@ -213,46 +257,164 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: Check
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Cart Items */}
+          {/* Order Summary */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Order Summary</CardTitle>
-              <CardDescription>{items.length} item{items.length !== 1 ? 's' : ''} in your cart</CardDescription>
+              <CardDescription>
+                {seatCheckoutMode ? (
+                  <>
+                    {seatDetails?.length || 0} seat{(seatDetails?.length || 0) !== 1 ? 's' : ''} selected
+                    {eventTitle && (
+                      <span className="ml-2 text-xs">for {eventTitle}</span>
+                    )}
+                  </>
+                ) : (
+                  <>{items.length} item{items.length !== 1 ? 's' : ''} in your cart</>
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {items.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Your cart is empty</p>
-              ) : (
-                items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-start p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{item.title}</h4>
-                      <p className="text-sm text-muted-foreground">{item.eventTitle}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.eventDate} at {item.eventTime}
-                      </p>
-                      {item.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                      )}
+              {/* Seat-based Checkout */}
+              {seatCheckoutMode && seatDetails ? (
+                <div className="space-y-4">
+                  {/* Event Details */}
+                  {eventTitle && (
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-blue-900">{eventTitle}</h4>
+                      <div className="text-sm text-blue-800 mt-1">
+                        {eventDate && eventTime && (
+                          <p>{eventDate} at {eventTime}</p>
+                        )}
+                        {eventLocation && (
+                          <p className="text-xs mt-1">{eventLocation}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <Badge variant="secondary" className="mb-1">
-                        Qty: {item.quantity}
-                      </Badge>
-                      <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
-                    </div>
+                  )}
+                  
+                  {/* Seat Details */}
+                  <div className="space-y-2">
+                    <h5 className="font-medium text-sm text-gray-700">Selected Seats:</h5>
+                    {seatDetails.map((seat) => (
+                      <div key={seat.id} className="flex justify-between items-center p-3 border rounded-lg bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-6 h-5 rounded-sm border border-gray-300 flex items-center justify-center"
+                            style={{ backgroundColor: seat.categoryColor }}
+                          >
+                            <span className="text-white text-xs font-bold">
+                              {seat.seatNumber}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">
+                                Seat {seat.seatNumber}
+                              </span>
+                              {seat.isPremium && (
+                                <span className="text-yellow-500 text-xs">★</span>
+                              )}
+                              {seat.isADA && (
+                                <span className="text-blue-600 text-xs">♿</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {seat.section && <span>Section {seat.section}</span>}
+                              {seat.row && <span className="ml-2">Row {seat.row}</span>}
+                              <span className="ml-2">{seat.category}</span>
+                            </div>
+                            {seat.tableType && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                {seat.tableType} table ({seat.tableCapacity} seats)
+                              </div>
+                            )}
+                            {seat.amenities && seat.amenities.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {seat.amenities.map((amenity, index) => (
+                                  <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                    {amenity}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-sm">${seat.price.toFixed(2)}</p>
+                          {seat.isPremium && (
+                            <p className="text-xs text-yellow-600">Premium</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))
-              )}
-
-              {items.length > 0 && (
-                <>
+                  
                   <Separator />
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal:</span>
-                      <span>${subtotal.toFixed(2)}</span>
+                      <span>${seatSubtotal.toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Processing Fee (3%):</span>
+                      <span>${Math.max(seatSubtotal * 0.03, 1.50).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Service Fee (${seatDetails.length} seats):</span>
+                      <span>${(seatDetails.length * 2).toFixed(2)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-semibold">
+                      <span>Total:</span>
+                      <span>${seatTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Regular Cart Items */
+                <>
+                  {items.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Your cart is empty</p>
+                  ) : (
+                    items.map((item) => (
+                      <div key={item.id} className="flex justify-between items-start p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{item.title}</h4>
+                          <p className="text-sm text-muted-foreground">{item.eventTitle}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.eventDate} at {item.eventTime}
+                          </p>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="secondary" className="mb-1">
+                            Qty: {item.quantity}
+                          </Badge>
+                          <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+        
+                  {items.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Subtotal:</span>
+                          <span>${subtotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+              
+              {/* Continue with regular cart total display */}
+              {!seatCheckoutMode && items.length > 0 && (
                     <div className="flex justify-between text-sm">
                       <span>Processing Fee:</span>
                       <span>${fees.toFixed(2)}</span>
@@ -268,7 +430,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: Check
             </CardContent>
           </Card>
 
-          {items.length > 0 && (
+          {(items.length > 0 || seatCheckoutMode) && (
             <>
               {/* Customer Information */}
               <Card>
@@ -342,7 +504,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: Check
             <Button variant="outline" onClick={onClose} disabled={isProcessing}>
               Cancel
             </Button>
-            {items.length > 0 && (
+            {(items.length > 0 || seatCheckoutMode) && (
               <Button onClick={handleCheckout} disabled={isProcessing || !customerEmail}>
                 {isProcessing ? (
                   <>
@@ -350,7 +512,17 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats }: Check
                     Processing...
                   </>
                 ) : (
-                  `Complete Purchase - $${total.toFixed(2)}`
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Complete Purchase - ${
+                      seatCheckoutMode ? seatTotal.toFixed(2) : total.toFixed(2)
+                    }
+                    {seatCheckoutMode && seatDetails && (
+                      <span className="ml-2 text-xs opacity-80">
+                        ({seatDetails.length} seat{seatDetails.length !== 1 ? 's' : ''})
+                      </span>
+                    )}
+                  </>
                 )}
               </Button>
             )}
