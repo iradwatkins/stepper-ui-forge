@@ -25,7 +25,7 @@ import {
   Eye,
   Settings
 } from 'lucide-react';
-import { SeatingLayoutManager } from '@/components/seating';
+import SeatingLayoutManager from '@/components/seating/SeatingLayoutManager';
 import { toast } from 'sonner';
 
 interface VenueLayout {
