@@ -27,12 +27,11 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   calculateImageDrawInfo,
-  canvasToPercentageCoordinates,
+  clientToPercentageCoordinates,
   percentageToCanvasCoordinates,
-  findSeatAtPosition,
   ImageDrawInfo,
   Point
-} from '@/lib/utils/canvasCoordinates';
+} from '@/lib/utils/coordinateUtils';
 
 // Types
 export interface SeatData {
@@ -304,13 +303,12 @@ export default function PremiumSeatingManager({
     const rect = canvas.getBoundingClientRect();
     
     // Use centralized coordinate conversion
-    const percentageCoords = canvasToPercentageCoordinates(
+    const percentageCoords = clientToPercentageCoordinates(
       event.clientX,
       event.clientY,
-      rect,
+      canvas,
       imageDrawInfo,
-      zoom,
-      pan
+      { zoom, pan }
     );
     
     // Check if click is valid (within image bounds)
@@ -320,17 +318,11 @@ export default function PremiumSeatingManager({
     }
     
     // Check if clicking on existing seat (remove it)
-    const clickedSeat = findSeatAtPosition(
-      percentageCoords.x,
-      percentageCoords.y,
-      seats.map(seat => ({
-        id: seat.id,
-        x: seat.x,
-        y: seat.y,
-        seatNumber: seat.seatNumber
-      })),
-      3 // 3% tolerance
-    );
+    const clickedSeat = seats.find(seat => {
+      const dx = Math.abs(seat.x - percentageCoords.x);
+      const dy = Math.abs(seat.y - percentageCoords.y);
+      return dx < 3 && dy < 3; // 3% tolerance
+    });
 
     if (clickedSeat) {
       // Remove seat
