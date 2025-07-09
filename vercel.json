@@ -4,8 +4,8 @@
   "framework": "vite",
   "installCommand": "npm ci --only=production",
   "env": {
-    "VITE_SUPABASE_URL": "@vite_supabase_url",
-    "VITE_SUPABASE_ANON_KEY": "@vite_supabase_anon_key",
+    "VITE_SUPABASE_URL": "https://aszzhlgwfbijaotfddsh.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzenpobGd3ZmJpamFvdGZkZHNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExNDMwODgsImV4cCI6MjA2NjcxOTA4OH0.ilfdDmbwme7oACe4TxsAJVko3O-DgPl-QWIHKbfZop0",
     "VITE_PAYPAL_CLIENT_ID": "@vite_paypal_client_id",
     "VITE_PAYPAL_ENVIRONMENT": "production",
     "VITE_SQUARE_APPLICATION_ID": "@vite_square_application_id", 
