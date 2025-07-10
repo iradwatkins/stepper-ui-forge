@@ -115,27 +115,19 @@ export const useWizardNavigation = ({
       },
       {
         id: 'seating-setup',
-        title: 'Seating Chart',
-        description: 'Upload venue layout and place seats',
+        title: 'Venue & Seating',
+        description: 'Upload venue layout and configure seating',
         icon: 'MousePointer',
         isRequired: (eventType) => eventType === 'premium',
         canNavigateForward: (data) => {
-          // Check if venue image is uploaded AND seats have been placed
-          return !!(
-            (data.venueImageUrl || data.hasVenueImage) && 
-            data.seats && 
-            data.seats.length > 0
-          );
+          // More lenient validation - just require venue image OR some progress
+          const hasVenueImage = !!(data.venueImageUrl || data.hasVenueImage);
+          const hasSeats = !!(data.seats && data.seats.length > 0);
+          const hasCategories = !!(data.seatCategories && data.seatCategories.length > 0);
+          
+          // Allow forward if at least venue image is uploaded, even without seats
+          return hasVenueImage || hasSeats || hasCategories;
         },
-        canNavigateBackward: () => true
-      },
-      {
-        id: 'seating-finalize',
-        title: 'Seating: Finalize',
-        description: 'Review venue information and finalize setup',
-        icon: 'CheckCircle',
-        isRequired: (eventType) => eventType === 'premium',
-        canNavigateForward: () => true,
         canNavigateBackward: () => true
       },
       {

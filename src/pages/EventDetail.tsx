@@ -342,6 +342,29 @@ const EventDetail = () => {
     }
   };
 
+  // Convert selected seat IDs to detailed seat objects for checkout
+  const getSelectedSeatDetails = () => {
+    return selectedSeatIds.map(seatId => {
+      const seat = seats.find(s => s.id === seatId);
+      if (!seat) return null;
+      
+      return {
+        id: seat.id,
+        seatNumber: seat.seatNumber,
+        section: seat.section,
+        row: seat.row,
+        price: seat.price,
+        category: seat.category,
+        categoryColor: seat.categoryColor,
+        isPremium: seat.isPremium,
+        tableType: seat.tableType,
+        tableCapacity: seat.tableCapacity,
+        amenities: seat.amenities,
+        isADA: seat.isADA
+      };
+    }).filter(Boolean);
+  };
+
   // Handle simple event registration (free events)
   const handleSimpleEventRegistration = () => {
     if (!event) return;
@@ -712,6 +735,11 @@ const EventDetail = () => {
         onClose={() => setIsCheckoutOpen(false)}
         eventId={event?.id}
         selectedSeats={selectedSeatIds}
+        seatDetails={getSelectedSeatDetails()}
+        eventTitle={event?.title}
+        eventDate={event?.date}
+        eventTime={event?.time}
+        eventLocation={event?.venue_name}
       />
 
       <ImageGalleryModal

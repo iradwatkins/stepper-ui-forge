@@ -151,12 +151,12 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           const order = await OrderService.createOrder({
             customer_email: customerEmail,
             customer_name: user?.user_metadata?.full_name || null,
-            total_amount: total,
+            total_amount: seatCheckoutMode ? seatTotal : total,
             payment_intent_id: result.transactionId || null,
             payment_method: selectedGateway,
             order_status: 'completed',
             payment_status: 'completed'
-          }, items);
+          }, seatCheckoutMode ? [] : items);
 
           console.log('Order created:', order);
 

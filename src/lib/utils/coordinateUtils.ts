@@ -83,7 +83,19 @@ export function clientToPercentageCoordinates(
   imageDrawInfo: ImageDrawInfo,
   transform: CanvasTransform
 ): Point {
+  // Input validation
+  if (!canvas || !imageDrawInfo) {
+    console.error('Invalid canvas or imageDrawInfo provided to coordinate conversion');
+    return { x: -1, y: -1 }; // Return invalid coordinates
+  }
+
   const rect = canvas.getBoundingClientRect();
+  
+  // Validate canvas dimensions
+  if (rect.width <= 0 || rect.height <= 0 || canvas.width <= 0 || canvas.height <= 0) {
+    console.error('Invalid canvas dimensions');
+    return { x: -1, y: -1 };
+  }
   
   // Account for canvas scaling (CSS vs actual canvas dimensions)
   const scaleX = canvas.width / rect.width;
@@ -94,40 +106,47 @@ export function clientToPercentageCoordinates(
   const rawCanvasY = (clientY - rect.top) * scaleY;
   
   // Apply transform (pan and zoom)
-  const canvasX = (rawCanvasX - transform.pan.x) / transform.zoom;
-  const canvasY = (rawCanvasY - transform.pan.y) / transform.zoom;
+  const zoom = Math.max(0.1, transform.zoom); // Prevent division by zero
+  const canvasX = (rawCanvasX - transform.pan.x) / zoom;
+  const canvasY = (rawCanvasY - transform.pan.y) / zoom;
   
   // Convert to image coordinates (relative to actual image area)
   const imageX = (canvasX - imageDrawInfo.drawX) / imageDrawInfo.scaleX;
   const imageY = (canvasY - imageDrawInfo.drawY) / imageDrawInfo.scaleY;
   
   // Convert to percentage coordinates (0-100)
-  // Note: imageDrawInfo.drawWidth / imageDrawInfo.scaleX = original image width
-  // Note: imageDrawInfo.drawHeight / imageDrawInfo.scaleY = original image height
   const originalImageWidth = imageDrawInfo.drawWidth / imageDrawInfo.scaleX;
   const originalImageHeight = imageDrawInfo.drawHeight / imageDrawInfo.scaleY;
+  
+  // Validate image dimensions
+  if (originalImageWidth <= 0 || originalImageHeight <= 0) {
+    console.error('Invalid image dimensions for coordinate conversion');
+    return { x: -1, y: -1 };
+  }
   
   const percentageX = (imageX / originalImageWidth) * 100;
   const percentageY = (imageY / originalImageHeight) * 100;
   
-  // Debug logging
-  console.log('Coordinate conversion debug:', {
-    clientX, clientY,
-    canvasRect: { width: rect.width, height: rect.height },
-    canvasSize: { width: canvas.width, height: canvas.height },
-    scaleFactors: { scaleX, scaleY },
-    rawCanvas: { x: rawCanvasX, y: rawCanvasY },
-    transformedCanvas: { x: canvasX, y: canvasY },
-    imageCoords: { x: imageX, y: imageY },
-    originalImageSize: { width: originalImageWidth, height: originalImageHeight },
-    percentageResult: { x: percentageX, y: percentageY }
-  });
+  // Debug logging (disabled in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Coordinate conversion debug:', {
+      clientX, clientY,
+      canvasRect: { width: rect.width, height: rect.height },
+      canvasSize: { width: canvas.width, height: canvas.height },
+      scaleFactors: { scaleX, scaleY },
+      rawCanvas: { x: rawCanvasX, y: rawCanvasY },
+      transformedCanvas: { x: canvasX, y: canvasY },
+      imageCoords: { x: imageX, y: imageY },
+      originalImageSize: { width: originalImageWidth, height: originalImageHeight },
+      percentageResult: { x: percentageX, y: percentageY }
+    });
+  }
   
-  // Clamp to valid range
-  return {
-    x: Math.max(0, Math.min(100, percentageX)),
-    y: Math.max(0, Math.min(100, percentageY))
-  };
+  // Validate and clamp to valid range
+  const finalX = isNaN(percentageX) ? -1 : Math.max(-5, Math.min(105, percentageX)); // Allow slight overflow for edge detection
+  const finalY = isNaN(percentageY) ? -1 : Math.max(-5, Math.min(105, percentageY));
+  
+  return { x: finalX, y: finalY };
 }
 
 /**
@@ -138,9 +157,27 @@ export function percentageToCanvasCoordinates(
   percentageY: number,
   imageDrawInfo: ImageDrawInfo
 ): Point {
+  // Input validation
+  if (!imageDrawInfo || imageDrawInfo.scaleX === 0 || imageDrawInfo.scaleY === 0) {
+    console.error('Invalid imageDrawInfo provided to percentage conversion');
+    return { x: 0, y: 0 };
+  }
+
+  // Validate percentage inputs
+  if (isNaN(percentageX) || isNaN(percentageY)) {
+    console.error('Invalid percentage coordinates:', { percentageX, percentageY });
+    return { x: 0, y: 0 };
+  }
+
   // Convert percentage to image coordinates
   const imageWidth = imageDrawInfo.drawWidth / imageDrawInfo.scaleX;
   const imageHeight = imageDrawInfo.drawHeight / imageDrawInfo.scaleY;
+  
+  // Validate image dimensions
+  if (imageWidth <= 0 || imageHeight <= 0) {
+    console.error('Invalid computed image dimensions:', { imageWidth, imageHeight });
+    return { x: 0, y: 0 };
+  }
   
   const imageX = (percentageX / 100) * imageWidth;
   const imageY = (percentageY / 100) * imageHeight;
@@ -149,10 +186,11 @@ export function percentageToCanvasCoordinates(
   const canvasX = imageDrawInfo.drawX + (imageX * imageDrawInfo.scaleX);
   const canvasY = imageDrawInfo.drawY + (imageY * imageDrawInfo.scaleY);
   
-  return {
-    x: canvasX,
-    y: canvasY
-  };
+  // Validate final coordinates
+  const finalX = isNaN(canvasX) ? 0 : canvasX;
+  const finalY = isNaN(canvasY) ? 0 : canvasY;
+  
+  return { x: finalX, y: finalY };
 }
 
 /**

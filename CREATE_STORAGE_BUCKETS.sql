@@ -92,4 +92,4 @@ WHERE id IN ('venue-images', 'seating-charts');
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
 FROM pg_policies 
 WHERE tablename = 'objects' AND schemaname = 'storage'
-AND policyname LIKE '%venue%' OR policyname LIKE '%seating%';
+AND (policyname LIKE '%venue%' OR policyname LIKE '%seating%');

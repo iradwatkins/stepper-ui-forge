@@ -163,7 +163,9 @@ export default function PremiumSeatingManager({
     img.onload = () => {
       setLoadedImage(img);
       setImageLoading(false);
-      console.log('✅ Venue image loaded:', img.width, 'x', img.height);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Venue image loaded:', img.width, 'x', img.height);
+      }
     };
     
     img.onerror = () => {
@@ -213,7 +215,9 @@ export default function PremiumSeatingManager({
     );
     setImageDrawInfo(newImageDrawInfo);
     
-    console.log('📐 Updated image draw info:', newImageDrawInfo);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📐 Updated image draw info:', newImageDrawInfo);
+    }
   }, [loadedImage]);
 
   // Update image draw info when canvas or image changes
@@ -313,7 +317,9 @@ export default function PremiumSeatingManager({
     
     // Check if click is valid (within image bounds)
     if (percentageCoords.x < 0 || percentageCoords.y < 0) {
-      console.log('🚫 Click outside image bounds');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚫 Click outside image bounds');
+      }
       return;
     }
     
@@ -329,18 +335,24 @@ export default function PremiumSeatingManager({
       const newSeats = seats.filter(s => s.id !== clickedSeat.id);
       setSeats(newSeats);
       onSeatingConfigurationChange(newSeats, categories);
-      console.log(`🗑️ Removed seat: ${clickedSeat.seatNumber}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🗑️ Removed seat: ${clickedSeat.seatNumber}`);
+      }
     } else {
       // Check if we can add more seats
       if (totalSeatsNeeded > 0 && seats.length >= totalSeatsNeeded) {
-        console.warn(`⚠️ Cannot place more seats. Maximum ${totalSeatsNeeded} seats allowed.`);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`⚠️ Cannot place more seats. Maximum ${totalSeatsNeeded} seats allowed.`);
+        }
         return;
       }
       
       // Add new seat
       const category = categories.find(c => c.id === selectedCategory);
       if (!category) {
-        console.warn('⚠️ No category selected for seat placement');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ No category selected for seat placement');
+        }
         return;
       }
 
@@ -362,7 +374,9 @@ export default function PremiumSeatingManager({
       setSeats(newSeats);
       onSeatingConfigurationChange(newSeats, categories);
       
-      console.log(`✅ Placed seat: ${newSeat.seatNumber} at (${percentageCoords.x.toFixed(1)}%, ${percentageCoords.y.toFixed(1)}%)`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ Placed seat: ${newSeat.seatNumber} at (${percentageCoords.x.toFixed(1)}%, ${percentageCoords.y.toFixed(1)}%)`);
+      }
     }
   }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, loadedImage, imageDrawInfo, totalSeatsNeeded]);
 

@@ -124,10 +124,10 @@ export const SeatingChartWizard = ({
     
     // Load venue image
     if (formData.venueImageUrl) {
-      console.log('Loading venue image from form data:', formData.venueImageUrl.substring(0, 50) + '...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Loading venue image from form data:', formData.venueImageUrl.substring(0, 50) + '...');
+      }
       setChartPreview(formData.venueImageUrl);
-    } else {
-      console.log('No venue image found in form data');
     }
     
     // Load seats and categories with proper type validation
@@ -222,11 +222,15 @@ export const SeatingChartWizard = ({
       const venueId = `venue_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       
       // Upload image to Supabase Storage
-      console.log('🌅 Uploading venue image to Supabase Storage...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🌅 Uploading venue image to Supabase Storage...');
+      }
       const uploadResult = await imageUploadService.uploadVenueImage(file, venueId);
       
       if (uploadResult.success && uploadResult.url) {
-        console.log('✅ Venue image uploaded successfully:', uploadResult.url);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Venue image uploaded successfully:', uploadResult.url);
+        }
         
         // Set both the permanent URL and preview
         setChartPreview(uploadResult.url);
@@ -240,14 +244,15 @@ export const SeatingChartWizard = ({
         form.trigger(['venueImageUrl', 'hasVenueImage']);
         
         // Log form data for debugging
-        const currentValues = form.getValues();
-        console.log('✅ Supabase upload - Form data updated:', {
-          venueImageUrl: currentValues.venueImageUrl ? 'SET (Supabase URL)' : 'NOT_SET',
-          hasVenueImage: currentValues.hasVenueImage,
-          // venueId: venueId,
-          showOnlyTab,
-          onStepAdvance: !!onStepAdvance
-        });
+        if (process.env.NODE_ENV === 'development') {
+          const currentValues = form.getValues();
+          console.log('✅ Supabase upload - Form data updated:', {
+            venueImageUrl: currentValues.venueImageUrl ? 'SET (Supabase URL)' : 'NOT_SET',
+            hasVenueImage: currentValues.hasVenueImage,
+            showOnlyTab,
+            onStepAdvance: !!onStepAdvance
+          });
+        }
         
         // Move to configuration step for internal wizard (no auto-advance in combined mode)
         setCurrentStep('configure');
@@ -339,12 +344,14 @@ export const SeatingChartWizard = ({
 
   const handleEnhancedSeatingConfigured = (seats: SeatData[], categories: EnhancedSeatCategory[]) => {
     try {
-      console.log('🪑 Saving seating configuration:', {
-        seatCount: seats.length,
-        categoryCount: categories.length,
-        showOnlyTab,
-        hasOnStepAdvance: !!onStepAdvance
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🪑 Saving seating configuration:', {
+          seatCount: seats.length,
+          categoryCount: categories.length,
+          showOnlyTab,
+          hasOnStepAdvance: !!onStepAdvance
+        });
+      }
 
       setEnhancedSeats(seats);
       setEnhancedCategories(categories);
@@ -363,13 +370,17 @@ export const SeatingChartWizard = ({
       setPlacedSeats(legacySeats);
       
       // Persist to form data for state management
-      console.log('💾 Persisting seating data to form...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('💾 Persisting seating data to form...');
+      }
       form.setValue('seats', seats);
       form.setValue('seatCategories', categories);
       
       // Trigger form validation to update navigation state
       const triggerResult = form.trigger(['seats', 'seatCategories', 'venueImageUrl', 'hasVenueImage']);
-      console.log('🔍 Form validation triggered, result:', triggerResult);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Form validation triggered, result:', triggerResult);
+      }
       
       // Force a form value update to trigger wizard navigation recalculation
       setTimeout(() => {
