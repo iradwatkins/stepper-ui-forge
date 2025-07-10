@@ -19,7 +19,8 @@ import {
   MapPin
 } from 'lucide-react';
 import { seatingService } from '@/lib/services/SeatingService';
-import PremiumSeatingManager, { SeatData, SeatCategory as EnhancedSeatCategory } from '@/components/seating/PremiumSeatingManager';
+import PremiumSeatingManager from '@/components/seating/PremiumSeatingManager';
+import { SeatData, SeatCategory as EnhancedSeatCategory } from '@/types/seating';
 import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 

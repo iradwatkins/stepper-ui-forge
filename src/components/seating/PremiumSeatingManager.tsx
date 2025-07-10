@@ -32,36 +32,7 @@ import {
   ImageDrawInfo,
   Point
 } from '@/lib/utils/coordinateUtils';
-
-// Types
-export interface SeatData {
-  id: string;
-  x: number; // Percentage coordinates (0-100)
-  y: number; // Percentage coordinates (0-100)
-  seatNumber: string;
-  row?: string;
-  section?: string;
-  price: number;
-  category: string;
-  categoryColor: string;
-  isADA: boolean;
-  status: 'available' | 'selected' | 'sold' | 'reserved' | 'held';
-  amenities?: string[];
-  viewQuality?: 'excellent' | 'good' | 'fair' | 'limited';
-  tableId?: string;
-  groupSize?: number;
-  isPremium?: boolean;
-}
-
-export interface SeatCategory {
-  id: string;
-  name: string;
-  color: string;
-  basePrice: number;
-  maxCapacity: number;
-  amenities: string[];
-  viewQuality: 'excellent' | 'good' | 'fair' | 'limited';
-}
+import { SeatData, SeatCategory } from '@/types/seating';
 
 interface PremiumSeatingManagerProps {
   venueImageUrl?: string;
