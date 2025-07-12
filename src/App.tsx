@@ -49,6 +49,7 @@ import ReferralCodes from "./pages/dashboard/ReferralCodes";
 import Earnings from "./pages/dashboard/Earnings";
 import EventAssignments from "./pages/dashboard/EventAssignments";
 import TestPremiumEvent from "./pages/TestPremiumEvent";
+import TestSeating from "./pages/TestSeating";
 import Schedule from "./pages/dashboard/Schedule";
 import AudienceInsights from "./pages/dashboard/AudienceInsights";
 import VenueManagement from "./pages/dashboard/VenueManagement";
@@ -99,6 +100,11 @@ const App = () => (
                 <Route path="/test-premium-event" element={
                   <ProtectedRoute>
                     <TestPremiumEvent />
+                  </ProtectedRoute>
+                } />
+                <Route path="/test-seating" element={
+                  <ProtectedRoute>
+                    <TestSeating />
                   </ProtectedRoute>
                 } />
                 <Route path="/create-event" element={

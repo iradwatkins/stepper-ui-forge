@@ -452,10 +452,14 @@ const EventDetail = () => {
     return "Free";
   };
 
-  // Get clean description without price tag
+  // Get clean description without price tag and seating data
   const getCleanDescription = () => {
     if (!event.description) return null;
-    return event.description.replace(/\[PRICE:.*?\]/, '').trim();
+    return event.description
+      .replace(/\[PRICE:.*?\]/, '')
+      .replace(/\[SEATING_DATA:.*?\]$/, '')
+      .replace(/\[SEATING_CONFIG:.*?\]$/, '')
+      .trim();
   };
 
   // Handle quantity changes
@@ -526,16 +530,77 @@ const EventDetail = () => {
     <div className="min-h-screen bg-white font-sans">
       <main className="py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          {/* Two-column grid layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          
+          {/* Header Section - Event Info */}
+          {event.event_type === 'premium' && showSeating ? (
+            <div className="space-y-6">
+              {/* Compact header for seating mode */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-200">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
+                  <div className="mt-2 flex items-center text-gray-600 text-sm">
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    <span>{event.date} {event.time}</span>
+                    <span className="mx-2">•</span>
+                    <MapPinIcon className="w-4 h-4 mr-2" />
+                    <span>{event.location}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Badge className="bg-purple-100 text-purple-800">Premium Event</Badge>
+                  <Button 
+                    onClick={() => setShowSeating(false)}
+                    variant="outline"
+                  >
+                    ← Back to Event Details
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Full-width seating chart */}
+              <div className="w-full">
+                {venueImageUrl && seats.length > 0 ? (
+                  <CustomerSeatingChart
+                    venueImageUrl={venueImageUrl}
+                    seats={seats}
+                    priceCategories={priceCategories}
+                    selectedSeats={selectedSeatIds}
+                    onSeatSelection={handleInteractiveSeatSelection}
+                    onPurchaseClick={handleInteractivePurchase}
+                    maxSelectableSeats={8}
+                    showPurchaseButton={true}
+                    disabled={false}
+                    className="w-full min-h-[600px]"
+                    eventType="premium"
+                    eventId={event.id}
+                    enableHoldTimer={true}
+                    holdDurationMinutes={15}
+                    onHoldExpire={() => {
+                      setSelectedSeats([]);
+                      toast({
+                        title: "Seat Hold Expired",
+                        description: "Your selected seats have been released. Please select again.",
+                        variant: "destructive"
+                      });
+                    }}
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">Loading seating chart...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
             
-            {/* Left Column - Poster-style Event Image */}
-            <div className="w-full">
+            {/* Left - Event Image (Even Smaller) */}
+            <div className="lg:col-span-1">
               <div className="relative">
                 <img 
                   src={primaryImage} 
                   alt={event.title}
-                  className="w-full h-auto object-cover rounded-lg shadow-lg"
+                  className="w-full h-32 lg:h-48 object-cover rounded-lg shadow-lg"
                 />
                 
                 {/* Image Gallery Button */}
@@ -545,16 +610,16 @@ const EventDetail = () => {
                       setGalleryStartIndex(0);
                       setIsGalleryOpen(true);
                     }}
-                    className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-xl font-medium transition-all duration-200 hover:shadow-md"
+                    className="absolute top-2 right-2 bg-white/90 hover:bg-white text-gray-900 px-2 py-1 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-md"
                   >
-                    View Gallery (+{eventImages.length - 1})
+                    +{eventImages.length - 1}
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Right Column - Event Information & Actions */}
-            <div className="w-full space-y-8">
+            {/* Right - Event Information & Details */}
+            <div className="lg:col-span-4 space-y-6">
               
               {/* Event Title and Details */}
               <div>
@@ -592,51 +657,38 @@ const EventDetail = () => {
                     </div>
                   </div>
                   <p className="text-xl font-bold text-gray-900 mt-1">{getSimpleEventDisplayPrice()}</p>
+                  {/* Total and Buy Now Section */}
+                  <div className="flex items-center justify-between bg-gray-100 p-4 rounded-lg mt-4">
+                    <span className="text-2xl font-bold text-gray-900">
+                      ${totalPrice.toFixed(2)}
+                    </span>
+                    <Button 
+                      className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300"
+                      onClick={() => setIsCheckoutOpen(true)}
+                    >
+                      Buy now
+                    </Button>
+                  </div>
                 </div>
               ) : event.event_type === 'premium' && seatingCharts.length > 0 ? (
                 <div className="border-t border-gray-200 pt-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-xl font-bold text-gray-900">Premium Seating</h3>
+                      <h3 className="text-xl font-bold text-gray-900">Table Seating Selection</h3>
                       <Badge className="bg-purple-100 text-purple-800">Premium Event</Badge>
                     </div>
                     
-                    {!showSeating ? (
-                      <div className="text-center space-y-4">
-                        <p className="text-gray-600">
-                          This premium event features reserved seating. Select your preferred seats from our interactive seating chart.
-                        </p>
-                        <Button 
-                          onClick={() => setShowSeating(true)}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300"
-                        >
-                          Choose Your Seats
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {venueImageUrl && seats.length > 0 ? (
-                          <CustomerSeatingChart
-                            venueImageUrl={venueImageUrl}
-                            seats={seats}
-                            priceCategories={priceCategories}
-                            selectedSeats={selectedSeatIds}
-                            onSeatSelection={handleInteractiveSeatSelection}
-                            onPurchaseClick={handleInteractivePurchase}
-                            maxSelectableSeats={8}
-                            showPurchaseButton={true}
-                            disabled={false}
-                            className="w-full"
-                            eventType="premium"
-                            eventId={event.id}
-                          />
-                        ) : (
-                          <div className="text-center py-8">
-                            <p className="text-gray-600">Loading seating chart...</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div className="text-center space-y-4">
+                      <p className="text-gray-600">
+                        This event features reserved table seating. Choose your preferred seats from our interactive table chart.
+                      </p>
+                      <Button 
+                        onClick={() => setShowSeating(true)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300"
+                      >
+                        Choose Your Table Seats
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -648,21 +700,20 @@ const EventDetail = () => {
                     onAddToCart={handleAddToCart}
                     isLoading={ticketsLoading}
                   />
+                  {/* Total and Buy Now Section for regular events */}
+                  <div className="flex items-center justify-between bg-gray-100 p-4 rounded-lg mt-4">
+                    <span className="text-2xl font-bold text-gray-900">
+                      $0
+                    </span>
+                    <Button 
+                      className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300"
+                      onClick={() => setIsCheckoutOpen(true)}
+                    >
+                      Buy now
+                    </Button>
+                  </div>
                 </div>
               )}
-
-              {/* Total and Buy Now Section */}
-              <div className="flex items-center justify-between bg-gray-100 p-4 rounded-lg">
-                <span className="text-2xl font-bold text-gray-900">
-                  {event.event_type === 'simple' ? `$${totalPrice.toFixed(2)}` : '$0'}
-                </span>
-                <Button 
-                  className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300"
-                  onClick={() => setIsCheckoutOpen(true)}
-                >
-                  Buy now
-                </Button>
-              </div>
 
               {/* Organizer Information */}
               <div className="border-t border-gray-200 pt-8">
@@ -703,6 +754,7 @@ const EventDetail = () => {
               </div>
             </div>
           </div>
+          )}  {/* End of conditional layout */}
           
           {/* About Section - Below main grid */}
           <div className="mt-16 border-t border-gray-200 pt-10">

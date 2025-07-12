@@ -38,6 +38,9 @@ interface CustomerSeatingChartProps {
   className?: string;
   eventType?: 'simple' | 'ticketed' | 'premium';
   eventId?: string;
+  enableHoldTimer?: boolean;
+  holdDurationMinutes?: number;
+  onHoldExpire?: () => void;
 }
 
 export default function CustomerSeatingChart({
@@ -52,7 +55,10 @@ export default function CustomerSeatingChart({
   disabled = false,
   className = '',
   eventType = 'simple',
-  eventId
+  eventId,
+  enableHoldTimer = true,
+  holdDurationMinutes = 15,
+  onHoldExpire
 }: CustomerSeatingChartProps) {
   const [hoveredSeat, setHoveredSeat] = useState<string | null>(null);
   const [tooltipData, setTooltipData] = useState<{
@@ -78,6 +84,10 @@ export default function CustomerSeatingChart({
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // Hold timer state
+  const [holdTimer, setHoldTimer] = useState<number>(0);
+  const [holdActive, setHoldActive] = useState(false);
 
   // Load image
   useEffect(() => {
@@ -125,6 +135,34 @@ export default function CustomerSeatingChart({
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
   }, []);
+
+  // Hold timer management
+  useEffect(() => {
+    if (selectedSeats.length > 0 && enableHoldTimer && !holdActive) {
+      setHoldActive(true);
+      setHoldTimer(holdDurationMinutes * 60);
+    } else if (selectedSeats.length === 0 && holdActive) {
+      setHoldActive(false);
+      setHoldTimer(0);
+    }
+  }, [selectedSeats.length, enableHoldTimer, holdDurationMinutes, holdActive]);
+
+  useEffect(() => {
+    if (holdActive && holdTimer > 0) {
+      const interval = setInterval(() => {
+        setHoldTimer(prev => {
+          if (prev <= 1) {
+            setHoldActive(false);
+            onHoldExpire?.();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [holdActive, holdTimer, onHoldExpire]);
 
   // Memoized calculations
   const sections = React.useMemo(() => {
@@ -208,102 +246,112 @@ export default function CustomerSeatingChart({
     // Draw background image
     ctx.drawImage(loadedImage, drawX, drawY, drawWidth, drawHeight);
     
-    // Draw seats
+    // Group seats by table for table-based rendering
+    const tables = new Map();
     sortedSeats.forEach((seat) => {
-      if (!seat) return;
+      if (!seat.tableId) return;
+      if (!tables.has(seat.tableId)) {
+        tables.set(seat.tableId, {
+          id: seat.tableId,
+          name: seat.tableName,
+          type: seat.tableType,
+          seats: [],
+          centerX: 0,
+          centerY: 0
+        });
+      }
+      tables.get(seat.tableId).seats.push(seat);
+    });
 
-      // Convert percentage coordinates to canvas coordinates
-      const seatX = drawX + (seat.x / 100) * drawWidth;
-      const seatY = drawY + (seat.y / 100) * drawHeight;
+    // Draw tables and chairs
+    tables.forEach((table) => {
+      if (table.seats.length === 0) return;
+
+      // Calculate table center from first chair position (table center was offset for chair placement)
+      const firstSeat = table.seats[0];
+      const tableCenterX = drawX + (firstSeat.x / 100) * drawWidth;
+      const tableCenterY = drawY + (firstSeat.y / 100) * drawHeight;
       
-      const seatWidth = 16;
-      const seatHeight = 14;
-      const cornerRadius = 3;
-      const isSelected = selectedSeats.includes(seat.id);
-      const isHovered = hoveredSeat === seat.id;
-
-      // Helper function to draw rounded rectangle (airline seat shape)
-      const drawRoundedRect = (x: number, y: number, width: number, height: number, radius: number) => {
-        ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.lineTo(x + width - radius, y);
-        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        ctx.lineTo(x + width, y + height - radius);
-        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-        ctx.lineTo(x + radius, y + height);
-        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        ctx.lineTo(x, y + radius);
-        ctx.quadraticCurveTo(x, y, x + radius, y);
-        ctx.closePath();
-      };
-
-      // Draw seat shape
-      if (seat.isPremium && seat.tableType) {
-        // Premium table seats get special treatment
-        if (seat.tableType === 'round') {
-          ctx.beginPath();
-          ctx.arc(seatX, seatY, seatWidth / 2, 0, 2 * Math.PI);
-        } else {
-          drawRoundedRect(seatX - seatWidth / 2, seatY - seatHeight / 2, seatWidth, seatHeight, cornerRadius);
-        }
-      } else {
-        // Standard airline-style rectangular seats
-        drawRoundedRect(seatX - seatWidth / 2, seatY - seatHeight / 2, seatWidth, seatHeight, cornerRadius);
+      // Draw table base
+      const tableRadius = 25;
+      ctx.beginPath();
+      ctx.arc(tableCenterX, tableCenterY, tableRadius, 0, 2 * Math.PI);
+      
+      // Table color based on type
+      let tableColor = '#8B5CF6'; // Regular table (purple)
+      if (table.type === 'vip') {
+        tableColor = '#FFD700'; // Gold for VIP
+      } else if (table.type === 'accessible') {
+        tableColor = '#4169E1'; // Blue for accessible
       }
-
-      // Fill color based on status
-      switch (seat.status) {
-        case 'available':
-          ctx.fillStyle = isSelected ? '#22C55E' : seat.categoryColor;
-          break;
-        case 'selected':
-          ctx.fillStyle = '#22C55E';
-          break;
-        case 'sold':
-          ctx.fillStyle = '#DC2626';
-          break;
-        case 'reserved':
-          ctx.fillStyle = '#F59E0B';
-          break;
-        case 'held':
-          ctx.fillStyle = '#8B5CF6';
-          break;
-        default:
-          ctx.fillStyle = seat.categoryColor;
-      }
+      
+      ctx.fillStyle = tableColor;
       ctx.fill();
-
-      // Seat border
-      ctx.strokeStyle = isSelected ? '#000' : isHovered ? '#333' : '#fff';
-      ctx.lineWidth = isSelected ? 3 : isHovered ? 2 : 1;
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Premium indicator
-      if (seat.isPremium) {
-        ctx.fillStyle = '#FFD700';
-        ctx.font = `bold 6px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('★', seatX - seatWidth / 2 + 4, seatY - seatHeight / 2 + 4);
-      }
-      
-      // ADA indicator
-      if (seat.isADA) {
-        ctx.fillStyle = '#0066CC';
-        ctx.font = `bold 8px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('♿', seatX + seatWidth / 2 - 4, seatY - seatHeight / 2 + 4);
-      }
+      // Draw table label
+      ctx.fillStyle = '#1F2937';
+      ctx.font = '12px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(table.name, tableCenterX, tableCenterY);
 
-      // Seat number
-      if (seat.seatNumber) {
-        ctx.fillStyle = seat.status === 'sold' ? '#fff' : '#000';
-        ctx.font = `bold 8px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(seat.seatNumber, seatX, seatY - 2);
-      }
+      // Draw chairs around table
+      table.seats.forEach((seat) => {
+        const chairX = drawX + (seat.x / 100) * drawWidth;
+        const chairY = drawY + (seat.y / 100) * drawHeight;
+        
+        const chairWidth = 14;
+        const chairHeight = 12;
+        const isSelected = selectedSeats.includes(seat.id);
+        const isHovered = hoveredSeat === seat.id;
+
+        // Draw chair
+        ctx.beginPath();
+        ctx.roundRect(
+          chairX - chairWidth / 2, 
+          chairY - chairHeight / 2, 
+          chairWidth, 
+          chairHeight, 
+          3
+        );
+
+        // Chair color based on status and selection
+        if (isSelected) {
+          ctx.fillStyle = '#22C55E'; // Green when selected
+        } else if (seat.status === 'sold') {
+          ctx.fillStyle = '#EF4444'; // Red when sold
+        } else if (seat.status === 'held') {
+          ctx.fillStyle = '#F59E0B'; // Yellow when held
+        } else {
+          ctx.fillStyle = '#F3F4F6'; // Light gray when available
+        }
+        
+        ctx.fill();
+        
+        // Chair border
+        ctx.strokeStyle = isHovered ? '#1F2937' : '#9CA3AF';
+        ctx.lineWidth = isHovered ? 2 : 1;
+        ctx.stroke();
+
+        // Add accessibility icon for accessible tables
+        if (table.type === 'accessible') {
+          ctx.fillStyle = '#1F2937';
+          ctx.font = '10px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('♿', chairX, chairY);
+        }
+
+        // Add crown for VIP tables
+        if (table.type === 'vip') {
+          ctx.fillStyle = '#FFD700';
+          ctx.font = '10px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('👑', chairX, chairY - 18);
+        }
+      });
     });
 
     // Restore context
@@ -474,6 +522,13 @@ export default function CustomerSeatingChart({
   const resetView = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+  };
+
+  // Format time helper
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -660,6 +715,33 @@ export default function CustomerSeatingChart({
                       <span>${statistics.totalPrice}</span>
                     </div>
                   </div>
+                  
+                  {/* Hold Timer */}
+                  {enableHoldTimer && holdActive && holdTimer > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <div className="text-center">
+                          <div className="text-xs text-gray-600 mb-1">Seats held for</div>
+                          <div className={`text-lg font-bold ${holdTimer < 60 ? 'text-red-500' : 'text-blue-600'}`}>
+                            {formatTime(holdTimer)}
+                          </div>
+                          <Progress 
+                            value={(holdTimer / (holdDurationMinutes * 60)) * 100} 
+                            className="h-2 mt-1"
+                          />
+                          {holdTimer < 60 && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 text-red-500" />
+                              <span className="text-red-700 text-xs">
+                                Hurry! Seats expire in {formatTime(holdTimer)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </CardContent>

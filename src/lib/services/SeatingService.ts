@@ -155,29 +155,53 @@ export class SeatingService {
   // Seating Chart Management
   async getSeatingCharts(eventId?: string): Promise<SeatingChart[]> {
     try {
-      let query = supabase
-        .from('seating_charts')
+      if (!eventId) {
+        return [];
+      }
+
+      // Get event data which contains seating chart in description field
+      const { data: event, error } = await supabase
+        .from('events')
         .select('*')
-        .eq('is_active', true)
-        .order('name');
+        .eq('id', eventId)
+        .eq('event_type', 'premium')
+        .single();
 
-      if (eventId) {
-        query = query.eq('event_id', eventId);
+      if (error || !event) {
+        console.warn('Event not found or not premium type');
+        return [];
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        // Handle missing table gracefully
-        if (error.code === '42P01') {
-          console.warn('Seating charts table not available, returning empty array');
-          return [];
+      // Check if seating data is stored in description field
+      const description = event.description;
+      const seatingDataMatch = description?.match(/\[SEATING_DATA:(.*?)\]$/);
+      
+      if (seatingDataMatch) {
+        try {
+          const seatingData = JSON.parse(seatingDataMatch[1]);
+          // Convert stored data to SeatingChart format
+          const seatingChart: SeatingChart = {
+            id: `chart-${event.id}`,
+            venue_id: event.id,
+            event_id: event.id,
+            name: seatingData.name || 'Main Seating Chart',
+            description: seatingData.description,
+            chart_data: seatingData.chart_data,
+            image_url: seatingData.image_url,
+            version: 1,
+            is_active: true,
+            total_seats: seatingData.total_seats || 0,
+            created_at: event.created_at,
+            updated_at: event.updated_at,
+            created_by: event.owner_id
+          };
+          return [seatingChart];
+        } catch (parseError) {
+          console.error('Error parsing seating data:', parseError);
         }
-        console.error('Error fetching seating charts:', error);
-        throw error;
       }
 
-      return data || [];
+      return [];
     } catch (error) {
       console.error('Error loading seating charts:', error);
       return [];
@@ -200,18 +224,58 @@ export class SeatingService {
   }
 
   async createSeatingChart(chart: Omit<SeatingChart, 'id' | 'created_at' | 'updated_at'>): Promise<SeatingChart> {
-    const { data, error } = await supabase
-      .from('seating_charts')
-      .insert(chart)
-      .select()
-      .single();
+    try {
+      if (!chart.event_id) {
+        throw new Error('Event ID is required to create seating chart');
+      }
 
-    if (error) {
+      // Get current event
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', chart.event_id)
+        .single();
+
+      if (eventError || !event) {
+        throw new Error('Event not found');
+      }
+
+      // Store seating chart in description field
+      const seatingData = {
+        name: chart.name,
+        description: chart.description,
+        chart_data: chart.chart_data,
+        image_url: chart.image_url,
+        total_seats: chart.total_seats
+      };
+
+      // Update event description with seating data
+      const enhancedDescription = event.description + `\n\n[SEATING_DATA:${JSON.stringify(seatingData)}]`;
+      
+      const { data: updatedEvent, error: updateError } = await supabase
+        .from('events')
+        .update({ description: enhancedDescription })
+        .eq('id', chart.event_id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Return created chart
+      const createdChart: SeatingChart = {
+        id: `chart-${chart.event_id}`,
+        ...chart,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      return createdChart;
+    } catch (error) {
       console.error('Error creating seating chart:', error);
       throw error;
     }
-
-    return data;
   }
 
   // Seat Management
@@ -268,21 +332,69 @@ export class SeatingService {
       customerEmail?: string;
     } = {}
   ): Promise<string> {
-    const { data, error } = await supabase
-      .rpc('hold_seats', {
-        seat_ids: seatIds,
-        event_id_param: eventId,
-        session_id_param: sessionId,
-        hold_duration_minutes: options.holdDurationMinutes || 15,
-        customer_email_param: options.customerEmail || null
-      });
+    try {
+      // Try RPC first for premium functionality
+      const { data, error } = await supabase
+        .rpc('hold_seats', {
+          seat_ids: seatIds,
+          event_id_param: eventId,
+          session_id_param: sessionId,
+          hold_duration_minutes: options.holdDurationMinutes || 15,
+          customer_email_param: options.customerEmail || null
+        });
 
-    if (error) {
+      if (!error && data) {
+        return data;
+      }
+
+      // Fallback: Update event display_price field with hold data
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .select('display_price')
+        .eq('id', eventId)
+        .single();
+
+      if (eventError) throw eventError;
+
+      const displayPrice = event.display_price as any;
+      if (!displayPrice?.seatingChart) {
+        throw new Error('No seating chart found for event');
+      }
+
+      // Add holds to the seating chart data
+      const expiresAt = new Date(Date.now() + (options.holdDurationMinutes || 15) * 60000);
+      const holdId = `hold_${sessionId}_${Date.now()}`;
+      
+      const updatedDisplayPrice = {
+        ...displayPrice,
+        seatingChart: {
+          ...displayPrice.seatingChart,
+          holds: {
+            ...displayPrice.seatingChart.holds,
+            [holdId]: {
+              seatIds,
+              sessionId,
+              customerEmail: options.customerEmail,
+              expiresAt: expiresAt.toISOString(),
+              status: 'active'
+            }
+          }
+        }
+      };
+
+      // Update event with hold data
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ display_price: updatedDisplayPrice })
+        .eq('id', eventId);
+
+      if (updateError) throw updateError;
+
+      return holdId;
+    } catch (error) {
       console.error('Error holding seats:', error);
       throw error;
     }
-
-    return data;
   }
 
   async releaseSeatHolds(options: {
@@ -290,19 +402,78 @@ export class SeatingService {
     sessionId?: string;
     eventId?: string;
   }): Promise<number> {
-    const { data, error } = await supabase
-      .rpc('release_seat_holds', {
-        hold_ids: options.holdIds || null,
-        session_id_param: options.sessionId || null,
-        event_id_param: options.eventId || null
-      });
+    try {
+      // Try RPC first
+      const { data, error } = await supabase
+        .rpc('release_seat_holds', {
+          hold_ids: options.holdIds || null,
+          session_id_param: options.sessionId || null,
+          event_id_param: options.eventId || null
+        });
 
-    if (error) {
+      if (!error && data !== null) {
+        return data;
+      }
+
+      // Fallback: Update display_price field
+      if (!options.eventId) {
+        throw new Error('Event ID required for hold release');
+      }
+
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .select('display_price')
+        .eq('id', options.eventId)
+        .single();
+
+      if (eventError) throw eventError;
+
+      const displayPrice = event.display_price as any;
+      if (!displayPrice?.seatingChart?.holds) {
+        return 0; // No holds to release
+      }
+
+      const holds = displayPrice.seatingChart.holds;
+      let releasedCount = 0;
+
+      // Filter out holds by session or specific hold IDs
+      const updatedHolds: any = {};
+      for (const [holdId, hold] of Object.entries(holds)) {
+        const holdData = hold as any;
+        
+        const shouldRelease = 
+          (options.sessionId && holdData.sessionId === options.sessionId) ||
+          (options.holdIds && options.holdIds.includes(holdId)) ||
+          (new Date(holdData.expiresAt) < new Date()); // Expired holds
+
+        if (shouldRelease) {
+          releasedCount += holdData.seatIds?.length || 0;
+        } else {
+          updatedHolds[holdId] = hold;
+        }
+      }
+
+      // Update event with released holds
+      const updatedDisplayPrice = {
+        ...displayPrice,
+        seatingChart: {
+          ...displayPrice.seatingChart,
+          holds: updatedHolds
+        }
+      };
+
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ display_price: updatedDisplayPrice })
+        .eq('id', options.eventId);
+
+      if (updateError) throw updateError;
+
+      return releasedCount;
+    } catch (error) {
       console.error('Error releasing seat holds:', error);
       throw error;
     }
-
-    return data || 0;
   }
 
   async completeSeatPurchase(
@@ -329,6 +500,97 @@ export class SeatingService {
     }
 
     return data || [];
+  }
+
+  // Real-time seat availability with hold integration
+  async getRealtimeSeatAvailability(eventId: string, sessionId?: string): Promise<{
+    available: string[];
+    held: string[];
+    sold: string[];
+    userHolds: string[];
+  }> {
+    try {
+      const { data: event, error } = await supabase
+        .from('events')
+        .select('display_price')
+        .eq('id', eventId)
+        .single();
+
+      if (error) throw error;
+
+      const displayPrice = event.display_price as any;
+      const seatingChart = displayPrice?.seatingChart;
+      
+      if (!seatingChart) {
+        return { available: [], held: [], sold: [], userHolds: [] };
+      }
+
+      const allSeatIds = seatingChart.chart_data?.seats?.map((seat: any) => seat.id) || [];
+      const holds = seatingChart.holds || {};
+      const now = new Date();
+
+      // Clean up expired holds first
+      const activeHolds: any = {};
+      const heldSeatIds = new Set<string>();
+      const userHeldSeatIds = new Set<string>();
+
+      for (const [holdId, hold] of Object.entries(holds)) {
+        const holdData = hold as any;
+        if (new Date(holdData.expiresAt) > now && holdData.status === 'active') {
+          activeHolds[holdId] = hold;
+          holdData.seatIds.forEach((seatId: string) => {
+            heldSeatIds.add(seatId);
+            if (sessionId && holdData.sessionId === sessionId) {
+              userHeldSeatIds.add(seatId);
+            }
+          });
+        }
+      }
+
+      // Update holds if any expired
+      if (Object.keys(activeHolds).length !== Object.keys(holds).length) {
+        const updatedDisplayPrice = {
+          ...displayPrice,
+          seatingChart: {
+            ...seatingChart,
+            holds: activeHolds
+          }
+        };
+
+        await supabase
+          .from('events')
+          .update({ display_price: updatedDisplayPrice })
+          .eq('id', eventId);
+      }
+
+      // Get sold seats from tickets table (if available)
+      const { data: soldTickets } = await supabase
+        .from('tickets')
+        .select('seat_details')
+        .eq('event_id', eventId)
+        .eq('status', 'confirmed');
+
+      const soldSeatIds = new Set<string>();
+      soldTickets?.forEach(ticket => {
+        if (ticket.seat_details?.seatId) {
+          soldSeatIds.add(ticket.seat_details.seatId);
+        }
+      });
+
+      // Calculate availability
+      const available = allSeatIds.filter((seatId: string) => 
+        !heldSeatIds.has(seatId) && !soldSeatIds.has(seatId)
+      );
+      
+      const held = Array.from(heldSeatIds).filter(seatId => !userHeldSeatIds.has(seatId));
+      const sold = Array.from(soldSeatIds);
+      const userHolds = Array.from(userHeldSeatIds);
+
+      return { available, held, sold, userHolds };
+    } catch (error) {
+      console.error('Error getting realtime seat availability:', error);
+      return { available: [], held: [], sold: [], userHolds: [] };
+    }
   }
 
   // Utility Methods
@@ -380,23 +642,62 @@ export class SeatingService {
   }
 
   async getSeatCategories(seatingChartId: string): Promise<SeatCategory[]> {
-    const { data, error } = await supabase
-      .from('seat_categories')
-      .select('*')
-      .eq('seating_chart_id', seatingChartId)
-      .order('sort_order');
+    try {
+      // Extract event ID from chart ID (format: chart-{eventId})
+      const eventId = seatingChartId.replace('chart-', '');
+      
+      // Get event to retrieve seating data from description
+      const { data: event, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single();
 
-    if (error) {
+      if (error || !event) {
+        return [];
+      }
+
+      const description = event.description;
+      const seatingDataMatch = description?.match(/\[SEATING_DATA:(.*?)\]$/);
+      
+      if (!seatingDataMatch) {
+        return [];
+      }
+
+      try {
+        const seatingData = JSON.parse(seatingDataMatch[1]);
+        if (!seatingData?.chart_data?.sections) {
+          return [];
+        }
+
+        // Convert sections to SeatCategory format
+        const categories: SeatCategory[] = seatingData.chart_data.sections.map((section: any, index: number) => ({
+          id: section.id,
+          seating_chart_id: seatingChartId,
+          name: section.name,
+          description: section.description || `${section.name} seating area`,
+          color_code: section.color,
+          base_price: section.price,
+          price_modifier: 1.0,
+          is_accessible: section.isAccessible || false,
+          is_premium: section.isPremium || false,
+          sort_order: index
+        }));
+
+        return categories;
+      } catch (parseError) {
+        console.error('Error parsing seating data for categories:', parseError);
+        return [];
+      }
+    } catch (error) {
       console.error('Error fetching seat categories:', error);
-      throw error;
+      return [];
     }
-
-    return data || [];
   }
 
   // Generate a session ID for seat holds
   generateSessionId(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 }
 

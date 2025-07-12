@@ -146,3 +146,98 @@ This is a **React/TypeScript event management platform** with Supabase backend, 
 **Error Handling**: Graceful fallbacks for Supabase unavailability, comprehensive error states with user-friendly messages.
 
 **Responsive Design**: Mobile-first with touch-friendly interactions, proper keyboard navigation for accessibility.
+
+## localhost Connection Issues Troubleshooting
+
+When encountering "localhost refused to connect" errors:
+
+### 1. **Start the server properly**:
+```bash
+# Kill any existing processes first
+pkill -f vite
+lsof -ti:8080 | xargs kill -9 2>/dev/null
+
+# Start the dev server
+npm run dev
+```
+
+### 2. **If localhost doesn't work, use 127.0.0.1**:
+- Try: http://127.0.0.1:8080 instead of http://localhost:8080
+- The server might bind to 127.0.0.1 specifically
+
+### 3. **Verify server is running**:
+```bash
+# Check if vite process exists
+ps aux | grep vite | grep -v grep
+
+# Test if server responds
+curl http://127.0.0.1:8080 2>&1 | head -20
+```
+
+### 4. **Alternative start methods if npm run dev fails**:
+```bash
+# Direct vite command with explicit host
+npx vite --port 8080 --host 127.0.0.1
+
+# Or with 0.0.0.0 to bind all interfaces
+npx vite --port 8080 --host 0.0.0.0
+
+# Background process
+node_modules/.bin/vite --port 8080 --host 127.0.0.1 &
+```
+
+### 5. **Browser-specific issues**:
+- Clear browser cache (Cmd+Shift+R)
+- Try incognito/private mode
+- Disable browser extensions
+- Check proxy settings
+- Try different browsers
+
+### 6. **System-level checks**:
+```bash
+# Check hosts file
+cat /etc/hosts | grep localhost
+# Should show: 127.0.0.1 localhost
+
+# Clear DNS cache (Mac)
+sudo dscacheutil -flushcache
+```
+
+### 7. **Port conflicts**:
+```bash
+# Check what's using port 8080
+lsof -i :8080
+
+# Kill specific process by PID
+kill -9 <PID>
+```
+
+**NOTE**: The development server uses port 8080 (not the default Vite port 5173) as configured in package.json to maintain consistency.
+
+## Interactive Table Seating System
+
+### Overview
+The platform includes a comprehensive event hall table seating system for premium events, allowing attendees to reserve specific seats at dining tables.
+
+### Key Components
+- `InteractiveSeatingChart` - Canvas-based table and chair selection with zoom/pan
+- `SeatingLayoutManager` - Organizer tool for creating table layouts
+- `CustomerSeatingChart` - Customer-facing table reservation interface
+- `SeatingService` - Backend integration for table and seat management
+
+### Features
+- Visual table and chair selection with real-time availability
+- 15-minute hold timers for selected seats
+- Multiple table categories with pricing (VIP, Accessible, Regular)
+- Wheelchair accessibility support
+- Table-based seating with amenities (VIP champagne service, etc.)
+- Touch support for mobile devices
+- Revenue analytics by table type
+
+### Testing Interactive Table Seating
+1. Visit `/test-seating` to create a demo event
+2. For new events, select "Premium" type to enable table seating
+3. Demo includes 6 tables (24 seats) across 3 pricing tiers:
+   - 1 VIP table with 4 seats ($100/seat)
+   - 2 accessible tables with 2 seats each ($100/seat)
+   - 4 regular tables with 4 seats each ($75/seat)

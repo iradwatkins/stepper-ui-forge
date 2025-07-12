@@ -156,7 +156,8 @@ export class FollowerService {
    */
   static async getFollowersWithPermissions(organizerId: string): Promise<FollowerWithPermissions[]> {
     try {
-      const { data, error } = await db
+      // First get the followers
+      const { data: followers, error: followersError } = await db
         .from('user_follows')
         .select(`
           id,
@@ -169,26 +170,49 @@ export class FollowerService {
             avatar_url,
             bio,
             organization
-          ),
-          follower_promotions (
-            can_sell_tickets,
-            can_work_events,
-            is_co_organizer,
-            commission_rate
           )
         `)
         .eq('organizer_id', organizerId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        throw new Error(`Failed to fetch followers: ${error.message}`);
+      if (followersError) {
+        throw new Error(`Failed to fetch followers: ${followersError.message}`);
       }
 
-      return (data || []).map((item: any) => ({
+      if (!followers || followers.length === 0) {
+        return [];
+      }
+
+      // Get all follow IDs
+      const followIds = followers.map(f => f.id);
+
+      // Separately fetch promotions for these follows
+      const { data: promotions, error: promotionsError } = await db
+        .from('follower_promotions')
+        .select(`
+          follow_id,
+          can_sell_tickets,
+          can_work_events,
+          is_co_organizer,
+          commission_rate
+        `)
+        .in('follow_id', followIds);
+
+      if (promotionsError) {
+        console.error('Failed to fetch promotions:', promotionsError);
+      }
+
+      // Create a map of promotions by follow_id
+      const promotionsMap = new Map();
+      (promotions || []).forEach(p => {
+        promotionsMap.set(p.follow_id, p);
+      });
+
+      return followers.map((item: any) => ({
         ...item.profiles,
         follow_id: item.id,
         followed_at: item.created_at,
-        permissions: item.follower_promotions?.[0] || {
+        permissions: promotionsMap.get(item.id) || {
           can_sell_tickets: false,
           can_work_events: false,
           is_co_organizer: false,
@@ -413,30 +437,53 @@ export class FollowerService {
     can_sell_tickets: boolean
   }>> {
     try {
-      const { data, error } = await db
+      // Get promotions where user can sell tickets
+      const { data: promotions, error: promotionsError } = await db
         .from('follower_promotions')
         .select(`
           organizer_id,
           commission_rate,
-          can_sell_tickets,
-          profiles:organizer_id (
-            full_name,
-            organization
-          )
+          can_sell_tickets
         `)
         .eq('follower_id', userId)
         .eq('can_sell_tickets', true);
 
-      if (error) {
-        throw new Error(`Failed to fetch selling permissions: ${error.message}`);
+      if (promotionsError) {
+        throw new Error(`Failed to fetch selling permissions: ${promotionsError.message}`);
       }
 
-      return (data || []).map((item: any) => ({
-        organizer_id: item.organizer_id,
-        organizer_name: item.profiles.full_name || item.profiles.organization || 'Unknown Organizer',
-        commission_rate: parseFloat(item.commission_rate) || 0,
-        can_sell_tickets: item.can_sell_tickets
-      }));
+      if (!promotions || promotions.length === 0) {
+        return [];
+      }
+
+      // Get unique organizer IDs
+      const organizerIds = [...new Set(promotions.map(p => p.organizer_id))];
+
+      // Fetch organizer profiles
+      const { data: profiles, error: profilesError } = await db
+        .from('profiles')
+        .select('id, full_name, organization')
+        .in('id', organizerIds);
+
+      if (profilesError) {
+        console.error('Failed to fetch organizer profiles:', profilesError);
+      }
+
+      // Create a map of profiles by id
+      const profilesMap = new Map();
+      (profiles || []).forEach(p => {
+        profilesMap.set(p.id, p);
+      });
+
+      return promotions.map((item: any) => {
+        const profile = profilesMap.get(item.organizer_id) || {};
+        return {
+          organizer_id: item.organizer_id,
+          organizer_name: profile.full_name || profile.organization || 'Unknown Organizer',
+          commission_rate: parseFloat(item.commission_rate) || 0,
+          can_sell_tickets: item.can_sell_tickets
+        };
+      });
 
     } catch (error) {
       console.error('Failed to get selling permissions:', error);
@@ -537,28 +584,51 @@ export class FollowerService {
     is_co_organizer: boolean
   }>> {
     try {
-      const { data, error } = await db
+      // Get promotions where user is co-organizer
+      const { data: promotions, error: promotionsError } = await db
         .from('follower_promotions')
         .select(`
           organizer_id,
-          is_co_organizer,
-          profiles:organizer_id (
-            full_name,
-            organization
-          )
+          is_co_organizer
         `)
         .eq('follower_id', userId)
         .eq('is_co_organizer', true);
 
-      if (error) {
-        throw new Error(`Failed to fetch co-organizer status: ${error.message}`);
+      if (promotionsError) {
+        throw new Error(`Failed to fetch co-organizer status: ${promotionsError.message}`);
       }
 
-      return (data || []).map((item: any) => ({
-        organizer_id: item.organizer_id,
-        organizer_name: item.profiles.full_name || item.profiles.organization || 'Unknown Organizer',
-        is_co_organizer: item.is_co_organizer
-      }));
+      if (!promotions || promotions.length === 0) {
+        return [];
+      }
+
+      // Get unique organizer IDs
+      const organizerIds = [...new Set(promotions.map(p => p.organizer_id))];
+
+      // Fetch organizer profiles
+      const { data: profiles, error: profilesError } = await db
+        .from('profiles')
+        .select('id, full_name, organization')
+        .in('id', organizerIds);
+
+      if (profilesError) {
+        console.error('Failed to fetch organizer profiles:', profilesError);
+      }
+
+      // Create a map of profiles by id
+      const profilesMap = new Map();
+      (profiles || []).forEach(p => {
+        profilesMap.set(p.id, p);
+      });
+
+      return promotions.map((item: any) => {
+        const profile = profilesMap.get(item.organizer_id) || {};
+        return {
+          organizer_id: item.organizer_id,
+          organizer_name: profile.full_name || profile.organization || 'Unknown Organizer',
+          is_co_organizer: item.is_co_organizer
+        };
+      });
 
     } catch (error) {
       console.error('Failed to get co-organizer status:', error);
