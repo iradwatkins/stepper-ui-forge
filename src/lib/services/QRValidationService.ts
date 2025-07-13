@@ -3,10 +3,29 @@
 
 import { supabase } from '@/integrations/supabase/client'
 
+export interface TicketData {
+  id: string
+  status: string
+  holder_name: string
+  holder_email: string
+  checked_in_at?: string
+  checked_in_by?: string
+  ticket_types?: {
+    name: string
+    event_id: string
+  }
+  events?: {
+    title: string
+    date: string
+    time: string
+    location: string
+  }
+}
+
 export interface QRValidationResult {
   valid: boolean
   message: string
-  ticket?: any
+  ticket?: TicketData
   error?: string
 }
 
@@ -191,7 +210,7 @@ export class QRValidationService {
     return { results, summary }
   }
 
-  static formatTicketForDisplay(ticket: any) {
+  static formatTicketForDisplay(ticket: TicketData | null) {
     if (!ticket) return null
 
     return {

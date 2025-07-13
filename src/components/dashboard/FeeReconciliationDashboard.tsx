@@ -11,7 +11,7 @@ import {
   InfoIcon,
   CheckCircleIcon 
 } from "lucide-react";
-import { FeeReconciliationService, FeeReconciliationSummary } from "@/lib/services/FeeReconciliationService";
+import { FeeReconciliationService, FeeReconciliationSummary, ReconciliationTransaction } from "@/lib/services/FeeReconciliationService";
 
 interface FeeReconciliationDashboardProps {
   organizerId: string;
@@ -19,7 +19,7 @@ interface FeeReconciliationDashboardProps {
 
 export default function FeeReconciliationDashboard({ organizerId }: FeeReconciliationDashboardProps) {
   const [reconciliation, setReconciliation] = useState<FeeReconciliationSummary | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<ReconciliationTransaction[]>([]);
   const [projectedNextDeduction, setProjectedNextDeduction] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

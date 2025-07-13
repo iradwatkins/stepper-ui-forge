@@ -138,10 +138,12 @@ export default function Community() {
                 Discover and connect with stepping community businesses and service providers
               </p>
             </div>
-            <Button className="bg-green-600 hover:bg-green-700 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              List Your Business
-            </Button>
+            <Link to="/create-business">
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                List Your Business
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -482,10 +484,12 @@ export default function Community() {
                 >
                   Clear All Filters
                 </Button>
-                <Button variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Be the First to List Your Business
-                </Button>
+                <Link to="/create-business">
+                  <Button variant="outline">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Be the First to List Your Business
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>

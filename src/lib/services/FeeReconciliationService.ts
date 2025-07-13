@@ -3,8 +3,8 @@
 
 import { supabase } from '@/integrations/supabase/client'
 
-// Type assertion for supabase client to work with our database
-const db = supabase as any
+// Use supabase client directly
+const db = supabase
 
 export interface FeeReconciliation {
   id: string;
@@ -30,6 +30,14 @@ export interface OnlinePaymentFeeDeduction {
   additionalCashFeeDeducted: number;
   totalFeeDeducted: number;
   remainingCashFeesOwed: number;
+}
+
+export interface ReconciliationTransaction {
+  id: string;
+  total_amount: number;
+  payment_method: string;
+  created_at: string;
+  amount: number; // For compatibility with existing code
 }
 
 export class FeeReconciliationService {
@@ -189,7 +197,7 @@ export class FeeReconciliationService {
   /**
    * Get reconciliation history for an organizer
    */
-  static async getReconciliationHistory(organizerId: string, limit: number = 50): Promise<any[]> {
+  static async getReconciliationHistory(organizerId: string, limit: number = 50): Promise<ReconciliationTransaction[]> {
     try {
       // This would typically query a reconciliation_history table
       // For now, we'll return a simplified version based on orders
@@ -229,7 +237,7 @@ export class FeeReconciliationService {
    */
   static async generateReconciliationReport(organizerId: string): Promise<{
     summary: FeeReconciliationSummary;
-    recentTransactions: any[];
+    recentTransactions: ReconciliationTransaction[];
     projectedNextDeduction: number;
   }> {
     try {

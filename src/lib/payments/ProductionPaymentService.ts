@@ -1,6 +1,8 @@
 // Simplified Production Payment Service
 // Focused on real payment processing without complex gateway abstractions
 
+import { PaymentConfigurationService } from '@/lib/services/PaymentConfigurationService';
+
 export class ProductionPaymentService {
   private static instance: ProductionPaymentService;
 
@@ -13,28 +15,22 @@ export class ProductionPaymentService {
     return ProductionPaymentService.instance;
   }
 
-  // Simple payment methods for production
-  getAvailablePaymentMethods() {
-    return [
-      {
-        id: 'paypal',
-        name: 'PayPal',
-        description: 'Pay with your PayPal account',
-        enabled: true
-      },
-      {
-        id: 'square',
-        name: 'Credit/Debit Card',
-        description: 'Pay with credit or debit card',
-        enabled: true
-      },
-      {
-        id: 'cashapp',
-        name: 'Cash App Pay',
-        description: 'Pay with Cash App',
-        enabled: true
-      }
-    ];
+  // Get available payment methods from database configuration
+  async getAvailablePaymentMethods() {
+    try {
+      return await PaymentConfigurationService.getAvailablePaymentMethods();
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+      // Fallback to basic configuration if database is unavailable
+      return [
+        {
+          id: 'paypal',
+          name: 'PayPal',
+          description: 'Pay with your PayPal account',
+          available: false
+        }
+      ];
+    }
   }
 
   // Process payment through Supabase Edge Functions

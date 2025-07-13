@@ -20,13 +20,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { useQRValidation } from '@/lib/hooks/useQRValidation'
 import { TeamService } from '@/lib/services/TeamService'
-import { QRValidationService } from '@/lib/services/QRValidationService'
+import { QRValidationService, QRValidationResult, CheckInResult } from '@/lib/services/QRValidationService'
 import QrScanner from 'qr-scanner'
+
+interface QueuedScan {
+  qrCode: string
+  timestamp: number
+  eventId: string
+}
 
 interface MobilePWAScannerProps {
   eventId: string
-  onValidation?: (result: any) => void
-  onCheckIn?: (result: any) => void
+  onValidation?: (result: QRValidationResult) => void
+  onCheckIn?: (result: CheckInResult) => void
   autoCheckIn?: boolean
   mode?: 'validate' | 'checkin' | 'both'
 }
@@ -42,7 +48,7 @@ export function MobilePWAScanner({
   const [flashlightOn, setFlashlightOn] = useState(false)
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment')
   const [networkStatus, setNetworkStatus] = useState<'online' | 'offline'>('online')
-  const [queuedScans, setQueuedScans] = useState<any[]>([])
+  const [queuedScans, setQueuedScans] = useState<QueuedScan[]>([])
   const [sessionActive, setSessionActive] = useState(false)
   const [sessionStats, setSessionStats] = useState({
     scanned: 0,
@@ -53,7 +59,7 @@ export function MobilePWAScanner({
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const scannerRef = useRef<any>(null)
+  const scannerRef = useRef<QrScanner | null>(null)
 
   const {
     isValidating,

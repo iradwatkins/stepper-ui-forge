@@ -9,63 +9,237 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminRoute } from "@/components/auth/AdminRoute";
-import Index from "./pages/Index";
-import Events from "./pages/Events";
-import EventDetail from "./pages/EventDetail";
-import Magazine from "./pages/Magazine";
-import Classes from "./pages/Classes";
-import Community from "./pages/Community";
-import CreateEvent from "./pages/CreateEvent";
-import CreateEventWizard from "./pages/CreateEventWizard";
-import EditEvent from "./pages/EditEvent";
-import Dashboard from "./pages/Dashboard";
-import DashboardHome from "./pages/DashboardHome";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import MyTickets from "./pages/MyTickets";
-import Notifications from "./pages/dashboard/Notifications";
-import EventsManagement from "./pages/dashboard/EventsManagement";
-import DraftEvents from "./pages/dashboard/DraftEvents";
-import ArchivedEvents from "./pages/dashboard/ArchivedEvents";
-import TicketsOverview from "./pages/dashboard/TicketsOverview";
-import TicketAnalytics from "./pages/dashboard/TicketAnalytics";
-import PaymentManagement from "./pages/dashboard/PaymentManagement";
-import TeamManagement from "./pages/dashboard/TeamManagement";
-import TeamInvite from "./pages/dashboard/TeamInvite";
-import TeamRoles from "./pages/dashboard/TeamRoles";
-import CheckInManagement from "./pages/dashboard/CheckInManagement";
-import LiveAnalytics from "./pages/dashboard/LiveAnalytics";
-import AdminUsers from "./pages/dashboard/admin/AdminUsers";
-import AdminAnalytics from "./pages/dashboard/admin/AdminAnalytics";
-import AdminSettings from "./pages/dashboard/admin/AdminSettings";
-import AdminMonitor from "./pages/dashboard/admin/AdminMonitor";
-import AdminEvents from "./pages/dashboard/admin/AdminEvents";
-import DatabaseAdmin from "./pages/dashboard/admin/DatabaseAdmin";
-import MagazineManagementPage from "./pages/admin/MagazineManagementPage";
-import EditEventsManage from "./pages/dashboard/EditEventsManage";
-import Following from "./pages/dashboard/Following";
-import FollowerManagement from "./pages/dashboard/FollowerManagement";
-import SalesDashboard from "./pages/dashboard/SalesDashboard";
-import ReferralCodes from "./pages/dashboard/ReferralCodes";
-import Earnings from "./pages/dashboard/Earnings";
-import EventAssignments from "./pages/dashboard/EventAssignments";
-import TestPremiumEvent from "./pages/TestPremiumEvent";
-import TestSeating from "./pages/TestSeating";
-import Schedule from "./pages/dashboard/Schedule";
-import AudienceInsights from "./pages/dashboard/AudienceInsights";
-import VenueManagement from "./pages/dashboard/VenueManagement";
-import PaymentTestPage from "./pages/PaymentTest";
-import CashPaymentDashboardPage from "./pages/CashPaymentDashboard";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
-import AdminAuth from "./pages/AdminAuth";
-import AccountAuth from "./pages/AccountAuth";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminLayout from "./components/admin/AdminLayout";
+import { Suspense, lazy } from "react";
+import { Loader2 } from "lucide-react";
+
+// Loading component for lazy loaded routes
+const PageLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <Loader2 className="w-8 h-8 animate-spin" />
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
+
+// Lazy load page components for better code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Events = lazy(() => import("./pages/Events"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
+const Magazine = lazy(() => import("./pages/Magazine"));
+const Classes = lazy(() => import("./pages/Classes"));
+const Community = lazy(() => import("./pages/Community"));
+const CreateEvent = lazy(() => import("./pages/CreateEvent"));
+const CreateEventWizard = lazy(() => import("./pages/CreateEventWizard"));
+const EditEvent = lazy(() => import("./pages/EditEvent"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DashboardHome = lazy(() => import("./pages/DashboardHome"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const MyTickets = lazy(() => import("./pages/MyTickets"));
+const Notifications = lazy(() => import("./pages/dashboard/Notifications"));
+const EventsManagement = lazy(() => import("./pages/dashboard/EventsManagement"));
+const DraftEvents = lazy(() => import("./pages/dashboard/DraftEvents"));
+const ArchivedEvents = lazy(() => import("./pages/dashboard/ArchivedEvents"));
+const TicketsOverview = lazy(() => import("./pages/dashboard/TicketsOverview"));
+const TicketAnalytics = lazy(() => import("./pages/dashboard/TicketAnalytics"));
+const PaymentManagement = lazy(() => import("./pages/dashboard/PaymentManagement"));
+const TeamManagement = lazy(() => import("./pages/dashboard/TeamManagement"));
+const TeamInvite = lazy(() => import("./pages/dashboard/TeamInvite"));
+const TeamRoles = lazy(() => import("./pages/dashboard/TeamRoles"));
+const CheckInManagement = lazy(() => import("./pages/dashboard/CheckInManagement"));
+const LiveAnalytics = lazy(() => import("./pages/dashboard/LiveAnalytics"));
+const AdminUsers = lazy(() => import("./pages/dashboard/admin/AdminUsers"));
+const AdminAnalytics = lazy(() => import("./pages/dashboard/admin/AdminAnalytics"));
+const AdminSettings = lazy(() => import("./pages/dashboard/admin/AdminSettings"));
+const AdminMonitor = lazy(() => import("./pages/dashboard/admin/AdminMonitor"));
+const AdminEvents = lazy(() => import("./pages/dashboard/admin/AdminEvents"));
+const DatabaseAdmin = lazy(() => import("./pages/dashboard/admin/DatabaseAdmin"));
+const MagazineManagementPage = lazy(() => import("./pages/admin/MagazineManagementPage"));
+const EditEventsManage = lazy(() => import("./pages/dashboard/EditEventsManage"));
+const Following = lazy(() => import("./pages/dashboard/Following"));
+const FollowerManagement = lazy(() => import("./pages/dashboard/FollowerManagement"));
+const SalesDashboard = lazy(() => import("./pages/dashboard/SalesDashboard"));
+const ReferralCodes = lazy(() => import("./pages/dashboard/ReferralCodes"));
+const Earnings = lazy(() => import("./pages/dashboard/Earnings"));
+const EventAssignments = lazy(() => import("./pages/dashboard/EventAssignments"));
+const TestPremiumEvent = lazy(() => import("./pages/TestPremiumEvent"));
+const TestSeating = lazy(() => import("./pages/TestSeating"));
+const Schedule = lazy(() => import("./pages/dashboard/Schedule"));
+const AudienceInsights = lazy(() => import("./pages/dashboard/AudienceInsights"));
+const VenueManagement = lazy(() => import("./pages/dashboard/VenueManagement"));
+const PaymentTestPage = lazy(() => import("./pages/PaymentTest"));
+const CashPaymentDashboardPage = lazy(() => import("./pages/CashPaymentDashboard"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Auth = lazy(() => import("./pages/Auth"));
+const AdminAuth = lazy(() => import("./pages/AdminAuth"));
+const AccountAuth = lazy(() => import("./pages/AccountAuth"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const PaymentConfiguration = lazy(() => import("./pages/dashboard/admin/PaymentConfiguration"));
+const CreateBusiness = lazy(() => import("./pages/CreateBusiness"));
+
+// Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+  
+  return (
+    <div className="min-h-screen bg-background">
+      {!isHomePage && <Navbar />}
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/magazine" element={<Magazine />} />
+        <Route path="/classes" element={<Classes />} />
+        <Route path="/community" element={<Community />} />
+        <Route path="/create-business" element={
+          <ProtectedRoute>
+            <CreateBusiness />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-tickets" element={<MyTickets />} />
+        <Route path="/payment-test" element={<PaymentTestPage />} />
+        <Route path="/test-premium-event" element={
+          <ProtectedRoute>
+            <TestPremiumEvent />
+          </ProtectedRoute>
+        } />
+        <Route path="/test-seating" element={
+          <ProtectedRoute>
+            <TestSeating />
+          </ProtectedRoute>
+        } />
+        <Route path="/create-event" element={
+          <ProtectedRoute>
+            <CreateEventWizard />
+          </ProtectedRoute>
+        } />
+        <Route path="/create-event-simple" element={
+          <ProtectedRoute>
+            <CreateEvent />
+          </ProtectedRoute>
+        } />
+        <Route path="/edit-event/:id" element={
+          <ProtectedRoute>
+            <EditEvent />
+          </ProtectedRoute>
+        } />
+        <Route path="/cash-payments" element={
+          <ProtectedRoute>
+            <CashPaymentDashboardPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Customer Account Routes */}
+        <Route path="/account" element={<AccountAuth />} />
+        
+        {/* Legacy auth route - redirect to account */}
+        <Route path="/auth" element={<AccountAuth />} />
+        
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }>
+          <Route index element={<DashboardHome />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="following" element={<Following />} />
+          <Route path="followers" element={<FollowerManagement />} />
+          <Route path="sales" element={<SalesDashboard />} />
+          <Route path="referrals" element={<ReferralCodes />} />
+          <Route path="earnings" element={<Earnings />} />
+          <Route path="assignments" element={<EventAssignments />} />
+          <Route path="schedule" element={<Schedule />} />
+          <Route path="audience" element={<AudienceInsights />} />
+          <Route path="events" element={<EventsManagement />} />
+          <Route path="events/manage" element={<EditEventsManage />} />
+          <Route path="events/edit/:id" element={<EditEvent />} />
+          <Route path="events/drafts" element={<DraftEvents />} />
+          <Route path="events/archived" element={<ArchivedEvents />} />
+          <Route path="venues" element={<VenueManagement />} />
+          <Route path="tickets" element={<TicketsOverview />} />
+          <Route path="tickets/:id" element={<TicketsOverview />} />
+          <Route path="tickets/analytics" element={<TicketAnalytics />} />
+          <Route path="tickets/payments" element={<PaymentManagement />} />
+          <Route path="team" element={<TeamManagement />} />
+          <Route path="team/invite" element={<TeamInvite />} />
+          <Route path="team/roles" element={<TeamRoles />} />
+          <Route path="checkin" element={<CheckInManagement />} />
+          <Route path="analytics" element={<LiveAnalytics />} />
+          {/* Admin routes within dashboard */}
+          <Route path="admin/events" element={
+            <AdminRoute>
+              <AdminEvents />
+            </AdminRoute>
+          } />
+          <Route path="admin/users" element={
+            <AdminRoute>
+              <AdminUsers />
+            </AdminRoute>
+          } />
+          <Route path="admin/analytics" element={
+            <AdminRoute>
+              <AdminAnalytics />
+            </AdminRoute>
+          } />
+          <Route path="admin/settings" element={
+            <AdminRoute>
+              <AdminSettings />
+            </AdminRoute>
+          } />
+          <Route path="admin/monitor" element={
+            <AdminRoute>
+              <AdminMonitor />
+            </AdminRoute>
+          } />
+          <Route path="admin/database" element={
+            <AdminRoute>
+              <DatabaseAdmin />
+            </AdminRoute>
+          } />
+          <Route path="admin/payments" element={
+            <AdminRoute>
+              <PaymentConfiguration />
+            </AdminRoute>
+          } />
+          <Route path="admin/magazine" element={
+            <AdminRoute>
+              <MagazineManagementPage />
+            </AdminRoute>
+          } />
+        </Route>
+        
+        {/* Admin Portal Routes */}
+        <Route path="/admin" element={<AdminAuth />} />
+        <Route path="/admin/*" element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="events" element={<AdminEvents />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="monitor" element={<AdminMonitor />} />
+          <Route path="database" element={<DatabaseAdmin />} />
+        </Route>
+        
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </div>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -76,143 +250,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-            <div className="min-h-screen bg-background">
-              <Navbar />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/events/:id" element={<EventDetail />} />
-                <Route path="/magazine" element={<Magazine />} />
-                <Route path="/classes" element={<Classes />} />
-                <Route path="/community" element={<Community />} />
-                <Route path="/my-tickets" element={<MyTickets />} />
-                <Route path="/payment-test" element={<PaymentTestPage />} />
-                <Route path="/test-premium-event" element={
-                  <ProtectedRoute>
-                    <TestPremiumEvent />
-                  </ProtectedRoute>
-                } />
-                <Route path="/test-seating" element={
-                  <ProtectedRoute>
-                    <TestSeating />
-                  </ProtectedRoute>
-                } />
-                <Route path="/create-event" element={
-                  <ProtectedRoute>
-                    <CreateEventWizard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/create-event-simple" element={
-                  <ProtectedRoute>
-                    <CreateEvent />
-                  </ProtectedRoute>
-                } />
-                <Route path="/edit-event/:id" element={
-                  <ProtectedRoute>
-                    <EditEvent />
-                  </ProtectedRoute>
-                } />
-                <Route path="/cash-payments" element={
-                  <ProtectedRoute>
-                    <CashPaymentDashboardPage />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Customer Account Routes */}
-                <Route path="/account" element={<AccountAuth />} />
-                
-                {/* Legacy auth route - redirect to account */}
-                <Route path="/auth" element={<AccountAuth />} />
-                
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<DashboardHome />} />
-                  <Route path="profile" element={<Profile />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="notifications" element={<Notifications />} />
-                  <Route path="following" element={<Following />} />
-                  <Route path="followers" element={<FollowerManagement />} />
-                  <Route path="sales" element={<SalesDashboard />} />
-                  <Route path="referrals" element={<ReferralCodes />} />
-                  <Route path="earnings" element={<Earnings />} />
-                  <Route path="assignments" element={<EventAssignments />} />
-                  <Route path="schedule" element={<Schedule />} />
-                  <Route path="audience" element={<AudienceInsights />} />
-                  <Route path="events" element={<EventsManagement />} />
-                  <Route path="events/manage" element={<EditEventsManage />} />
-                  <Route path="events/edit/:id" element={<EditEvent />} />
-                  <Route path="events/drafts" element={<DraftEvents />} />
-                  <Route path="events/archived" element={<ArchivedEvents />} />
-                  <Route path="venues" element={<VenueManagement />} />
-                  <Route path="tickets" element={<TicketsOverview />} />
-                  <Route path="tickets/:id" element={<TicketsOverview />} />
-                  <Route path="tickets/analytics" element={<TicketAnalytics />} />
-                  <Route path="tickets/payments" element={<PaymentManagement />} />
-                  <Route path="team" element={<TeamManagement />} />
-                  <Route path="team/invite" element={<TeamInvite />} />
-                  <Route path="team/roles" element={<TeamRoles />} />
-                  <Route path="checkin" element={<CheckInManagement />} />
-                  <Route path="analytics" element={<LiveAnalytics />} />
-                  {/* Admin routes within dashboard */}
-                  <Route path="admin/events" element={
-                    <AdminRoute>
-                      <AdminEvents />
-                    </AdminRoute>
-                  } />
-                  <Route path="admin/users" element={
-                    <AdminRoute>
-                      <AdminUsers />
-                    </AdminRoute>
-                  } />
-                  <Route path="admin/analytics" element={
-                    <AdminRoute>
-                      <AdminAnalytics />
-                    </AdminRoute>
-                  } />
-                  <Route path="admin/settings" element={
-                    <AdminRoute>
-                      <AdminSettings />
-                    </AdminRoute>
-                  } />
-                  <Route path="admin/monitor" element={
-                    <AdminRoute>
-                      <AdminMonitor />
-                    </AdminRoute>
-                  } />
-                  <Route path="admin/database" element={
-                    <AdminRoute>
-                      <DatabaseAdmin />
-                    </AdminRoute>
-                  } />
-                  <Route path="admin/magazine" element={
-                    <AdminRoute>
-                      <MagazineManagementPage />
-                    </AdminRoute>
-                  } />
-                </Route>
-                
-                {/* Admin Portal Routes */}
-                <Route path="/admin" element={<AdminAuth />} />
-                <Route path="/admin/*" element={
-                  <AdminRoute>
-                    <AdminLayout />
-                  </AdminRoute>
-                }>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="events" element={<AdminEvents />} />
-                  <Route path="analytics" element={<AdminAnalytics />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="monitor" element={<AdminMonitor />} />
-                  <Route path="database" element={<DatabaseAdmin />} />
-                </Route>
-                
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
+              <AppContent />
             </BrowserRouter>
           </CartProvider>
         </AuthProvider>

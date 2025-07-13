@@ -10,6 +10,23 @@ import { loadGoogleMapsAPI } from "@/lib/config/google-maps";
 import { useEffect, useState } from "react";
 import { EVENT_CATEGORIES } from "@/lib/constants/event-categories";
 
+interface PlaceData {
+  formatted_address?: string;
+  name?: string;
+  place_id?: string;
+  geometry?: {
+    location?: {
+      lat: () => number;
+      lng: () => number;
+    };
+  };
+  address_components?: Array<{
+    long_name: string;
+    short_name: string;
+    types: string[];
+  }>;
+}
+
 interface OptimizedImage {
   original: string;
   medium: string;
@@ -81,7 +98,7 @@ export const BasicInformation = ({
   eventType
 }: BasicInformationProps) => {
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
-  const [selectedPlaceData, setSelectedPlaceData] = useState<any>(null);
+  const [selectedPlaceData, setSelectedPlaceData] = useState<PlaceData | null>(null);
 
   // Load Google Maps API on component mount
   useEffect(() => {
@@ -112,7 +129,7 @@ export const BasicInformation = ({
   };
 
   // Handle address/location changes
-  const handleAddressChange = (value: string, placeData?: any) => {
+  const handleAddressChange = (value: string, placeData?: PlaceData) => {
     form.setValue('address', value);
     if (placeData) {
       setSelectedPlaceData(placeData);
@@ -120,7 +137,7 @@ export const BasicInformation = ({
     }
   };
 
-  const handlePlaceSelected = (placeData: any) => {
+  const handlePlaceSelected = (placeData: PlaceData) => {
     setSelectedPlaceData(placeData);
     console.log('Place selected with full data:', placeData);
   };

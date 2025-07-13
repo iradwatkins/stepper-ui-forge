@@ -59,9 +59,20 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
   useEffect(() => {
     if (isOpen) {
-      const methods = productionPaymentService.getAvailablePaymentMethods();
-      setPaymentMethods(methods);
-      setSelectedGateway(methods[0]?.id || 'paypal');
+      // Load payment methods asynchronously
+      const loadPaymentMethods = async () => {
+        try {
+          const methods = await productionPaymentService.getAvailablePaymentMethods();
+          setPaymentMethods(methods);
+          setSelectedGateway(methods[0]?.id || 'paypal');
+        } catch (error) {
+          console.error('Failed to load payment methods:', error);
+          // Fallback to empty array if loading fails
+          setPaymentMethods([]);
+        }
+      };
+      
+      loadPaymentMethods();
       setCustomerEmail(user?.email || '');
       
       // Determine checkout mode

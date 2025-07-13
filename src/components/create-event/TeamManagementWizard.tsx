@@ -23,10 +23,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface TeamConfigData {
+  skipped: boolean;
+  invites: TeamMemberInvite[];
+  totalInvites?: number;
+}
+
 interface TeamManagementWizardProps {
   form: UseFormReturn<EventFormData>;
   eventType: 'simple' | 'ticketed' | 'premium' | '';
-  onTeamConfigured?: (teamData: any) => void;
+  onTeamConfigured?: (teamData: TeamConfigData) => void;
 }
 
 interface TeamMemberInvite {

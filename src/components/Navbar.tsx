@@ -27,8 +27,17 @@ const Navbar = () => {
   return (
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
-        <Link to="/" className="text-lg sm:text-xl md:text-2xl font-bold text-foreground truncate">
-          Stepperslife
+        <Link to="/" className="flex items-center">
+          <img 
+            src="/lovable-uploads/2e635021-dedb-40f2-9817-c404d5bd828d.png" 
+            alt="Steppers Life Logo" 
+            className="h-8 sm:h-10 w-auto object-contain dark:hidden"
+          />
+          <img 
+            src="/lovable-uploads/6bcc30f5-9623-4562-a26a-1c4b50f3028b.png" 
+            alt="Steppers Life Logo" 
+            className="h-8 sm:h-10 w-auto object-contain hidden dark:block"
+          />
         </Link>
         
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">

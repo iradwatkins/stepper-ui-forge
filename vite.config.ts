@@ -71,12 +71,60 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          supabase: ['@supabase/supabase-js'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select']
+        manualChunks: (id) => {
+          // Core React libraries
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            return 'react-vendor';
+          }
+          
+          // Supabase and data fetching
+          if (id.includes('@supabase') || id.includes('@tanstack/react-query')) {
+            return 'data-vendor';
+          }
+          
+          // UI components (Radix UI)
+          if (id.includes('@radix-ui')) {
+            return 'ui-vendor';
+          }
+          
+          // Payment processing
+          if (id.includes('@paypal') || id.includes('@square') || id.includes('payment')) {
+            return 'payment-vendor';
+          }
+          
+          // Charts and visualization
+          if (id.includes('recharts') || id.includes('framer-motion')) {
+            return 'charts-vendor';
+          }
+          
+          // Dashboard pages
+          if (id.includes('/dashboard/') && id.includes('.tsx')) {
+            return 'dashboard-pages';
+          }
+          
+          // Admin pages
+          if (id.includes('/admin/') && id.includes('.tsx')) {
+            return 'admin-pages';
+          }
+          
+          // Core pages
+          if (id.includes('/pages/') && id.includes('.tsx')) {
+            return 'core-pages';
+          }
+          
+          // Utility libraries
+          if (id.includes('date-fns') || id.includes('clsx') || id.includes('uuid')) {
+            return 'utils-vendor';
+          }
+          
+          // Default vendor chunk for other node_modules
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
         }
       }
-    }
+    },
+    // Chunk size warnings
+    chunkSizeWarningLimit: 1000
   }
 }));

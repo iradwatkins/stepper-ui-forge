@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useQRValidation } from '@/lib/hooks/useQRValidation'
-import { QRValidationService } from '@/lib/services/QRValidationService'
+import { QRValidationService, QRValidationResult, CheckInResult } from '@/lib/services/QRValidationService'
 
 interface QRScannerProps {
   onScan?: (scannedCode: string) => Promise<void>
-  onValidation?: (result: any) => void
-  onCheckIn?: (result: any) => void
+  onValidation?: (result: QRValidationResult) => void
+  onCheckIn?: (result: CheckInResult) => void
   autoCheckIn?: boolean
   checkedInBy?: string
   mode?: 'validate' | 'checkin' | 'both'
