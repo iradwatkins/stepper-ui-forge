@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { UserIcon, LogOutIcon, Loader2Icon } from 'lucide-react'
+import { UserIcon, LogOutIcon, Loader2Icon, LayoutDashboardIcon, TicketIcon, BellIcon, SettingsIcon } from 'lucide-react'
 import { Auth } from './Auth'
 
 export const UserProfile = () => {
@@ -76,6 +76,30 @@ export const UserProfile = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard">
+            <LayoutDashboardIcon className="mr-2 h-4 w-4" />
+            <span>Dashboard</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/my-tickets">
+            <TicketIcon className="mr-2 h-4 w-4" />
+            <span>My Tickets</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard/notifications">
+            <BellIcon className="mr-2 h-4 w-4" />
+            <span>Notifications</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard/settings">
+            <SettingsIcon className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/dashboard/profile">
             <UserIcon className="mr-2 h-4 w-4" />

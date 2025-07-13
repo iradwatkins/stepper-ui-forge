@@ -1,14 +1,15 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoonIcon, SunIcon, PlusIcon, ShoppingBag } from "lucide-react";
+import { PlusIcon, ShoppingBag, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { UserProfile } from "@/components/auth/UserProfile";
 import { CartDrawer } from "@/components/cart";
+import PWAInstallButton from "@/components/PWAInstallButton";
 
 const Navbar = () => {
   const { theme, setTheme } = useTheme();
@@ -16,6 +17,12 @@ const Navbar = () => {
   const { user } = useAuth();
   const { totalItems } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isLightTheme, setIsLightTheme] = useState(true);
+
+  // Sync theme state with the switch
+  useEffect(() => {
+    setIsLightTheme(theme !== "dark");
+  }, [theme]);
 
   return (
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -64,25 +71,23 @@ const Navbar = () => {
           </Link>
           
           {user && (
-            <>
-              <Link to="/dashboard" className="hidden sm:block">
-                <Button 
-                  variant={location.pathname.startsWith("/dashboard") ? "default" : "ghost"}
-                  className="font-medium text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
-                >
-                  Dashboard
-                </Button>
-              </Link>
-              <Link to="/create-event">
-                <Button variant="outline" size="sm" className="text-xs px-2 h-8">
-                  <PlusIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Create Event</span>
-                  <span className="sm:hidden">Create</span>
-                </Button>
-              </Link>
-            </>
+            <Link to="/create-event">
+              <Button variant="outline" size="sm" className="text-xs px-2 h-8">
+                <PlusIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Create Event</span>
+                <span className="sm:hidden">Create</span>
+              </Button>
+            </Link>
           )}
           
+          {/* PWA Install Button - Mobile Only */}
+          <PWAInstallButton 
+            variant="ghost" 
+            size="sm" 
+            showText={false}
+            className="h-8 w-8 sm:h-9 sm:w-9 p-0"
+          />
+
           <Button
             variant="ghost"
             size="sm"

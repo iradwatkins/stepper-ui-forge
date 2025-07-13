@@ -173,6 +173,22 @@ function generateDemoTableSeats() {
     const chairPositions = getChairPositions(table.chairs);
     
     chairPositions.forEach((position, index) => {
+      // Create realistic seat status mix: 60% available, 30% sold, 10% held
+      const random = Math.random();
+      let status: 'available' | 'sold' | 'held';
+      let available: boolean;
+      
+      if (random < 0.6) {
+        status = 'available';
+        available = true;
+      } else if (random < 0.9) {
+        status = 'sold';
+        available = false;
+      } else {
+        status = 'held';
+        available = false;
+      }
+
       seats.push({
         id: `seat-${seatId++}`,
         x: table.x + position.x,
@@ -184,7 +200,8 @@ function generateDemoTableSeats() {
         chairPosition: position.label,
         ticketTypeId: table.type,
         price: table.price,
-        available: true,
+        available: available,
+        status: status, // Add explicit status field
         isAccessible: table.type === 'accessible',
         isPremium: table.type === 'vip',
         amenities: table.type === 'vip' ? ['Champagne Service', 'Priority Serving', 'Reserved Parking'] : 

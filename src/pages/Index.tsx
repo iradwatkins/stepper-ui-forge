@@ -23,7 +23,7 @@ const Index = () => {
                 Browse Events
               </Button>
             </Link>
-            <Link to="/auth">
+            <Link to="/account">
               <Button variant="outline" size="lg" className="px-8 py-4 text-lg">
                 Sign In / Sign Up
               </Button>

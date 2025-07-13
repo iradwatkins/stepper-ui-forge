@@ -41,6 +41,7 @@ import AdminSettings from "./pages/dashboard/admin/AdminSettings";
 import AdminMonitor from "./pages/dashboard/admin/AdminMonitor";
 import AdminEvents from "./pages/dashboard/admin/AdminEvents";
 import DatabaseAdmin from "./pages/dashboard/admin/DatabaseAdmin";
+import MagazineManagementPage from "./pages/admin/MagazineManagementPage";
 import EditEventsManage from "./pages/dashboard/EditEventsManage";
 import Following from "./pages/dashboard/Following";
 import FollowerManagement from "./pages/dashboard/FollowerManagement";
@@ -65,17 +66,6 @@ import Navbar from "./components/Navbar";
 
 const queryClient = new QueryClient();
 
-function ConditionalNavbar() {
-  const location = useLocation();
-  const isDashboard = location.pathname.startsWith('/dashboard');
-  const isAdmin = location.pathname.startsWith('/admin');
-  
-  if (isDashboard || isAdmin) {
-    return null;
-  }
-  
-  return <Navbar />;
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -87,7 +77,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
             <div className="min-h-screen bg-background">
-              <ConditionalNavbar />
+              <Navbar />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/events" element={<Events />} />
@@ -127,6 +117,13 @@ const App = () => (
                     <CashPaymentDashboardPage />
                   </ProtectedRoute>
                 } />
+                
+                {/* Customer Account Routes */}
+                <Route path="/account" element={<AccountAuth />} />
+                
+                {/* Legacy auth route - redirect to account */}
+                <Route path="/auth" element={<AccountAuth />} />
+                
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />
@@ -190,6 +187,11 @@ const App = () => (
                       <DatabaseAdmin />
                     </AdminRoute>
                   } />
+                  <Route path="admin/magazine" element={
+                    <AdminRoute>
+                      <MagazineManagementPage />
+                    </AdminRoute>
+                  } />
                 </Route>
                 
                 {/* Admin Portal Routes */}
@@ -208,11 +210,6 @@ const App = () => (
                   <Route path="database" element={<DatabaseAdmin />} />
                 </Route>
                 
-                {/* Customer Account Routes */}
-                <Route path="/account" element={<AccountAuth />} />
-                
-                {/* Legacy auth route - redirect to account */}
-                <Route path="/auth" element={<AccountAuth />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

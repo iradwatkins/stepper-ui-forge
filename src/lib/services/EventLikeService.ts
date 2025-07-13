@@ -137,8 +137,8 @@ export class EventLikeService {
       });
 
       if (error) {
-        // Handle missing function gracefully
-        if (error.code === 'PGRST202') {
+        // Handle missing function gracefully (404 = PGRST116, function not found)
+        if (error.code === 'PGRST202' || error.code === 'PGRST116' || error.message?.includes('404')) {
           console.warn('Event like function not available, returning false');
           return { isLiked: false };
         }
@@ -148,6 +148,11 @@ export class EventLikeService {
       return { isLiked: data as boolean };
     } catch (error) {
       console.error('Error checking if event is liked:', error);
+      // Handle network errors or 404s that don't get caught above
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))) {
+        console.warn('Event like function not available, returning false');
+        return { isLiked: false };
+      }
       return { isLiked: false, error: 'Failed to check like status' };
     }
   }
@@ -162,8 +167,8 @@ export class EventLikeService {
       });
 
       if (error) {
-        // Handle missing function gracefully
-        if (error.code === 'PGRST202') {
+        // Handle missing function gracefully (404 = PGRST116, function not found)
+        if (error.code === 'PGRST202' || error.code === 'PGRST116' || error.message?.includes('404')) {
           console.warn('Event like count function not available, returning 0');
           return { count: 0 };
         }
@@ -173,6 +178,11 @@ export class EventLikeService {
       return { count: data as number };
     } catch (error) {
       console.error('Error getting event like count:', error);
+      // Handle network errors or 404s that don't get caught above
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))) {
+        console.warn('Event like count function not available, returning 0');
+        return { count: 0 };
+      }
       return { count: 0, error: 'Failed to get like count' };
     }
   }

@@ -4,6 +4,8 @@ export type TicketStatus = 'active' | 'used' | 'refunded' | 'cancelled'
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
 export type VenueType = 'theater' | 'arena' | 'stadium' | 'conference' | 'general'
 export type HoldStatus = 'active' | 'expired' | 'completed' | 'cancelled' | 'extended'
+export type ArticleStatus = 'draft' | 'published'
+export type ContentBlockType = 'header' | 'subheader' | 'paragraph' | 'image' | 'youtube_video' | 'embedded_video' | 'ad_placement'
 
 export interface ImageMetadata {
   url: string
@@ -896,6 +898,123 @@ export interface Database {
           updated_at?: string
         }
       }
+      magazine_categories: {
+        Row: {
+          id: number
+          name: string
+          slug: string
+          description: string | null
+          article_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          slug?: string
+          description?: string | null
+          article_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          slug?: string
+          description?: string | null
+          article_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      magazine_articles: {
+        Row: {
+          id: number
+          title: string
+          slug: string
+          excerpt: string | null
+          featured_image: string | null
+          author_id: string
+          category_id: number | null
+          status: ArticleStatus
+          is_featured: boolean
+          view_count: number
+          read_time_minutes: number | null
+          meta_title: string | null
+          meta_description: string | null
+          published_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          title: string
+          slug?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          author_id: string
+          category_id?: number | null
+          status?: ArticleStatus
+          is_featured?: boolean
+          view_count?: number
+          read_time_minutes?: number | null
+          meta_title?: string | null
+          meta_description?: string | null
+          published_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          title?: string
+          slug?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          author_id?: string
+          category_id?: number | null
+          status?: ArticleStatus
+          is_featured?: boolean
+          view_count?: number
+          read_time_minutes?: number | null
+          meta_title?: string | null
+          meta_description?: string | null
+          published_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      magazine_content_blocks: {
+        Row: {
+          id: number
+          article_id: number
+          type: ContentBlockType
+          content: string
+          order_index: number
+          metadata: Record<string, any>
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          article_id: number
+          type: ContentBlockType
+          content: string
+          order_index: number
+          metadata?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          article_id?: number
+          type?: ContentBlockType
+          content?: string
+          order_index?: number
+          metadata?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       seat_availability_summary: {
@@ -999,6 +1118,8 @@ export interface Database {
       payment_status: PaymentStatus
       venue_type: VenueType
       hold_status: HoldStatus
+      article_status: ArticleStatus
+      content_block_type: ContentBlockType
     }
   }
 }
@@ -1086,6 +1207,18 @@ export type SeatHoldUpdate = Database['public']['Tables']['seat_holds']['Update'
 
 export type SeatAvailabilitySummary = Database['public']['Views']['seat_availability_summary']['Row']
 
+export type MagazineCategory = Database['public']['Tables']['magazine_categories']['Row']
+export type MagazineCategoryInsert = Database['public']['Tables']['magazine_categories']['Insert']
+export type MagazineCategoryUpdate = Database['public']['Tables']['magazine_categories']['Update']
+
+export type MagazineArticle = Database['public']['Tables']['magazine_articles']['Row']
+export type MagazineArticleInsert = Database['public']['Tables']['magazine_articles']['Insert']
+export type MagazineArticleUpdate = Database['public']['Tables']['magazine_articles']['Update']
+
+export type MagazineContentBlock = Database['public']['Tables']['magazine_content_blocks']['Row']
+export type MagazineContentBlockInsert = Database['public']['Tables']['magazine_content_blocks']['Insert']
+export type MagazineContentBlockUpdate = Database['public']['Tables']['magazine_content_blocks']['Update']
+
 // Extended types with relations
 export type EventWithStats = Event & {
   ticket_types?: TicketType[]
@@ -1098,4 +1231,11 @@ export type EventWithStats = Event & {
 export type ProfileWithEvents = Profile & {
   events?: Event[]
   event_count?: number
+}
+
+export type MagazineArticleWithDetails = MagazineArticle & {
+  category?: MagazineCategory
+  content_blocks?: MagazineContentBlock[]
+  author_name?: string
+  author_avatar?: string
 }

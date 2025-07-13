@@ -25,10 +25,7 @@ import {
   Settings,
   Eye,
   Upload as UploadIcon,
-  FileImage,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw
+  FileImage
 } from 'lucide-react';
 
 interface SeatPosition {
@@ -74,17 +71,13 @@ interface SeatingLayoutManagerProps {
   onLayoutSaved?: (layout: SeatingLayout) => void;
   initialLayout?: SeatingLayout;
   mode?: 'create' | 'edit' | 'template';
-  onImageUpload?: (file: File) => void;
-  venueImageUrl?: string;
 }
 
 const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
   eventId,
   onLayoutSaved,
   initialLayout,
-  mode = 'create',
-  onImageUpload,
-  venueImageUrl
+  mode = 'create'
 }) => {
   const [layout, setLayout] = useState<SeatingLayout>(
     initialLayout || {
@@ -92,7 +85,7 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
       name: '',
       description: '',
       venueType: 'theater',
-      imageUrl: venueImageUrl || '',
+      imageUrl: '',
       imageWidth: 800,
       imageHeight: 600,
       seats: [],
@@ -117,26 +110,10 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  
-  // Zoom and pan controls
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Sync with external venue image URL
-  useEffect(() => {
-    if (venueImageUrl && venueImageUrl !== layout.imageUrl) {
-      setLayout(prev => ({
-        ...prev,
-        imageUrl: venueImageUrl
-      }));
-    }
-  }, [venueImageUrl, layout.imageUrl]);
 
   // Auto-calculate capacity when seats change
   useEffect(() => {
@@ -151,13 +128,6 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Call external image upload handler if provided
-    if (onImageUpload) {
-      onImageUpload(file);
-      return;
-    }
-
-    // Fall back to internal file reading
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -175,50 +145,15 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
   };
 
   const handleCanvasClick = (event: React.MouseEvent) => {
-    if (!canvasRef.current || currentTool === 'select' || isPanning) return;
+    if (!canvasRef.current || currentTool === 'select') return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    
-    // Calculate coordinates accounting for zoom and pan
-    const clientX = event.clientX - rect.left;
-    const clientY = event.clientY - rect.top;
-    
-    // Apply inverse pan and zoom transformations
-    const transformedX = (clientX - pan.x) / zoom;
-    const transformedY = (clientY - pan.y) / zoom;
-    
-    // Convert to percentage coordinates relative to the image container
-    const x = Math.max(0, Math.min(100, (transformedX / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, (transformedY / rect.height) * 100));
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
 
     if (currentTool === 'add-seat') {
       addSingleSeat(x, y);
     }
-  };
-
-  const handleCanvasMouseDown = (event: React.MouseEvent) => {
-    if (currentTool === 'select') {
-      setIsPanning(true);
-      setLastPanPoint({ x: event.clientX, y: event.clientY });
-    }
-  };
-
-  const handleCanvasMouseMove = (event: React.MouseEvent) => {
-    if (isPanning && currentTool === 'select') {
-      const deltaX = event.clientX - lastPanPoint.x;
-      const deltaY = event.clientY - lastPanPoint.y;
-      
-      setPan(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
-      }));
-      
-      setLastPanPoint({ x: event.clientX, y: event.clientY });
-    }
-  };
-
-  const handleCanvasMouseUp = () => {
-    setIsPanning(false);
   };
 
   const addSingleSeat = (x: number, y: number) => {
@@ -311,19 +246,6 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
     }
   };
 
-  const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
-
-  const zoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.2, 3));
-  };
-
-  const zoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.2, 0.5));
-  };
-
   const exportLayout = () => {
     const dataStr = JSON.stringify(layout, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -404,14 +326,6 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
           : seat
       )
     }));
-  };
-
-  const clearAllSeats = () => {
-    setLayout(prev => ({
-      ...prev,
-      seats: []
-    }));
-    setSelectedSeats([]);
   };
 
   return (
@@ -527,23 +441,6 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
                   </Select>
                 </div>
 
-                {/* Zoom Controls */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">View:</span>
-                  <div className="flex border rounded">
-                    <Button variant="ghost" size="sm" onClick={zoomOut}>
-                      <ZoomOut className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={zoomIn}>
-                      <ZoomIn className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={resetView}>
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <Badge variant="outline">{Math.round(zoom * 100)}%</Badge>
-                </div>
-
                 <Button variant="outline" size="sm" onClick={() => setIsAddingRow(true)}>
                   <Grid className="w-4 h-4 mr-2" />
                   Add Row
@@ -559,11 +456,6 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
                     Delete Selected ({selectedSeats.length})
                   </Button>
                 )}
-
-                <Button variant="destructive" size="sm" onClick={clearAllSeats}>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Clear All
-                </Button>
               </div>
 
               <Separator />
@@ -589,59 +481,35 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
                 ) : (
                   <div 
                     ref={canvasRef}
-                    className="relative border rounded-lg overflow-hidden bg-gray-50"
-                    style={{ 
-                      height: '500px',
-                      cursor: currentTool === 'add-seat' ? 'crosshair' : 
-                             currentTool === 'select' ? (isPanning ? 'grabbing' : 'grab') : 'default'
-                    }}
+                    className="relative border rounded-lg overflow-hidden bg-gray-50 cursor-crosshair"
+                    style={{ height: '500px' }}
                     onClick={handleCanvasClick}
-                    onMouseDown={handleCanvasMouseDown}
-                    onMouseMove={handleCanvasMouseMove}
-                    onMouseUp={handleCanvasMouseUp}
-                    onMouseLeave={handleCanvasMouseUp}
                   >
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                        transformOrigin: '0 0',
-                        transition: isPanning ? 'none' : 'transform 0.1s ease'
-                      }}
-                    >
-                      <img 
-                        ref={imageRef}
-                        src={layout.imageUrl}
-                        alt="Venue layout"
-                        className="w-full h-full object-contain"
-                      />
-                      
-                      {/* Render seats */}
-                      {layout.seats.map(seat => (
-                        <div
-                          key={seat.id}
-                          className={`absolute w-6 h-6 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-xs font-bold text-white cursor-pointer transition-all ${
-                            selectedSeats.includes(seat.id) ? 'ring-2 ring-blue-500 scale-110' : ''
-                          }`}
-                          style={{
-                            left: `${seat.x}%`,
-                            top: `${seat.y}%`,
-                            backgroundColor: layout.priceCategories.find(cat => cat.id === seat.priceCategory)?.color || '#3B82F6'
-                          }}
-                          onClick={(e) => handleSeatClick(seat.id, e)}
-                          title={`${seat.seatNumber} ${seat.row ? `Row ${seat.row}` : ''} - $${seat.price}`}
-                        >
-                          {seat.isADA ? '♿' : seat.seatNumber.slice(-2)}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Pan instruction overlay */}
-                    {zoom > 1 && currentTool === 'select' && (
-                      <div className="absolute top-4 left-4 bg-black bg-opacity-75 text-white px-3 py-1 rounded text-sm">
-                        Drag to pan around
+                    <img 
+                      ref={imageRef}
+                      src={layout.imageUrl}
+                      alt="Venue layout"
+                      className="w-full h-full object-contain"
+                    />
+                    
+                    {/* Render seats */}
+                    {layout.seats.map(seat => (
+                      <div
+                        key={seat.id}
+                        className={`absolute w-6 h-6 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-xs font-bold text-white cursor-pointer transition-all ${
+                          selectedSeats.includes(seat.id) ? 'ring-2 ring-blue-500 scale-110' : ''
+                        }`}
+                        style={{
+                          left: `${seat.x}%`,
+                          top: `${seat.y}%`,
+                          backgroundColor: layout.priceCategories.find(cat => cat.id === seat.priceCategory)?.color || '#3B82F6'
+                        }}
+                        onClick={(e) => handleSeatClick(seat.id, e)}
+                        title={`${seat.seatNumber} ${seat.row ? `Row ${seat.row}` : ''} - $${seat.price}`}
+                      >
+                        {seat.isADA ? '♿' : seat.seatNumber.slice(-2)}
                       </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>

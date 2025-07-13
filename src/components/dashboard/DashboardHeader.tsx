@@ -1,15 +1,4 @@
-import { useLocation, Link } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { useLocation } from 'react-router-dom'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,15 +7,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Bell, Search, Settings, User, LogOut, LayoutDashboard, Ticket } from 'lucide-react'
 
 interface DashboardHeaderProps {
   children?: React.ReactNode
 }
 
 export function DashboardHeader({ children }: DashboardHeaderProps) {
-  const { user, signOut } = useAuth()
   const location = useLocation()
 
   const generateBreadcrumbs = () => {
@@ -58,14 +44,6 @@ export function DashboardHeader({ children }: DashboardHeaderProps) {
 
   const breadcrumbs = generateBreadcrumbs()
   const pageTitle = breadcrumbs[breadcrumbs.length - 1]?.label || 'Dashboard'
-
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-    } catch (error) {
-      console.error('Error signing out:', error)
-    }
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
@@ -103,100 +81,6 @@ export function DashboardHeader({ children }: DashboardHeaderProps) {
           </h1>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {/* Search */}
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search..."
-              className="w-64 pl-10 pr-4 border-border focus:border-primary/50 focus:ring-primary/20"
-            />
-          </div>
-
-          {/* Notifications */}
-          <Link to="/dashboard/notifications">
-            <Button variant="ghost" size="sm" className="relative hover:bg-muted">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-xs text-destructive-foreground flex items-center justify-center">
-                3
-              </span>
-            </Button>
-          </Link>
-
-          {/* Settings */}
-          <Link to="/dashboard/settings">
-            <Button variant="ghost" size="sm" className="hover:bg-muted">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </Link>
-
-          {/* User menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-muted">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage
-                    src={user?.user_metadata?.avatar_url}
-                    alt={user?.user_metadata?.full_name || user?.email || ''}
-                  />
-                  <AvatarFallback>
-                    {user?.user_metadata?.full_name
-                      ? user.user_metadata.full_name
-                          .split(' ')
-                          .map(n => n[0])
-                          .join('')
-                          .toUpperCase()
-                      : user?.email?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none text-foreground">
-                    {user?.user_metadata?.full_name || 'User'}
-                  </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard" className="flex items-center">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/my-tickets" className="flex items-center">
-                  <Ticket className="mr-2 h-4 w-4" />
-                  <span>My Tickets</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard/profile" className="flex items-center">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard/settings" className="flex items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
     </header>
   )

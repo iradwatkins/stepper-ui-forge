@@ -10,8 +10,17 @@ import {
   Map,
 } from "lucide-react"
 import { EVENT_CATEGORIES, getCategoryLabels } from "@/lib/constants/event-categories"
+import { categorySearchService } from "@/lib/services/CategorySearchService"
 
 const categories = ["All Events", ...getCategoryLabels()]
+
+// Enhanced search suggestions for stepping community
+const steppingSearchPlaceholders = [
+  "Search Chicago stepping events, line dancing, venues...",
+  "Find stepping classes, workshops, instructors...",
+  "Discover stepping socials, competitions, shows...",
+  "Search DJs, dance shoes, event venues..."
+]
 
 interface EventFiltersProps {
   searchQuery: string;
@@ -51,16 +60,17 @@ export function EventFilters({
     <div className="w-full max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex flex-col gap-6">
 
-        {/* Search Bar */}
+        {/* Enhanced Search Bar with Stepping-specific suggestions */}
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search events, promoters, venues..."
+            placeholder={steppingSearchPlaceholders[Math.floor(Math.random() * steppingSearchPlaceholders.length)]}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-3 border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:outline-none"
           />
+          {/* Search suggestions would appear here in a real implementation */}
         </div>
 
         {/* Category Filters */}

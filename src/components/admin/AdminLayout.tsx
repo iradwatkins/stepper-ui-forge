@@ -57,16 +57,16 @@ const AdminLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Admin Header */}
-      <header className="bg-red-600 dark:bg-red-700 text-white shadow-md">
+      <header className="bg-destructive text-destructive-foreground shadow-md border-b border-border">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Shield className="h-8 w-8" />
               <div>
                 <h1 className="text-xl font-bold">Admin Portal</h1>
-                <p className="text-red-200 text-sm">System Administration</p>
+                <p className="text-destructive-foreground/80 text-sm">System Administration</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -77,7 +77,7 @@ const AdminLayout = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleSignOut}
-                className="border-red-400 text-red-100 hover:bg-red-500"
+                className="border-destructive-foreground/20 text-destructive-foreground hover:bg-destructive-foreground/10"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
@@ -89,14 +89,14 @@ const AdminLayout = () => {
 
       <div className="flex">
         {/* Admin Sidebar */}
-        <aside className="w-64 bg-white dark:bg-gray-800 shadow-md min-h-screen">
+        <aside className="w-64 bg-background border-r border-border shadow-sm min-h-screen">
           <nav className="p-4">
             <ul className="space-y-2">
               {adminNavItems.map((item) => (
                 <li key={item.path}>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start"
+                    className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors"
                     onClick={() => navigate(item.path)}
                   >
                     <item.icon className="h-4 w-4 mr-3" />
@@ -109,7 +109,7 @@ const AdminLayout = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 bg-background">
           <Outlet />
         </main>
       </div>

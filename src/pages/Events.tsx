@@ -6,6 +6,8 @@ import { EventWithStats } from "@/types/database";
 import { EventFilters } from "@/components/EventFilters";
 import { AdvancedFiltersModal } from "@/components/AdvancedFiltersModal";
 import { getCategoryId } from "@/lib/constants/event-categories";
+import { UnifiedSearchComponent } from "@/components/search/UnifiedSearchComponent";
+import { SearchResult } from "@/lib/services/CategorySearchService";
 
 interface EventImageData {
   original?: string;

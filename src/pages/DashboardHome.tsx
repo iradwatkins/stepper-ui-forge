@@ -1,5 +1,5 @@
-import UnifiedDashboardHome from '@/components/dashboard/UnifiedDashboardHome'
+import SimplifiedDashboard from '@/components/dashboard/SimplifiedDashboard'
 
 export default function DashboardHome() {
-  return <UnifiedDashboardHome />
+  return <SimplifiedDashboard />
 }
