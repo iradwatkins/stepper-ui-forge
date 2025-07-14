@@ -10,6 +10,9 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 8080,
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
@@ -18,6 +21,9 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 5000000, // 5MB limit
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
@@ -69,55 +75,22 @@ export default defineConfig(({ mode }) => ({
     target: 'esnext',
     minify: 'terser',
     sourcemap: false,
+    // Simplified chunking strategy to fix loading issues
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Core React libraries
-          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-            return 'react-vendor';
+          // Keep React in the main bundle to ensure it's always available
+          if (id.includes('react') || id.includes('react-dom')) {
+            return undefined; // Don't split React - include in main bundle
           }
           
-          // Supabase and data fetching
-          if (id.includes('@supabase') || id.includes('@tanstack/react-query')) {
-            return 'data-vendor';
-          }
-          
-          // UI components (Radix UI)
+          // Split other vendors
           if (id.includes('@radix-ui')) {
             return 'ui-vendor';
           }
-          
-          // Payment processing
-          if (id.includes('@paypal') || id.includes('@square') || id.includes('payment')) {
-            return 'payment-vendor';
+          if (id.includes('@supabase') || id.includes('@tanstack/react-query')) {
+            return 'data-vendor';
           }
-          
-          // Charts and visualization
-          if (id.includes('recharts') || id.includes('framer-motion')) {
-            return 'charts-vendor';
-          }
-          
-          // Dashboard pages
-          if (id.includes('/dashboard/') && id.includes('.tsx')) {
-            return 'dashboard-pages';
-          }
-          
-          // Admin pages
-          if (id.includes('/admin/') && id.includes('.tsx')) {
-            return 'admin-pages';
-          }
-          
-          // Core pages
-          if (id.includes('/pages/') && id.includes('.tsx')) {
-            return 'core-pages';
-          }
-          
-          // Utility libraries
-          if (id.includes('date-fns') || id.includes('clsx') || id.includes('uuid')) {
-            return 'utils-vendor';
-          }
-          
-          // Default vendor chunk for other node_modules
           if (id.includes('node_modules')) {
             return 'vendor';
           }
