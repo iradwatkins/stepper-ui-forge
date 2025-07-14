@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import {
   motion,
@@ -233,4 +235,4 @@ const Stars = ({ count }: StarsProps) => (
 
 DayNightSwitch.displayName = "DayNightSwitch";
 
-export { DayNightSwitch };
+export default DayNightSwitch;

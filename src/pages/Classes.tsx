@@ -49,7 +49,7 @@ export default function Classes() {
   // Load classes on component mount
   useEffect(() => {
     loadClasses();
-  }, [loadClasses]);
+  }, []);
 
   // Location search handlers
   const handleLocationSelect = (location: LocationResult) => {

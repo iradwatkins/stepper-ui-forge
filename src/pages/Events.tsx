@@ -28,7 +28,7 @@ const Events = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Events");
-  const [activeView, setActiveView] = useState("Masonry");
+  const [activeView, setActiveView] = useState("Grid");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedDateRange, setSelectedDateRange] = useState({ start: "", end: "" });
   const [sortBy, setSortBy] = useState("date_asc");
@@ -37,15 +37,6 @@ const Events = () => {
   const [capacityRange, setCapacityRange] = useState({ min: 0, max: 0 });
   const [timeOfDay, setTimeOfDay] = useState("any");
   const [advancedEventType, setAdvancedEventType] = useState("any");
-  const [screenWidth, setScreenWidth] = useState(0);
-
-  // Update screen width for responsive masonry
-  useEffect(() => {
-    const updateScreenWidth = () => setScreenWidth(window.innerWidth);
-    updateScreenWidth();
-    window.addEventListener('resize', updateScreenWidth);
-    return () => window.removeEventListener('resize', updateScreenWidth);
-  }, []);
 
   // Helper function to get state name from abbreviation
   const getStateName = (abbreviation: string): string => {
@@ -501,18 +492,10 @@ const Events = () => {
           </div>
         );
       
-      case "Masonry":
       default:
-        const columnCount = screenWidth < 768 ? 2 : 4;
         return (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 events-masonry">
-            {Array.from({ length: columnCount }, (_, columnIndex) => (
-              <div key={columnIndex} className="grid gap-4 md:gap-6">
-                {eventsToShow
-                  .filter((_, index) => index % columnCount === columnIndex)
-                  .map(renderEventCard)}
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {eventsToShow.map(renderEventCard)}
           </div>
         );
     }

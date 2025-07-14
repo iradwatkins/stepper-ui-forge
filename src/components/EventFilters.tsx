@@ -5,9 +5,7 @@ import {
   CalendarDays,
   SlidersHorizontal,
   LayoutGrid,
-  Columns,
   List,
-  Map,
 } from "lucide-react"
 import { EVENT_CATEGORIES, getCategoryLabels } from "@/lib/constants/event-categories"
 import { categorySearchService } from "@/lib/services/CategorySearchService"
@@ -167,14 +165,8 @@ export function EventFilters({
               <button onClick={() => setActiveView("Grid")} className={`p-2 rounded-md transition-colors ${activeView === "Grid" ? "bg-white dark:bg-gray-900 shadow" : "hover:bg-gray-200 dark:hover:bg-gray-700"}`}>
                 <LayoutGrid className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               </button>
-              <button onClick={() => setActiveView("Masonry")} className={`p-2 rounded-md transition-colors ${activeView === "Masonry" ? "bg-purple-600 text-white shadow" : "hover:bg-gray-200 dark:hover:bg-gray-700"}`}>
-                <Columns className={`h-5 w-5 ${activeView === "Masonry" ? "text-white" : "text-gray-700 dark:text-gray-300"}`} />
-              </button>
               <button onClick={() => setActiveView("List")} className={`p-2 rounded-md transition-colors ${activeView === "List" ? "bg-white dark:bg-gray-900 shadow" : "hover:bg-gray-200 dark:hover:bg-gray-700"}`}>
                 <List className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-              </button>
-              <button onClick={() => setActiveView("Map")} className={`p-2 rounded-md transition-colors ${activeView === "Map" ? "bg-white dark:bg-gray-900 shadow" : "hover:bg-gray-200 dark:hover:bg-gray-700"}`}>
-                <Map className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               </button>
             </div>
           </div>
