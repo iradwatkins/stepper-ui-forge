@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAdminPermissions } from '@/lib/hooks/useAdminPermissions'
 import { useUserPermissions } from '@/lib/hooks/useUserPermissions'
+import { useEventPermissions } from '@/hooks/useEventPermissions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -55,8 +56,9 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const location = useLocation()
   const { user } = useAuth()
   const { isAdmin } = useAdminPermissions()
-  const { canSellTickets, canWorkEvents, isEventOwner } = useUserPermissions()
-  const [expandedItems, setExpandedItems] = useState<string[]>(['My Events'])
+  const { isEventOwner } = useUserPermissions()
+  const eventPermissions = useEventPermissions()
+  const [expandedItems, setExpandedItems] = useState<string[]>([])
 
   const isActive = (href?: string) => {
     if (!href) return false
@@ -71,16 +73,110 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     )
   }
 
-  // Build navigation based on user permissions
+  // Build navigation based on user permissions - Progressive Enhancement System
   const getMainNavigation = (): NavigationItem[] => {
+    // Base navigation for ALL users (except admin)
     const items: NavigationItem[] = [
       {
         title: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard
+      },
+      {
+        title: 'My Tickets',
+        href: '/dashboard/tickets',
+        icon: CreditCard
+      },
+      {
+        title: 'Liked Events',
+        href: '/dashboard/liked',
+        icon: Heart
+      },
+      {
+        title: 'Browse Events',
+        href: '/events',
+        icon: Calendar
       }
     ]
 
+    // Add following/followers based on context
+    if (isEventOwner) {
+      items.push({
+        title: 'Followers',
+        href: '/dashboard/followers',
+        icon: Users
+      })
+    } else {
+      items.push({
+        title: 'Following',
+        href: '/dashboard/following',
+        icon: Users
+      })
+    }
+
+    // Progressive Enhancement - Add Staff/Team Member features
+    if (eventPermissions.canWorkEvents) {
+      items.push({
+        title: 'Staff',
+        icon: QrCode,
+        badge: eventPermissions.teamMemberEvents.length,
+        children: [
+          {
+            title: 'QR Scanner',
+            href: '/dashboard/scanner',
+            icon: QrCode
+          },
+          {
+            title: 'Check-In Tools',
+            href: '/dashboard/checkin',
+            icon: Shield
+          },
+          {
+            title: 'Event Assignments',
+            href: '/dashboard/assignments',
+            icon: Calendar
+          },
+          {
+            title: 'Schedule',
+            href: '/dashboard/schedule',
+            icon: Clock
+          }
+        ]
+      })
+    }
+
+    // Progressive Enhancement - Add Seller features
+    if (eventPermissions.canSellTickets) {
+      items.push({
+        title: 'Seller',
+        icon: DollarSign,
+        badge: eventPermissions.sellerEvents.length,
+        children: [
+          {
+            title: 'Sales Dashboard',
+            href: '/dashboard/sales',
+            icon: BarChart3
+          },
+          {
+            title: 'Referral Codes',
+            href: '/dashboard/referrals',
+            icon: CreditCard
+          },
+          {
+            title: 'Earnings',
+            href: '/dashboard/earnings',
+            icon: DollarSign
+          },
+          {
+            title: 'My Payouts',
+            href: '/dashboard/payouts',
+            icon: CreditCard
+          }
+        ]
+      })
+    }
+
+    // Event Owner specific features
     if (isEventOwner) {
       items.push({
         title: 'My Events',
@@ -164,54 +260,12 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         ]
       })
 
+      // Add Seller Payouts management for event owners
       items.push({
-        title: 'Followers',
-        href: '/dashboard/followers',
-        icon: Heart
+        title: 'Seller Payouts',
+        href: '/dashboard/seller-payouts',
+        icon: DollarSign
       })
-    } else {
-      // Regular user navigation
-      items.push({
-        title: 'Following',
-        href: '/dashboard/following',
-        icon: Heart
-      })
-
-      if (canSellTickets) {
-        items.push({
-          title: 'Sales Dashboard',
-          href: '/dashboard/sales',
-          icon: DollarSign
-        })
-        items.push({
-          title: 'Referral Codes',
-          href: '/dashboard/referrals',
-          icon: CreditCard
-        })
-        items.push({
-          title: 'Earnings',
-          href: '/dashboard/earnings',
-          icon: BarChart3
-        })
-      }
-
-      if (canWorkEvents) {
-        items.push({
-          title: 'Event Assignments',
-          href: '/dashboard/assignments',
-          icon: Calendar
-        })
-        items.push({
-          title: 'Check-In Tools',
-          href: '/dashboard/checkin',
-          icon: QrCode
-        })
-        items.push({
-          title: 'Schedule',
-          href: '/dashboard/schedule',
-          icon: Clock
-        })
-      }
     }
 
     return items

@@ -7,20 +7,15 @@ import { User } from 'lucide-react'
 
 export default function AccountAuth() {
   const { user } = useAuth()
-  const { isAdmin, loading } = useIsAdmin()
+  const { loading } = useIsAdmin()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (user && !loading) {
-      if (isAdmin) {
-        // Redirect admin users to admin portal
-        navigate('/admin')
-      } else {
-        // Redirect regular users to dashboard
-        navigate('/dashboard')
-      }
+      // Both admin and regular users go to dashboard (admin features appear based on permissions)
+      navigate('/dashboard')
     }
-  }, [user, isAdmin, loading, navigate])
+  }, [user, loading, navigate])
 
   if (user && loading) {
     return (

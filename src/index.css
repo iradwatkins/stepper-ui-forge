@@ -11,97 +11,112 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-
+    /* Font families */
+    --font-headings: 'Montserrat', sans-serif;
+    --font-body: 'Lato', sans-serif;
+    --font-headings-premium: 'Neue Plak', sans-serif;
+    --font-body-alt: 'Roboto', sans-serif;
+    
+    /* Font sizes */
+    --font-size-h1: 3.052rem;
+    --font-size-h2: 2.441rem;
+    --font-size-h3: 1.953rem;
+    --font-size-h4: 1.563rem;
+    --font-size-body: 1rem;
+    --font-size-small: 0.8rem;
+    
+    /* Light theme colors */
+    --background: 60 29% 94%; /* #f4f5dc */
+    --foreground: 209 91% 21%; /* #043666 */
+    
+    --card: 60 29% 94%; /* Same as background */
+    --card-foreground: 209 91% 21%; /* Same as foreground */
+    
+    --popover: 0 0% 100%; /* White for popovers */
+    --popover-foreground: 209 91% 21%; /* Same as foreground */
+    
+    --primary: 199 52% 53%; /* #489fc6 */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
+    
+    --secondary: 213 17% 45%; /* #5a6a7e */
+    --secondary-foreground: 0 0% 100%; /* White text on secondary */
+    
+    --muted: 70 11% 85%; /* #d1d3c4 - border color for muted elements */
+    --muted-foreground: 213 17% 45%; /* #5a6a7e */
+    
+    --accent: 199 52% 53%; /* Same as primary */
+    --accent-foreground: 0 0% 100%; /* White text on accent */
+    
+    --destructive: 8 95% 29%; /* #8e2105 */
+    --destructive-foreground: 0 0% 100%; /* White text on destructive */
+    
+    --border: 70 11% 85%; /* #d1d3c4 */
+    --input: 70 11% 85%; /* Same as border */
+    --ring: 199 52% 53%; /* Same as primary */
+    
     --radius: 0.75rem;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
+    
+    --sidebar-background: 60 29% 94%; /* Same as background */
+    --sidebar-foreground: 209 91% 21%; /* Same as foreground */
+    --sidebar-primary: 199 52% 53%; /* Same as primary */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 70 11% 90%; /* Slightly lighter than border */
+    --sidebar-accent-foreground: 209 91% 21%;
+    --sidebar-border: 70 11% 85%; /* Same as border */
+    --sidebar-ring: 199 52% 53%; /* Same as primary */
+    
     /* Brand colors */
-    --brand-blue: 221.2 83.2% 53.3%;
+    --brand-blue: 199 52% 53%; /* #489fc6 */
     --brand-purple: 262.1 83.3% 57.8%;
     --brand-pink: 330.4 81.2% 60.4%;
     --brand-green: 142.1 76.2% 36.3%;
-    --brand-orange: 24.6 95% 53.1%;
+    --brand-orange: 8 95% 29%; /* #8e2105 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 217.2 91.2% 59.8%;
-
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --background: 220 27% 14%; /* #1A202C */
+    --foreground: 214 32% 91%; /* #E2E8F0 */
+    
+    --card: 215 19% 25%; /* #2D3748 - surface color */
+    --card-foreground: 214 32% 91%; /* Same as foreground */
+    
+    --popover: 215 19% 25%; /* Same as card/surface */
+    --popover-foreground: 214 32% 91%; /* Same as foreground */
+    
+    --primary: 199 52% 53%; /* #489fc6 - same blue */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
+    
+    --secondary: 210 22% 71%; /* #A0AEC0 - secondary text */
+    --secondary-foreground: 220 27% 14%; /* Dark text on secondary */
+    
+    --muted: 215 11% 35%; /* #4A5568 - border color */
+    --muted-foreground: 210 22% 71%; /* #A0AEC0 */
+    
+    --accent: 199 52% 53%; /* Same as primary */
+    --accent-foreground: 0 0% 100%; /* White text on accent */
+    
+    --destructive: 11 50% 52%; /* #c75c43 - brighter red for dark mode */
+    --destructive-foreground: 0 0% 100%; /* White text on destructive */
+    
+    --border: 215 11% 35%; /* #4A5568 */
+    --input: 215 11% 35%; /* Same as border */
+    --ring: 199 52% 53%; /* Same as primary */
+    
+    --sidebar-background: 220 27% 14%; /* Same as background */
+    --sidebar-foreground: 214 32% 91%; /* Same as foreground */
+    --sidebar-primary: 199 52% 53%; /* Same as primary */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
+    --sidebar-accent: 215 19% 25%; /* Same as surface */
+    --sidebar-accent-foreground: 214 32% 91%;
+    --sidebar-border: 215 11% 35%; /* Same as border */
+    --sidebar-ring: 199 52% 53%; /* Same as primary */
+    
     /* Brand colors - dark mode */
-    --brand-blue: 217.2 91.2% 59.8%;
+    --brand-blue: 199 52% 53%; /* #489fc6 */
     --brand-purple: 263.4 70% 50.4%;
     --brand-pink: 330.4 81.2% 60.4%;
     --brand-green: 142.1 70.6% 45.3%;
-    --brand-orange: 24.6 95% 53.1%;
+    --brand-orange: 11 50% 52%; /* #c75c43 */
   }
 }
 
@@ -112,6 +127,42 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    font-size: var(--font-size-body);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-headings);
+    font-weight: 700;
+  }
+  
+  h1 {
+    font-size: var(--font-size-h1);
+    font-weight: 700;
+  }
+  
+  h2 {
+    font-size: var(--font-size-h2);
+    font-weight: 700;
+  }
+  
+  h3 {
+    font-size: var(--font-size-h3);
+    font-weight: 600;
+  }
+  
+  h4 {
+    font-size: var(--font-size-h4);
+    font-weight: 600;
+  }
+  
+  small, .text-sm {
+    font-size: var(--font-size-small);
+  }
+  
+  button, a {
+    font-family: var(--font-body);
+    font-weight: 700;
   }
 }
 

@@ -7,10 +7,14 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { HelmetProvider } from "react-helmet-async";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminRoute } from "@/components/auth/AdminRoute";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
+
+// Load admin setup utilities for browser console access
+import "@/utils/setupAdmin";
 
 // Loading component for lazy loaded routes
 const PageLoader = () => (
@@ -28,6 +32,7 @@ const Events = lazy(() => import("./pages/Events"));
 const EventDetail = lazy(() => import("./pages/EventDetail"));
 const Magazine = lazy(() => import("./pages/Magazine"));
 const Classes = lazy(() => import("./pages/Classes"));
+const CreateClass = lazy(() => import("./pages/CreateClass"));
 const Community = lazy(() => import("./pages/Community"));
 const CreateEvent = lazy(() => import("./pages/CreateEvent"));
 const CreateEventWizard = lazy(() => import("./pages/CreateEventWizard"));
@@ -74,10 +79,12 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AdminAuth = lazy(() => import("./pages/AdminAuth"));
 const AccountAuth = lazy(() => import("./pages/AccountAuth"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const PaymentConfiguration = lazy(() => import("./pages/dashboard/admin/PaymentConfiguration"));
 const CreateBusiness = lazy(() => import("./pages/CreateBusiness"));
+const SellerPayouts = lazy(() => import("./pages/SellerPayouts"));
+const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
+const LikedEvents = lazy(() => import("./pages/LikedEvents"));
+const QRScanner = lazy(() => import("./pages/QRScanner"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -98,6 +105,11 @@ const AppContent = () => {
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/magazine" element={<Magazine />} />
         <Route path="/classes" element={<Classes />} />
+        <Route path="/create-class" element={
+          <ProtectedRoute>
+            <CreateClass />
+          </ProtectedRoute>
+        } />
         <Route path="/community" element={<Community />} />
         <Route path="/create-business" element={
           <ProtectedRoute>
@@ -175,6 +187,11 @@ const AppContent = () => {
           <Route path="team/roles" element={<TeamRoles />} />
           <Route path="checkin" element={<CheckInManagement />} />
           <Route path="analytics" element={<LiveAnalytics />} />
+          <Route path="seller-payouts" element={<SellerPayouts />} />
+          <Route path="payouts" element={<PayoutsDashboard />} />
+          <Route path="liked" element={<LikedEvents />} />
+          <Route path="tickets" element={<MyTickets />} />
+          <Route path="scanner" element={<QRScanner />} />
           {/* Admin routes within dashboard */}
           <Route path="admin/events" element={
             <AdminRoute>
@@ -218,21 +235,8 @@ const AppContent = () => {
           } />
         </Route>
         
-        {/* Admin Portal Routes */}
+        {/* Admin Portal Redirect - consolidate to dashboard admin */}
         <Route path="/admin" element={<AdminAuth />} />
-        <Route path="/admin/*" element={
-          <AdminRoute>
-            <AdminLayout />
-          </AdminRoute>
-        }>
-          <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="events" element={<AdminEvents />} />
-          <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="settings" element={<AdminSettings />} />
-          <Route path="monitor" element={<AdminMonitor />} />
-          <Route path="database" element={<DatabaseAdmin />} />
-        </Route>
         
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -242,21 +246,23 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <TooltipProvider>
-        <AuthProvider>
-          <CartProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
-          </CartProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppContent />
+              </BrowserRouter>
+            </CartProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

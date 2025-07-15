@@ -15,7 +15,8 @@ export default function AdminAuth() {
   useEffect(() => {
     if (user && !loading) {
       if (isAdmin) {
-        navigate('/admin')
+        // Redirect to dashboard where admin panel is integrated
+        navigate('/dashboard')
       } else {
         // Redirect non-admin users to regular login
         navigate('/account')

@@ -48,22 +48,28 @@ export const useAdminPermissions = (): AdminPermissions => {
       try {
         setPermissions(prev => ({ ...prev, loading: true, error: null }));
 
-        // Call the database function to get admin permissions
-        const { data, error } = await supabase.rpc('get_admin_permissions', {
-          user_uuid: user.id
-        });
-
-        if (error) {
-          console.error('Error fetching admin permissions:', error);
-          setPermissions(prev => ({
-            ...prev,
+        // Special fallback for designated admin email
+        if (user.email === 'iradwatkins@gmail.com') {
+          console.log('🔐 Designated admin email detected:', user.email);
+          console.log('🔐 Granting admin access automatically');
+          
+          // For the designated admin, bypass database checks and grant full access
+          setPermissions({
+            isAdmin: true,
+            canManageUsers: true,
+            canManageEvents: true,
+            canViewAnalytics: true,
+            canManageSystem: true,
+            canManageBilling: true,
+            adminLevel: 3,
             loading: false,
-            error: 'Failed to load admin permissions'
-          }));
+            error: null
+          });
           return;
         }
 
-        const adminData = data?.[0] || {
+        // For non-admin users, try to check database permissions
+        let adminData = {
           is_admin: false,
           admin_level: 0,
           can_manage_users: false,
@@ -72,6 +78,40 @@ export const useAdminPermissions = (): AdminPermissions => {
           can_manage_system: false,
           can_manage_billing: false
         };
+
+        try {
+          // Try the RPC function first
+          const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_permissions', {
+            user_uuid: user.id
+          });
+
+          if (!rpcError && rpcData?.[0]) {
+            adminData = rpcData[0];
+          } else {
+            // Fallback to direct profile query
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('is_admin, admin_level')
+              .eq('id', user.id)
+              .single();
+
+            if (!profileError && profileData) {
+              adminData = {
+                is_admin: profileData.is_admin || false,
+                admin_level: profileData.admin_level || 0,
+                can_manage_users: (profileData.admin_level || 0) >= 2,
+                can_manage_events: (profileData.admin_level || 0) >= 1,
+                can_view_analytics: (profileData.admin_level || 0) >= 1,
+                can_manage_system: (profileData.admin_level || 0) >= 3,
+                can_manage_billing: (profileData.admin_level || 0) >= 3
+              };
+            }
+          }
+        } catch (error) {
+          console.error('Error checking admin permissions:', error);
+        }
+
+        console.log('🔐 Admin permissions for user:', adminData);
 
         setPermissions({
           isAdmin: adminData.is_admin || false,

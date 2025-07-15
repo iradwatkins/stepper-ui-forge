@@ -5,18 +5,15 @@ import { useIsAdmin } from '@/lib/hooks/useAdminPermissions'
 
 export default function Auth() {
   const { user } = useAuth()
-  const { isAdmin, loading } = useIsAdmin()
+  const { loading } = useIsAdmin()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (user && !loading) {
-      if (isAdmin) {
-        navigate('/admin')
-      } else {
-        navigate('/dashboard')
-      }
+      // Both admin and regular users go to dashboard (admin features appear based on permissions)
+      navigate('/dashboard')
     }
-  }, [user, isAdmin, loading, navigate])
+  }, [user, loading, navigate])
 
   if (user && loading) {
     return (

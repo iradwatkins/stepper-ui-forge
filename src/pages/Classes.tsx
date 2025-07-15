@@ -4,7 +4,26 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Clock, Users, Star, Play, Filter, Search, MapPin, GraduationCap, Award } from 'lucide-react';
+import { 
+  BookOpen, 
+  Clock, 
+  Users, 
+  Star, 
+  Play, 
+  Filter, 
+  Search, 
+  MapPin, 
+  GraduationCap, 
+  Award,
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  Briefcase,
+  Phone,
+  Mail,
+  Globe,
+  Heart
+} from 'lucide-react';
 import { LocationSearchBar, LocationFilterPanel, LocationMapToggle } from '@/components/location';
 import { 
   LocationResult, 
@@ -22,6 +41,9 @@ export default function Classes() {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Carousel state
+  const [currentSlide, setCurrentSlide] = useState(0);
   
   // Location search state
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
@@ -49,6 +71,34 @@ export default function Classes() {
   // Load classes on component mount
   useEffect(() => {
     loadClasses();
+  }, [loadClasses]);
+
+  // Carousel data
+  const carouselSlides = [
+    {
+      id: 1,
+      title: "Want to learn to step?",
+      subtitle: "Find a class near you.",
+      description: "Connect with expert instructors and master the art of stepping with classes designed for every skill level",
+      buttonText: "Find Classes",
+      gradient: "from-emerald-600 to-teal-600"
+    },
+    {
+      id: 2,
+      title: "Meet New People",
+      subtitle: "take a Line Dancing Class",
+      description: "Join our vibrant community and make lasting connections through the joy of line dancing",
+      buttonText: "Browse Classes",
+      gradient: "from-purple-600 to-indigo-600"
+    }
+  ];
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % carouselSlides.length);
+    }, 8000); // Slowed down from 5000ms to 8000ms
+    return () => clearInterval(timer);
   }, []);
 
   // Location search handlers
@@ -112,19 +162,82 @@ export default function Classes() {
   }, [classes, searchTerm, selectedLevel, selectedCategory, userLocation, locationEnabled, radius, sortByDistance]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-              <GraduationCap className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-background">
+      {/* Hero Carousel Section */}
+      <div className="relative overflow-hidden">
+        <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
+          {carouselSlides.map((slide, index) => (
+            <div key={slide.id} className={`w-full flex-shrink-0 relative bg-gradient-to-br ${slide.gradient}`}>
+              <div className="absolute inset-0 bg-black/20" />
+              <div className="relative container mx-auto px-4 py-24 lg:py-32">
+                <div className="grid lg:grid-cols-2 gap-12 items-center">
+                  <div className="text-white space-y-6">
+                    <div className="space-y-2">
+                      <h1 className="text-5xl lg:text-7xl font-bold tracking-tight">
+                        {slide.title}
+                      </h1>
+                      <h2 className="text-4xl lg:text-6xl font-bold text-white/90">
+                        {slide.subtitle}
+                      </h2>
+                    </div>
+                    <p className="text-xl lg:text-2xl text-white/90 max-w-lg leading-relaxed">
+                      {slide.description}
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                      <Button size="lg" className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-4">
+                        {slide.buttonText}
+                      </Button>
+                      <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8 py-4">
+                        Learn More
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="hidden lg:block">
+                    <img
+                      src="/placeholder.svg"
+                      alt={slide.title}
+                      className="w-full h-96 object-cover rounded-2xl shadow-2xl"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-center">
-            Stepping Classes
-          </h1>
-          <p className="text-xl text-muted-foreground text-center max-w-2xl mx-auto">
+          ))}
+        </div>
+        
+        {/* Carousel Controls */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          {carouselSlides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                currentSlide === index ? 'bg-white' : 'bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
+        
+        {/* Navigation Arrows */}
+        <button
+          onClick={() => setCurrentSlide((prev) => (prev - 1 + carouselSlides.length) % carouselSlides.length)}
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <button
+          onClick={() => setCurrentSlide((prev) => (prev + 1) % carouselSlides.length)}
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+      </div>
+
+      <div className="container mx-auto px-4 py-12">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl lg:text-4xl font-bold mb-4">Stepping Classes</h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Learn from expert instructors and master the art of stepping with classes designed for every skill level
           </p>
         </div>
@@ -192,7 +305,7 @@ export default function Classes() {
                   
                   <Select value={selectedLevel} onValueChange={setSelectedLevel}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All Levels" />
+                      <SelectValue placeholder="Select Level" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Levels</SelectItem>
@@ -204,7 +317,7 @@ export default function Classes() {
 
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All Categories" />
+                      <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
@@ -276,21 +389,21 @@ export default function Classes() {
           ))}
         </div>
 
-        {/* Classes Grid */}
+        {/* Classes Grid/Masonry */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading classes...</p>
+          <div className="text-center py-24">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-xl text-muted-foreground">Loading amazing classes...</p>
           </div>
         ) : error ? (
-          <Card>
+          <Card className="border-destructive">
             <CardContent className="p-12 text-center">
-              <div className="text-red-500 mb-4">
-                <BookOpen className="w-12 h-12 mx-auto mb-2" />
-                <p className="font-semibold">Error Loading Classes</p>
+              <div className="text-destructive mb-4">
+                <BookOpen className="w-16 h-16 mx-auto mb-4" />
+                <p className="font-semibold text-xl">Error Loading Classes</p>
               </div>
-              <p className="text-muted-foreground mb-4">{error}</p>
-              <Button onClick={() => loadClasses()}>Try Again</Button>
+              <p className="text-muted-foreground mb-6 text-lg">{error}</p>
+              <Button onClick={() => loadClasses()} size="lg">Try Again</Button>
             </CardContent>
           </Card>
         ) : viewMode === 'map' ? (
@@ -308,82 +421,96 @@ export default function Classes() {
             </CardContent>
           </Card>
         ) : (
-          <div className={viewMode === 'list' ? 'space-y-4' : 'grid md:grid-cols-2 lg:grid-cols-3 gap-6'}>
-            {filteredAndSortedClasses.map((classItem) => (
-              <Card key={classItem.id} className={`overflow-hidden hover:shadow-lg transition-shadow ${
-                viewMode === 'list' ? 'flex' : ''
-              }`}>
-                <div className={`relative ${viewMode === 'list' ? 'w-48 flex-shrink-0' : ''}`}>
-                  <img
-                    src={classItem.images[0]?.url || "/placeholder.svg"}
-                    alt={classItem.title}
-                    className={`object-cover ${
-                      viewMode === 'list' ? 'w-full h-full' : 'w-full h-48'
-                    }`}
-                  />
-                  <Badge className="absolute top-3 left-3 bg-blue-600">
-                    {classItem.level}
-                  </Badge>
-                  <div className="absolute top-3 right-3 bg-black/50 rounded-full p-2">
-                    <Play className="w-4 h-4 text-white" />
-                  </div>
-                </div>
-                
-                <CardContent className="p-6 flex-1">
-                  <div className="flex items-center gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredAndSortedClasses.map((classItem, index) => {
+              const isLarge = index % 7 === 0; // Every 7th item is larger
+              return (
+                <Card key={classItem.id} className={`bg-card rounded-xl border-2 border-border overflow-hidden hover:shadow-xl hover:border-primary/20 transition-all duration-300 group cursor-pointer ${
+                  isLarge ? 'lg:col-span-2 lg:row-span-2' : ''
+                }`}>
+                  {/* Image Container */}
+                  <div className={`relative ${isLarge ? 'h-64' : 'h-48'}`}>
                     <img
-                      src="/placeholder.svg"
-                      alt={classItem.instructorName}
-                      className="w-10 h-10 rounded-full object-cover"
+                      src={classItem.images[0]?.url || "/placeholder.svg"}
+                      alt={classItem.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="flex-1">
-                      <p className="font-medium">{classItem.instructorName}</p>
-                      <p className="text-sm text-muted-foreground">{classItem.category}</p>
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-xl font-semibold mb-2">
-                    {classItem.title}
-                  </h3>
-                  
-                  <p className="text-muted-foreground text-sm mb-4">
-                    {classItem.description.slice(0, 120)}...
-                  </p>
-                  
-                  {/* Location Information */}
-                  <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    <span>{classItem.location.venue}, {classItem.location.city}, {classItem.location.state}</span>
-                    {userLocation && classItem.location.coordinates && locationEnabled && (
-                      <Badge variant="outline" className="ml-auto">
-                        {getDistanceText(userLocation, classItem.location.coordinates)}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                      <span>{classItem.averageRating}</span>
-                      <span className="ml-1">({classItem.attendeeCount})</span>
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4 mr-1" />
-                      <span>{classItem.schedule.duration} min</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-blue-600">
+                    
+                    {/* Price Badge */}
+                    <div className="absolute top-3 left-3 bg-card/95 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-foreground border border-border">
                       ${classItem.price}
-                    </span>
-                    <Button className="bg-blue-600 hover:bg-blue-700">
+                    </div>
+                    
+                    {/* Level Badge */}
+                    <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">
+                      {classItem.level}
+                    </Badge>
+                    
+                    {/* Play Icon Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="w-16 h-16 bg-primary/90 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <Play className="w-8 h-8 text-primary-foreground ml-1" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content Container */}
+                  <CardContent className={`${isLarge ? 'p-6' : 'p-4'}`}>
+                    {/* Instructor */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <img
+                        src="/placeholder.svg"
+                        alt={classItem.instructorName}
+                        className="w-8 h-8 rounded-full object-cover border-2 border-border"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{classItem.instructorName}</p>
+                        <p className="text-xs text-muted-foreground">{classItem.category}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Title */}
+                    <h3 className={`font-bold text-foreground mb-2 line-clamp-2 ${isLarge ? 'text-xl' : 'text-lg'}`}>
+                      {classItem.title}
+                    </h3>
+                    
+                    {/* Description */}
+                    <p className={`text-muted-foreground text-sm mb-4 ${isLarge ? 'line-clamp-3' : 'line-clamp-2'}`}>
+                      {classItem.description}
+                    </p>
+                    
+                    {/* Stats */}
+                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-400" />
+                        <span className="font-medium">{classItem.averageRating}</span>
+                        <span>({classItem.attendeeCount})</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{classItem.schedule.duration}min</span>
+                      </div>
+                    </div>
+                    
+                    {/* Location */}
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <span className="truncate">{classItem.location.city}, {classItem.location.state}</span>
+                      {userLocation && classItem.location.coordinates && locationEnabled && (
+                        <Badge variant="outline" className="ml-auto text-xs">
+                          {getDistanceText(userLocation, classItem.location.coordinates)}
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {/* Action Button */}
+                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                       Enroll Now
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
@@ -412,16 +539,21 @@ export default function Classes() {
         )}
 
         {/* Call to Action */}
-        <Card className="mt-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-          <CardContent className="p-8 text-center">
-            <h3 className="text-2xl font-bold mb-4">
-              Become an Instructor
+        <Card className="mt-16 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground border-0">
+          <CardContent className="p-12 text-center">
+            <Heart className="w-16 h-16 mx-auto mb-6 text-primary-foreground/90" />
+            <h3 className="text-3xl font-bold mb-4">
+              Join Our Teaching Community
             </h3>
-            <p className="text-white/90 mb-6">
-              Share your stepping expertise and teach students worldwide
+            <p className="text-primary-foreground/90 mb-8 text-xl max-w-2xl mx-auto">
+              Share your stepping expertise and inspire the next generation of dancers in our community
             </p>
-            <Button className="bg-white text-purple-600 hover:bg-white/90">
-              Apply to Teach
+            <Button 
+              size="lg"
+              className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 text-lg px-8 py-4"
+              onClick={() => window.location.href = '/create-class'}
+            >
+              Start Teaching Today
             </Button>
           </CardContent>
         </Card>

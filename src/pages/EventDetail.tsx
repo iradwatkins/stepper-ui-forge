@@ -1,11 +1,11 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarIcon, MapPinIcon, ShareIcon, HeartIcon } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { CalendarIcon, MapPinIcon } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
 import { TicketSelector } from "@/components/ticketing";
@@ -17,8 +17,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { CheckoutModal } from "@/components/CheckoutModal";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
 import { seatingService, AvailableSeat } from "@/lib/services/SeatingService";
-import { EventLikeService } from "@/lib/services/EventLikeService";
 import { convertWizardToInteractive } from "@/lib/utils/seatingDataConverter";
+import { EventHeader } from "@/components/event/EventHeader";
+import { EventOrganizer } from "@/components/event/EventOrganizer";
+import { EventActions } from "@/components/event/EventActions";
+import { EventAbout } from "@/components/event/EventAbout";
+import { EventMeta } from "@/components/meta/EventMeta";
 
 interface EventImageData {
   original?: string;
@@ -35,6 +39,7 @@ interface EventImages {
 
 const EventDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { addItem } = useCart();
   const { toast } = useToast();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -51,9 +56,6 @@ const EventDetail = () => {
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
   const [venueImageUrl, setVenueImageUrl] = useState<string>('');
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
-  const [likesLoading, setLikesLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [totalPrice, setTotalPrice] = useState(0);
 
@@ -181,32 +183,6 @@ const EventDetail = () => {
     loadEvent();
   }, [id]);
 
-  // Load event like status and count
-  useEffect(() => {
-    if (!event) return;
-
-    const loadLikeInfo = async () => {
-      try {
-        // Get like status and count
-        const [likeStatusResult, likeCountResult] = await Promise.all([
-          EventLikeService.isEventLiked(event.id),
-          EventLikeService.getEventLikeCount(event.id)
-        ]);
-
-        if (!likeStatusResult.error) {
-          setIsLiked(likeStatusResult.isLiked);
-        }
-
-        if (!likeCountResult.error) {
-          setLikeCount(likeCountResult.count);
-        }
-      } catch (error) {
-        console.error('Error loading like info:', error);
-      }
-    };
-
-    loadLikeInfo();
-  }, [event]);
 
 
   // Handle adding tickets to cart
@@ -452,15 +428,6 @@ const EventDetail = () => {
     return "Free";
   };
 
-  // Get clean description without price tag and seating data
-  const getCleanDescription = () => {
-    if (!event.description) return null;
-    return event.description
-      .replace(/\[PRICE:.*?\]/, '')
-      .replace(/\[SEATING_DATA:.*?\]$/, '')
-      .replace(/\[SEATING_CONFIG:.*?\]$/, '')
-      .trim();
-  };
 
   // Handle quantity changes
   const handleQuantityChange = (change: number) => {
@@ -489,47 +456,16 @@ const EventDetail = () => {
 
 
 
-  // Handle like toggle
-  const handleLikeToggle = async () => {
-    if (!event || likesLoading) return;
-
-    setLikesLoading(true);
-    try {
-      const result = await EventLikeService.toggleEventLike(event.id);
-      
-      if (result.success) {
-        setIsLiked(result.isLiked);
-        setLikeCount(prev => result.isLiked ? prev + 1 : prev - 1);
-        
-        toast({
-          title: result.isLiked ? "Event Liked" : "Event Unliked",
-          description: result.isLiked 
-            ? "This event has been added to your liked events" 
-            : "This event has been removed from your liked events",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to update like status",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update like status. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLikesLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-white font-sans">
+      {/* Dynamic Meta Tags for Social Sharing */}
+      {event && <EventMeta event={event} />}
+      
       <main className="py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
+          
+          <EventHeader />
           
           {/* Header Section - Event Info */}
           {event.event_type === 'premium' && showSeating ? (
@@ -594,13 +530,17 @@ const EventDetail = () => {
           ) : (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
             
-            {/* Left - Event Image (Even Smaller) */}
+            {/* Left - Event Image (Full display with proper sizing) */}
             <div className="lg:col-span-1">
-              <div className="relative">
+              <div className="relative bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden">
                 <img 
                   src={primaryImage} 
                   alt={event.title}
-                  className="w-full h-32 lg:h-48 object-cover rounded-lg shadow-lg"
+                  className="w-full h-64 lg:h-80 object-contain rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => {
+                    setGalleryStartIndex(0);
+                    setIsGalleryOpen(true);
+                  }}
                 />
                 
                 {/* Image Gallery Button */}
@@ -634,40 +574,18 @@ const EventDetail = () => {
                 </div>
               </div>
 
-              {/* Ticket Selection Section */}
+              {/* Price Information Section */}
               {event.event_type === 'simple' ? (
                 <div className="border-t border-gray-200 pt-6">
-                  <div className="flex justify-between items-center">
-                    <p className="text-lg text-gray-800 uppercase font-medium">{event.title}</p>
-                    <div className="flex items-center border border-gray-300 rounded-md">
-                      <button 
-                        onClick={() => handleQuantityChange(-1)}
-                        className="px-3 py-1 text-lg text-gray-500 hover:text-gray-700"
-                        disabled={quantity <= 1}
-                      >
-                        -
-                      </button>
-                      <span className="px-4 py-1 text-lg font-medium">{quantity}</span>
-                      <button 
-                        onClick={() => handleQuantityChange(1)}
-                        className="px-3 py-1 text-lg text-gray-500 hover:text-gray-700"
-                      >
-                        +
-                      </button>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <p className="text-lg text-gray-800 uppercase font-medium">{event.title}</p>
+                      <p className="text-sm text-gray-600 mt-1">Event information</p>
                     </div>
-                  </div>
-                  <p className="text-xl font-bold text-gray-900 mt-1">{getSimpleEventDisplayPrice()}</p>
-                  {/* Total and Buy Now Section */}
-                  <div className="flex items-center justify-between bg-gray-100 p-4 rounded-lg mt-4">
-                    <span className="text-2xl font-bold text-gray-900">
-                      ${totalPrice.toFixed(2)}
-                    </span>
-                    <Button 
-                      className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300"
-                      onClick={() => setIsCheckoutOpen(true)}
-                    >
-                      Buy now
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-gray-900">{getSimpleEventDisplayPrice()}</span>
+                      <span className="text-sm text-gray-500">(For information only)</span>
+                    </div>
                   </div>
                 </div>
               ) : event.event_type === 'premium' && seatingCharts.length > 0 ? (
@@ -691,94 +609,39 @@ const EventDetail = () => {
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : event.event_type === 'ticketed' ? (
                 <div className="border-t border-gray-200 pt-6">
                   <h3 className="text-xl font-bold mb-4 text-gray-900">Select Tickets</h3>
-                  <TicketSelector
-                    eventId={event.id}
-                    ticketTypes={ticketTypes}
-                    onAddToCart={handleAddToCart}
-                    isLoading={ticketsLoading}
-                  />
-                  {/* Total and Buy Now Section for regular events */}
-                  <div className="flex items-center justify-between bg-gray-100 p-4 rounded-lg mt-4">
-                    <span className="text-2xl font-bold text-gray-900">
-                      $0
-                    </span>
-                    <Button 
-                      className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition duration-300"
-                      onClick={() => setIsCheckoutOpen(true)}
-                    >
-                      Buy now
-                    </Button>
+                  {!ticketsLoading ? (
+                    <TicketSelector
+                      eventId={event.id}
+                      ticketTypes={ticketTypes}
+                      onAddToCart={handleAddToCart}
+                      isLoading={ticketsLoading}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600">Loading tickets...</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="border-t border-gray-200 pt-6">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900">Event Information</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-gray-700 mb-2">This is an informational event listing.</p>
+                    <p className="text-sm text-gray-600">For tickets and registration, please contact the event organizer.</p>
                   </div>
                 </div>
               )}
 
-              {/* Organizer Information */}
-              <div className="border-t border-gray-200 pt-8">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-4">
-                      <span className="text-lg font-bold text-white">
-                        {event.organization_name?.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{event.organization_name}</h3>
-                      <p className="text-sm text-gray-500">For exchanges, refunds, tax receipts, and any event-related requests, please send a message to the organizer.</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" className="border border-gray-300 rounded-full px-6 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
-                    Send message
-                  </Button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1" 
-                  onClick={handleLikeToggle}
-                  disabled={likesLoading}
-                >
-                  <HeartIcon className={`w-4 h-4 mr-2 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-                  {isLiked ? 'Liked' : 'Like'} {likeCount > 0 && `(${likeCount})`}
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <ShareIcon className="w-4 h-4 mr-2" />
-                  Share
-                </Button>
-              </div>
+              <EventOrganizer event={event} />
+              <EventActions event={event} />
             </div>
           </div>
           )}  {/* End of conditional layout */}
           
-          {/* About Section - Below main grid */}
-          <div className="mt-16 border-t border-gray-200 pt-10">
-            <div className="max-w-3xl">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">About the event</h2>
-              <div className="text-gray-700 space-y-4">
-                <p className="whitespace-pre-line leading-relaxed">{getCleanDescription()}</p>
-                
-                {/* Categories */}
-                {event.categories && event.categories.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Categories</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {event.categories.map((category, index) => (
-                        <Badge key={index} variant="secondary" className="px-3 py-1 text-sm">
-                          {category}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <EventAbout event={event} />
 
         </div>
       </main>

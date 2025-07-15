@@ -19,6 +19,20 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'headings': ['Montserrat', 'sans-serif'],
+				'body': ['Lato', 'sans-serif'],
+				'headings-premium': ['Neue Plak', 'sans-serif'],
+				'body-alt': ['Roboto', 'sans-serif']
+			},
+			fontSize: {
+				'h1': '3.052rem',
+				'h2': '2.441rem',
+				'h3': '1.953rem',
+				'h4': '1.563rem',
+				'body': '1rem',
+				'small': '0.8rem'
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

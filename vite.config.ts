@@ -40,9 +40,9 @@ export default defineConfig(({ mode }) => ({
       },
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
-        name: 'Steppers - Event Management Platform',
-        short_name: 'Steppers',
-        description: 'Comprehensive event management and ticketing platform',
+        name: 'Steppers Life - Event Management Platform',
+        short_name: 'Steppers Life',
+        description: 'Comprehensive event management and ticketing platform for stepping and dance events',
         theme_color: '#000000',
         background_color: '#ffffff',
         display: 'standalone',

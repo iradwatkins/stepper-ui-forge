@@ -1,8 +1,8 @@
 // Permission Gate components for conditionally rendering UI based on user permissions
-// Provides declarative permission checking for components
+// Provides declarative permission checking with unified permission system
 
 import React from 'react'
-import { useUserPermissions, usePermissionCheck, useOrganizerPermissions } from '@/lib/hooks/useUserPermissions'
+import { usePermissionCheck, useOrganizerPermissions, useUnifiedPermissions } from '@/lib/hooks/useUnifiedPermissions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Lock, UserPlus } from 'lucide-react'
@@ -110,7 +110,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({
   fallback, 
   showFallback = true 
 }) => {
-  const { isAuthenticated, loading } = useUserPermissions()
+  const { isAuthenticated, loading } = useUnifiedPermissions()
 
   if (loading) {
     return showFallback ? (
@@ -261,7 +261,14 @@ export function withPermissions<P extends object>(
 
 // Hook for conditional rendering in components
 export const useConditionalRender = () => {
-  const { canPerformAction, isAuthenticated } = useUserPermissions()
+  const { 
+    canPerformAction, 
+    isAuthenticated,
+    canSellTickets,
+    canWorkEvents,
+    isCoOrganizer,
+    isEventOwner
+  } = useUnifiedPermissions()
 
   const renderIf = (
     condition: boolean | (() => boolean),
@@ -279,7 +286,23 @@ export const useConditionalRender = () => {
     action: 'sell_tickets' | 'work_events' | 'manage_events' | 'create_events',
     component: React.ReactNode
   ): React.ReactNode => {
-    return renderIf(() => canPerformAction(action), component)
+    // Use cached permission flags for synchronous checking
+    const hasPermission = (() => {
+      switch (action) {
+        case 'sell_tickets':
+          return canSellTickets
+        case 'work_events':
+          return canWorkEvents
+        case 'manage_events':
+          return isCoOrganizer || isEventOwner
+        case 'create_events':
+          return isAuthenticated
+        default:
+          return false
+      }
+    })()
+    
+    return renderIf(hasPermission, component)
   }
 
   return {

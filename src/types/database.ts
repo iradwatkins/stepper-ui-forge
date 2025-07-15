@@ -6,6 +6,8 @@ export type VenueType = 'theater' | 'arena' | 'stadium' | 'conference' | 'genera
 export type HoldStatus = 'active' | 'expired' | 'completed' | 'cancelled' | 'extended'
 export type ArticleStatus = 'draft' | 'published'
 export type ContentBlockType = 'header' | 'subheader' | 'paragraph' | 'image' | 'youtube_video' | 'embedded_video' | 'ad_placement'
+export type PayoutMethod = 'zelle' | 'cashapp' | 'venmo' | 'paypal' | 'check' | 'cash' | 'other'
+export type TeamMemberStatus = 'active' | 'disabled'
 
 export interface ImageMetadata {
   url: string
@@ -184,6 +186,7 @@ export interface Database {
           sale_start: string | null
           sale_end: string | null
           is_active: boolean
+          commission_amount: number
           created_at: string
           updated_at: string
         }
@@ -201,6 +204,7 @@ export interface Database {
           sale_start?: string | null
           sale_end?: string | null
           is_active?: boolean
+          commission_amount?: number
           created_at?: string
           updated_at?: string
         }
@@ -218,6 +222,7 @@ export interface Database {
           sale_start?: string | null
           sale_end?: string | null
           is_active?: boolean
+          commission_amount?: number
           created_at?: string
           updated_at?: string
         }
@@ -232,8 +237,15 @@ export interface Database {
           holder_phone: string | null
           status: TicketStatus
           qr_code: string
+          backup_code: string
           checked_in_at: string | null
           checked_in_by: string | null
+          scanned_by: string | null
+          scanned_at: string | null
+          scan_attempts: number
+          is_manual_entry: boolean
+          locked_until: string | null
+          last_used_at: string | null
           created_at: string
           updated_at: string
         }
@@ -246,8 +258,15 @@ export interface Database {
           holder_phone?: string | null
           status?: TicketStatus
           qr_code?: string
+          backup_code?: string
           checked_in_at?: string | null
           checked_in_by?: string | null
+          scanned_by?: string | null
+          scanned_at?: string | null
+          scan_attempts?: number
+          is_manual_entry?: boolean
+          locked_until?: string | null
+          last_used_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -260,8 +279,15 @@ export interface Database {
           holder_phone?: string | null
           status?: TicketStatus
           qr_code?: string
+          backup_code?: string
           checked_in_at?: string | null
           checked_in_by?: string | null
+          scanned_by?: string | null
+          scanned_at?: string | null
+          scan_attempts?: number
+          is_manual_entry?: boolean
+          locked_until?: string | null
+          last_used_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -384,6 +410,10 @@ export interface Database {
           invited_by: string | null
           invited_at: string
           accepted_at: string | null
+          status: TeamMemberStatus
+          disabled_at: string | null
+          disabled_by: string | null
+          disable_reason: string | null
         }
         Insert: {
           id?: string
@@ -394,6 +424,10 @@ export interface Database {
           invited_by?: string | null
           invited_at?: string
           accepted_at?: string | null
+          status?: TeamMemberStatus
+          disabled_at?: string | null
+          disabled_by?: string | null
+          disable_reason?: string | null
         }
         Update: {
           id?: string
@@ -404,6 +438,10 @@ export interface Database {
           invited_by?: string | null
           invited_at?: string
           accepted_at?: string | null
+          status?: TeamMemberStatus
+          disabled_at?: string | null
+          disabled_by?: string | null
+          disable_reason?: string | null
         }
       }
       event_analytics: {
@@ -546,6 +584,8 @@ export interface Database {
           commission_rate: number
           commission_amount: number
           status: string
+          payout_id: string | null
+          paid_at: string | null
           created_at: string
           updated_at: string
         }
@@ -560,6 +600,8 @@ export interface Database {
           commission_rate: number
           commission_amount: number
           status?: string
+          payout_id?: string | null
+          paid_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -574,6 +616,8 @@ export interface Database {
           commission_rate?: number
           commission_amount?: number
           status?: string
+          payout_id?: string | null
+          paid_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1015,6 +1059,111 @@ export interface Database {
           updated_at?: string
         }
       }
+      seller_payouts: {
+        Row: {
+          id: string
+          event_id: string
+          organizer_id: string
+          seller_id: string
+          amount: number
+          payout_method: PayoutMethod
+          payout_reference: string | null
+          payout_notes: string | null
+          status: string
+          paid_at: string
+          commission_earnings_ids: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          organizer_id: string
+          seller_id: string
+          amount: number
+          payout_method: PayoutMethod
+          payout_reference?: string | null
+          payout_notes?: string | null
+          status?: string
+          paid_at?: string
+          commission_earnings_ids?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          organizer_id?: string
+          seller_id?: string
+          amount?: number
+          payout_method?: PayoutMethod
+          payout_reference?: string | null
+          payout_notes?: string | null
+          status?: string
+          paid_at?: string
+          commission_earnings_ids?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      event_likes: {
+        Row: {
+          id: string
+          user_id: string
+          event_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          event_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          event_id?: string
+          created_at?: string
+        }
+      }
+      ticket_entry_logs: {
+        Row: {
+          id: string
+          ticket_id: string
+          event_id: string
+          scanned_by: string
+          scan_method: string
+          success: boolean
+          failure_reason: string | null
+          scanned_at: string
+          device_info: Record<string, any>
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id: string
+          event_id: string
+          scanned_by: string
+          scan_method: string
+          success: boolean
+          failure_reason?: string | null
+          scanned_at?: string
+          device_info?: Record<string, any>
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string
+          event_id?: string
+          scanned_by?: string
+          scan_method?: string
+          success?: boolean
+          failure_reason?: string | null
+          scanned_at?: string
+          device_info?: Record<string, any>
+          created_at?: string
+        }
+      }
     }
     Views: {
       seat_availability_summary: {
@@ -1239,3 +1388,15 @@ export type MagazineArticleWithDetails = MagazineArticle & {
   author_name?: string
   author_avatar?: string
 }
+
+export type SellerPayout = Database['public']['Tables']['seller_payouts']['Row']
+export type SellerPayoutInsert = Database['public']['Tables']['seller_payouts']['Insert']
+export type SellerPayoutUpdate = Database['public']['Tables']['seller_payouts']['Update']
+
+export type EventLike = Database['public']['Tables']['event_likes']['Row']
+export type EventLikeInsert = Database['public']['Tables']['event_likes']['Insert']
+export type EventLikeUpdate = Database['public']['Tables']['event_likes']['Update']
+
+export type TicketEntryLog = Database['public']['Tables']['ticket_entry_logs']['Row']
+export type TicketEntryLogInsert = Database['public']['Tables']['ticket_entry_logs']['Insert']
+export type TicketEntryLogUpdate = Database['public']['Tables']['ticket_entry_logs']['Update']

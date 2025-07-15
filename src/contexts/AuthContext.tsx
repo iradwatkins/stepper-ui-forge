@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
+import { setupInitialAdmin } from '@/lib/admin/setupAdmin'
 
 // Helper function to get the correct redirect URL for different environments
 const getRedirectUrl = (isAdmin?: boolean): string => {
@@ -13,11 +14,11 @@ const getRedirectUrl = (isAdmin?: boolean): string => {
   
   // For development and Lovable preview environments, use appropriate dashboard
   if (isDev || isLovable) {
-    return isAdmin ? `${origin}/admin` : `${origin}/account`
+    return isAdmin ? `${origin}/dashboard` : `${origin}/account`
   }
   
   // For production or custom domains, also use appropriate dashboard
-  return isAdmin ? `${origin}/admin` : `${origin}/account`
+  return isAdmin ? `${origin}/dashboard` : `${origin}/account`
 }
 
 interface AuthContextType {
@@ -70,6 +71,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Auto-setup admin for designated admin email
+  useEffect(() => {
+    const performAdminSetup = async () => {
+      if (user && user.email === 'iradwatkins@gmail.com') {
+        console.log('🔐 Auto-setting up admin for:', user.email)
+        try {
+          const result = await setupInitialAdmin()
+          console.log('🔐 Admin setup result:', result)
+        } catch (error) {
+          console.error('🔐 Admin setup failed:', error)
+        }
+      }
+    }
+
+    performAdminSetup()
+  }, [user])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({

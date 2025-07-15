@@ -1,49 +1,14 @@
-// Enhanced class category definitions for stepping and dance instruction
+// Class category definitions for stepping and dance instruction
 export const CLASS_LEVELS = [
-  { id: 'beginner', label: 'Beginner', description: 'Perfect for those new to stepping' },
-  { id: 'beginner-plus', label: 'Beginner Plus', description: 'Building on basic stepping knowledge' },
-  { id: 'intermediate', label: 'Intermediate', description: 'For dancers with solid stepping foundation' },
-  { id: 'intermediate-plus', label: 'Intermediate Plus', description: 'Advanced intermediate techniques' },
-  { id: 'advanced', label: 'Advanced', description: 'Expert-level stepping and complex patterns' },
-  { id: 'footwork', label: 'Footwork Focus', description: 'Specialized footwork technique classes' },
-  { id: 'all-levels', label: 'All Levels', description: 'Suitable for any experience level' }
+  { id: 'beginner', label: 'Beginner', description: 'Perfect for those new to dancing' },
+  { id: 'intermediate', label: 'Intermediate', description: 'For dancers with solid foundation' },
+  { id: 'advanced', label: 'Advanced', description: 'Advanced and expert-level techniques' }
 ] as const;
 
 export const CLASS_CATEGORIES = [
-  // Core Stepping Techniques
-  { id: 'chicago-stepping', label: 'Chicago Stepping', description: 'Traditional Chicago stepping instruction' },
-  { id: 'basic-technique', label: 'Basic Technique', description: 'Fundamental stepping techniques and timing' },
-  { id: 'advanced-technique', label: 'Advanced Technique', description: 'Complex patterns and advanced moves' },
-  { id: 'footwork-mastery', label: 'Footwork Mastery', description: 'Specialized footwork training' },
-  
-  // Partnership & Social
-  { id: 'partnership', label: 'Partnership', description: 'Partner connection and leading/following' },
-  { id: 'couples-technique', label: 'Couples Technique', description: 'Partner-specific stepping techniques' },
-  { id: 'social-stepping', label: 'Social Stepping', description: 'Social dancing skills and etiquette' },
-  
-  // Performance & Competition
-  { id: 'performance', label: 'Performance', description: 'Performance techniques and choreography' },
-  { id: 'competition', label: 'Competition', description: 'Competition preparation and strategy' },
-  { id: 'choreography', label: 'Choreography', description: 'Creating and learning choreographed routines' },
-  
-  // Specialized Styles
+  { id: 'steppin', label: 'Stepping', description: 'Stepping dance instruction and techniques' },
   { id: 'line-dancing', label: 'Line Dancing', description: 'Group choreography and line dancing' },
-  { id: 'fusion', label: 'Fusion', description: 'Stepping combined with other dance styles' },
-  { id: 'urban-stepping', label: 'Urban Stepping', description: 'Contemporary urban stepping styles' },
-  
-  // Special Programs
-  { id: 'youth', label: 'Youth', description: 'Classes designed for younger dancers' },
-  { id: 'seniors', label: 'Seniors', description: 'Classes adapted for older adults' },
-  { id: 'adaptive', label: 'Adaptive', description: 'Classes for dancers with special needs' },
-  
-  // Online & Format
-  { id: 'online', label: 'Online', description: 'Virtual stepping classes and instruction' },
-  { id: 'workshop', label: 'Workshop', description: 'Intensive workshop format classes' },
-  { id: 'private-lessons', label: 'Private Lessons', description: 'One-on-one instruction' },
-  
-  // Cultural & Historical
-  { id: 'history-culture', label: 'History & Culture', description: 'Stepping history and cultural context' },
-  { id: 'music-timing', label: 'Music & Timing', description: 'Understanding stepping music and rhythm' }
+  { id: 'walking', label: 'Walking', description: 'Walking dance styles and techniques' }
 ] as const;
 
 export const CLASS_TYPES = [

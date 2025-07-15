@@ -123,12 +123,26 @@ export class FollowerService {
    */
   static async isFollowing(followerId: string, organizerId: string): Promise<boolean> {
     try {
-      const { data } = await db.rpc('is_following', {
+      // Try RPC function first
+      const { data, error } = await db.rpc('is_following', {
         follower_uuid: followerId,
         organizer_uuid: organizerId
       });
 
-      return Boolean(data);
+      if (!error) {
+        return Boolean(data);
+      }
+
+      // Fallback to direct table query if RPC fails
+      console.warn('RPC function is_following failed, falling back to direct query:', error);
+      const { data: fallbackData, error: fallbackError } = await db
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', followerId)
+        .eq('organizer_id', organizerId)
+        .single();
+
+      return !fallbackError && fallbackData !== null;
     } catch (error) {
       console.error('Failed to check follow status:', error);
       return false;
@@ -140,11 +154,23 @@ export class FollowerService {
    */
   static async getFollowerCount(organizerId: string): Promise<number> {
     try {
-      const { data } = await db.rpc('get_follower_count', {
+      // Try RPC function first
+      const { data, error } = await db.rpc('get_follower_count', {
         organizer_uuid: organizerId
       });
 
-      return data || 0;
+      if (!error) {
+        return data || 0;
+      }
+
+      // Fallback to direct table query if RPC fails
+      console.warn('RPC function get_follower_count failed, falling back to direct query:', error);
+      const { count, error: fallbackError } = await db
+        .from('user_follows')
+        .select('*', { count: 'exact' })
+        .eq('organizer_id', organizerId);
+
+      return fallbackError ? 0 : (count || 0);
     } catch (error) {
       console.error('Failed to get follower count:', error);
       return 0;
@@ -228,6 +254,8 @@ export class FollowerService {
 
   /**
    * Promote a follower by granting permissions
+   * Note: For sellers (can_sell_tickets), they need to be assigned to specific events
+   * using SellerAssignmentService to enforce single event limitation
    */
   static async promoteFollower(
     organizerId: string,
@@ -336,12 +364,13 @@ export class FollowerService {
    */
   static async getUserPermissions(userId: string, organizerId: string): Promise<UserPermissions> {
     try {
-      const { data } = await db.rpc('get_user_permissions', {
+      // Try RPC function first
+      const { data, error } = await db.rpc('get_user_permissions', {
         user_uuid: userId,
         organizer_uuid: organizerId
       });
 
-      if (data && data.length > 0) {
+      if (!error && data && data.length > 0) {
         const permissions = data[0];
         return {
           can_sell_tickets: permissions.can_sell_tickets || false,
@@ -349,6 +378,39 @@ export class FollowerService {
           is_co_organizer: permissions.is_co_organizer || false,
           commission_rate: parseFloat(permissions.commission_rate) || 0
         };
+      }
+
+      // Fallback to direct table query if RPC fails
+      if (error) {
+        console.warn('RPC function get_user_permissions failed, falling back to direct query:', error);
+        
+        const { data: followData, error: followError } = await db
+          .from('user_follows')
+          .select(`
+            id,
+            follower_promotions (
+              can_sell_tickets,
+              can_work_events,
+              is_co_organizer,
+              commission_rate
+            )
+          `)
+          .eq('follower_id', userId)
+          .eq('organizer_id', organizerId)
+          .single();
+
+        if (!followError && followData?.follower_promotions) {
+          const permissions = Array.isArray(followData.follower_promotions) 
+            ? followData.follower_promotions[0] 
+            : followData.follower_promotions;
+            
+          return {
+            can_sell_tickets: permissions?.can_sell_tickets || false,
+            can_work_events: permissions?.can_work_events || false,
+            is_co_organizer: permissions?.is_co_organizer || false,
+            commission_rate: parseFloat(permissions?.commission_rate) || 0
+          };
+        }
       }
 
       return {
@@ -633,6 +695,175 @@ export class FollowerService {
     } catch (error) {
       console.error('Failed to get co-organizer status:', error);
       return [];
+    }
+  }
+
+  /**
+   * Assign seller to specific event (enforcing single event limitation)
+   */
+  static async assignSellerToEvent(
+    organizerId: string,
+    sellerId: string,
+    eventId: string,
+    commissionRate?: number
+  ): Promise<{
+    success: boolean
+    message: string
+    assignment_id?: string
+  }> {
+    try {
+      const { data, error } = await db
+        .rpc('assign_seller_to_event', {
+          seller_user_id: sellerId,
+          event_id_param: eventId,
+          organizer_user_id: organizerId,
+          commission_rate_param: commissionRate
+        });
+
+      if (error) {
+        throw new Error(`Failed to assign seller: ${error.message}`);
+      }
+
+      const result = data?.[0];
+      if (!result) {
+        throw new Error('No result returned from assignment function');
+      }
+
+      return {
+        success: result.success,
+        message: result.message,
+        assignment_id: result.assignment_id
+      };
+
+    } catch (error) {
+      console.error('Failed to assign seller to event:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to assign seller to event'
+      };
+    }
+  }
+
+  /**
+   * Get seller's current active assignment
+   */
+  static async getSellerCurrentAssignment(sellerId: string): Promise<{
+    assignment_id: string
+    event_id: string
+    event_title: string
+    organizer_id: string
+    organizer_name: string
+    commission_rate: number
+    assigned_at: string
+  } | null> {
+    try {
+      const { data, error } = await db
+        .rpc('get_seller_current_assignment', {
+          seller_user_id: sellerId
+        });
+
+      if (error) {
+        throw new Error(`Failed to get seller assignment: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      const assignment = data[0];
+      return {
+        assignment_id: assignment.assignment_id,
+        event_id: assignment.event_id,
+        event_title: assignment.event_title,
+        organizer_id: assignment.organizer_id,
+        organizer_name: assignment.organizer_name,
+        commission_rate: parseFloat(assignment.commission_rate),
+        assigned_at: assignment.assigned_at
+      };
+
+    } catch (error) {
+      console.error('Failed to get seller current assignment:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Complete seller assignment when event ends
+   */
+  static async completeSellerAssignment(
+    organizerId: string,
+    assignmentId: string
+  ): Promise<{
+    success: boolean
+    message: string
+  }> {
+    try {
+      const { data, error } = await db
+        .rpc('complete_seller_assignment', {
+          assignment_id_param: assignmentId,
+          organizer_user_id: organizerId
+        });
+
+      if (error) {
+        throw new Error(`Failed to complete assignment: ${error.message}`);
+      }
+
+      const result = data?.[0];
+      if (!result) {
+        throw new Error('No result returned from completion function');
+      }
+
+      return {
+        success: result.success,
+        message: result.message
+      };
+
+    } catch (error) {
+      console.error('Failed to complete seller assignment:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to complete seller assignment'
+      };
+    }
+  }
+
+  /**
+   * Disable seller assignment (remove from event)
+   */
+  static async disableSellerAssignment(
+    organizerId: string,
+    assignmentId: string
+  ): Promise<{
+    success: boolean
+    message: string
+  }> {
+    try {
+      const { data, error } = await db
+        .rpc('disable_seller_assignment', {
+          assignment_id_param: assignmentId,
+          organizer_user_id: organizerId
+        });
+
+      if (error) {
+        throw new Error(`Failed to disable assignment: ${error.message}`);
+      }
+
+      const result = data?.[0];
+      if (!result) {
+        throw new Error('No result returned from disable function');
+      }
+
+      return {
+        success: result.success,
+        message: result.message
+      };
+
+    } catch (error) {
+      console.error('Failed to disable seller assignment:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to disable seller assignment'
+      };
     }
   }
 }

@@ -28,8 +28,11 @@ import {
   Twitter,
   Linkedin,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
+import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { 
   CommunityBusinessService,
   BusinessCategory,
@@ -69,6 +72,8 @@ export default function CreateBusiness() {
   const [newSpecialty, setNewSpecialty] = useState('');
   const [businessHours, setBusinessHours] = useState<BusinessHours>({});
   const [socialMedia, setSocialMedia] = useState<SocialMedia>({});
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const form = useForm<BusinessFormData>({
     resolver: zodResolver(businessSchema),
@@ -126,6 +131,48 @@ export default function CreateBusiness() {
     }));
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const result = await imageUploadService.uploadOptimizedImage(file, {
+          bucket: 'venue-images',
+          folder: `businesses/${user?.id}`,
+          maxSizeBytes: 5 * 1024 * 1024, // 5MB
+          allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+          userId: user?.id
+        });
+
+        if (result.success && result.url) {
+          return result.url;
+        } else {
+          toast.error(`Failed to upload ${file.name}: ${result.error}`);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const successfulUploads = results.filter(url => url !== null) as string[];
+      
+      if (successfulUploads.length > 0) {
+        setUploadedImages(prev => [...prev, ...successfulUploads]);
+        toast.success(`Uploaded ${successfulUploads.length} image(s) successfully`);
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast.error('Failed to upload images');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (imageUrl: string) => {
+    setUploadedImages(prev => prev.filter(url => url !== imageUrl));
+  };
+
   const onSubmit = async (data: BusinessFormData) => {
     if (!user) {
       toast.error('You must be logged in to create a business listing');
@@ -143,6 +190,7 @@ export default function CreateBusiness() {
         specialties,
         business_hours: Object.keys(businessHours).length > 0 ? businessHours : undefined,
         social_media: Object.keys(socialMedia).length > 0 ? socialMedia : undefined,
+        gallery_images: uploadedImages,
         owner_id: user.id
       };
 
@@ -297,6 +345,72 @@ export default function CreateBusiness() {
                             <SelectItem value="$$$$">$$$$ - Luxury</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      {/* Image Upload Section */}
+                      <div>
+                        <Label>Business Photos</Label>
+                        <div className="space-y-4">
+                          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                            <div className="text-center">
+                              <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                              <div className="mt-4">
+                                <Label htmlFor="images" className="cursor-pointer">
+                                  <span className="mt-2 block text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    Upload business photos
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    PNG, JPG, WEBP up to 5MB each
+                                  </span>
+                                </Label>
+                                <Input
+                                  id="images"
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={handleImageUpload}
+                                  className="hidden"
+                                  disabled={uploading}
+                                />
+                              </div>
+                              <div className="mt-4">
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  disabled={uploading}
+                                  onClick={() => document.getElementById('images')?.click()}
+                                >
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  {uploading ? 'Uploading...' : 'Choose Images'}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Display uploaded images */}
+                          {uploadedImages.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                              {uploadedImages.map((imageUrl, index) => (
+                                <div key={index} className="relative group">
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Business photo ${index + 1}`}
+                                    className="w-full h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => removeImage(imageUrl)}
+                                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -28,7 +28,7 @@ const Events = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Events");
-  const [activeView, setActiveView] = useState("Masonry");
+  const [activeView, setActiveView] = useState("Grid");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedDateRange, setSelectedDateRange] = useState({ start: "", end: "" });
   const [sortBy, setSortBy] = useState("date_asc");
@@ -421,7 +421,6 @@ const Events = () => {
       </div>
     </Link>
   );
-};
 
   // Masonry layout helper functions
   const distributeMasonryEvents = (events: EventWithStats[]) => {

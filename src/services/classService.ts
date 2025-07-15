@@ -41,8 +41,8 @@ export interface SteppingClass {
   instructorId: string;
   instructorName: string;
   classType: 'Regular Class' | 'Workshop' | 'Private Lesson' | 'Group Session';
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Footwork' | 'All Levels';
-  category: 'Technique' | 'Partnership' | 'Competition' | 'Style' | 'Youth' | 'Fusion' | 'Online';
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  category: 'Stepping' | 'Line Dancing' | 'Walking';
   location: ClassLocation;
   schedule: ClassSchedule;
   price: number;
@@ -73,8 +73,8 @@ export interface ClassSubmissionData {
   title: string;
   description: string;
   classType: 'Regular Class' | 'Workshop' | 'Private Lesson' | 'Group Session';
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Footwork' | 'All Levels';
-  category: 'Technique' | 'Partnership' | 'Competition' | 'Style' | 'Youth' | 'Fusion' | 'Online';
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  category: 'Stepping' | 'Line Dancing' | 'Walking';
   location: ClassLocation;
   schedule: ClassSchedule;
   price: number;
@@ -109,7 +109,7 @@ export interface VODClass {
   description: string;
   instructorId: string;
   instructorName: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Footwork' | 'All Levels';
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
   category: string;
   price: number;
   sections: VODSection[];
@@ -155,7 +155,7 @@ const mockClasses: SteppingClass[] = [
     instructorName: 'Marcus Johnson',
     classType: 'Regular Class',
     level: 'Beginner',
-    category: 'Technique',
+    category: 'Stepping',
     location: {
       type: 'physical',
       venue: 'Chicago Cultural Center',
@@ -214,7 +214,7 @@ const mockClasses: SteppingClass[] = [
     instructorName: 'Lisa Davis',
     classType: 'Workshop',
     level: 'Advanced',
-    category: 'Technique',
+    category: 'Stepping',
     location: {
       type: 'physical',
       venue: 'DuSable Museum Dance Studio',
@@ -270,7 +270,7 @@ const mockClasses: SteppingClass[] = [
     instructorName: 'Carlos Martinez',
     classType: 'Group Session',
     level: 'Intermediate',
-    category: 'Partnership',
+    category: 'Line Dancing',
     location: {
       type: 'physical',
       venue: 'Atlanta Dance Studio',
@@ -327,7 +327,7 @@ const mockClasses: SteppingClass[] = [
     instructorName: 'Dr. Patricia Jones',
     classType: 'Regular Class',
     level: 'Beginner',
-    category: 'Online',
+    category: 'Walking',
     location: {
       type: 'online',
       onlineLink: 'https://zoom.us/j/steppingclass',
@@ -381,7 +381,7 @@ const mockVODClasses: VODClass[] = [
     instructorId: 'instructor_001',
     instructorName: 'Marcus Johnson',
     level: 'Beginner',
-    category: 'Technique',
+    category: 'Stepping',
     price: 49.99,
     sections: [
       {
