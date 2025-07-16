@@ -25,6 +25,8 @@ import {
   Heart
 } from 'lucide-react';
 import { LocationSearchBar, LocationFilterPanel, LocationMapToggle } from '@/components/location';
+import { SimpleMapView } from '@/components/map';
+import { ClassCard } from '@/components/classes';
 import { 
   LocationResult, 
   LocationCoordinates, 
@@ -71,7 +73,7 @@ export default function Classes() {
   // Load classes on component mount
   useEffect(() => {
     loadClasses();
-  }, [loadClasses]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Carousel data
   const carouselSlides = [
@@ -407,108 +409,44 @@ export default function Classes() {
             </CardContent>
           </Card>
         ) : viewMode === 'map' ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Map View Coming Soon</h3>
-              <p className="text-muted-foreground mb-6">
-                Interactive map view for classes will be available soon. For now, please use the grid or list view.
-              </p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={() => setViewMode('grid')}>Switch to Grid</Button>
-                <Button variant="outline" onClick={() => setViewMode('list')}>Switch to List</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <SimpleMapView
+            items={filteredAndSortedClasses.map(classItem => ({
+              id: classItem.id,
+              name: classItem.title,
+              address: classItem.location.address,
+              city: classItem.location.city,
+              state: classItem.location.state,
+              coordinates: classItem.location.coordinates ? {
+                lat: classItem.location.coordinates.lat,
+                lng: classItem.location.coordinates.lng
+              } : null,
+              description: `${classItem.level} ${classItem.category} with ${classItem.instructorName}`,
+              category: classItem.category
+            }))}
+            userLocation={userLocation}
+            onItemClick={(item) => {
+              // Could navigate to class detail page
+              console.log('Class clicked:', item);
+            }}
+            onViewModeChange={setViewMode}
+            height="600px"
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredAndSortedClasses.map((classItem, index) => {
               const isLarge = index % 7 === 0; // Every 7th item is larger
               return (
-                <Card key={classItem.id} className={`bg-card rounded-xl border-2 border-border overflow-hidden hover:shadow-xl hover:border-primary/20 transition-all duration-300 group cursor-pointer ${
-                  isLarge ? 'lg:col-span-2 lg:row-span-2' : ''
-                }`}>
-                  {/* Image Container */}
-                  <div className={`relative ${isLarge ? 'h-64' : 'h-48'}`}>
-                    <img
-                      src={classItem.images[0]?.url || "/placeholder.svg"}
-                      alt={classItem.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    
-                    {/* Price Badge */}
-                    <div className="absolute top-3 left-3 bg-card/95 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-foreground border border-border">
-                      ${classItem.price}
-                    </div>
-                    
-                    {/* Level Badge */}
-                    <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">
-                      {classItem.level}
-                    </Badge>
-                    
-                    {/* Play Icon Overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="w-16 h-16 bg-primary/90 rounded-full flex items-center justify-center backdrop-blur-sm">
-                        <Play className="w-8 h-8 text-primary-foreground ml-1" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Content Container */}
-                  <CardContent className={`${isLarge ? 'p-6' : 'p-4'}`}>
-                    {/* Instructor */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <img
-                        src="/placeholder.svg"
-                        alt={classItem.instructorName}
-                        className="w-8 h-8 rounded-full object-cover border-2 border-border"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{classItem.instructorName}</p>
-                        <p className="text-xs text-muted-foreground">{classItem.category}</p>
-                      </div>
-                    </div>
-                    
-                    {/* Title */}
-                    <h3 className={`font-bold text-foreground mb-2 line-clamp-2 ${isLarge ? 'text-xl' : 'text-lg'}`}>
-                      {classItem.title}
-                    </h3>
-                    
-                    {/* Description */}
-                    <p className={`text-muted-foreground text-sm mb-4 ${isLarge ? 'line-clamp-3' : 'line-clamp-2'}`}>
-                      {classItem.description}
-                    </p>
-                    
-                    {/* Stats */}
-                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-400" />
-                        <span className="font-medium">{classItem.averageRating}</span>
-                        <span>({classItem.attendeeCount})</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{classItem.schedule.duration}min</span>
-                      </div>
-                    </div>
-                    
-                    {/* Location */}
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <span className="truncate">{classItem.location.city}, {classItem.location.state}</span>
-                      {userLocation && classItem.location.coordinates && locationEnabled && (
-                        <Badge variant="outline" className="ml-auto text-xs">
-                          {getDistanceText(userLocation, classItem.location.coordinates)}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {/* Action Button */}
-                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                      Enroll Now
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div
+                  key={classItem.id}
+                  className={isLarge ? 'lg:col-span-2' : ''}
+                >
+                  <ClassCard
+                    classItem={classItem}
+                    userLocation={userLocation}
+                    size={isLarge ? 'large' : 'default'}
+                    showRegistration={true}
+                  />
+                </div>
               );
             })}
           </div>

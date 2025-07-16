@@ -291,15 +291,34 @@ CREATE TRIGGER handle_orders_updated_at
     FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- Function to create user profile on signup
+-- Profile creation trigger with admin fields
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO profiles (id, email, full_name)
-    VALUES (
+    -- Create profile with admin fields
+    INSERT INTO profiles (
+        id,
+        email,
+        full_name,
+        is_admin,
+        admin_level,
+        notification_preferences,
+        privacy_settings,
+        created_at,
+        updated_at
+    ) VALUES (
         NEW.id,
         NEW.email,
-        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email)
-    );
+        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+        false,
+        0,
+        '{"emailMarketing": true, "emailUpdates": true, "emailTickets": true, "pushNotifications": true, "smsNotifications": false}',
+        '{"profileVisible": true, "showEmail": false, "showPhone": false, "showEvents": true}',
+        NOW(),
+        NOW()
+    )
+    ON CONFLICT (id) DO NOTHING;
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -336,3 +355,164 @@ CREATE INDEX idx_orders_status ON orders(payment_status);
 CREATE INDEX idx_team_members_event_id ON team_members(event_id);
 CREATE INDEX idx_team_members_user_id ON team_members(user_id);
 CREATE INDEX idx_event_analytics_event_id ON event_analytics(event_id);
+
+-- Admin permissions indexes
+CREATE INDEX idx_profiles_is_admin ON profiles(is_admin);
+CREATE INDEX idx_profiles_admin_level ON profiles(admin_level);
+
+-- Admin permissions table for granular permissions
+CREATE TABLE admin_permissions (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    can_manage_users BOOLEAN DEFAULT FALSE,
+    can_manage_events BOOLEAN DEFAULT FALSE,
+    can_view_analytics BOOLEAN DEFAULT FALSE,
+    can_manage_system BOOLEAN DEFAULT FALSE,
+    can_manage_billing BOOLEAN DEFAULT FALSE,
+    granted_by UUID REFERENCES profiles(id),
+    granted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+-- Admin permissions indexes
+CREATE INDEX idx_admin_permissions_user_id ON admin_permissions(user_id);
+CREATE INDEX idx_admin_permissions_is_active ON admin_permissions(is_active);
+
+-- Function to check if user is admin
+CREATE OR REPLACE FUNCTION is_user_admin(user_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN COALESCE((
+        SELECT is_admin 
+        FROM profiles 
+        WHERE id = user_uuid
+    ), false);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get admin permissions
+CREATE OR REPLACE FUNCTION get_admin_permissions(user_uuid UUID)
+RETURNS TABLE (
+    is_admin BOOLEAN,
+    admin_level INTEGER,
+    can_manage_users BOOLEAN,
+    can_manage_events BOOLEAN,
+    can_view_analytics BOOLEAN,
+    can_manage_system BOOLEAN,
+    can_manage_billing BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COALESCE(p.is_admin, false) as is_admin,
+        COALESCE(p.admin_level, 0) as admin_level,
+        COALESCE(ap.can_manage_users, false) as can_manage_users,
+        COALESCE(ap.can_manage_events, false) as can_manage_events,
+        COALESCE(ap.can_view_analytics, false) as can_view_analytics,
+        COALESCE(ap.can_manage_system, false) as can_manage_system,
+        COALESCE(ap.can_manage_billing, false) as can_manage_billing
+    FROM profiles p
+    LEFT JOIN admin_permissions ap ON ap.user_id = p.id AND ap.is_active = true
+    WHERE p.id = user_uuid;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- User follows table for tracking follower relationships
+CREATE TABLE IF NOT EXISTS user_follows (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  follower_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  organizer_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(follower_id, organizer_id)
+);
+
+-- Follower promotions table for tracking additional permissions granted by organizers
+CREATE TABLE IF NOT EXISTS follower_promotions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  follow_id UUID REFERENCES user_follows(id) ON DELETE CASCADE NOT NULL,
+  organizer_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  follower_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  can_sell_tickets BOOLEAN DEFAULT FALSE,
+  can_work_events BOOLEAN DEFAULT FALSE,
+  is_co_organizer BOOLEAN DEFAULT FALSE,
+  commission_rate DECIMAL(5,4) DEFAULT 0.0000,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(follow_id)
+);
+
+-- Referral codes table for tracking unique codes/URLs for promoted followers
+CREATE TABLE IF NOT EXISTS referral_codes (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  promotion_id UUID REFERENCES follower_promotions(id) ON DELETE CASCADE NOT NULL,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+  code VARCHAR(20) UNIQUE NOT NULL,
+  qr_code_url TEXT,
+  referral_url TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  clicks_count INTEGER DEFAULT 0,
+  conversions_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Commission tracking for follower earnings
+CREATE TABLE IF NOT EXISTS commission_earnings (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  referral_code_id UUID REFERENCES referral_codes(id) ON DELETE CASCADE NOT NULL,
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
+  follower_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  organizer_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  commission_amount DECIMAL(10,2) NOT NULL,
+  commission_rate DECIMAL(5,4) NOT NULL,
+  order_total DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  paid_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for follower system
+CREATE INDEX IF NOT EXISTS idx_user_follows_follower_id ON user_follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_user_follows_organizer_id ON user_follows(organizer_id);
+CREATE INDEX IF NOT EXISTS idx_follower_promotions_follow_id ON follower_promotions(follow_id);
+CREATE INDEX IF NOT EXISTS idx_referral_codes_promotion_id ON referral_codes(promotion_id);
+CREATE INDEX IF NOT EXISTS idx_commission_earnings_follower_id ON commission_earnings(follower_id);
+
+-- Function to get follower count
+CREATE OR REPLACE FUNCTION get_follower_count(organizer_uuid UUID)
+RETURNS INTEGER AS $$
+BEGIN
+  RETURN (
+    SELECT COUNT(*)
+    FROM user_follows
+    WHERE organizer_id = organizer_uuid
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to check if user follows organizer
+CREATE OR REPLACE FUNCTION is_following(follower_uuid UUID, organizer_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM user_follows
+    WHERE follower_id = follower_uuid AND organizer_id = organizer_uuid
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Comments for documentation
+COMMENT ON TABLE admin_permissions IS 'Granular admin permissions for platform administration';
+COMMENT ON COLUMN profiles.is_admin IS 'Boolean flag indicating if user has any admin privileges';
+COMMENT ON COLUMN profiles.admin_level IS 'Admin level: 0=regular, 1=moderator, 2=admin, 3=super_admin';
+COMMENT ON FUNCTION is_user_admin(UUID) IS 'Check if a user has admin privileges';
+COMMENT ON FUNCTION get_admin_permissions(UUID) IS 'Get detailed admin permissions for a user';
+COMMENT ON FUNCTION get_follower_count(UUID) IS 'Get follower count for an organizer';
+COMMENT ON FUNCTION is_following(UUID, UUID) IS 'Check if a user follows an organizer';

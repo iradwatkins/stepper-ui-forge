@@ -10,6 +10,21 @@ export const setupInitialAdmin = async () => {
     
     console.log('Setting up initial admin user:', adminEmail)
     
+    // First check if admin columns exist
+    const { error: columnCheckError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .limit(0)
+    
+    if (columnCheckError?.code === '42703') {
+      console.warn('Admin columns not found. Migration 007_add_admin_permissions.sql needs to be run.')
+      return {
+        success: false,
+        message: 'Admin columns missing. Database migration required.',
+        migrationNeeded: true
+      }
+    }
+    
     // First, find the user by email
     const { data: userData, error: userError } = await supabase
       .from('profiles')
@@ -97,6 +112,17 @@ export const setupInitialAdmin = async () => {
 export const checkAdminSetup = async () => {
   try {
     const adminEmail = 'iradwatkins@gmail.com'
+    
+    // First check if admin columns exist
+    const { error: columnCheckError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .limit(0)
+    
+    if (columnCheckError?.code === '42703') {
+      // Admin columns don't exist yet
+      return { hasAdmin: false, adminExists: false, migrationNeeded: true }
+    }
     
     const { data, error } = await supabase
       .from('profiles')

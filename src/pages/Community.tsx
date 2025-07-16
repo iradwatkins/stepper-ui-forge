@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Store, MapPin, Phone, Globe, Star, Search, Filter, Plus, Clock, CheckCircle, Users, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LocationSearchBar, LocationFilterPanel, LocationMapToggle } from '@/components/location';
+import { SimpleMapView } from '@/components/map';
+import { BusinessCard } from '@/components/business';
 import { 
   LocationResult, 
   LocationCoordinates, 
@@ -456,125 +458,57 @@ export default function Community() {
             </CardContent>
           </Card>
         ) : viewMode === 'map' ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Map View Coming Soon</h3>
-              <p className="text-muted-foreground mb-6">
-                Interactive map view for businesses will be available soon. For now, please use the grid or list view.
-              </p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={() => setViewMode('list')}>Switch to List</Button>
-                <Button variant="outline" onClick={() => setViewMode('grid')}>Switch to Grid</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <SimpleMapView
+            items={filteredAndSortedBusinesses.map(business => ({
+              id: business.id,
+              name: business.business_name,
+              address: business.address,
+              city: business.city,
+              state: business.state,
+              coordinates: business.latitude && business.longitude ? {
+                lat: business.latitude,
+                lng: business.longitude
+              } : null,
+              description: business.description,
+              category: business.category
+            }))}
+            userLocation={userLocation}
+            onItemClick={(item) => {
+              // Could navigate to business detail page
+              console.log('Business clicked:', item);
+            }}
+            onViewModeChange={setViewMode}
+            height="600px"
+          />
         ) : (
-          <div className={viewMode === 'grid' ? 'space-y-8' : 'space-y-6'}>
-            {filteredAndSortedBusinesses.map((business) => (
-              <Card key={business.id} className="hover:shadow-lg transition-shadow overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="flex flex-col lg:flex-row">
-                    {/* Much Larger Image */}
-                    <div className="lg:w-1/2 relative">
-                      <img
-                        src={(business.gallery_images && business.gallery_images[0]) || "/placeholder.svg"}
-                        alt={business.business_name}
-                        className="w-full h-64 lg:h-80 object-cover"
-                      />
-                      {business.is_verified && (
-                        <Badge className="absolute top-4 right-4 bg-blue-600 text-white">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Verified
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {/* Content on the right */}
-                    <div className="lg:w-1/2 p-8 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <Link 
-                              to={`/stores/${business.id}`}
-                              className="hover:text-green-600 transition-colors"
-                            >
-                              <h3 className="font-bold text-2xl hover:text-green-600 mb-2">
-                                {business.business_name}
-                              </h3>
-                            </Link>
-                            <Badge variant="secondary" className="text-sm">
-                              {categories.find(c => c.id === business.category)?.name}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Star className="w-5 h-5 text-yellow-400" />
-                            <span className="text-lg font-medium">{business.rating_average}</span>
-                            <span className="text-sm text-muted-foreground">({business.rating_count})</span>
-                          </div>
-                        </div>
-                        
-                        <p className="text-muted-foreground text-base mb-6 leading-relaxed">
-                          {business.description.slice(0, 200)}...
-                        </p>
-                        
-                        <div className="space-y-3 text-sm mb-6">
-                          <div className="flex items-center justify-between text-muted-foreground">
-                            <div className="flex items-center">
-                              <MapPin className="w-5 h-5 mr-3 text-green-600" />
-                              <span>{business.address || ''}, {business.city}, {business.state}</span>
-                            </div>
-                            {userLocation && business.latitude && business.longitude && locationEnabled && (
-                              <Badge variant="outline" className="ml-2">
-                                {getDistanceText(userLocation, {lat: business.latitude, lng: business.longitude})}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                            <div className="flex items-center">
-                              <Phone className="w-5 h-5 mr-3 text-green-600" />
-                              {business.contact_phone}
-                            </div>
-                            {business.website_url && (
-                              <div className="flex items-center">
-                                <Globe className="w-5 h-5 mr-3 text-green-600" />
-                                <a 
-                                  href={business.website_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="hover:text-green-600 font-medium"
-                                >
-                                  Visit Website
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 mb-6">
-                          {business.tags.slice(0, 4).map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-3">
-                        <Button className="flex-1 bg-green-600 hover:bg-green-700">
-                          Contact Business
-                        </Button>
-                        <Link to={`/stores/${business.id}`} className="flex-1">
-                          <Button variant="outline" className="w-full">
-                            View Details
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className={viewMode === 'grid' 
+            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' 
+            : 'space-y-6'
+          }>
+            {filteredAndSortedBusinesses.map((business, index) => {
+              const isLarge = viewMode === 'grid' && index % 9 === 0; // Every 9th item is larger in grid
+              return viewMode === 'grid' ? (
+                <div 
+                  key={business.id}
+                  className={isLarge ? 'lg:col-span-2' : ''}
+                >
+                  <BusinessCard
+                    business={business}
+                    userLocation={userLocation}
+                    size={isLarge ? 'large' : 'default'}
+                    showContactButton={true}
+                  />
+                </div>
+              ) : (
+                <BusinessCard
+                  key={business.id}
+                  business={business}
+                  userLocation={userLocation}
+                  size="large"
+                  showContactButton={true}
+                />
+              );
+            })}
           </div>
         )}
 

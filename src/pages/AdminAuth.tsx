@@ -15,11 +15,11 @@ export default function AdminAuth() {
   useEffect(() => {
     if (user && !loading) {
       if (isAdmin) {
-        // Redirect to dashboard where admin panel is integrated
+        // Redirect admins to dashboard where admin panel is integrated
         navigate('/dashboard')
       } else {
-        // Redirect non-admin users to regular login
-        navigate('/account')
+        // Redirect non-admin users to events page
+        navigate('/events')
       }
     }
   }, [user, isAdmin, loading, navigate])

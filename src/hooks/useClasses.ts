@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { classService, SteppingClass, ClassSubmissionData, ClassAttendee, VODClass } from '@/services/classService';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,7 +10,7 @@ export const useClasses = () => {
   const { user } = useAuth();
 
   // Load all public classes
-  const loadClasses = async (filters?: {
+  const loadClasses = useCallback(async (filters?: {
     level?: string;
     category?: string;
     location?: string;
@@ -26,7 +26,7 @@ export const useClasses = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Load instructor's classes
   const loadInstructorClasses = async (instructorId?: string) => {
@@ -250,6 +250,6 @@ export const useClasses = () => {
     loadVODClasses,
     loadInstructorVODClasses,
     uploadClassImages,
-    clearError: () => setError(null)
+    clearError: useCallback(() => setError(null), [])
   };
 };

@@ -1,4 +1,5 @@
 // Enhanced Class Service for managing stepping classes and VOD content
+import { supabase } from '@/integrations/supabase/client';
 export interface ClassSchedule {
   type: 'single' | 'weekly' | 'monthly' | 'custom';
   startDate: string;
@@ -446,8 +447,26 @@ const mockVODClasses: VODClass[] = [
 class ClassService {
   // Physical Classes Management
   async getInstructorClasses(instructorId: string): Promise<SteppingClass[]> {
-    const instructorClasses = mockClasses.filter(cls => cls.instructorId === instructorId);
-    return Promise.resolve(instructorClasses);
+    try {
+      const { data, error } = await supabase
+        .from('stepping_classes')
+        .select(`
+          *,
+          class_images(*)
+        `)
+        .eq('instructor_id', instructorId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching instructor classes:', error);
+        return mockClasses.filter(cls => cls.instructorId === instructorId);
+      }
+
+      return this.transformDatabaseClasses(data || []);
+    } catch (error) {
+      console.error('Error in getInstructorClasses:', error);
+      return mockClasses.filter(cls => cls.instructorId === instructorId);
+    }
   }
 
   async getAllClasses(filters?: {
@@ -457,163 +476,368 @@ class ClassService {
     search?: string;
     isActive?: boolean;
   }): Promise<SteppingClass[]> {
-    let filtered = mockClasses.filter(cls => cls.isActive && !cls.isPending);
+    try {
+      let query = supabase
+        .from('stepping_classes')
+        .select('*')
+        .eq('status', 'published')
+        .eq('is_active', true);
 
-    if (filters?.level && filters.level !== 'all') {
-      filtered = filtered.filter(cls => cls.level === filters.level);
+      // Apply filters
+      if (filters?.level && filters.level !== 'all') {
+        query = query.eq('level', filters.level);
+      }
+
+      if (filters?.category && filters.category !== 'all') {
+        query = query.eq('category', filters.category);
+      }
+
+      if (filters?.location) {
+        const location = filters.location.toLowerCase();
+        query = query.or(`city.ilike.%${location}%,state.ilike.%${location}%`);
+      }
+
+      if (filters?.search) {
+        query = query.textSearch('title,description,instructor_name,tags', filters.search);
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) {
+        // Check if it's a table not found error
+        if (error.code === '42P01' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
+          console.warn('Classes table not found, using mock data');
+        } else {
+          console.error('Error fetching classes:', error);
+        }
+        // Fallback to mock data
+        let filtered = mockClasses.filter(cls => cls.isActive && !cls.isPending);
+        
+        if (filters?.level && filters.level !== 'all') {
+          filtered = filtered.filter(cls => cls.level === filters.level);
+        }
+        if (filters?.category && filters.category !== 'all') {
+          filtered = filtered.filter(cls => cls.category === filters.category);
+        }
+        if (filters?.search) {
+          const query = filters.search.toLowerCase();
+          filtered = filtered.filter(cls =>
+            cls.title.toLowerCase().includes(query) ||
+            cls.description.toLowerCase().includes(query) ||
+            cls.instructorName.toLowerCase().includes(query) ||
+            cls.tags.some(tag => tag.toLowerCase().includes(query))
+          );
+        }
+        if (filters?.location) {
+          filtered = filtered.filter(cls =>
+            cls.location.city?.toLowerCase().includes(filters.location!.toLowerCase()) ||
+            cls.location.state?.toLowerCase().includes(filters.location!.toLowerCase())
+          );
+        }
+        return filtered;
+      }
+
+      return this.transformDatabaseClasses(data || []);
+    } catch (error) {
+      console.error('Error in getAllClasses:', error);
+      return mockClasses.filter(cls => cls.isActive && !cls.isPending);
     }
-
-    if (filters?.category && filters.category !== 'all') {
-      filtered = filtered.filter(cls => cls.category === filters.category);
-    }
-
-    if (filters?.search) {
-      const query = filters.search.toLowerCase();
-      filtered = filtered.filter(cls =>
-        cls.title.toLowerCase().includes(query) ||
-        cls.description.toLowerCase().includes(query) ||
-        cls.instructorName.toLowerCase().includes(query) ||
-        cls.tags.some(tag => tag.toLowerCase().includes(query)) ||
-        cls.location.city?.toLowerCase().includes(query) ||
-        cls.location.venue?.toLowerCase().includes(query)
-      );
-    }
-
-    if (filters?.location) {
-      filtered = filtered.filter(cls =>
-        cls.location.city?.toLowerCase().includes(filters.location!.toLowerCase()) ||
-        cls.location.state?.toLowerCase().includes(filters.location!.toLowerCase())
-      );
-    }
-
-    return Promise.resolve(filtered);
   }
 
   async createClass(data: ClassSubmissionData, instructorId: string, instructorName: string): Promise<SteppingClass> {
-    const newClass: SteppingClass = {
-      id: `class_${Date.now()}`,
-      title: data.title,
-      description: data.description,
-      instructorId,
-      instructorName,
-      classType: data.classType,
-      level: data.level,
-      category: data.category,
-      location: data.location,
-      schedule: data.schedule,
-      price: data.price,
-      capacity: data.capacity,
-      hasRSVP: data.hasRSVP,
-      contactInfo: data.contactInfo,
-      prerequisites: data.prerequisites,
-      whatToBring: data.whatToBring,
-      extras: data.extras,
-      images: [], // Would handle image upload separately
-      tags: data.tags,
-      isActive: false, // Starts inactive until confirmed
-      isPending: true,
-      lastConfirmed: new Date().toISOString(),
-      attendeeCount: 0,
-      interestedCount: 0,
-      averageRating: 5.0,
-      totalRatings: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    try {
+      const classData = {
+        instructor_id: instructorId,
+        instructor_name: instructorName,
+        title: data.title,
+        description: data.description,
+        class_type: data.classType,
+        level: data.level,
+        category: data.category,
+        location_type: data.location.type,
+        venue: data.location.venue,
+        address: data.location.address,
+        city: data.location.city,
+        state: data.location.state,
+        zip_code: data.location.zipCode,
+        latitude: data.location.coordinates?.lat,
+        longitude: data.location.coordinates?.lng,
+        online_link: data.location.onlineLink,
+        special_instructions: data.location.specialInstructions,
+        schedule_type: data.schedule.type,
+        start_date: data.schedule.startDate,
+        end_date: data.schedule.endDate,
+        class_time: data.schedule.time,
+        duration_minutes: data.schedule.duration,
+        days_of_week: data.schedule.daysOfWeek || [],
+        day_of_month: data.schedule.dayOfMonth,
+        exception_dates: data.schedule.exceptions || [],
+        schedule_notes: data.schedule.notes,
+        price: data.price,
+        capacity: data.capacity,
+        has_rsvp: data.hasRSVP,
+        contact_email: data.contactInfo.email,
+        contact_phone: data.contactInfo.phone,
+        preferred_contact: data.contactInfo.preferredContact || 'email',
+        prerequisites: data.prerequisites,
+        what_to_bring: data.whatToBring,
+        extras: data.extras,
+        tags: data.tags,
+        status: 'draft'
+      };
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return Promise.resolve(newClass);
+      const { data: newClass, error } = await supabase
+        .from('stepping_classes')
+        .insert(classData)
+        .select(`
+          *,
+          class_images(*)
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error creating class:', error);
+        throw error;
+      }
+
+      return this.transformDatabaseClass(newClass);
+    } catch (error) {
+      console.error('Error in createClass:', error);
+      throw error;
+    }
   }
 
   async updateClass(classId: string, data: Partial<ClassSubmissionData>): Promise<SteppingClass> {
-    const existingClass = mockClasses.find(cls => cls.id === classId);
-    if (!existingClass) {
-      throw new Error('Class not found');
+    try {
+      const updateData: any = {};
+      
+      if (data.title) updateData.title = data.title;
+      if (data.description) updateData.description = data.description;
+      if (data.classType) updateData.class_type = data.classType;
+      if (data.level) updateData.level = data.level;
+      if (data.category) updateData.category = data.category;
+      if (data.price) updateData.price = data.price;
+      if (data.capacity) updateData.capacity = data.capacity;
+      if (data.hasRSVP !== undefined) updateData.has_rsvp = data.hasRSVP;
+      if (data.prerequisites) updateData.prerequisites = data.prerequisites;
+      if (data.whatToBring) updateData.what_to_bring = data.whatToBring;
+      if (data.extras) updateData.extras = data.extras;
+      if (data.tags) updateData.tags = data.tags;
+      
+      if (data.location) {
+        updateData.location_type = data.location.type;
+        updateData.venue = data.location.venue;
+        updateData.address = data.location.address;
+        updateData.city = data.location.city;
+        updateData.state = data.location.state;
+        updateData.zip_code = data.location.zipCode;
+        updateData.latitude = data.location.coordinates?.lat;
+        updateData.longitude = data.location.coordinates?.lng;
+        updateData.online_link = data.location.onlineLink;
+        updateData.special_instructions = data.location.specialInstructions;
+      }
+      
+      if (data.schedule) {
+        updateData.schedule_type = data.schedule.type;
+        updateData.start_date = data.schedule.startDate;
+        updateData.end_date = data.schedule.endDate;
+        updateData.class_time = data.schedule.time;
+        updateData.duration_minutes = data.schedule.duration;
+        updateData.days_of_week = data.schedule.daysOfWeek;
+        updateData.day_of_month = data.schedule.dayOfMonth;
+        updateData.exception_dates = data.schedule.exceptions;
+        updateData.schedule_notes = data.schedule.notes;
+      }
+      
+      if (data.contactInfo) {
+        updateData.contact_email = data.contactInfo.email;
+        updateData.contact_phone = data.contactInfo.phone;
+        updateData.preferred_contact = data.contactInfo.preferredContact;
+      }
+
+      const { data: updatedClass, error } = await supabase
+        .from('stepping_classes')
+        .update(updateData)
+        .eq('id', classId)
+        .select(`
+          *,
+          class_images(*)
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error updating class:', error);
+        throw error;
+      }
+
+      return this.transformDatabaseClass(updatedClass);
+    } catch (error) {
+      console.error('Error in updateClass:', error);
+      throw error;
     }
-
-    const updatedClass: SteppingClass = {
-      ...existingClass,
-      ...data,
-      updatedAt: new Date().toISOString()
-    };
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    return Promise.resolve(updatedClass);
   }
 
   async deleteClass(classId: string, instructorId: string): Promise<boolean> {
-    const classIndex = mockClasses.findIndex(cls => cls.id === classId && cls.instructorId === instructorId);
-    if (classIndex === -1) {
-      throw new Error('Class not found or unauthorized');
-    }
+    try {
+      const { error } = await supabase
+        .from('stepping_classes')
+        .update({ is_active: false })
+        .eq('id', classId)
+        .eq('instructor_id', instructorId);
 
-    // In real implementation, would soft delete or mark as inactive
-    mockClasses.splice(classIndex, 1);
-    return Promise.resolve(true);
+      if (error) {
+        console.error('Error deleting class:', error);
+        throw error;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in deleteClass:', error);
+      throw error;
+    }
   }
 
   async confirmClass(classId: string, instructorId: string): Promise<SteppingClass> {
-    const classToConfirm = mockClasses.find(cls => cls.id === classId && cls.instructorId === instructorId);
-    if (!classToConfirm) {
-      throw new Error('Class not found or unauthorized');
+    try {
+      const { data: confirmedClass, error } = await supabase
+        .from('stepping_classes')
+        .update({
+          status: 'published',
+          is_active: true
+        })
+        .eq('id', classId)
+        .eq('instructor_id', instructorId)
+        .select(`
+          *,
+          class_images(*)
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error confirming class:', error);
+        throw error;
+      }
+
+      return this.transformDatabaseClass(confirmedClass);
+    } catch (error) {
+      console.error('Error in confirmClass:', error);
+      throw error;
     }
-
-    classToConfirm.lastConfirmed = new Date().toISOString();
-    classToConfirm.isActive = true;
-    classToConfirm.isPending = false;
-
-    return Promise.resolve(classToConfirm);
   }
 
   // Attendee Management
   async getClassAttendees(classId: string): Promise<ClassAttendee[]> {
-    // Mock attendee data
-    const mockAttendees: ClassAttendee[] = [
-      {
-        id: 'attendee_001',
-        userId: 'user_001',
-        userName: 'Sarah Johnson',
-        userEmail: 'sarah@example.com',
-        classId,
-        status: 'registered',
-        registeredAt: '2024-01-15T00:00:00Z'
-      },
-      {
-        id: 'attendee_002',
-        userId: 'user_002',
-        userName: 'Mike Davis',
-        userEmail: 'mike@example.com',
-        classId,
-        status: 'interested',
-        registeredAt: '2024-01-16T00:00:00Z'
-      }
-    ];
+    try {
+      const { data, error } = await supabase
+        .from('class_attendees')
+        .select('*')
+        .eq('class_id', classId)
+        .order('registered_at', { ascending: false });
 
-    return Promise.resolve(mockAttendees);
+      if (error) {
+        console.error('Error fetching class attendees:', error);
+        // Fallback to mock data
+        const mockAttendees: ClassAttendee[] = [
+          {
+            id: 'attendee_001',
+            userId: 'user_001',
+            userName: 'Sarah Johnson',
+            userEmail: 'sarah@example.com',
+            classId,
+            status: 'registered',
+            registeredAt: '2024-01-15T00:00:00Z'
+          },
+          {
+            id: 'attendee_002',
+            userId: 'user_002',
+            userName: 'Mike Davis',
+            userEmail: 'mike@example.com',
+            classId,
+            status: 'interested',
+            registeredAt: '2024-01-16T00:00:00Z'
+          }
+        ];
+        return mockAttendees;
+      }
+
+      return (data || []).map(attendee => ({
+        id: attendee.id,
+        userId: attendee.user_id,
+        userName: attendee.user_name,
+        userEmail: attendee.user_email,
+        classId: attendee.class_id,
+        status: attendee.status,
+        registeredAt: attendee.registered_at,
+        notes: attendee.notes
+      }));
+    } catch (error) {
+      console.error('Error in getClassAttendees:', error);
+      return [];
+    }
   }
 
-  async registerForClass(classId: string, userId: string, status: 'interested' | 'registered'): Promise<ClassAttendee> {
-    const newAttendee: ClassAttendee = {
-      id: `attendee_${Date.now()}`,
-      userId,
-      userName: 'Current User',
-      userEmail: 'user@example.com',
-      classId,
-      status,
-      registeredAt: new Date().toISOString()
-    };
+  async registerForClass(classId: string, userId: string, status: 'interested' | 'registered', userName: string, userEmail: string): Promise<ClassAttendee> {
+    try {
+      const { data, error } = await supabase
+        .from('class_attendees')
+        .insert({
+          class_id: classId,
+          user_id: userId,
+          user_name: userName,
+          user_email: userEmail,
+          status
+        })
+        .select()
+        .single();
 
-    return Promise.resolve(newAttendee);
+      if (error) {
+        console.error('Error registering for class:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        userId: data.user_id,
+        userName: data.user_name,
+        userEmail: data.user_email,
+        classId: data.class_id,
+        status: data.status,
+        registeredAt: data.registered_at,
+        notes: data.notes
+      };
+    } catch (error) {
+      console.error('Error in registerForClass:', error);
+      throw error;
+    }
   }
 
   // VOD Classes Management
   async getInstructorVODClasses(instructorId: string): Promise<VODClass[]> {
-    const instructorVODs = mockVODClasses.filter(vod => vod.instructorId === instructorId);
-    return Promise.resolve(instructorVODs);
+    try {
+      const { data, error } = await supabase
+        .from('vod_classes')
+        .select(`
+          *,
+          vod_sections(
+            *,
+            vod_videos(*)
+          )
+        `)
+        .eq('instructor_id', instructorId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching instructor VOD classes:', error);
+        return mockVODClasses.filter(vod => vod.instructorId === instructorId);
+      }
+
+      return this.transformDatabaseVODClasses(data || []);
+    } catch (error) {
+      console.error('Error in getInstructorVODClasses:', error);
+      return mockVODClasses.filter(vod => vod.instructorId === instructorId);
+    }
   }
 
   async getAllVODClasses(filters?: {
@@ -621,42 +845,246 @@ class ClassService {
     category?: string;
     search?: string;
   }): Promise<VODClass[]> {
-    let filtered = mockVODClasses.filter(vod => vod.isPublished);
+    try {
+      let query = supabase
+        .from('vod_classes')
+        .select(`
+          *,
+          vod_sections(
+            *,
+            vod_videos(*)
+          )
+        `)
+        .eq('is_published', true);
 
-    if (filters?.level && filters.level !== 'all') {
-      filtered = filtered.filter(vod => vod.level === filters.level);
+      if (filters?.level && filters.level !== 'all') {
+        query = query.eq('level', filters.level);
+      }
+
+      if (filters?.category && filters.category !== 'all') {
+        query = query.eq('category', filters.category);
+      }
+
+      if (filters?.search) {
+        query = query.textSearch('title,description,instructor_name,tags', filters.search);
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching VOD classes:', error);
+        // Fallback to mock data
+        let filtered = mockVODClasses.filter(vod => vod.isPublished);
+        
+        if (filters?.level && filters.level !== 'all') {
+          filtered = filtered.filter(vod => vod.level === filters.level);
+        }
+        if (filters?.category && filters.category !== 'all') {
+          filtered = filtered.filter(vod => vod.category === filters.category);
+        }
+        if (filters?.search) {
+          const query = filters.search.toLowerCase();
+          filtered = filtered.filter(vod =>
+            vod.title.toLowerCase().includes(query) ||
+            vod.description.toLowerCase().includes(query) ||
+            vod.instructorName.toLowerCase().includes(query) ||
+            vod.tags.some(tag => tag.toLowerCase().includes(query))
+          );
+        }
+        return filtered;
+      }
+
+      return this.transformDatabaseVODClasses(data || []);
+    } catch (error) {
+      console.error('Error in getAllVODClasses:', error);
+      return mockVODClasses.filter(vod => vod.isPublished);
     }
-
-    if (filters?.category && filters.category !== 'all') {
-      filtered = filtered.filter(vod => vod.category === filters.category);
-    }
-
-    if (filters?.search) {
-      const query = filters.search.toLowerCase();
-      filtered = filtered.filter(vod =>
-        vod.title.toLowerCase().includes(query) ||
-        vod.description.toLowerCase().includes(query) ||
-        vod.instructorName.toLowerCase().includes(query) ||
-        vod.tags.some(tag => tag.toLowerCase().includes(query))
-      );
-    }
-
-    return Promise.resolve(filtered);
   }
 
   async uploadClassImages(classId: string, files: File[]): Promise<ClassImage[]> {
-    const images: ClassImage[] = files.map((file, index) => ({
-      id: `img_${classId}_${Date.now()}_${index}`,
-      url: URL.createObjectURL(file),
-      alt: file.name,
-      isPrimary: index === 0,
-      uploadedAt: new Date().toISOString()
+    try {
+      const uploadPromises = files.map(async (file, index) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${classId}/${Date.now()}_${index}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('class-images')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          // Fallback to mock data
+          return {
+            id: `img_${classId}_${Date.now()}_${index}`,
+            url: URL.createObjectURL(file),
+            alt: file.name,
+            isPrimary: index === 0,
+            uploadedAt: new Date().toISOString()
+          };
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('class-images')
+          .getPublicUrl(uploadData.path);
+
+        const { data: imageData, error: imageError } = await supabase
+          .from('class_images')
+          .insert({
+            class_id: classId,
+            url: urlData.publicUrl,
+            alt_text: file.name,
+            is_primary: index === 0
+          })
+          .select()
+          .single();
+
+        if (imageError) {
+          console.error('Error saving image record:', imageError);
+          throw imageError;
+        }
+
+        return {
+          id: imageData.id,
+          url: imageData.url,
+          alt: imageData.alt_text,
+          isPrimary: imageData.is_primary,
+          uploadedAt: imageData.uploaded_at
+        };
+      });
+
+      const images = await Promise.all(uploadPromises);
+      return images;
+    } catch (error) {
+      console.error('Error in uploadClassImages:', error);
+      // Fallback to mock behavior
+      const images: ClassImage[] = files.map((file, index) => ({
+        id: `img_${classId}_${Date.now()}_${index}`,
+        url: URL.createObjectURL(file),
+        alt: file.name,
+        isPrimary: index === 0,
+        uploadedAt: new Date().toISOString()
+      }));
+      return images;
+    }
+  }
+
+  // Helper methods for data transformation
+  private transformDatabaseClasses(dbClasses: any[]): SteppingClass[] {
+    return dbClasses.map(cls => this.transformDatabaseClass(cls));
+  }
+
+  private transformDatabaseClass(dbClass: any): SteppingClass {
+    return {
+      id: dbClass.id,
+      title: dbClass.title,
+      description: dbClass.description,
+      instructorId: dbClass.instructor_id,
+      instructorName: dbClass.instructor_name,
+      classType: dbClass.class_type,
+      level: dbClass.level,
+      category: dbClass.category,
+      location: {
+        type: dbClass.location_type,
+        venue: dbClass.venue,
+        address: dbClass.address,
+        city: dbClass.city,
+        state: dbClass.state,
+        zipCode: dbClass.zip_code,
+        coordinates: dbClass.latitude && dbClass.longitude ? {
+          lat: parseFloat(dbClass.latitude),
+          lng: parseFloat(dbClass.longitude)
+        } : undefined,
+        onlineLink: dbClass.online_link,
+        specialInstructions: dbClass.special_instructions
+      },
+      schedule: {
+        type: dbClass.schedule_type,
+        startDate: dbClass.start_date,
+        endDate: dbClass.end_date,
+        time: dbClass.class_time,
+        duration: dbClass.duration_minutes,
+        daysOfWeek: dbClass.days_of_week || [],
+        dayOfMonth: dbClass.day_of_month,
+        exceptions: dbClass.exception_dates || [],
+        notes: dbClass.schedule_notes
+      },
+      price: parseFloat(dbClass.price),
+      capacity: dbClass.capacity,
+      hasRSVP: dbClass.has_rsvp,
+      contactInfo: {
+        email: dbClass.contact_email,
+        phone: dbClass.contact_phone,
+        preferredContact: dbClass.preferred_contact
+      },
+      prerequisites: dbClass.prerequisites,
+      whatToBring: dbClass.what_to_bring,
+      extras: dbClass.extras,
+      images: (dbClass.class_images || []).map((img: any) => ({
+        id: img.id,
+        url: img.url,
+        alt: img.alt_text,
+        isPrimary: img.is_primary,
+        uploadedAt: img.uploaded_at
+      })),
+      tags: dbClass.tags || [],
+      isActive: dbClass.is_active,
+      isPending: dbClass.status === 'draft',
+      lastConfirmed: dbClass.updated_at,
+      attendeeCount: dbClass.attendee_count || 0,
+      interestedCount: dbClass.interested_count || 0,
+      averageRating: parseFloat(dbClass.average_rating) || 0,
+      totalRatings: dbClass.total_ratings || 0,
+      createdAt: dbClass.created_at,
+      updatedAt: dbClass.updated_at
+    };
+  }
+
+  private transformDatabaseVODClasses(dbVODClasses: any[]): VODClass[] {
+    return dbVODClasses.map(vod => this.transformDatabaseVODClass(vod));
+  }
+
+  private transformDatabaseVODClass(dbVOD: any): VODClass {
+    const sections = (dbVOD.vod_sections || []).map((section: any) => ({
+      id: section.id,
+      title: section.title,
+      description: section.description,
+      order: section.order_index,
+      isPreview: section.is_preview,
+      videos: (section.vod_videos || []).map((video: any) => ({
+        id: video.id,
+        title: video.title,
+        description: video.description,
+        videoUrl: video.video_url,
+        duration: video.duration_seconds,
+        order: video.order_index,
+        isProcessed: video.is_processed,
+        uploadedAt: video.uploaded_at
+      }))
     }));
 
-    // Simulate upload
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    return Promise.resolve(images);
+    return {
+      id: dbVOD.id,
+      title: dbVOD.title,
+      description: dbVOD.description,
+      instructorId: dbVOD.instructor_id,
+      instructorName: dbVOD.instructor_name,
+      level: dbVOD.level,
+      category: dbVOD.category,
+      price: parseFloat(dbVOD.price),
+      sections: sections,
+      totalDuration: dbVOD.total_duration_minutes || 0,
+      thumbnailUrl: dbVOD.thumbnail_url || '/placeholder.svg',
+      previewVideoUrl: dbVOD.preview_video_url,
+      tags: dbVOD.tags || [],
+      isPublished: dbVOD.is_published,
+      purchaseCount: dbVOD.purchase_count || 0,
+      averageRating: parseFloat(dbVOD.average_rating) || 0,
+      totalRatings: dbVOD.total_ratings || 0,
+      createdAt: dbVOD.created_at,
+      updatedAt: dbVOD.updated_at
+    };
   }
 }
 

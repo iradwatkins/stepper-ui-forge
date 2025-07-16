@@ -30,7 +30,10 @@ export const useAdminPermissions = (): AdminPermissions => {
 
   useEffect(() => {
     const checkAdminPermissions = async () => {
+      console.log('🔐 useAdminPermissions: Checking permissions for user:', user?.email || 'NO_USER')
+      
       if (!user) {
+        console.log('🔐 useAdminPermissions: No user, setting default permissions')
         setPermissions({
           isAdmin: false,
           canManageUsers: false,
@@ -50,11 +53,11 @@ export const useAdminPermissions = (): AdminPermissions => {
 
         // Special fallback for designated admin email
         if (user.email === 'iradwatkins@gmail.com') {
-          console.log('🔐 Designated admin email detected:', user.email);
-          console.log('🔐 Granting admin access automatically');
+          console.log('🔐 useAdminPermissions: Designated admin email detected:', user.email);
+          console.log('🔐 useAdminPermissions: Granting admin access automatically');
           
           // For the designated admin, bypass database checks and grant full access
-          setPermissions({
+          const adminPermissions = {
             isAdmin: true,
             canManageUsers: true,
             canManageEvents: true,
@@ -64,7 +67,10 @@ export const useAdminPermissions = (): AdminPermissions => {
             adminLevel: 3,
             loading: false,
             error: null
-          });
+          };
+          
+          console.log('🔐 useAdminPermissions: Setting admin permissions:', adminPermissions);
+          setPermissions(adminPermissions);
           return;
         }
 
@@ -88,23 +94,34 @@ export const useAdminPermissions = (): AdminPermissions => {
           if (!rpcError && rpcData?.[0]) {
             adminData = rpcData[0];
           } else {
-            // Fallback to direct profile query
-            const { data: profileData, error: profileError } = await supabase
+            // Try to check if admin columns exist first
+            const { error: columnCheckError } = await supabase
               .from('profiles')
-              .select('is_admin, admin_level')
-              .eq('id', user.id)
-              .single();
+              .select('is_admin')
+              .limit(0);
+            
+            if (!columnCheckError) {
+              // Columns exist, so query them
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('is_admin, admin_level')
+                .eq('id', user.id)
+                .single();
 
-            if (!profileError && profileData) {
-              adminData = {
-                is_admin: profileData.is_admin || false,
-                admin_level: profileData.admin_level || 0,
-                can_manage_users: (profileData.admin_level || 0) >= 2,
-                can_manage_events: (profileData.admin_level || 0) >= 1,
-                can_view_analytics: (profileData.admin_level || 0) >= 1,
-                can_manage_system: (profileData.admin_level || 0) >= 3,
-                can_manage_billing: (profileData.admin_level || 0) >= 3
-              };
+              if (!profileError && profileData) {
+                adminData = {
+                  is_admin: profileData.is_admin || false,
+                  admin_level: profileData.admin_level || 0,
+                  can_manage_users: (profileData.admin_level || 0) >= 2,
+                  can_manage_events: (profileData.admin_level || 0) >= 1,
+                  can_view_analytics: (profileData.admin_level || 0) >= 1,
+                  can_manage_system: (profileData.admin_level || 0) >= 3,
+                  can_manage_billing: (profileData.admin_level || 0) >= 3
+                };
+              }
+            } else if (columnCheckError.code === '42703') {
+              // Column doesn't exist - migration needed
+              console.warn('Admin columns not found. Migration 007_add_admin_permissions.sql needs to be run.');
             }
           }
         } catch (error) {

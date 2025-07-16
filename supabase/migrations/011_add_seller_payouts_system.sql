@@ -52,14 +52,7 @@ ALTER TABLE commission_earnings
 ADD COLUMN payout_id UUID REFERENCES seller_payouts(id),
 ADD COLUMN paid_at TIMESTAMP WITH TIME ZONE;
 
--- Create event_likes table for users to like/favorite events
-CREATE TABLE event_likes (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-    event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id, event_id)
-);
+-- Note: event_likes table is created in migration 010_add_event_likes_system.sql
 
 -- Add QR code lockout tracking to tickets table
 ALTER TABLE tickets
@@ -71,14 +64,12 @@ CREATE INDEX idx_seller_payouts_event_id ON seller_payouts(event_id);
 CREATE INDEX idx_seller_payouts_organizer_id ON seller_payouts(organizer_id);
 CREATE INDEX idx_seller_payouts_seller_id ON seller_payouts(seller_id);
 CREATE INDEX idx_seller_payouts_status ON seller_payouts(status);
-CREATE INDEX idx_event_likes_user_id ON event_likes(user_id);
-CREATE INDEX idx_event_likes_event_id ON event_likes(event_id);
 CREATE INDEX idx_commission_earnings_payout_id ON commission_earnings(payout_id);
 CREATE INDEX idx_team_members_status ON team_members(status);
 
 -- Enable RLS on new tables
 ALTER TABLE seller_payouts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_likes ENABLE ROW LEVEL SECURITY;
+-- Note: event_likes RLS is enabled in migration 010
 
 -- RLS Policies for seller_payouts
 CREATE POLICY "Organizers can manage their payouts" ON seller_payouts

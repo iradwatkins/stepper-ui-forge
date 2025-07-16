@@ -147,7 +147,7 @@ CREATE POLICY "Admins can manage all businesses" ON community_businesses
     EXISTS (
       SELECT 1 FROM profiles 
       WHERE profiles.id = auth.uid() 
-      AND profiles.permission_level = 'admin'
+      AND profiles.is_admin = true
     )
   );
 
@@ -192,9 +192,9 @@ CREATE INDEX idx_community_businesses_featured ON community_businesses(featured,
 CREATE INDEX idx_community_businesses_slug ON community_businesses(slug);
 CREATE INDEX idx_community_businesses_rating ON community_businesses(rating_average DESC);
 
--- Text search index
+-- Text search index (simplified to avoid immutable function issues)
 CREATE INDEX idx_community_businesses_search ON community_businesses 
-USING gin(to_tsvector('english', business_name || ' ' || description || ' ' || COALESCE(array_to_string(tags, ' '), '')));
+USING gin(to_tsvector('english', business_name || ' ' || description));
 
 CREATE INDEX idx_business_reviews_business ON business_reviews(business_id);
 CREATE INDEX idx_business_reviews_rating ON business_reviews(rating DESC);

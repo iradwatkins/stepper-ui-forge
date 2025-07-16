@@ -80,6 +80,14 @@ export function FollowerManagementDashboard({ organizerId }: FollowerManagementD
     setError(null)
 
     try {
+      // Check if follower system is available first
+      if (!FollowerService.isFollowerSystemAvailable()) {
+        console.debug('Follower system not available, skipping follower data load');
+        setFollowers([]);
+        setStats({ totalFollowers: 0, activeReferrals: 0, totalEarnings: 0 });
+        return;
+      }
+      
       const [followersData, followerCount] = await Promise.all([
         FollowerService.getFollowersWithPermissions(organizerId),
         FollowerService.getFollowerCount(organizerId)

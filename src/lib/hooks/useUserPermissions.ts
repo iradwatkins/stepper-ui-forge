@@ -1,5 +1,6 @@
 // React hook for checking user permissions across the application
 // Provides utilities for permission checking and conditional UI rendering
+// CRITICAL: Only executes after user authentication is complete
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -33,7 +34,7 @@ export interface PermissionCheckOptions {
 }
 
 export const useUserPermissions = () => {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [permissionState, setPermissionState] = useState<UserPermissionState>({
     canSellTickets: false,
     canWorkEvents: false,
@@ -45,10 +46,18 @@ export const useUserPermissions = () => {
   })
 
   useEffect(() => {
+    // CRITICAL: Only run after authentication is complete
+    if (authLoading) {
+      // Keep loading state while auth is being determined
+      setPermissionState(prev => ({ ...prev, loading: true }))
+      return
+    }
+
     if (user) {
+      // User is authenticated, load permissions
       loadUserPermissions()
     } else {
-      // Reset permissions when user logs out
+      // User is not authenticated, reset permissions immediately
       setPermissionState({
         canSellTickets: false,
         canWorkEvents: false,
@@ -59,15 +68,19 @@ export const useUserPermissions = () => {
         error: null
       })
     }
-  }, [user])
+  }, [user, authLoading])
 
   const loadUserPermissions = async () => {
-    if (!user) return
+    // CRITICAL: Double-check authentication before loading permissions
+    if (!user) {
+      console.debug('🔒 loadUserPermissions: User not authenticated, skipping')
+      return
+    }
 
     setPermissionState(prev => ({ ...prev, loading: true, error: null }))
 
     try {
-      // Load selling permissions
+      // Load selling permissions - FollowerService will handle auth checks
       const sellingPermissions = await FollowerService.getUserSellingPermissions(user.id)
       
       // Check if user has any permissions at all
@@ -111,7 +124,9 @@ export const useUserPermissions = () => {
   const checkOrganizerPermissions = useCallback(async (
     organizerId: string
   ): Promise<UserPermissions> => {
+    // CRITICAL: Only check permissions for authenticated users
     if (!user) {
+      console.debug('🔒 checkOrganizerPermissions: User not authenticated')
       return {
         can_sell_tickets: false,
         can_work_events: false,
@@ -138,7 +153,11 @@ export const useUserPermissions = () => {
     action: 'sell_tickets' | 'work_events' | 'manage_events' | 'create_events',
     options?: PermissionCheckOptions
   ): boolean => {
-    if (!user) return false
+    // CRITICAL: Only authenticated users can perform actions
+    if (!user) {
+      console.debug(`🔒 canPerformAction(${action}): User not authenticated`)
+      return false
+    }
 
     switch (action) {
       case 'sell_tickets':
@@ -168,7 +187,11 @@ export const useUserPermissions = () => {
 
   // Check if user is following an organizer
   const checkFollowStatus = useCallback(async (organizerId: string): Promise<boolean> => {
-    if (!user) return false
+    // CRITICAL: Only authenticated users can check follow status
+    if (!user) {
+      console.debug('🔒 checkFollowStatus: User not authenticated')
+      return false
+    }
 
     try {
       return await FollowerService.isFollowing(user.id, organizerId)
@@ -180,8 +203,11 @@ export const useUserPermissions = () => {
 
   // Refresh permissions (useful after permission changes)
   const refreshPermissions = useCallback(() => {
+    // CRITICAL: Only refresh permissions for authenticated users
     if (user) {
       loadUserPermissions()
+    } else {
+      console.debug('🔒 refreshPermissions: User not authenticated')
     }
   }, [user])
 
@@ -215,7 +241,7 @@ export const usePermissionCheck = (
 
 // Hook for organizer-specific permissions
 export const useOrganizerPermissions = (organizerId: string | null) => {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [permissions, setPermissions] = useState<UserPermissions>({
     can_sell_tickets: false,
     can_work_events: false,
@@ -226,15 +252,33 @@ export const useOrganizerPermissions = (organizerId: string | null) => {
   const [isFollowing, setIsFollowing] = useState(false)
 
   useEffect(() => {
+    // CRITICAL: Only run after authentication is complete
+    if (authLoading) {
+      setLoading(true)
+      return
+    }
+
     if (user && organizerId) {
       loadOrganizerPermissions()
     } else {
+      // Reset permissions for anonymous users
+      setPermissions({
+        can_sell_tickets: false,
+        can_work_events: false,
+        is_co_organizer: false,
+        commission_rate: 0
+      })
+      setIsFollowing(false)
       setLoading(false)
     }
-  }, [user, organizerId])
+  }, [user, organizerId, authLoading])
 
   const loadOrganizerPermissions = async () => {
-    if (!user || !organizerId) return
+    // CRITICAL: Double-check authentication
+    if (!user || !organizerId) {
+      console.debug('🔒 loadOrganizerPermissions: User not authenticated or no organizer ID')
+      return
+    }
 
     setLoading(true)
     try {

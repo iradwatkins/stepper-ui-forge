@@ -57,7 +57,6 @@ RETURNS TABLE (
 DECLARE
     ticket_record RECORD;
     event_record RECORD;
-    ticket_type_record RECORD;
 BEGIN
     -- Get event info
     SELECT * INTO event_record FROM events WHERE id = event_id_param;
@@ -71,7 +70,7 @@ BEGIN
     IF is_manual THEN
         -- Manual entry - check backup code
         SELECT t.*, tt.name as type_name 
-        INTO ticket_record, ticket_type_record
+        INTO ticket_record
         FROM tickets t
         JOIN ticket_types tt ON t.ticket_type_id = tt.id
         WHERE t.backup_code = code_param 
@@ -80,7 +79,7 @@ BEGIN
         -- QR scan - parse JSON and check QR code
         BEGIN
             SELECT t.*, tt.name as type_name 
-            INTO ticket_record, ticket_type_record
+            INTO ticket_record
             FROM tickets t
             JOIN ticket_types tt ON t.ticket_type_id = tt.id
             WHERE t.qr_code = code_param 
@@ -89,7 +88,7 @@ BEGIN
             WHEN OTHERS THEN
                 -- Invalid QR format, try backup code as fallback
                 SELECT t.*, tt.name as type_name 
-                INTO ticket_record, ticket_type_record
+                INTO ticket_record
                 FROM tickets t
                 JOIN ticket_types tt ON t.ticket_type_id = tt.id
                 WHERE t.backup_code = code_param 
@@ -105,19 +104,19 @@ BEGIN
     
     -- Check if ticket is active
     IF ticket_record.status != 'active' THEN
-        RETURN QUERY SELECT FALSE, 'Ticket is not active', ticket_record.id, ticket_record.holder_name, ticket_type_record.name, FALSE;
+        RETURN QUERY SELECT FALSE, 'Ticket is not active', ticket_record.id, ticket_record.holder_name, ticket_record.type_name, FALSE;
         RETURN;
     END IF;
     
     -- Check if ticket is locked (1-year lockout)
     IF ticket_record.locked_until IS NOT NULL AND NOW() < ticket_record.locked_until THEN
-        RETURN QUERY SELECT FALSE, 'Ticket is locked', ticket_record.id, ticket_record.holder_name, ticket_type_record.name, FALSE;
+        RETURN QUERY SELECT FALSE, 'Ticket is locked', ticket_record.id, ticket_record.holder_name, ticket_record.type_name, FALSE;
         RETURN;
     END IF;
     
     -- Check if already checked in
     IF ticket_record.checked_in_at IS NOT NULL THEN
-        RETURN QUERY SELECT FALSE, 'Ticket already used', ticket_record.id, ticket_record.holder_name, ticket_type_record.name, TRUE;
+        RETURN QUERY SELECT FALSE, 'Ticket already used', ticket_record.id, ticket_record.holder_name, ticket_record.type_name, TRUE;
         RETURN;
     END IF;
     
@@ -133,7 +132,7 @@ BEGIN
     WHERE id = ticket_record.id;
     
     -- Return success
-    RETURN QUERY SELECT TRUE, 'Entry granted', ticket_record.id, ticket_record.holder_name, ticket_type_record.name, FALSE;
+    RETURN QUERY SELECT TRUE, 'Entry granted', ticket_record.id, ticket_record.holder_name, ticket_record.type_name, FALSE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

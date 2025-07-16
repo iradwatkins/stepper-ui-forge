@@ -86,6 +86,7 @@ const SellerPayouts = lazy(() => import("./pages/SellerPayouts"));
 const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
 const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
+const DatabaseTest = lazy(() => import("./pages/DatabaseTest"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -130,6 +131,7 @@ const AppContent = () => {
             <TestSeating />
           </ProtectedRoute>
         } />
+        <Route path="/database-test" element={<DatabaseTest />} />
         <Route path="/create-event" element={
           <ProtectedRoute>
             <CreateEventWizard />

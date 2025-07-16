@@ -13,7 +13,22 @@ export const manualAdminSetup = async () => {
   console.log('🔐 Manual admin setup for:', adminEmail)
   
   try {
-    // First, check if user exists in profiles
+    // First, check if admin columns exist
+    const { error: columnCheckError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .limit(0)
+    
+    if (columnCheckError?.code === '42703') {
+      console.warn('⚠️ Admin columns not found in profiles table. Run migration 007_add_admin_permissions.sql')
+      return {
+        success: false,
+        message: 'Admin columns missing. Database migration required.',
+        migrationNeeded: true
+      }
+    }
+    
+    // Check if user exists in profiles
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, email, is_admin, admin_level')
@@ -119,6 +134,21 @@ export const manualAdminSetup = async () => {
 // Function to check admin status
 export const checkAdminStatus = async (email: string = 'iradwatkins@gmail.com') => {
   try {
+    // First check if admin columns exist
+    const { error: columnCheckError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .limit(0)
+    
+    if (columnCheckError?.code === '42703') {
+      return { 
+        exists: false, 
+        isAdmin: false,
+        error: 'Admin columns missing - migration needed',
+        migrationNeeded: true
+      }
+    }
+    
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('id, email, is_admin, admin_level')
@@ -156,10 +186,9 @@ export const checkAdminStatus = async (email: string = 'iradwatkins@gmail.com') 
 
 // Console helper functions for browser debugging
 if (typeof window !== 'undefined') {
-  (window as any).setupAdmin = manualAdminSetup
-  (window as any).checkAdmin = checkAdminStatus
+  (window as Record<string, unknown>).setupAdmin = manualAdminSetup;
+  (window as Record<string, unknown>).checkAdmin = checkAdminStatus;
   
-  console.log('🔐 Admin setup utilities loaded:')
-  console.log('  - Run setupAdmin() to manually set up iradwatkins@gmail.com as admin')
-  console.log('  - Run checkAdmin() to check current admin status')
+  // Don't run automatic checks to avoid console errors
+  // Users can manually run setupAdmin() or checkAdmin() if needed
 }

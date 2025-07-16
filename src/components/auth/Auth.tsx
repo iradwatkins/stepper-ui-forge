@@ -17,16 +17,28 @@ export const Auth = () => {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('signin')
+  const [retryCount, setRetryCount] = useState(0)
+  const [isRetrying, setIsRetrying] = useState(false)
 
-  const handleEmailAuth = async (isSignUp: boolean) => {
+  const handleEmailAuth = async (isSignUp: boolean, isRetry: boolean = false) => {
     if (!email || !password) {
       setError('Please fill in all fields')
+      return
+    }
+
+    if (isSignUp && password.length < 6) {
+      setError('Password must be at least 6 characters long')
       return
     }
 
     setLoading(true)
     setError(null)
     setMessage(null)
+    
+    if (isRetry) {
+      setIsRetrying(true)
+      setMessage('Retrying...')
+    }
 
     try {
       const { error } = isSignUp 
@@ -34,15 +46,70 @@ export const Auth = () => {
         : await signIn(email, password)
 
       if (error) {
-        setError(error.message)
+        // Map common Supabase errors to user-friendly messages
+        const errorMessage = mapAuthError(error)
+        setError(errorMessage)
+        
+        // Offer retry for server errors
+        if (error.message.includes('Database error') || error.message.includes('server_error')) {
+          setRetryCount(prev => prev + 1)
+        }
       } else if (isSignUp) {
-        setMessage('Check your email for the confirmation link!')
+        setMessage('Success! Check your email for the confirmation link to complete your registration.')
+        setRetryCount(0) // Reset retry count on success
+      } else {
+        setMessage('✅ Login successful! Look for your profile avatar in the top right corner.')
+        setRetryCount(0) // Reset retry count on success
+        
+        // Add a small delay to show success message
+        setTimeout(() => {
+          console.log('🎉 Login completed successfully!')
+        }, 500)
       }
     } catch (err) {
-      setError('An unexpected error occurred')
+      setError('An unexpected error occurred. Please try again.')
+      setRetryCount(prev => prev + 1)
     } finally {
       setLoading(false)
+      setIsRetrying(false)
     }
+  }
+  
+  const handleRetry = () => {
+    handleEmailAuth(activeTab === 'signup', true)
+  }
+
+  // Helper function to map Supabase errors to user-friendly messages
+  const mapAuthError = (error: { message: string }): string => {
+    if (error.message.includes('Invalid login credentials')) {
+      return 'Invalid email or password. Please check your credentials and try again.'
+    }
+    if (error.message.includes('Email not confirmed')) {
+      return 'Please confirm your email address before signing in. Check your inbox for the confirmation link.'
+    }
+    if (error.message.includes('User already registered')) {
+      // Auto-switch to sign in tab for better UX
+      setTimeout(() => setActiveTab('signin'), 2000)
+      return 'An account with this email already exists. Switching to sign in...'
+    }
+    if (error.message.includes('Invalid email')) {
+      return 'Please enter a valid email address.'
+    }
+    if (error.message.includes('Password should be at least')) {
+      return 'Password must be at least 6 characters long.'
+    }
+    if (error.message.includes('Database error saving new user')) {
+      return 'There was a problem creating your account. Please try again in a moment.'
+    }
+    if (error.message.includes('server_error')) {
+      return 'Server error occurred. Please try again or contact support if the issue persists.'
+    }
+    if (error.message.includes('unexpected_failure')) {
+      return 'An unexpected error occurred. Please try again or use a different sign-in method.'
+    }
+    // Log unknown errors for debugging
+    console.error('Unknown auth error:', error)
+    return error.message || 'An error occurred. Please try again.'
   }
 
   const handleGoogleAuth = async () => {
@@ -104,7 +171,20 @@ export const Auth = () => {
           {error && (
             <Alert variant="destructive" className="border-destructive/50">
               <AlertCircleIcon className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription className="flex items-center justify-between">
+                <span>{error}</span>
+                {(retryCount > 0 && retryCount < 3) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className="ml-2 h-6 px-2 text-xs"
+                  >
+                    {isRetrying ? 'Retrying...' : 'Retry'}
+                  </Button>
+                )}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -220,11 +300,16 @@ export const Auth = () => {
                   disabled={loading}
                 >
                   {loading ? (
-                    <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
+                    <>
+                      <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
+                      {isRetrying ? 'Retrying...' : 'Signing in...'}
+                    </>
                   ) : (
-                    <KeyIcon className="w-4 h-4 mr-2" />
+                    <>
+                      <KeyIcon className="w-4 h-4 mr-2" />
+                      Sign In with Email
+                    </>
                   )}
-                  Sign In with Email
                 </Button>
               </div>
             </TabsContent>
@@ -315,7 +400,7 @@ export const Auth = () => {
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Create a password"
+                    placeholder="Create a password (min. 6 characters)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
@@ -328,11 +413,16 @@ export const Auth = () => {
                   disabled={loading}
                 >
                   {loading ? (
-                    <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
+                    <>
+                      <Loader2Icon className="w-4 h-4 animate-spin mr-2" />
+                      {isRetrying ? 'Retrying...' : 'Creating account...'}
+                    </>
                   ) : (
-                    <KeyIcon className="w-4 h-4 mr-2" />
+                    <>
+                      <KeyIcon className="w-4 h-4 mr-2" />
+                      Sign Up with Email
+                    </>
                   )}
-                  Sign Up with Email
                 </Button>
               </div>
             </TabsContent>

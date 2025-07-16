@@ -109,7 +109,13 @@ export default function UnifiedDashboardHome() {
         const userEvents = await EventsService.getUserEvents(user.id)
         realStats.totalEvents = userEvents.length
         realStats.totalRevenue = userEvents.reduce((sum, event) => sum + (event.total_revenue || 0), 0)
-        realStats.totalFollowers = await FollowerService.getFollowerCount(user.id)
+        
+        // Only get follower count if system is available
+        if (FollowerService.isFollowerSystemAvailable()) {
+          realStats.totalFollowers = await FollowerService.getFollowerCount(user.id)
+        } else {
+          realStats.totalFollowers = 0
+        }
         
         // Add recent event activity
         if (userEvents.length > 0) {

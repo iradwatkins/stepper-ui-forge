@@ -206,6 +206,14 @@ export class CommunityBusinessService {
     const { data, error, count } = await query;
 
     if (error) {
+      // Check if it's a table not found error
+      if (error.code === '42P01' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
+        console.warn('Community businesses table not found, returning empty data');
+        return {
+          businesses: [],
+          total: 0
+        };
+      }
       console.error('Error fetching businesses:', error);
       throw error;
     }
@@ -227,9 +235,16 @@ export class CommunityBusinessService {
       .eq('status', 'approved')
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching business:', error);
-      throw error;
+    if (error) {
+      // Check if it's a table not found error
+      if (error.code === '42P01' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
+        console.warn('Community businesses table not found');
+        return null;
+      }
+      if (error.code !== 'PGRST116') {
+        console.error('Error fetching business:', error);
+        throw error;
+      }
     }
 
     // Increment view count

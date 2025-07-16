@@ -1,13 +1,13 @@
 // Google Maps Configuration
 export const GOOGLE_MAPS_CONFIG = {
-  apiKey: 'AIzaSyBMW2IwlZLib2w_wbqfeZVa0r3L1_XXlvM',
+  apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBMW2IwlZLib2w_wbqfeZVa0r3L1_XXlvM',
   libraries: ['places', 'marker'] as const,
   version: 'weekly'
 };
 
 // Check if Google Maps API key is configured
 export const isGoogleMapsEnabled = () => {
-  return !!GOOGLE_MAPS_CONFIG.apiKey;
+  return !!GOOGLE_MAPS_CONFIG.apiKey && GOOGLE_MAPS_CONFIG.apiKey !== 'your-api-key-here';
 };
 
 // Load Google Maps API dynamically

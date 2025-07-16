@@ -1,5 +1,6 @@
 // Follower Service for managing follow relationships and promotions
 // Handles following, unfollowing, promoting followers, and permission management
+// CRITICAL: ALL methods require user authentication - no anonymous interactions allowed
 
 import { supabase } from '@/lib/supabase'
 import type { 
@@ -10,6 +11,12 @@ import type {
 
 // Type assertion for supabase client
 const db = supabase as any
+
+// Authentication check helper
+function ensureAuthenticated(): boolean {
+  const user = supabase.auth.getUser()
+  return user !== null
+}
 
 export interface FollowResult {
   success: boolean
@@ -42,6 +49,20 @@ export interface UserPermissions {
 }
 
 export class FollowerService {
+  private static systemAvailable: boolean | null = null;
+  
+  static isFollowerSystemAvailable(): boolean {
+    return this.systemAvailable !== false;
+  }
+  
+  static markSystemUnavailable(): void {
+    this.systemAvailable = false;
+    console.log('🔄 Follower system marked as unavailable - future calls will be skipped');
+  }
+  
+  static markSystemAvailable(): void {
+    this.systemAvailable = true;
+  }
   /**
    * Follow an organizer
    */
@@ -120,8 +141,20 @@ export class FollowerService {
 
   /**
    * Check if user is following organizer
+   * REQUIRES: User must be authenticated
    */
   static async isFollowing(followerId: string, organizerId: string): Promise<boolean> {
+    // CRITICAL: Only authenticated users can check follow status
+    if (!ensureAuthenticated()) {
+      console.debug('🔒 isFollowing: Authentication required');
+      return false;
+    }
+    
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return false;
+    }
+    
     try {
       // Try RPC function first
       const { data, error } = await db.rpc('is_following', {
@@ -135,24 +168,59 @@ export class FollowerService {
 
       // Fallback to direct table query if RPC fails
       console.warn('RPC function is_following failed, falling back to direct query:', error);
-      const { data: fallbackData, error: fallbackError } = await db
-        .from('user_follows')
-        .select('id')
-        .eq('follower_id', followerId)
-        .eq('organizer_id', organizerId)
-        .single();
+      
+      try {
+        const { data: fallbackData, error: fallbackError } = await db
+          .from('user_follows')
+          .select('id')
+          .eq('follower_id', followerId)
+          .eq('organizer_id', organizerId)
+          .single();
 
-      return !fallbackError && fallbackData !== null;
+        if (fallbackError) {
+          // If table doesn't exist, mark system as unavailable
+          if (fallbackError.code === 'PGRST106' || fallbackError.code === '42P01') {
+            console.debug('user_follows table not found, disabling follower system');
+            this.markSystemUnavailable();
+            return false;
+          }
+          // PGRST116 means no rows found, which is expected
+          if (fallbackError.code === 'PGRST116') {
+            return false;
+          }
+          console.warn('Fallback query failed:', fallbackError);
+          return false;
+        }
+        
+        return fallbackData !== null;
+      } catch (fallbackError) {
+        console.debug('Follower system not available, returning false');
+        this.markSystemUnavailable();
+        return false;
+      }
     } catch (error) {
       console.error('Failed to check follow status:', error);
+      this.markSystemUnavailable();
       return false;
     }
   }
 
   /**
    * Get follower count for organizer
+   * REQUIRES: User must be authenticated
    */
   static async getFollowerCount(organizerId: string): Promise<number> {
+    // CRITICAL: Only authenticated users can get follower counts
+    if (!ensureAuthenticated()) {
+      console.debug('🔒 getFollowerCount: Authentication required');
+      return 0;
+    }
+    
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return 0;
+    }
+    
     try {
       // Try RPC function first
       const { data, error } = await db.rpc('get_follower_count', {
@@ -165,14 +233,33 @@ export class FollowerService {
 
       // Fallback to direct table query if RPC fails
       console.warn('RPC function get_follower_count failed, falling back to direct query:', error);
-      const { count, error: fallbackError } = await db
-        .from('user_follows')
-        .select('*', { count: 'exact' })
-        .eq('organizer_id', organizerId);
+      
+      try {
+        const { count, error: fallbackError } = await db
+          .from('user_follows')
+          .select('*', { count: 'exact' })
+          .eq('organizer_id', organizerId);
 
-      return fallbackError ? 0 : (count || 0);
+        if (fallbackError) {
+          // If table doesn't exist, mark system as unavailable
+          if (fallbackError.code === 'PGRST106' || fallbackError.code === '42P01') {
+            console.debug('user_follows table not found, disabling follower system');
+            this.markSystemUnavailable();
+            return 0;
+          }
+          console.warn('Fallback query failed:', fallbackError);
+          return 0;
+        }
+        
+        return count || 0;
+      } catch (fallbackError) {
+        console.debug('Follower system not available, returning 0');
+        this.markSystemUnavailable();
+        return 0;
+      }
     } catch (error) {
       console.error('Failed to get follower count:', error);
+      this.markSystemUnavailable();
       return 0;
     }
   }
@@ -181,6 +268,11 @@ export class FollowerService {
    * Get list of followers for an organizer with their permissions
    */
   static async getFollowersWithPermissions(organizerId: string): Promise<FollowerWithPermissions[]> {
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return [];
+    }
+    
     try {
       // First get the followers
       const { data: followers, error: followersError } = await db
@@ -248,6 +340,8 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to get followers with permissions:', error);
+      // Mark system as unavailable on database errors
+      this.markSystemUnavailable();
       return [];
     }
   }
@@ -361,8 +455,30 @@ export class FollowerService {
 
   /**
    * Get user's permissions for a specific organizer
+   * REQUIRES: User must be authenticated
    */
   static async getUserPermissions(userId: string, organizerId: string): Promise<UserPermissions> {
+    // CRITICAL: Only authenticated users can get permissions
+    if (!ensureAuthenticated()) {
+      console.debug('🔒 getUserPermissions: Authentication required');
+      return {
+        can_sell_tickets: false,
+        can_work_events: false,
+        is_co_organizer: false,
+        commission_rate: 0
+      };
+    }
+    
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return {
+        can_sell_tickets: false,
+        can_work_events: false,
+        is_co_organizer: false,
+        commission_rate: 0
+      };
+    }
+    
     try {
       // Try RPC function first
       const { data, error } = await db.rpc('get_user_permissions', {
@@ -422,6 +538,8 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to get user permissions:', error);
+      // Mark system as unavailable on database errors
+      this.markSystemUnavailable();
       return {
         can_sell_tickets: false,
         can_work_events: false,
@@ -435,6 +553,11 @@ export class FollowerService {
    * Get list of organizers that a user follows
    */
   static async getFollowedOrganizers(userId: string): Promise<Profile[]> {
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return [];
+    }
+    
     try {
       const { data, error } = await db
         .from('user_follows')
@@ -460,14 +583,28 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to get followed organizers:', error);
+      // Mark system as unavailable on database errors
+      this.markSystemUnavailable();
       return [];
     }
   }
 
   /**
    * Check if user has any permissions (for UI display purposes)
+   * REQUIRES: User must be authenticated
    */
   static async hasAnyPermissions(userId: string): Promise<boolean> {
+    // CRITICAL: Only authenticated users can check permissions
+    if (!ensureAuthenticated()) {
+      console.debug('🔒 hasAnyPermissions: Authentication required');
+      return false;
+    }
+    
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return false;
+    }
+    
     try {
       const { data, error } = await db
         .from('follower_promotions')
@@ -485,12 +622,15 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to check permissions:', error);
+      // Mark system as unavailable on database errors
+      this.markSystemUnavailable();
       return false;
     }
   }
 
   /**
    * Get user's selling permissions across all organizers
+   * REQUIRES: User must be authenticated
    */
   static async getUserSellingPermissions(userId: string): Promise<Array<{
     organizer_id: string
@@ -498,6 +638,17 @@ export class FollowerService {
     commission_rate: number
     can_sell_tickets: boolean
   }>> {
+    // CRITICAL: Only authenticated users can get selling permissions
+    if (!ensureAuthenticated()) {
+      console.debug('🔒 getUserSellingPermissions: Authentication required');
+      return [];
+    }
+    
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return [];
+    }
+    
     try {
       // Get promotions where user can sell tickets
       const { data: promotions, error: promotionsError } = await db
@@ -549,12 +700,15 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to get selling permissions:', error);
+      // Mark system as unavailable on database errors
+      this.markSystemUnavailable();
       return [];
     }
   }
 
   /**
    * Get user's team member permissions across all events
+   * REQUIRES: User must be authenticated
    */
   static async getUserTeamPermissions(userId: string): Promise<Array<{
     event_id: string
@@ -562,6 +716,17 @@ export class FollowerService {
     organizer_name: string
     can_work_events: boolean
   }>> {
+    // CRITICAL: Only authenticated users can get team permissions
+    if (!ensureAuthenticated()) {
+      console.debug('🔒 getUserTeamPermissions: Authentication required');
+      return [];
+    }
+    
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return [];
+    }
+    
     try {
       // Check follower promotions for can_work_events
       const { data: followerPerms, error: followerError } = await db
@@ -633,18 +798,32 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to get team permissions:', error);
+      // Mark system as unavailable on database errors
+      this.markSystemUnavailable();
       return [];
     }
   }
 
   /**
    * Get user's co-organizer status across all organizers
+   * REQUIRES: User must be authenticated
    */
   static async getUserCoOrganizerStatus(userId: string): Promise<Array<{
     organizer_id: string
     organizer_name: string
     is_co_organizer: boolean
   }>> {
+    // CRITICAL: Only authenticated users can get co-organizer status
+    if (!ensureAuthenticated()) {
+      console.debug('🔒 getUserCoOrganizerStatus: Authentication required');
+      return [];
+    }
+    
+    // Skip follower system entirely if not available
+    if (!this.isFollowerSystemAvailable()) {
+      return [];
+    }
+    
     try {
       // Get promotions where user is co-organizer
       const { data: promotions, error: promotionsError } = await db
@@ -694,6 +873,8 @@ export class FollowerService {
 
     } catch (error) {
       console.error('Failed to get co-organizer status:', error);
+      // Mark system as unavailable on database errors
+      this.markSystemUnavailable();
       return [];
     }
   }

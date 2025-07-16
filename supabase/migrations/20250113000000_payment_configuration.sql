@@ -22,7 +22,7 @@ CREATE POLICY "Admin only access" ON payment_configurations
     EXISTS (
       SELECT 1 FROM profiles 
       WHERE profiles.id = auth.uid() 
-      AND profiles.permission_level = 'admin'
+      AND profiles.is_admin = true
     )
   );
 

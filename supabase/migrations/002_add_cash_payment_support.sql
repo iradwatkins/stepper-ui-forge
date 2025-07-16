@@ -1,28 +1,20 @@
 -- Migration: Add Cash Payment Support
 -- This migration adds support for physical cash payments with verification codes
 
--- Create order status enum (separate from payment status for better tracking)
-CREATE TYPE order_status AS ENUM (
-  'pending',           -- Order created, payment not yet initiated
-  'processing',        -- Payment being processed
-  'awaiting_cash_payment', -- Cash payment: waiting for physical cash collection
-  'cash_confirmed',    -- Cash payment: organizer confirmed cash received
-  'completed',         -- Order fully completed (tickets generated)
-  'cancelled',         -- Order cancelled
-  'refunded'          -- Order refunded
-);
+-- Note: order_status enum and column now created in base schema
 
--- Add order_status column to orders table (only if it doesn't exist)
-ALTER TABLE orders 
-ADD COLUMN IF NOT EXISTS order_status order_status DEFAULT 'pending';
+-- Update existing orders that don't have order_status set
+UPDATE orders 
+SET order_status = 'pending'
+WHERE order_status IS NULL;
 
 -- Update existing orders to have appropriate status based on payment_status
 UPDATE orders 
 SET order_status = CASE 
-  WHEN payment_status = 'completed' THEN 'completed'
-  WHEN payment_status = 'failed' THEN 'cancelled'
-  WHEN payment_status = 'refunded' THEN 'refunded'
-  ELSE 'pending'
+  WHEN payment_status = 'completed' THEN 'completed'::order_status
+  WHEN payment_status = 'failed' THEN 'cancelled'::order_status
+  WHEN payment_status = 'refunded' THEN 'refunded'::order_status
+  ELSE 'pending'::order_status
 END;
 
 -- Cash payment verification codes table

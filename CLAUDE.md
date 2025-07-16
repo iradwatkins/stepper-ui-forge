@@ -154,6 +154,24 @@ This is a **React/TypeScript event management platform** with Supabase backend, 
 
 ### Authentication Flow
 
+**CRITICAL PLATFORM POLICY**: Only authenticated users can participate in ANY platform activity.
+
+**Authentication-First Requirements**:
+- Follow/unfollow organizers → Requires login
+- Like/unlike events → Requires login  
+- Share events → Requires login
+- Add to cart → Requires login
+- Event registration → Requires login
+- Any database interaction → Requires login
+- All FollowerService calls → Requires login
+
+**Anonymous User Experience**:
+- Can browse events (read-only)
+- Can view event details (read-only)
+- Cannot interact with any buttons/features
+- Login/Register popup for any interaction attempt
+- No FollowerService calls or database interactions
+
 **Multi-method auth** via Supabase:
 - Email/password signin/signup
 - Google OAuth (automatically uses Google profile pictures)
@@ -163,6 +181,7 @@ This is a **React/TypeScript event management platform** with Supabase backend, 
 - `ProtectedRoute` - Requires authentication
 - `AdminRoute` - Requires admin permissions
 - Dynamic navigation based on user roles
+- Interactive components require authentication checks
 
 ### Database Architecture
 

@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useState, useEffect } from "react";
 import { EventWithStats } from "@/types/database";
 import { useAuth } from "@/contexts/AuthContext";
+import { LikeGuard, ShareGuard } from "@/components/auth/AuthGuard";
 
 interface EventActionsProps {
   event: EventWithStats;
@@ -19,8 +20,14 @@ export const EventActions = ({ event }: EventActionsProps) => {
   const [likesLoading, setLikesLoading] = useState(false);
 
   // Load like status and count when component mounts
+  // ONLY for authenticated users
   useEffect(() => {
-    if (!event || !user) return;
+    if (!event || !user) {
+      // Reset state for anonymous users
+      setIsLiked(false);
+      setLikeCount(0);
+      return;
+    }
 
     const loadLikeInfo = async () => {
       try {
@@ -45,9 +52,9 @@ export const EventActions = ({ event }: EventActionsProps) => {
     loadLikeInfo();
   }, [event, user]);
 
-  // Handle like toggle
+  // Handle like toggle - ONLY for authenticated users
   const handleLikeToggle = async () => {
-    if (!event || likesLoading) return;
+    if (!event || likesLoading || !user) return;
 
     setLikesLoading(true);
     try {
@@ -135,25 +142,30 @@ export const EventActions = ({ event }: EventActionsProps) => {
 
   return (
     <div className="flex gap-2">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="flex-1" 
-        onClick={handleLikeToggle}
-        disabled={likesLoading}
-      >
-        <HeartIcon className={`w-4 h-4 mr-2 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-        {isLiked ? 'Liked' : 'Like'} {likeCount > 0 && `(${likeCount})`}
-      </Button>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="flex-1"
-        onClick={handleShare}
-      >
-        <ShareIcon className="w-4 h-4 mr-2" />
-        Share
-      </Button>
+      <LikeGuard className="flex-1">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex-1" 
+          onClick={handleLikeToggle}
+          disabled={likesLoading}
+        >
+          <HeartIcon className={`w-4 h-4 mr-2 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+          {isLiked ? 'Liked' : 'Like'} {likeCount > 0 && `(${likeCount})`}
+        </Button>
+      </LikeGuard>
+      
+      <ShareGuard className="flex-1">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex-1"
+          onClick={handleShare}
+        >
+          <ShareIcon className="w-4 h-4 mr-2" />
+          Share
+        </Button>
+      </ShareGuard>
     </div>
   );
 };

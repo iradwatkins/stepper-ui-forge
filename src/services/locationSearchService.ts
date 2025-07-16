@@ -96,19 +96,72 @@ const mockLocations: LocationResult[] = [
 ];
 
 export const getLocationSuggestions = async (query: string): Promise<LocationResult[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
   if (!query || query.length < 2) {
     return [];
   }
-  
-  // Filter mock locations based on query
+
+  // Try Google Places API first if available
+  try {
+    const { loadGoogleMapsAPI, isGoogleMapsEnabled } = await import('@/lib/config/google-maps');
+    
+    if (isGoogleMapsEnabled()) {
+      await loadGoogleMapsAPI();
+      
+      if (window.google?.maps?.places) {
+        return await searchWithGooglePlaces(query);
+      }
+    }
+  } catch (error) {
+    console.warn('Google Places API not available, falling back to mock data:', error);
+  }
+
+  // Fallback to mock data
+  await new Promise(resolve => setTimeout(resolve, 300));
   return mockLocations.filter(location => 
     location.address.toLowerCase().includes(query.toLowerCase()) ||
     location.city.toLowerCase().includes(query.toLowerCase()) ||
     location.state.toLowerCase().includes(query.toLowerCase())
   );
+};
+
+const searchWithGooglePlaces = async (query: string): Promise<LocationResult[]> => {
+  return new Promise((resolve) => {
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    
+    service.textSearch(
+      {
+        query: query,
+        fields: ['place_id', 'formatted_address', 'name', 'geometry', 'address_components']
+      },
+      (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          const locationResults: LocationResult[] = results.slice(0, 10).map(place => {
+            const addressComponents = place.address_components || [];
+            const cityComponent = addressComponents.find(comp => comp.types.includes('locality'));
+            const stateComponent = addressComponents.find(comp => comp.types.includes('administrative_area_level_1'));
+            const countryComponent = addressComponents.find(comp => comp.types.includes('country'));
+            
+            return {
+              name: place.name,
+              address: place.formatted_address || '',
+              coordinates: {
+                lat: place.geometry?.location?.lat() || 0,
+                lng: place.geometry?.location?.lng() || 0
+              },
+              city: cityComponent?.long_name || '',
+              state: stateComponent?.short_name || '',
+              country: countryComponent?.short_name || 'US',
+              formatted: place.formatted_address || ''
+            };
+          });
+          resolve(locationResults);
+        } else {
+          console.warn('Google Places search failed:', status);
+          resolve([]);
+        }
+      }
+    );
+  });
 };
 
 export const getCurrentLocation = async (): Promise<LocationCoordinates> => {

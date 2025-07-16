@@ -27,3 +27,35 @@
 | CRITICAL ERROR | migrations disabled | User pointed out migrations contain essential epic features | No |
 | Restore all migrations | supabase/migrations | Moved all migrations back from .bak directory | Yes |
 | Supabase restarted | localhost:54321 | Started from backup with all epic features restored | Yes |
+| Square SDK fix | square-sdk.ts | Fixed hardcoded sandbox URL to use environment config | No |
+| Payment env update | .env | Updated Square and Cash App to production mode | No |
+| Fix Classes infinite loop | useClasses.ts, Classes.tsx | Added useCallback, fixed useEffect dependency | No |
+| Improve error handling | classService.ts | Better handling of missing table errors | No |
+| Fix admin setup errors | setupAdmin.ts | Check column existence before querying | No |
+| Fix Community errors | CommunityBusinessService.ts | Return empty data for missing tables | No |
+| Fix auth configuration | supabase.ts | Use env variables instead of hardcoded | No |
+| Fix redirect loops | AuthContext.tsx | All users redirect to /dashboard | No |
+| Improve admin setup | AuthContext.tsx | Add session flag to prevent spam | No |
+| Add error mapping | Auth.tsx | User-friendly error messages | No |
+| Fix profiles table error | setupAdmin.ts | Handle missing is_admin column gracefully | No |
+| Fix user signup trigger | schema.sql | Update trigger to only insert basic fields | No |
+| Add admin columns to schema | 000_initial_schema.sql | Added is_admin and admin_level columns | No |
+| Add admin permissions system | schema.sql | Added admin_permissions table and functions | No |
+| Improve auth error handling | Auth.tsx | Added retry logic and better error messages | No |
+| Enhance registration UX | Auth.tsx | Added progress indicators and auto-switching | No |
+| Update auth redirect | AuthContext.tsx | Changed redirect from /dashboard to /events | No |
+| Update Auth pages | Auth.tsx, AccountAuth.tsx | Changed navigation to /events after signin | No |
+| Update success message | Auth.tsx | Changed message to reflect events redirect | No |
+| Add auth state debugging | AuthContext.tsx | Added comprehensive logging for auth state changes | No |
+| Add UserProfile debugging | UserProfile.tsx | Added debug logging and loading state | No |
+| Fix auth state propagation | AuthContext.tsx | Added authStateId counter to force re-renders | No |
+| Add admin permissions debug | useAdminPermissions.ts | Enhanced logging for admin permission checks | No |
+| Fix missing follower tables | schema.sql | Added user_follows, follower_promotions, referral_codes tables | No |
+| Add follower functions | schema.sql | Added get_follower_count and is_following functions | No |
+| Fix database 404 errors | schema.sql | Resolved missing table/function errors preventing auth | No |
+| Add graceful 404 handling | FollowerService.ts | Improved fallback logic for missing tables | No |
+| Add login success indicators | Auth.tsx | Added visual feedback for successful authentication | No |
+| Add header update logging | UserProfile.tsx | Added console logs to track header changes | No |
+| Add follower system availability check | FollowerService.ts | Added system availability tracking to prevent 404s | No |
+| Conditional follower loading | Dashboard components | Skip follower calls when system unavailable | No |
+| Prevent auth interference | Multiple components | Stop follower 404s from breaking OAuth flow | No |

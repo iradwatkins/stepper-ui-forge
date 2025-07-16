@@ -3,28 +3,23 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { setupInitialAdmin } from '@/lib/admin/setupAdmin'
+import { toast } from '@/components/ui/sonner'
 
 // Helper function to get the correct redirect URL for different environments
-const getRedirectUrl = (isAdmin?: boolean): string => {
+const getRedirectUrl = (): string => {
   const origin = window.location.origin
-  const isDev = origin.includes('localhost') || origin.includes('127.0.0.1')
-  const isLovable = origin.includes('lovable.app') || origin.includes('lovable.dev')
+  console.log('🔐 Current origin:', origin)
   
-  console.log('🔐 Current origin:', origin, { isDev, isLovable, isAdmin })
-  
-  // For development and Lovable preview environments, use appropriate dashboard
-  if (isDev || isLovable) {
-    return isAdmin ? `${origin}/dashboard` : `${origin}/account`
-  }
-  
-  // For production or custom domains, also use appropriate dashboard
-  return isAdmin ? `${origin}/dashboard` : `${origin}/account`
+  // All users should go to events page after authentication
+  // This provides immediate access to browse and discover events
+  return `${origin}/events`
 }
 
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  authStateId: number
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signInWithGoogle: () => Promise<{ error: AuthError | null }>
@@ -50,38 +45,97 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [authStateId, setAuthStateId] = useState(0) // Counter to force re-renders
 
   useEffect(() => {
+    console.log('🔐 AuthContext: Initializing authentication')
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔐 AuthContext: Initial session retrieved:', session ? 'User logged in' : 'No session')
+      if (session) {
+        console.log('🔐 AuthContext: Initial user:', session.user.email)
+      }
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      setAuthStateId(prev => prev + 1)
+      console.log('🔐 AuthContext: Initial state set, loading=false')
     })
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth state change:', event, session ? 'logged in' : 'logged out')
+      console.log('🔐 AuthContext: Auth state change event:', event)
+      console.log('🔐 AuthContext: Session:', session ? 'logged in' : 'logged out')
+      if (session) {
+        console.log('🔐 AuthContext: User email:', session.user.email)
+      }
+      
+      // Add a small delay to ensure state consistency
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      
+      console.log('🔐 AuthContext: State updated after', event)
+      console.log('🔐 AuthContext: User state:', session?.user ? 'USER_SET' : 'USER_NULL')
+      
+      // Show success notification for sign-in events
+      if (event === 'SIGNED_IN' && session?.user) {
+        const userName = session.user.user_metadata?.full_name || 
+                        session.user.email?.split('@')[0] || 
+                        'User'
+        
+        toast.success(`Welcome back, ${userName}! 👋`, {
+          description: 'You can now access your profile and dashboard',
+          duration: 4000,
+          action: {
+            label: 'View Profile',
+            onClick: () => window.location.href = '/dashboard/profile'
+          }
+        })
+        
+        console.log('🔐 AuthContext: Login success notification shown')
+      }
+      
+      // Force a re-render by updating the counter
+      setAuthStateId(prev => prev + 1)
+      console.log('🔐 AuthContext: Auth state ID incremented to force re-render')
+      
+      // Additional delay to ensure all components receive the update
+      setTimeout(() => {
+        console.log('🔐 AuthContext: Auth state should be propagated now')
+      }, 50)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      console.log('🔐 AuthContext: Cleaning up subscription')
+      subscription.unsubscribe()
+    }
   }, [])
 
-  // Auto-setup admin for designated admin email
+  // Auto-setup admin for designated admin email (with session flag to prevent spam)
   useEffect(() => {
     const performAdminSetup = async () => {
-      if (user && user.email === 'iradwatkins@gmail.com') {
+      // Check if we've already attempted admin setup this session
+      const setupAttempted = sessionStorage.getItem('adminSetupAttempted')
+      
+      if (user && user.email === 'iradwatkins@gmail.com' && !setupAttempted) {
         console.log('🔐 Auto-setting up admin for:', user.email)
+        // Mark as attempted to prevent repeated tries
+        sessionStorage.setItem('adminSetupAttempted', 'true')
+        
         try {
           const result = await setupInitialAdmin()
-          console.log('🔐 Admin setup result:', result)
+          if (result.success) {
+            console.log('🔐 Admin setup successful')
+          }
         } catch (error) {
-          console.error('🔐 Admin setup failed:', error)
+          // Silently fail - admin can use manual setup if needed
+          console.debug('🔐 Admin auto-setup skipped:', error)
         }
       }
     }
@@ -119,17 +173,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const redirectUrl = getRedirectUrl()
     console.log('🔐 Google sign in redirect URL:', redirectUrl)
     
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl
+        }
+      })
+      
+      if (error) {
+        console.error('🔐 Google sign in error:', error)
+        console.error('🔐 Error details:', {
+          message: error.message,
+          status: error.status,
+          statusText: error.statusText
+        })
+      } else {
+        console.log('🔐 Google OAuth initiated successfully')
       }
-    })
-    
-    if (error) {
-      console.error('🔐 Google sign in error:', error)
+      return { error }
+    } catch (err) {
+      console.error('🔐 Google sign in exception:', err)
+      return { error: err }
     }
-    return { error }
   }
 
   const signInWithMagicLink = async (email: string) => {
@@ -159,6 +225,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     session,
     loading,
+    authStateId,
     signIn,
     signUp,
     signInWithGoogle,

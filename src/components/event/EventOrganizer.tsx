@@ -19,6 +19,12 @@ export const EventOrganizer = ({ event }: EventOrganizerProps) => {
   // Load follow status when component mounts
   useEffect(() => {
     if (!event || !user) return;
+    
+    // Only check follower status if the system is available
+    if (!FollowerService.isFollowerSystemAvailable()) {
+      console.debug('Follower system not available, skipping follow status check');
+      return;
+    }
 
     const checkFollowStatus = async () => {
       try {

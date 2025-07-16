@@ -10,8 +10,8 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && !loading) {
-      // Both admin and regular users go to dashboard (admin features appear based on permissions)
-      navigate('/dashboard')
+      // Both admin and regular users go to events page after authentication
+      navigate('/events')
     }
   }, [user, loading, navigate])
 
