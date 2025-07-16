@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { HelmetProvider } from "react-helmet-async";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { FaviconManager } from "@/components/ui/FaviconManager";
 import { AdminRoute } from "@/components/auth/AdminRoute";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
@@ -97,6 +98,7 @@ const AppContent = () => {
   
   return (
     <div className="min-h-screen bg-background">
+      <FaviconManager fallbackFavicon="/steppers-icon.svg" />
       {!isHomePage && <Navbar />}
       <Suspense fallback={<PageLoader />}>
         <Routes>

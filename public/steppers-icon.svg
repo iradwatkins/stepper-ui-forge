@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <style>
+      .couple-bg { fill: #f5f5f5; }
+      .woman-dress { fill: #2563eb; stroke: #1d4ed8; stroke-width: 0.5; }
+      .woman-skin { fill: #d4a574; }
+      .woman-hair { fill: #4a3728; }
+      .man-shirt { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 0.5; }
+      .man-pants { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 0.5; }
+      .man-skin { fill: #8b4513; }
+      .shoes { fill: #ffffff; stroke: #d1d5db; stroke-width: 0.5; }
+      .floor { fill: #d2b48c; opacity: 0.6; }
+    </style>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+  
+  <!-- Floor/ground -->
+  <ellipse cx="50" cy="85" rx="35" ry="8" class="floor"/>
+  
+  <!-- Woman (left figure in blue dress) -->
+  <g transform="translate(25, 20)">
+    <!-- Hair -->
+    <path d="M12 8 C8 6, 4 8, 6 12 C4 16, 8 18, 12 16 C14 14, 16 12, 14 8 Z" class="woman-hair"/>
+    
+    <!-- Head -->
+    <circle cx="12" cy="12" r="4" class="woman-skin"/>
+    
+    <!-- Dress body -->
+    <path d="M8 16 C8 18, 10 20, 12 20 C14 20, 16 18, 16 16 L18 30 C18 32, 16 34, 14 34 L10 34 C8 34, 6 32, 6 30 Z" class="woman-dress"/>
+    
+    <!-- Dress flowing -->
+    <path d="M6 30 Q2 35, 8 40 Q14 42, 18 38 Q20 35, 16 30" class="woman-dress"/>
+    
+    <!-- Arms -->
+    <circle cx="6" cy="22" r="2" class="woman-skin"/>
+    <path d="M6 20 Q2 24, 4 28" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Right arm reaching to partner -->
+    <circle cx="18" cy="22" r="2" class="woman-skin"/>
+    <path d="M18 20 Q22 22, 24 26" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Legs/feet -->
+    <ellipse cx="10" cy="50" rx="3" ry="2" class="shoes"/>
+    <ellipse cx="16" cy="48" rx="3" ry="2" class="shoes"/>
+  </g>
+  
+  <!-- Man (right figure in white) -->
+  <g transform="translate(45, 18)">
+    <!-- Hair -->
+    <circle cx="12" cy="8" r="3" class="man-skin"/>
+    
+    <!-- Head -->
+    <circle cx="12" cy="12" r="4" class="man-skin"/>
+    
+    <!-- Shirt -->
+    <rect x="8" y="16" width="8" height="18" rx="2" class="man-shirt"/>
+    
+    <!-- Pants -->
+    <rect x="8" y="34" width="8" height="16" rx="1" class="man-pants"/>
+    
+    <!-- Arms -->
+    <circle cx="6" cy="20" r="2" class="man-skin"/>
+    <path d="M6 18 Q2 20, 0 24" fill="none" stroke="#f8fafc" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Left arm connecting to woman -->
+    <circle cx="18" cy="20" r="2" class="man-skin"/>
+    <path d="M18 18 Q22 20, 24 24" fill="none" stroke="#f8fafc" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Legs/feet -->
+    <ellipse cx="10" cy="52" rx="3" ry="2" class="shoes"/>
+    <ellipse cx="14" cy="54" rx="3" ry="2" class="shoes"/>
+  </g>
+  
+  <!-- Motion lines to show dancing -->
+  <g opacity="0.4">
+    <path d="M20 65 Q25 60, 30 65" fill="none" stroke="#2563eb" stroke-width="1" stroke-linecap="round"/>
+    <path d="M70 65 Q75 60, 80 65" fill="none" stroke="#e5e7eb" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Small heart to show connection -->
+  <path d="M50 25 C48 23, 45 23, 45 26 C45 23, 42 23, 40 25 C38 27, 42 31, 45 34 C48 31, 52 27, 50 25 Z" fill="#ef4444" opacity="0.7"/>
+</svg>

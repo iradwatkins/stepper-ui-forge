@@ -1,13 +1,31 @@
 {
-  "name": "Steppers - Event Management Platform",
-  "short_name": "Steppers",
-  "description": "Comprehensive event management and ticketing platform",
-  "theme_color": "#000000",
+  "name": "Steppers Life - Event Management Platform",
+  "short_name": "Steppers Life",
+  "description": "Comprehensive event management and ticketing platform for stepping and dance events",
+  "theme_color": "#2563eb",
   "background_color": "#ffffff",
   "display": "standalone",
   "start_url": "/",
   "scope": "/",
   "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
@@ -19,9 +37,15 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
+    },
+    {
+      "src": "/steppers-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ],
-  "categories": ["entertainment", "business", "productivity"],
+  "categories": ["entertainment", "lifestyle", "social"],
   "lang": "en",
   "dir": "ltr",
   "orientation": "portrait-primary",
