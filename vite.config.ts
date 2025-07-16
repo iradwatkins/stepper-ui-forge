@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
     port: 8080,
+    middlewareMode: false,
+  },
+  preview: {
+    port: 8080,
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime'],
