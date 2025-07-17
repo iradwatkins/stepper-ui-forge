@@ -17,6 +17,9 @@ import { Loader2 } from "lucide-react";
 // Load admin setup utilities for browser console access
 import "@/utils/setupAdmin";
 
+// Load registration tracer for Gmail registration testing
+import { registrationTracer } from "@/utils/registrationTracer";
+
 // Loading component for lazy loaded routes
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">

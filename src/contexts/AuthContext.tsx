@@ -5,6 +5,56 @@ import { supabase } from '@/integrations/supabase/client'
 import { setupInitialAdmin } from '@/lib/admin/setupAdmin'
 import { toast } from '@/components/ui/sonner'
 
+// Real-time registration monitoring system
+const createRegistrationLogger = () => {
+  const logs: any[] = []
+  
+  const log = (type: string, message: string, data?: any) => {
+    const timestamp = new Date().toISOString()
+    const logEntry = {
+      timestamp,
+      type,
+      message,
+      data,
+      url: window.location.href
+    }
+    
+    logs.push(logEntry)
+    console.log(`🔍 [${type.toUpperCase()}] ${timestamp}: ${message}`, data || '')
+    
+    // Store in localStorage for persistence
+    try {
+      const existingLogs = JSON.parse(localStorage.getItem('auth_test_logs') || '[]')
+      existingLogs.push(logEntry)
+      localStorage.setItem('auth_test_logs', JSON.stringify(existingLogs.slice(-50))) // Keep last 50 logs
+    } catch (e) {
+      console.warn('Failed to store log in localStorage:', e)
+    }
+  }
+  
+  const exportLogs = () => {
+    const allLogs = JSON.parse(localStorage.getItem('auth_test_logs') || '[]')
+    console.log('📊 COMPLETE REGISTRATION LOGS:', allLogs)
+    return allLogs
+  }
+  
+  const clearLogs = () => {
+    localStorage.removeItem('auth_test_logs')
+    logs.length = 0
+    console.log('🧹 Registration logs cleared')
+  }
+  
+  return { log, exportLogs, clearLogs }
+}
+
+// Global logger instance
+const regLogger = createRegistrationLogger()
+
+// Expose logger to window for debugging
+if (typeof window !== 'undefined') {
+  (window as any).authLogger = regLogger
+}
+
 // Helper function to get the correct redirect URL for different environments
 const getRedirectUrl = (): string => {
   const origin = window.location.origin
@@ -48,29 +98,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [authStateId, setAuthStateId] = useState(0) // Counter to force re-renders
 
   useEffect(() => {
-    console.log('🔐 AuthContext: Initializing authentication')
+    regLogger.log('init', 'AuthContext: Initializing authentication system')
     
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔐 AuthContext: Initial session retrieved:', session ? 'User logged in' : 'No session')
-      if (session) {
-        console.log('🔐 AuthContext: Initial user:', session.user.email)
-      }
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      regLogger.log('session', 'Initial session retrieved', {
+        hasSession: !!session,
+        userEmail: session?.user?.email,
+        error: error?.message
+      })
+      
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
       setAuthStateId(prev => prev + 1)
-      console.log('🔐 AuthContext: Initial state set, loading=false')
     })
 
-    // Listen for auth changes
+    // Listen for auth changes with enhanced monitoring
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 AuthContext: Auth state change event:', event)
-      console.log('🔐 AuthContext: Session:', session ? 'logged in' : 'logged out')
-      if (session) {
-        console.log('🔐 AuthContext: User email:', session.user.email)
+      regLogger.log('auth_event', `Auth state change: ${event}`, {
+        event,
+        hasSession: !!session,
+        userEmail: session?.user?.email,
+        userId: session?.user?.id,
+        userMetadata: session?.user?.user_metadata,
+        rawUserMetadata: session?.user?.raw_user_meta_data,
+        url: window.location.href,
+        timestamp: new Date().toISOString()
+      })
+      
+      // Check URL for error parameters
+      const urlParams = new URLSearchParams(window.location.search)
+      const urlHash = new URLSearchParams(window.location.hash.substring(1))
+      
+      if (urlParams.get('error') || urlHash.get('error')) {
+        regLogger.log('error_url', 'Error detected in URL parameters', {
+          searchParams: Object.fromEntries(urlParams),
+          hashParams: Object.fromEntries(urlHash),
+          fullUrl: window.location.href
+        })
       }
       
       // Add a small delay to ensure state consistency
@@ -80,11 +148,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(session?.user ?? null)
       setLoading(false)
       
-      console.log('🔐 AuthContext: State updated after', event)
-      console.log('🔐 AuthContext: User state:', session?.user ? 'USER_SET' : 'USER_NULL')
-      
-      // Show success notification for sign-in events
+      // Enhanced success handling with profile checking
       if (event === 'SIGNED_IN' && session?.user) {
+        regLogger.log('signin_success', 'User signed in successfully', {
+          userId: session.user.id,
+          email: session.user.email,
+          metadata: session.user.user_metadata,
+          rawMetadata: session.user.raw_user_meta_data
+        })
+        
+        // Check if profile exists in database
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+            
+          regLogger.log('profile_check', 'Profile existence check', {
+            profileExists: !!profile,
+            profileData: profile,
+            error: profileError?.message,
+            userId: session.user.id
+          })
+        } catch (err) {
+          regLogger.log('profile_error', 'Error checking profile', {
+            error: err,
+            userId: session.user.id
+          })
+        }
+        
         const userName = session.user.user_metadata?.full_name || 
                         session.user.email?.split('@')[0] || 
                         'User'
@@ -97,22 +190,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             onClick: () => window.location.href = '/dashboard/profile'
           }
         })
-        
-        console.log('🔐 AuthContext: Login success notification shown')
+      }
+      
+      // Enhanced error handling
+      if (event === 'SIGNED_OUT') {
+        regLogger.log('signout', 'User signed out')
       }
       
       // Force a re-render by updating the counter
       setAuthStateId(prev => prev + 1)
-      console.log('🔐 AuthContext: Auth state ID incremented to force re-render')
       
       // Additional delay to ensure all components receive the update
       setTimeout(() => {
-        console.log('🔐 AuthContext: Auth state should be propagated now')
+        regLogger.log('state_propagated', 'Auth state propagated to components', {
+          hasUser: !!session?.user,
+          authStateId: authStateId + 1
+        })
       }, 50)
     })
 
     return () => {
-      console.log('🔐 AuthContext: Cleaning up subscription')
+      regLogger.log('cleanup', 'AuthContext: Cleaning up subscription')
       subscription.unsubscribe()
     }
   }, [])
@@ -171,29 +269,44 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signInWithGoogle = async () => {
     const redirectUrl = getRedirectUrl()
-    console.log('🔐 Google sign in redirect URL:', redirectUrl)
+    regLogger.log('google_start', 'Initiating Google OAuth', {
+      redirectUrl,
+      currentUrl: window.location.href,
+      timestamp: new Date().toISOString()
+    })
     
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
         }
       })
       
       if (error) {
-        console.error('🔐 Google sign in error:', error)
-        console.error('🔐 Error details:', {
+        regLogger.log('google_error', 'Google OAuth error', {
           message: error.message,
           status: error.status,
-          statusText: error.statusText
+          statusText: error.statusText,
+          fullError: error
         })
       } else {
-        console.log('🔐 Google OAuth initiated successfully')
+        regLogger.log('google_initiated', 'Google OAuth initiated successfully', {
+          data,
+          redirectUrl,
+          timestamp: new Date().toISOString()
+        })
       }
       return { error }
     } catch (err) {
-      console.error('🔐 Google sign in exception:', err)
+      regLogger.log('google_exception', 'Google OAuth exception', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error'
+      })
       return { error: err }
     }
   }
