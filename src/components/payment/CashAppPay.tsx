@@ -16,12 +16,32 @@ interface CashAppPayProps {
 // Get Cash App configuration from central config
 const getCashAppConfig = () => {
   const config = getPaymentConfig();
+  
+  // Check if we're in local development
+  const isLocalDev = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.protocol === 'http:';
+  
+  // Determine environment based on client ID format and location
+  // Production client IDs start with 'sq0idp-'
+  const isProductionClientId = config.cashapp.clientId?.startsWith('sq0idp-');
+  const configuredEnvironment = config.cashapp.environment;
+  
+  // If we're in local dev with production credentials, warn but continue
+  if (isLocalDev && isProductionClientId) {
+    console.warn('⚠️ Cash App: Using production credentials in local development. Consider using sandbox credentials.');
+  }
+  
+  // Use the configured environment
+  const environment = configuredEnvironment;
+  
   return {
     clientId: config.cashapp.clientId,
-    environment: config.cashapp.environment,
-    scriptUrl: config.cashapp.environment === 'production' 
+    environment: environment,
+    scriptUrl: environment === 'production' 
       ? 'https://kit.cash.app/v1/pay.js'
-      : 'https://sandbox.kit.cash.app/v1/pay.js'
+      : 'https://sandbox.kit.cash.app/v1/pay.js',
+    isLocalDev
   };
 };
 
@@ -95,7 +115,9 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
         
         // Validate environment configuration before initialization
         // Note: Cash App uses Square's infrastructure, so Square App IDs are valid
-        if (cashAppConfig.environment === 'production' && cashAppConfig.clientId.includes('sandbox')) {
+        // Only throw error if we have an obvious sandbox ID in production
+        if (cashAppConfig.environment === 'production' && 
+            (cashAppConfig.clientId.includes('sandbox') || cashAppConfig.clientId.startsWith('sandbox-'))) {
           throw new Error('Cash App environment mismatch: Production environment requires production client ID');
         }
         
@@ -103,7 +125,14 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
           environment: cashAppConfig.environment,
           clientId: cashAppConfig.clientId.substring(0, 15) + '...',
           isProductionClient: cashAppConfig.clientId.startsWith('sq0idp-'),
-          scriptUrl: cashAppConfig.scriptUrl
+          scriptUrl: cashAppConfig.scriptUrl,
+          windowLocation: window.location.origin,
+          protocol: window.location.protocol
+        });
+        
+        // Log the exact config being passed to Cash App
+        console.log('🔄 Initializing Cash App Pay with config:', {
+          clientId: cashAppConfig.clientId
         });
         
         const pay = await window.CashApp.pay({ clientId: cashAppConfig.clientId });
@@ -183,7 +212,13 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
         if (err instanceof Error) {
           const errorMsg = err.message.toLowerCase();
           if (errorMsg.includes('production client id must be used in the production environment')) {
-            errorMessage = 'Cash App configuration error: Production environment detected but client ID may be incorrect. Please verify VITE_CASHAPP_CLIENT_ID and VITE_CASHAPP_ENVIRONMENT settings.';
+            if (cashAppConfig.isLocalDev) {
+              errorMessage = 'Cash App Error: Cannot use production credentials in local development. Please use sandbox credentials or deploy to a production HTTPS environment.';
+            } else {
+              errorMessage = 'Cash App configuration error: Production environment requires a valid production client ID (starting with sq0idp-). Please verify VITE_CASHAPP_CLIENT_ID.';
+            }
+          } else if (errorMsg.includes('sandbox client id must be used in the sandbox environment')) {
+            errorMessage = 'Cash App configuration error: Sandbox environment requires a sandbox client ID. Please verify VITE_CASHAPP_CLIENT_ID matches VITE_CASHAPP_ENVIRONMENT.';
           } else if (errorMsg.includes('environment mismatch')) {
             errorMessage = err.message;
           } else {
