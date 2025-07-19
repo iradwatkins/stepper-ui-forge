@@ -35,10 +35,18 @@ export function SquarePaymentComponent({
   const [selectedMethod, setSelectedMethod] = useState<'card' | 'cashapp'>('card');
   const [error, setError] = useState<string | null>(null);
   const [cashAppAvailable, setCashAppAvailable] = useState(false);
+  const [cashAppAttached, setCashAppAttached] = useState(false);
 
   useEffect(() => {
     initializeSquarePayments();
   }, []);
+
+  // Attach Cash App Pay button when cashapp is selected
+  useEffect(() => {
+    if (selectedMethod === 'cashapp' && paymentMethods.cashAppPay && !cashAppAttached) {
+      attachCashAppPay();
+    }
+  }, [selectedMethod, paymentMethods.cashAppPay, cashAppAttached]);
 
   const initializeSquarePayments = async () => {
     try {
@@ -101,55 +109,57 @@ export function SquarePaymentComponent({
       
       await card.attach('#square-card-container');
 
-      // Try to create Cash App Pay with the new PaymentRequest API
+      // Initialize Cash App Pay according to Square documentation
       let cashAppPay;
       try {
         if (cashAppClientId) {
-          console.log('🔄 Creating PaymentRequest for Cash App Pay...');
+          console.log('🔄 Initializing Cash App Pay...');
           
-          // First create a payment request
+          // Create payment request with amount in dollars as string
           const paymentRequest = payments.paymentRequest({
             countryCode: 'US',
             currencyCode: 'USD',
             total: {
-              amount: Math.round(amount * 100).toString(), // Convert to cents as string
-              label: 'Payment'
+              amount: amount.toFixed(2), // Amount in dollars as string (e.g., "25.00")
+              label: 'Total'
             }
           });
           
-          // Then initialize Cash App Pay with the payment request
-          try {
-            cashAppPay = await payments.cashAppPay({
-              paymentRequest: paymentRequest,
-              redirectURL: window.location.origin,
-              referenceId: `cashapp-${Date.now()}`
-            });
+          // Initialize Cash App Pay with paymentRequest as first parameter
+          cashAppPay = await payments.cashAppPay(paymentRequest, {
+            redirectURL: window.location.href,
+            referenceId: `order-${Date.now()}`
+          });
+          
+          if (cashAppPay) {
+            setCashAppAvailable(true);
+            console.log(`✅ Cash App Pay initialized (${cashAppEnvironment})`);
             
-            if (cashAppPay) {
-              setCashAppAvailable(true);
-              console.log(`✅ Cash App Pay initialized (${cashAppEnvironment})`);
-            }
-          } catch (cashAppError) {
-            console.error('❌ Cash App Pay initialization failed:', cashAppError);
-            // Try fallback without paymentRequest
-            try {
-              cashAppPay = await payments.cashAppPay({
-                redirectURL: window.location.origin,
-                referenceId: `cashapp-${Date.now()}`
-              });
-              if (cashAppPay) {
-                setCashAppAvailable(true);
-                console.log(`✅ Cash App Pay initialized with fallback (${cashAppEnvironment})`);
+            // Set up the ontokenization event listener
+            cashAppPay.addEventListener('ontokenization', function(event: any) {
+              const { tokenResult, error } = event.detail;
+              
+              if (error) {
+                console.error('Cash App Pay tokenization error:', error);
+                setError('Cash App Pay error: ' + (error.message || 'Unknown error'));
+                onError('Cash App Pay tokenization failed');
+              } else if (tokenResult.status === 'OK') {
+                console.log('✅ Cash App Pay token received:', tokenResult.token);
+                onPaymentToken(tokenResult.token, 'cashapp');
+              } else {
+                const errorMessage = `Cash App Pay tokenization failed: ${tokenResult.errors?.[0]?.message || 'Unknown error'}`;
+                console.error(errorMessage);
+                setError(errorMessage);
+                onError(errorMessage);
               }
-            } catch (fallbackError) {
-              console.warn('Cash App Pay not available:', fallbackError);
-            }
+            });
           }
         } else {
           console.warn('Cash App Pay disabled - VITE_CASHAPP_CLIENT_ID not configured');
         }
       } catch (error) {
-        console.warn('Failed to create PaymentRequest:', error);
+        console.error('❌ Cash App Pay initialization failed:', error);
+        console.warn('💡 Cash App Pay may require a separate client ID from your Square App ID. Check Square Developer Dashboard for Cash App Pay specific credentials.');
       }
 
       setPaymentMethods({ payments, card, cashAppPay });
@@ -162,6 +172,29 @@ export function SquarePaymentComponent({
       setError(errorMessage);
       onError(errorMessage);
       setIsLoading(false);
+    }
+  };
+
+  const attachCashAppPay = async () => {
+    if (!paymentMethods.cashAppPay || cashAppAttached) return;
+    
+    try {
+      const container = document.getElementById('cash-app-pay-container');
+      if (!container) {
+        console.warn('Cash App Pay container not found');
+        return;
+      }
+      
+      await paymentMethods.cashAppPay.attach('#cash-app-pay-container', {
+        shape: 'semiround',
+        width: 'full'
+      });
+      
+      setCashAppAttached(true);
+      console.log('✅ Cash App Pay button attached');
+    } catch (error) {
+      console.error('Failed to attach Cash App Pay button:', error);
+      setError('Failed to display Cash App Pay button');
     }
   };
 
@@ -211,44 +244,9 @@ export function SquarePaymentComponent({
   };
 
   const handleCashAppPayment = async () => {
-    try {
-      if (!paymentMethods.cashAppPay) {
-        throw new Error('Cash App Pay not available');
-      }
-
-      // Check if we need to use the new API or old API
-      if (typeof paymentMethods.cashAppPay.tokenize === 'function') {
-        // New API - tokenize directly
-        const tokenResult = await paymentMethods.cashAppPay.tokenize();
-        
-        if (tokenResult.status === 'OK') {
-          onPaymentToken(tokenResult.token, 'cashapp');
-        } else {
-          throw new Error(tokenResult.errors?.[0]?.message || 'Cash App payment failed');
-        }
-      } else if (typeof paymentMethods.cashAppPay.requestPayment === 'function') {
-        // Old API - request payment
-        const paymentResult = await paymentMethods.cashAppPay.requestPayment({
-          amount: {
-            amount: Math.round(amount * 100), // Convert to cents
-            currencyCode: 'USD'
-          }
-        });
-        
-        if (paymentResult.status === 'OK') {
-          onPaymentToken(paymentResult.token, 'cashapp');
-        } else {
-          throw new Error(paymentResult.errors?.[0]?.message || 'Cash App payment failed');
-        }
-      } else {
-        throw new Error('Cash App Pay API not recognized');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Cash App payment failed';
-      console.error('Cash App payment error:', err);
-      setError(errorMessage);
-      onError(errorMessage);
-    }
+    // Cash App Pay handles its own button and tokenization via the ontokenization event
+    // Nothing to do here - the Cash App Pay button will trigger the payment flow
+    console.log('Cash App Pay button handles its own payment flow');
   };
 
   const handleSubmit = async () => {
@@ -398,60 +396,50 @@ export function SquarePaymentComponent({
               Cash App Pay
             </CardTitle>
             <CardDescription>
-              You'll be redirected to Cash App to complete your payment of ${amount.toFixed(2)}.
+              Scan the QR code with Cash App or click the button below to pay ${amount.toFixed(2)}.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 text-green-800">
-                  <Smartphone className="w-4 h-4" />
-                  <span className="font-medium">Ready to pay with Cash App</span>
-                </div>
-                <p className="text-sm text-green-700 mt-1">
-                  Click "Pay Now" to open Cash App and complete your payment.
-                </p>
-              </div>
-
+              {/* Cash App Pay button container */}
+              <div id="cash-app-pay-container" className="min-h-[60px]" />
+              
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+              
+              <div className="text-xs text-muted-foreground text-center">
+                On mobile, you'll be redirected to Cash App. On desktop, scan the QR code with your phone.
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Payment Button */}
-      <Button 
-        onClick={handleSubmit}
-        disabled={isProcessing || isLoading}
-        className="w-full"
-        size="lg"
-      >
-        {isProcessing ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processing...
-          </>
-        ) : (
-          <>
-            {selectedMethod === 'card' ? (
-              <>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Pay ${amount.toFixed(2)} with Card
-              </>
-            ) : (
-              <>
-                <Smartphone className="mr-2 h-4 w-4" />
-                Pay ${amount.toFixed(2)} with Cash App
-              </>
-            )}
-          </>
-        )}
-      </Button>
+      {/* Payment Button - Only show for card payments */}
+      {selectedMethod === 'card' && (
+        <Button 
+          onClick={handleSubmit}
+          disabled={isProcessing || isLoading}
+          className="w-full"
+          size="lg"
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Pay ${amount.toFixed(2)} with Card
+            </>
+          )}
+        </Button>
+      )}
 
       <div className="text-center text-xs text-muted-foreground">
         Powered by Square • PCI DSS Compliant • {squareEnvironment.toUpperCase()} Mode

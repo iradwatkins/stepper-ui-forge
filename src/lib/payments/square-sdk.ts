@@ -217,54 +217,37 @@ export async function createSquarePaymentForm(
       // Use the correct Square Web SDK method for Cash App Pay
       console.log('🔄 Checking available Square payment methods:', Object.keys(payments));
       
-      // First create a payment request which is required for Cash App Pay
+      // Create Cash App Pay according to Square documentation
       try {
         console.log('🔄 Creating PaymentRequest for Cash App Pay...');
         
+        // First create the payment request
         const paymentRequest = payments.paymentRequest({
           countryCode: 'US',
           currencyCode: 'USD',
           total: {
-            amount: '100', // Default amount, will be updated when actual payment is made
-            label: 'Payment'
+            amount: '1.00', // Default amount in dollars, will be updated when actual payment is made
+            label: 'Total'
           }
         });
         
-        // Now initialize Cash App Pay with the payment request
-        if (typeof payments.cashAppPay === 'function') {
-          try {
-            console.log('🔄 Initializing Cash App Pay with PaymentRequest...');
-            
-            cashAppPay = await payments.cashAppPay({
-              paymentRequest: paymentRequest,
-              redirectURL: window.location.origin,
-              referenceId: `cashapp-${Date.now()}`
-            });
-            
-            if (cashAppPay) {
-              console.log(`✅ Cash App Pay initialized successfully (${cashAppEnvironment})`);
-            }
-          } catch (cashAppError) {
-            console.error('❌ Cash App Pay initialization failed:', cashAppError);
-            // Try without paymentRequest as fallback
-            try {
-              console.log('🔄 Retrying Cash App Pay without paymentRequest...');
-              cashAppPay = await payments.cashAppPay({
-                redirectURL: window.location.origin,
-                referenceId: `cashapp-${Date.now()}`
-              });
-              if (cashAppPay) {
-                console.log(`✅ Cash App Pay initialized with fallback method (${cashAppEnvironment})`);
-              }
-            } catch (fallbackError) {
-              console.error('❌ Cash App Pay fallback also failed:', fallbackError);
-            }
-          }
-        } else {
-          console.error('❌ payments.cashAppPay method not available');
+        console.log('🔄 Initializing Cash App Pay with PaymentRequest...');
+        
+        // Initialize Cash App Pay with paymentRequest as first parameter
+        cashAppPay = await payments.cashAppPay(paymentRequest, {
+          redirectURL: window.location.href,
+          referenceId: `cashapp-${Date.now()}`
+        });
+        
+        if (cashAppPay) {
+          console.log(`✅ Cash App Pay initialized successfully (${cashAppEnvironment})`);
+          
+          // Note: The attach() method should be called where the component is rendered
+          // Not here in the SDK initialization
         }
       } catch (error) {
-        console.error('❌ Failed to create PaymentRequest:', error);
+        console.error('❌ Cash App Pay initialization failed:', error);
+        // Don't try fallback - if it fails, it means Cash App Pay isn't available
       }
     } else {
       console.warn('⚠️ Cash App Pay disabled - VITE_CASHAPP_CLIENT_ID not configured');

@@ -215,10 +215,12 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
             if (cashAppConfig.isLocalDev) {
               errorMessage = 'Cash App Error: Cannot use production credentials in local development. Please use sandbox credentials or deploy to a production HTTPS environment.';
             } else {
-              errorMessage = 'Cash App configuration error: Production environment requires a valid production client ID (starting with sq0idp-). Please verify VITE_CASHAPP_CLIENT_ID.';
+              errorMessage = 'Cash App Pay requires a specific Cash App client ID (not Square App ID). Please contact Square support to get your Cash App Pay production client ID and update VITE_CASHAPP_CLIENT_ID.';
             }
           } else if (errorMsg.includes('sandbox client id must be used in the sandbox environment')) {
             errorMessage = 'Cash App configuration error: Sandbox environment requires a sandbox client ID. Please verify VITE_CASHAPP_CLIENT_ID matches VITE_CASHAPP_ENVIRONMENT.';
+          } else if (errorMsg.includes('pay kit configuration is invalid')) {
+            errorMessage = 'Cash App Pay configuration is invalid. This usually means the client ID format is incorrect. Cash App Pay may require a different client ID than your Square App ID.';
           } else if (errorMsg.includes('environment mismatch')) {
             errorMessage = err.message;
           } else {
