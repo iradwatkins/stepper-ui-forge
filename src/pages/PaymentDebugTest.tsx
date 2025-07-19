@@ -3,11 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Smartphone, AlertCircle } from 'lucide-react';
+import { getPaymentConfig } from '@/lib/payment-config';
+import { CashAppPay } from '@/components/payment/CashAppPay';
+import { SquarePaymentComponent } from '@/components/payment/SquarePaymentComponent';
 
 export function PaymentDebugTest() {
   const [loading, setLoading] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, any>>({});
+  const [showCashAppTest, setShowCashAppTest] = useState(false);
+  const [showSquareTest, setShowSquareTest] = useState(false);
+  const [cashAppToken, setCashAppToken] = useState<string | null>(null);
 
   const testHealthCheck = async () => {
     setLoading('health');
@@ -98,6 +104,104 @@ export function PaymentDebugTest() {
     setLoading(null);
   };
 
+  const testCashAppConfig = async () => {
+    setLoading('cashapp-config');
+    try {
+      const config = getPaymentConfig();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      // Test Cash App edge function health
+      const healthResponse = await fetch(`${supabaseUrl}/functions/v1/payments-cashapp`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${anonKey}` }
+      });
+      const healthData = await healthResponse.json();
+      
+      setResults(prev => ({ ...prev, 'cashapp-config': {
+        frontend: {
+          environment: config.cashapp.environment,
+          clientId: config.cashapp.clientId ? 'Set (hidden)' : 'Not set',
+          squareAppId: config.square.applicationId ? config.square.applicationId.substring(0, 15) + '...' : 'Not set',
+          squareEnvironment: config.square.environment,
+          squareLocationId: config.square.locationId ? 'Set' : 'Not set',
+        },
+        backend: healthData,
+        sdkUrl: config.cashapp.environment === 'production' 
+          ? 'https://kit.cash.app/v1/pay.js'
+          : 'https://sandbox.kit.cash.app/v1/pay.js'
+      }}));
+    } catch (error) {
+      setResults(prev => ({ ...prev, 'cashapp-config': { error: error.message } }));
+    }
+    setLoading(null);
+  };
+
+  const testCashAppPayment = async () => {
+    if (!cashAppToken) {
+      setResults(prev => ({ ...prev, 'cashapp-payment': { 
+        error: 'No Cash App token available. Use the Cash App test component first.' 
+      }}));
+      return;
+    }
+
+    setLoading('cashapp-payment');
+    try {
+      const result = await productionPaymentService.processPayment({
+        amount: 1.00,
+        gateway: 'cashapp',
+        sourceId: cashAppToken,
+        orderId: `cashapp_test_${Date.now()}`,
+        customerEmail: 'test@example.com'
+      });
+      setResults(prev => ({ ...prev, 'cashapp-payment': result }));
+    } catch (error) {
+      setResults(prev => ({ ...prev, 'cashapp-payment': { error: error.message } }));
+    }
+    setLoading(null);
+  };
+
+  const handleCashAppSuccess = (result: any) => {
+    console.log('Cash App test success:', result);
+    setResults(prev => ({ ...prev, 'cashapp-component': { 
+      success: true, 
+      result,
+      timestamp: new Date().toISOString()
+    }}));
+  };
+
+  const handleCashAppError = (error: string) => {
+    console.error('Cash App test error:', error);
+    setResults(prev => ({ ...prev, 'cashapp-component': { 
+      error,
+      timestamp: new Date().toISOString()
+    }}));
+  };
+
+  const handleSquareToken = (token: string, method: 'card' | 'cashapp') => {
+    if (method === 'cashapp') {
+      setCashAppToken(token);
+      setResults(prev => ({ ...prev, 'cashapp-token': { 
+        token: token.substring(0, 20) + '...',
+        method,
+        timestamp: new Date().toISOString()
+      }}));
+    } else {
+      setResults(prev => ({ ...prev, 'square-token': { 
+        token: token.substring(0, 20) + '...',
+        method,
+        timestamp: new Date().toISOString()
+      }}));
+    }
+  };
+
+  const handleSquareError = (error: string) => {
+    setResults(prev => ({ ...prev, 'square-component': { 
+      error,
+      timestamp: new Date().toISOString()
+    }}));
+  };
+
   const testEdgeFunctions = async () => {
     setLoading('edge');
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -125,6 +229,17 @@ export function PaymentDebugTest() {
       edgeResults.square = await squareResponse.json();
     } catch (error) {
       edgeResults.square = { error: error.message };
+    }
+    
+    // Test Cash App
+    try {
+      const cashappResponse = await fetch(`${supabaseUrl}/functions/v1/payments-cashapp`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${anonKey}` }
+      });
+      edgeResults.cashapp = await cashappResponse.json();
+    } catch (error) {
+      edgeResults.cashapp = { error: error.message };
     }
     
     setResults(prev => ({ ...prev, edge: edgeResults }));
@@ -181,12 +296,107 @@ export function PaymentDebugTest() {
             <Button 
               onClick={testSquarePayment} 
               disabled={loading === 'square'}
+              className="mr-2"
             >
               {loading === 'square' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Test Square Payment
             </Button>
+            
+            <div className="mt-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold mb-2">Cash App Pay Tests</h3>
+              
+              <Button 
+                onClick={testCashAppConfig} 
+                disabled={loading === 'cashapp-config'}
+                className="mr-2 mb-2"
+                variant="outline"
+              >
+                {loading === 'cashapp-config' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Smartphone className="mr-2 h-4 w-4" />
+                Test Cash App Config
+              </Button>
+              
+              <Button 
+                onClick={() => setShowCashAppTest(!showCashAppTest)}
+                className="mr-2 mb-2"
+                variant="outline"
+              >
+                <Smartphone className="mr-2 h-4 w-4" />
+                {showCashAppTest ? 'Hide' : 'Show'} Cash App Component
+              </Button>
+              
+              <Button 
+                onClick={() => setShowSquareTest(!showSquareTest)}
+                className="mr-2 mb-2"
+                variant="outline"
+              >
+                {showSquareTest ? 'Hide' : 'Show'} Square SDK Test
+              </Button>
+              
+              {cashAppToken && (
+                <Button 
+                  onClick={testCashAppPayment} 
+                  disabled={loading === 'cashapp-payment'}
+                  className="mb-2"
+                  variant="default"
+                >
+                  {loading === 'cashapp-payment' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Process Cash App Payment
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
+
+        {/* Cash App Test Component */}
+        {showCashAppTest && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5" />
+                Cash App Pay Test Component
+              </CardTitle>
+              <CardDescription>
+                This uses the Cash App SDK directly to test the integration
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This component will attempt to load Cash App Pay. If you see an error about
+                  "production client ID", it means Cash App requires a separate client ID.
+                </AlertDescription>
+              </Alert>
+              <CashAppPay
+                amount={1.00}
+                orderId="debug_test_order"
+                customerEmail="test@example.com"
+                onSuccess={handleCashAppSuccess}
+                onError={handleCashAppError}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Square SDK Test Component */}
+        {showSquareTest && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Square Web SDK Test</CardTitle>
+              <CardDescription>
+                Tests both Square card payments and Cash App Pay through Square SDK
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SquarePaymentComponent
+                amount={1.00}
+                onPaymentToken={handleSquareToken}
+                onError={handleSquareError}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {Object.entries(results).map(([key, value]) => (
           <Card key={key}>
