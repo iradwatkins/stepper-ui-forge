@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabase'
 import { setupInitialAdmin } from '@/lib/admin/setupAdmin'
 import { toast } from '@/components/ui/sonner'
 // Removed sessionConfig imports - using Supabase's built-in session management
@@ -100,25 +100,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     regLogger.log('init', 'AuthContext: Initializing authentication system')
-    
-    // Clean up any old session management keys to prevent conflicts
-    const cleanupOldSessionKeys = () => {
-      const oldKeys = ['stepper-auth-session', 'stepper-auth-expiry', 'stepper-remember-me']
-      oldKeys.forEach(key => {
-        try {
-          localStorage.removeItem(key)
-        } catch (e) {
-          console.warn(`Failed to remove old session key ${key}:`, e)
-        }
-      })
-      console.log('🧹 Cleaned up old session management keys')
-    }
-    
-    cleanupOldSessionKeys()
-    
-    // Add enhanced debugging for authentication issues
-    console.log('🔐 Current localStorage keys:', Object.keys(localStorage))
-    console.log('🔐 Supabase auth key content exists:', !!localStorage.getItem('stepper-auth'))
     
     // Listen for auth changes with enhanced monitoring FIRST
     const {
@@ -237,13 +218,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         console.log('🔐 No session found on initial load')
       }
       
-      // Only update if we haven't already received this session from the listener
-      if (!user || user.id !== session?.user?.id) {
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
-        setAuthStateId(prev => prev + 1)
-      }
+      // Always update session state to ensure consistency
+      setSession(session)
+      setUser(session?.user ?? null)
+      setLoading(false)
+      setAuthStateId(prev => prev + 1)
     })
 
     return () => {
@@ -328,7 +307,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         regLogger.log('google_error', 'Google OAuth error', {
           message: error.message,
           status: error.status,
-          statusText: error.statusText,
           fullError: error
         })
       } else {

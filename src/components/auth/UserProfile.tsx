@@ -96,7 +96,7 @@ export const UserProfile = () => {
     }
   }
 
-  // Show loading spinner only during auth state loading
+  // Show loading spinner while auth state is being determined
   if (loading) {
     console.log('👤 UserProfile: Rendering loading state')
     return (
