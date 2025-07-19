@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 echo "🔍 Testing Square Edge Function Health Check"
