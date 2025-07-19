@@ -37,8 +37,19 @@ export class ProductionPaymentService {
           name: 'PayPal',
           description: 'Pay with PayPal account or credit card',
           available: healthStatus.paypal?.healthy === true || healthStatus.paypal?.available === true
+        },
+        {
+          id: 'square',
+          name: 'Credit Card',
+          description: 'Pay with credit or debit card',
+          available: healthStatus.square?.healthy === true || healthStatus.square?.available === true
+        },
+        {
+          id: 'cashapp',
+          name: 'Cash App Pay',
+          description: 'Pay with Cash App',
+          available: healthStatus.square?.healthy === true || healthStatus.square?.available === true // CashApp uses Square's infrastructure
         }
-        // Square and Cash App disabled until proper frontend integration
       ];
       
       // Filter to only available methods
@@ -494,7 +505,7 @@ export class ProductionPaymentService {
       error?: string;
     }
   }> {
-    const gateways = ['paypal', 'square']; // Cash App disabled until deployed
+    const gateways = ['paypal', 'square']; // CashApp uses Square infrastructure
     console.log('[Health Check] Checking gateways:', gateways, 'Version:', this.version);
     const healthChecks: any = {};
     

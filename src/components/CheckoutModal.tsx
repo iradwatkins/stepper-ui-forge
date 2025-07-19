@@ -17,6 +17,7 @@ import { EmailService } from "@/lib/services/EmailService";
 import { seatingService } from "@/lib/services/SeatingService";
 import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
 import { SquarePaymentForm } from "@/components/payments/SquarePaymentForm";
+import { CashAppPay } from "@/components/payment/CashAppPay";
 import { toast } from "sonner";
 
 interface SeatDetails {
@@ -337,6 +338,18 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
     setSquarePaymentMethod(null);
   };
 
+  const handleCashAppSuccess = (result: any) => {
+    console.log('✅ CashApp payment success:', result);
+    // CashApp payment is handled directly by the component
+    // The checkout will proceed when the backend confirms payment
+    setError(null);
+  };
+
+  const handleCashAppError = (error: string) => {
+    setError(error);
+    console.error('❌ CashApp payment error:', error);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto">
@@ -611,6 +624,17 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                    customerEmail={customerEmail}
                  />
                )}
+
+               {/* CashApp Payment Form */}
+               {selectedGateway === 'cashapp' && (
+                 <CashAppPay
+                   amount={seatCheckoutMode ? seatTotal : total}
+                   orderId={`order_${Date.now()}`}
+                   customerEmail={customerEmail}
+                   onSuccess={handleCashAppSuccess}
+                   onError={handleCashAppError}
+                 />
+               )}
              </>
            )}
 
@@ -627,7 +651,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             <Button variant="outline" onClick={onClose} disabled={isProcessing}>
               Cancel
             </Button>
-             {(items.length > 0 || seatCheckoutMode) && (
+             {(items.length > 0 || seatCheckoutMode) && selectedGateway !== 'cashapp' && (
                <Button 
                  onClick={handleCheckout} 
                  disabled={
