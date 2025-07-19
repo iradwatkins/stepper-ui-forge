@@ -157,7 +157,7 @@ export const LoginDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="w-[95vw] max-w-[425px] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Welcome Back</DialogTitle>
           <DialogDescription>

@@ -53,7 +53,7 @@ export function PaymentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Payment</DialogTitle>
           <DialogDescription>

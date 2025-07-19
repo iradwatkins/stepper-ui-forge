@@ -170,7 +170,7 @@ export function TwoFactorSetup({ userId, isEnabled, onStatusChange }: TwoFactorS
 
       {/* Setup Dialog */}
       <Dialog open={showSetup} onOpenChange={setShowSetup}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Set up Two-Factor Authentication</DialogTitle>
             <DialogDescription>
@@ -304,7 +304,7 @@ export function TwoFactorSetup({ userId, isEnabled, onStatusChange }: TwoFactorS
 
       {/* Disable Dialog */}
       <Dialog open={showDisable} onOpenChange={setShowDisable}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
             <DialogDescription>

@@ -121,7 +121,7 @@ export function ClassDetailModal({ classItem, isOpen, onClose, userLocation }: C
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{classItem.title}</DialogTitle>
         </DialogHeader>
