@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CreditCard, Smartphone, Loader2, AlertCircle } from 'lucide-react';
 import { createSquarePaymentForm, tokenizePayment } from '@/lib/payments/square-sdk';
-import { paymentConfig } from '@/lib/payment-config';
+import { getPaymentConfig } from '@/lib/payment-config';
 
 interface SquarePaymentFormProps {
   amount: number;
@@ -43,7 +43,7 @@ export function SquarePaymentForm({
       setIsLoading(true);
       setError(null);
 
-      const squareConfig = paymentConfig.square;
+      const squareConfig = getPaymentConfig().square;
       if (!squareConfig.applicationId) {
         throw new Error('Square Application ID not configured');
       }

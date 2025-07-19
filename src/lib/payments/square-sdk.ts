@@ -1,7 +1,7 @@
 // Square Web SDK Loader
 // Dynamically loads the Square Web SDK for payment processing
 
-import { paymentConfig } from '../payment-config';
+import { getPaymentConfig } from '../payment-config';
 
 declare global {
   interface Window {
@@ -35,6 +35,7 @@ export function loadSquareSDK(): Promise<void> {
     // Create script element
     const script = document.createElement('script');
     // Use production or sandbox URL based on environment
+    const paymentConfig = getPaymentConfig();
     const isProduction = paymentConfig.square.environment === 'production';
     script.src = isProduction 
       ? 'https://web.squarecdn.com/v1/square.js'
