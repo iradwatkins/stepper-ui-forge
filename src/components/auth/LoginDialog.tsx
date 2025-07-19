@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
-import { setRememberMe } from '@/lib/auth/sessionConfig';
+// Removed sessionConfig import - Remember Me is now just a UI preference
 
 interface LoginDialogProps {
   isOpen: boolean;
@@ -87,8 +87,7 @@ export const LoginDialog = ({
     setError(null);
     
     try {
-      // Set remember me preference for Google sign in too
-      setRememberMe(rememberMe);
+      // Remember Me is now just a UI preference - sessions last 7 days by default
       
       const { error } = await signInWithGoogle();
       if (error) {
@@ -139,8 +138,7 @@ export const LoginDialog = ({
     setError(null);
 
     try {
-      // Set remember me preference before signing in
-      setRememberMe(rememberMe);
+      // Remember Me is now just a UI preference - sessions last 7 days by default
       
       const { error } = await signIn(email, password);
       if (error) {

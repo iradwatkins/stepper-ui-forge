@@ -4,7 +4,7 @@ import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { setupInitialAdmin } from '@/lib/admin/setupAdmin'
 import { toast } from '@/components/ui/sonner'
-import { isRememberMeEnabled, clearSessionData, SESSION_CONFIG } from '@/lib/auth/sessionConfig'
+// Removed sessionConfig imports - using Supabase's built-in session management
 
 // Real-time registration monitoring system
 const createRegistrationLogger = () => {
@@ -100,6 +100,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     regLogger.log('init', 'AuthContext: Initializing authentication system')
+    
+    // Clean up any old session management keys to prevent conflicts
+    const cleanupOldSessionKeys = () => {
+      const oldKeys = ['stepper-auth-session', 'stepper-auth-expiry', 'stepper-remember-me']
+      oldKeys.forEach(key => {
+        try {
+          localStorage.removeItem(key)
+        } catch (e) {
+          console.warn(`Failed to remove old session key ${key}:`, e)
+        }
+      })
+      console.log('🧹 Cleaned up old session management keys')
+    }
+    
+    cleanupOldSessionKeys()
+    
+    // Add enhanced debugging for authentication issues
+    console.log('🔐 Current localStorage keys:', Object.keys(localStorage))
+    console.log('🔐 Supabase auth key content exists:', !!localStorage.getItem('stepper-auth'))
     
     // Listen for auth changes with enhanced monitoring FIRST
     const {
@@ -201,8 +220,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       regLogger.log('session', 'Initial session retrieved', {
         hasSession: !!session,
         userEmail: session?.user?.email,
-        error: error?.message
+        error: error?.message,
+        storageKeys: Object.keys(localStorage).filter(k => k.includes('auth')),
+        stepperAuthExists: !!localStorage.getItem('stepper-auth')
       })
+      
+      // Debug: log raw session data
+      if (session) {
+        console.log('🔐 Session found:', {
+          userId: session.user.id,
+          email: session.user.email,
+          expiresAt: session.expires_at,
+          expiresIn: session.expires_in
+        })
+      } else {
+        console.log('🔐 No session found on initial load')
+      }
       
       // Only update if we haven't already received this session from the listener
       if (!user || user.id !== session?.user?.id) {
@@ -334,8 +367,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }
 
   const signOut = async () => {
-    // Clear session data when signing out
-    clearSessionData()
+    // Supabase handles all session cleanup automatically
     const { error } = await supabase.auth.signOut()
     return { error }
   }

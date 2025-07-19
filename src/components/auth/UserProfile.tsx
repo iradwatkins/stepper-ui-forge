@@ -96,9 +96,9 @@ export const UserProfile = () => {
     }
   }
 
-  // Show loading spinner only during initial auth check, not after user is determined
-  if (loading && authStateId === 0) {
-    console.log('👤 UserProfile: Rendering initial loading state')
+  // Show loading spinner only during auth state loading
+  if (loading) {
+    console.log('👤 UserProfile: Rendering loading state')
     return (
       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled>
         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>

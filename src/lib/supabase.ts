@@ -18,7 +18,16 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: window.localStorage,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    // Configure session to last 7 days
+    sessionOptions: {
+      storeSession: true,
+      persistSession: true,
+      // Refresh session 1 hour before expiry
+      autoRefreshToken: true,
+      // 7 days in seconds
+      expiresIn: 7 * 24 * 60 * 60
+    }
   }
 })
 

@@ -83,3 +83,8 @@
 | Cash App disabled | ProductionPaymentService.ts | Removed from health checks until deployed | No |
 | Version tracking | ProductionPaymentService.ts | Added v2.0.1 for cache debugging | No |
 | Deploy Square function | payments-square/index.ts | Added version comment to trigger deployment | No |
+| Fix auth session conflict | supabase.ts | Added sessionOptions for 7-day sessions | No |
+| Remove sessionConfig | AuthContext.tsx | Removed custom session management | No |
+| Fix UserProfile loading | UserProfile.tsx | Changed loading condition to prevent stuck state | No |
+| Add storage cleanup | AuthContext.tsx | Clean old session keys on init | No |
+| Remove setRememberMe | Auth components | Removed sessionConfig usage from all auth forms | No |

@@ -25,7 +25,7 @@ import {
   LogInIcon
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
-import { setRememberMe } from '@/lib/auth/sessionConfig'
+// Removed sessionConfig import - Remember Me is now just a UI preference
 
 interface UnifiedAuthModalProps {
   trigger?: React.ReactNode
@@ -95,8 +95,7 @@ export const UnifiedAuthModal = ({
     setError(null)
     
     try {
-      // Set remember me preference for Google sign in too
-      setRememberMe(rememberMe)
+      // Remember Me is now just a UI preference - sessions last 7 days by default
       
       const { error } = await signInWithGoogle()
       if (error) {
@@ -152,8 +151,7 @@ export const UnifiedAuthModal = ({
     setError(null)
     
     try {
-      // Set remember me preference before authentication
-      setRememberMe(rememberMe)
+      // Remember Me is now just a UI preference - sessions last 7 days by default
       
       const { error } = authMode === 'signup' 
         ? await signUp(email, password)
