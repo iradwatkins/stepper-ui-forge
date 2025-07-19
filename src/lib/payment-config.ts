@@ -69,6 +69,34 @@ export const getPaymentConfig = (): PaymentConfig => {
     }
   });
 
+  // ENHANCED DEBUGGING: Log raw environment variables
+  console.log('🔍 RAW ENV VARIABLES:', {
+    VITE_SQUARE_ENVIRONMENT: import.meta.env.VITE_SQUARE_ENVIRONMENT,
+    VITE_SQUARE_APPLICATION_ID: import.meta.env.VITE_SQUARE_APPLICATION_ID,
+    VITE_CASHAPP_ENVIRONMENT: import.meta.env.VITE_CASHAPP_ENVIRONMENT,
+    VITE_CASHAPP_CLIENT_ID: import.meta.env.VITE_CASHAPP_CLIENT_ID,
+    VITE_MODE: import.meta.env.MODE,
+    VITE_DEV: import.meta.env.DEV,
+    VITE_PROD: import.meta.env.PROD
+  });
+
+  // CRITICAL VALIDATION: Check for environment mismatches
+  if (config.square.environment === 'production' && !isSquareProduction) {
+    console.error('🚨 SQUARE ENVIRONMENT MISMATCH DETECTED!', {
+      configEnv: config.square.environment,
+      appIdDetection: isSquareProduction,
+      appId: config.square.applicationId
+    });
+  }
+
+  if (config.cashapp.environment === 'production' && !isCashappProduction) {
+    console.error('🚨 CASH APP ENVIRONMENT MISMATCH DETECTED!', {
+      configEnv: config.cashapp.environment,
+      clientIdDetection: isCashappProduction,
+      clientId: config.cashapp.clientId
+    });
+  }
+
   return config;
 };
 

@@ -55,8 +55,18 @@ export function loadSquareSDK(): Promise<void> {
     console.log('Is Production Mode:', isProduction);
     console.log('Application ID:', paymentConfig.square.applicationId);
     console.log('Location ID:', paymentConfig.square.locationId);
-    console.log('Script URL:', scriptUrl);
-    console.log('Full Script SRC:', script.src);
+    console.log('Script URL Selected:', scriptUrl);
+    console.log('Full Script SRC with cache buster:', script.src);
+    
+    // CRITICAL DEBUG: Track URL selection logic
+    console.log('🔍 URL SELECTION DEBUG:', {
+      configEnvironment: paymentConfig.square.environment,
+      isProductionBool: isProduction,
+      expectedURL: isProduction ? 'web.squarecdn.com' : 'sandbox.web.squarecdn.com',
+      actualURL: scriptUrl,
+      urlMatch: scriptUrl.includes(isProduction ? 'web.squarecdn.com' : 'sandbox.web.squarecdn.com')
+    });
+    
     console.groupEnd();
 
     script.onload = () => {
