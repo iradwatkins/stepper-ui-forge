@@ -27,8 +27,25 @@ function generateUUID(): string {
   });
 }
 
-// Create Square payment
+// Create Square payment with better error handling
 async function createSquarePayment(sourceId: string, amount: number, currency: string = 'USD') {
+  // Log the configuration for debugging
+  console.log('Square Payment Request:', {
+    environment: SQUARE_ENVIRONMENT,
+    baseUrl: SQUARE_BASE_URL,
+    hasAccessToken: !!SQUARE_ACCESS_TOKEN,
+    hasApplicationId: !!SQUARE_APPLICATION_ID,
+    hasLocationId: !!SQUARE_LOCATION_ID,
+    locationId: SQUARE_LOCATION_ID,
+    sourceId: sourceId,
+    amount: amount
+  });
+
+  // Validate configuration
+  if (!SQUARE_ACCESS_TOKEN || !SQUARE_LOCATION_ID) {
+    throw new Error('Square configuration missing: Access token or Location ID not set');
+  }
+
   const paymentData = {
     source_id: sourceId,
     idempotency_key: generateUUID(),
@@ -39,22 +56,48 @@ async function createSquarePayment(sourceId: string, amount: number, currency: s
     location_id: SQUARE_LOCATION_ID,
   };
 
-  const response = await fetch(`${SQUARE_BASE_URL}/v2/payments`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN}`,
-      'Square-Version': '2023-10-18',
-    },
-    body: JSON.stringify(paymentData),
-  });
+  try {
+    const response = await fetch(`${SQUARE_BASE_URL}/v2/payments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN}`,
+        'Square-Version': '2023-10-18',
+      },
+      body: JSON.stringify(paymentData),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`Square payment failed: ${JSON.stringify(error)}`);
+    const responseText = await response.text();
+    let responseData;
+    
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse Square response:', responseText);
+      throw new Error(`Square API returned invalid JSON: ${responseText.substring(0, 200)}`);
+    }
+
+    if (!response.ok) {
+      console.error('Square API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: responseData,
+        environment: SQUARE_ENVIRONMENT,
+        baseUrl: SQUARE_BASE_URL
+      });
+
+      // Extract specific error details
+      const errors = responseData.errors || [];
+      const errorMessages = errors.map((e: any) => `${e.code}: ${e.detail}`).join(', ');
+      
+      throw new Error(`Square payment failed (${response.status}): ${errorMessages || JSON.stringify(responseData)}`);
+    }
+
+    return responseData;
+  } catch (error) {
+    console.error('Square payment creation error:', error);
+    throw error;
   }
-
-  return response.json();
 }
 
 // Get Square payment details
@@ -68,7 +111,8 @@ async function getSquarePayment(paymentId: string) {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to get Square payment');
+    const error = await response.json();
+    throw new Error(`Failed to get Square payment: ${JSON.stringify(error)}`);
   }
 
   return response.json();
@@ -163,6 +207,13 @@ serve(async (req) => {
       const startTime = Date.now();
       let apiStatus = 'unknown';
       let apiResponseTime = 0;
+      let configStatus = {
+        hasAccessToken: !!SQUARE_ACCESS_TOKEN,
+        hasApplicationId: !!SQUARE_APPLICATION_ID,
+        hasLocationId: !!SQUARE_LOCATION_ID,
+        environment: SQUARE_ENVIRONMENT,
+        baseUrl: SQUARE_BASE_URL,
+      };
       
       // Test API connectivity if configured
       if (SQUARE_APPLICATION_ID && SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID) {
@@ -178,9 +229,16 @@ serve(async (req) => {
           });
           
           apiResponseTime = Date.now() - apiStart;
-          apiStatus = response.ok ? 'healthy' : 'unhealthy';
+          
+          if (response.ok) {
+            apiStatus = 'healthy';
+          } else {
+            const errorData = await response.json();
+            apiStatus = `unhealthy: ${response.status} - ${JSON.stringify(errorData)}`;
+            console.error('Square health check failed:', errorData);
+          }
         } catch (error) {
-          apiStatus = 'unhealthy';
+          apiStatus = `unhealthy: ${error.message}`;
           console.error('Square health check failed:', error);
         }
       }
@@ -191,6 +249,7 @@ serve(async (req) => {
           gateway: 'square',
           environment: SQUARE_ENVIRONMENT,
           configured: !!(SQUARE_APPLICATION_ID && SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID),
+          configStatus,
           apiStatus,
           apiResponseTime,
           totalResponseTime: Date.now() - startTime,
@@ -220,14 +279,32 @@ serve(async (req) => {
             );
           }
 
-          const payment = await createSquarePayment(sourceId, amount, currency);
-          return new Response(
-            JSON.stringify({ payment }),
-            { 
-              status: 200, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
+          try {
+            const payment = await createSquarePayment(sourceId, amount, currency);
+            return new Response(
+              JSON.stringify({ payment }),
+              { 
+                status: 200, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              }
+            );
+          } catch (error) {
+            console.error('Payment creation failed:', error);
+            return new Response(
+              JSON.stringify({ 
+                error: error.message || 'Payment creation failed',
+                details: {
+                  environment: SQUARE_ENVIRONMENT,
+                  baseUrl: SQUARE_BASE_URL,
+                  hasCredentials: !!SQUARE_ACCESS_TOKEN && !!SQUARE_LOCATION_ID
+                }
+              }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              }
+            );
+          }
         }
 
         case 'get_payment': {
@@ -357,7 +434,12 @@ serve(async (req) => {
   } catch (error) {
     console.error('Square API error:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        stack: error.stack,
+        environment: SQUARE_ENVIRONMENT,
+        baseUrl: SQUARE_BASE_URL
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
