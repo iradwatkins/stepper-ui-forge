@@ -22,6 +22,16 @@ export interface PaymentConfig {
 
 // Get payment configuration from environment variables
 export const getPaymentConfig = (): PaymentConfig => {
+  // Debug logging to see what environment variables are loaded
+  console.log('🔍 Environment Variables Debug:', {
+    VITE_SQUARE_ENVIRONMENT: import.meta.env.VITE_SQUARE_ENVIRONMENT,
+    VITE_SQUARE_APPLICATION_ID: import.meta.env.VITE_SQUARE_APPLICATION_ID?.substring(0, 15) + '...',
+    VITE_CASHAPP_ENVIRONMENT: import.meta.env.VITE_CASHAPP_ENVIRONMENT,
+    VITE_CASHAPP_CLIENT_ID: import.meta.env.VITE_CASHAPP_CLIENT_ID?.substring(0, 15) + '...',
+    DEV: import.meta.env.DEV,
+    MODE: import.meta.env.MODE
+  });
+
   const config: PaymentConfig = {
     paypal: {
       clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || '',
@@ -29,14 +39,14 @@ export const getPaymentConfig = (): PaymentConfig => {
       environment: (import.meta.env.VITE_PAYPAL_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
     },
     square: {
-      applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID || '',
+      applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID || 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
       accessToken: import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '',
-      environment: (import.meta.env.VITE_SQUARE_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
-      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || '',
+      environment: (import.meta.env.VITE_SQUARE_ENVIRONMENT as 'sandbox' | 'production') || 'production',
+      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || 'L0Q2YC1SPBGD8',
     },
     cashapp: {
-      clientId: import.meta.env.VITE_CASHAPP_CLIENT_ID || '',
-      environment: (import.meta.env.VITE_CASHAPP_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+      clientId: import.meta.env.VITE_CASHAPP_CLIENT_ID || 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
+      environment: (import.meta.env.VITE_CASHAPP_ENVIRONMENT as 'sandbox' | 'production') || 'production',
     },
     webhookUrl: import.meta.env.VITE_PAYMENT_WEBHOOK_URL,
   };
