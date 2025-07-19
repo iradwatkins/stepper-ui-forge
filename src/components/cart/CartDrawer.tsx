@@ -6,8 +6,11 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CartItem as CartItemComponent } from './CartItem';
 import { useCart } from '@/contexts/CartContext';
-import { ShoppingBag, X, CreditCard } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ShoppingBag, X, CreditCard, LogIn } from 'lucide-react';
 import { CheckoutModal } from '@/components/CheckoutModal';
+import { LoginDialog } from '@/components/auth/LoginDialog';
+import { toast } from 'sonner';
 
 interface CartDrawerProps {
   open: boolean;
@@ -16,11 +19,28 @@ interface CartDrawerProps {
 
 export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
   const { items, totalItems, subtotal, fees, total, clearCart } = useCart();
+  const { user } = useAuth();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   const handleCheckout = () => {
-    onOpenChange(false); // Close drawer
-    setIsCheckoutOpen(true); // Open checkout modal
+    if (!user) {
+      // Show login dialog for unauthenticated users
+      setShowLogin(true);
+      toast.info('Please sign in to complete your purchase');
+    } else {
+      onOpenChange(false); // Close drawer
+      setIsCheckoutOpen(true); // Open checkout modal
+    }
+  };
+
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+    // Store checkout intent
+    localStorage.setItem('checkoutIntent', 'true');
+    // Close cart drawer and open checkout
+    onOpenChange(false);
+    setIsCheckoutOpen(true);
   };
 
   const handleClearCart = () => {
@@ -98,9 +118,19 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
                   <Button 
                     className="w-full text-sm sm:text-base h-10 sm:h-11" 
                     onClick={handleCheckout}
+                    variant={!user ? "outline" : "default"}
                   >
-                    <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                    Proceed to Checkout
+                    {!user ? (
+                      <>
+                        <LogIn className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                        Sign In to Checkout
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                        Proceed to Checkout
+                      </>
+                    )}
                   </Button>
                   
                   <div className="flex gap-1 sm:gap-2">
@@ -132,6 +162,14 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
       <CheckoutModal 
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
+      />
+      
+      {/* Login Dialog */}
+      <LoginDialog
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={handleLoginSuccess}
+        redirectPath="/checkout"
       />
     </>
   );

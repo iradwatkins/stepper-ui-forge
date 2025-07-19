@@ -59,3 +59,10 @@
 | Add follower system availability check | FollowerService.ts | Added system availability tracking to prevent 404s | No |
 | Conditional follower loading | Dashboard components | Skip follower calls when system unavailable | No |
 | Prevent auth interference | Multiple components | Stop follower 404s from breaking OAuth flow | No |
+| Implement PayPal webhook verification | payments-paypal/index.ts | Added proper HMAC signature verification | No |
+| Implement Square webhook verification | payments-square/index.ts | Added HMAC-SHA256 signature verification | No |
+| Add comprehensive error handling | ProductionPaymentService.ts | Added error mapping and user-friendly messages | No |
+| Implement payment logging | ProductionPaymentService.ts | Integrated PaymentLogger throughout service | No |
+| Add retry mechanism | ProductionPaymentService.ts | Added exponential backoff retry with idempotency | No |
+| Create health check endpoints | Edge Functions & Service | Added gateway health monitoring | No |
+| Fix Edge Function linting | payments-paypal/square | Added block scopes to case statements | No |

@@ -163,38 +163,77 @@ export class PaymentConfigurationService {
     description: string;
     available: boolean;
   }>> {
-    const configurations = await this.getActiveConfigurations();
-    
-    const methods = [
-      {
-        id: 'paypal',
-        name: 'PayPal',
-        description: 'Pay with PayPal account or credit card',
-        available: false
-      },
-      {
-        id: 'square',
-        name: 'Credit/Debit Card',
-        description: 'Pay with credit or debit card via Square',
-        available: false
-      },
-      {
-        id: 'cashapp',
-        name: 'Cash App Pay',
-        description: 'Pay with Cash App',
-        available: false
-      }
-    ];
+    try {
+      const configurations = await this.getActiveConfigurations();
+      
+      const methods = [
+        {
+          id: 'paypal',
+          name: 'PayPal',
+          description: 'Pay with PayPal account or credit card',
+          available: false
+        },
+        {
+          id: 'square',
+          name: 'Credit/Debit Card',
+          description: 'Pay with credit or debit card via Square',
+          available: false
+        },
+        {
+          id: 'cashapp',
+          name: 'Cash App Pay',
+          description: 'Pay with Cash App',
+          available: false
+        }
+      ];
 
-    // Mark methods as available based on active configurations
-    configurations.forEach(config => {
-      const method = methods.find(m => m.id === config.gateway_name);
-      if (method) {
-        method.available = true;
-      }
-    });
+      // Mark methods as available based on active configurations
+      configurations.forEach(config => {
+        const method = methods.find(m => m.id === config.gateway_name);
+        if (method) {
+          method.available = true;
+        }
+      });
 
-    return methods.filter(method => method.available);
+      // Filter to only return available methods
+      const availableMethods = methods.filter(method => method.available);
+      
+      // If no methods are configured, return all methods for development/testing
+      if (availableMethods.length === 0 && import.meta.env.DEV) {
+        console.warn('No payment methods configured. Returning all methods for development.');
+        return methods.map(m => ({ ...m, available: true }));
+      }
+      
+      return availableMethods;
+    } catch (error) {
+      console.error('Error loading payment configurations:', error);
+      
+      // Return all methods in development mode if there's an error
+      if (import.meta.env.DEV) {
+        return [
+          {
+            id: 'paypal',
+            name: 'PayPal',
+            description: 'Pay with PayPal account or credit card',
+            available: true
+          },
+          {
+            id: 'square',
+            name: 'Credit/Debit Card',
+            description: 'Pay with credit or debit card via Square',
+            available: true
+          },
+          {
+            id: 'cashapp',
+            name: 'Cash App Pay',
+            description: 'Pay with Cash App',
+            available: true
+          }
+        ];
+      }
+      
+      throw error;
+    }
   }
 
   /**

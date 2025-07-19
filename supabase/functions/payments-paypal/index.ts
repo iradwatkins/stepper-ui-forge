@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 // PayPal API configuration
 const PAYPAL_CLIENT_ID = Deno.env.get('PAYPAL_CLIENT_ID');
 const PAYPAL_CLIENT_SECRET = Deno.env.get('PAYPAL_CLIENT_SECRET');
+const PAYPAL_WEBHOOK_ID = Deno.env.get('PAYPAL_WEBHOOK_ID');
 const PAYPAL_ENVIRONMENT = Deno.env.get('PAYPAL_ENVIRONMENT') || 'sandbox';
 
 const PAYPAL_BASE_URL = PAYPAL_ENVIRONMENT === 'production' 
@@ -87,10 +88,63 @@ async function capturePayPalOrder(orderId: string) {
 }
 
 // Verify PayPal webhook signature
-function verifyPayPalWebhook(headers: any, body: string): boolean {
-  // In production, implement proper webhook signature verification
-  // For now, return true - but this should be implemented for security
-  return true;
+async function verifyPayPalWebhook(headers: Headers, body: string): Promise<boolean> {
+  try {
+    // PayPal webhook headers
+    const transmissionId = headers.get('paypal-transmission-id');
+    const transmissionTime = headers.get('paypal-transmission-time');
+    const certUrl = headers.get('paypal-cert-url');
+    const authAlgo = headers.get('paypal-auth-algo');
+    const transmissionSig = headers.get('paypal-transmission-sig');
+    
+    // Check if webhook ID is configured
+    if (!PAYPAL_WEBHOOK_ID) {
+      console.error('PAYPAL_WEBHOOK_ID not configured');
+      return false;
+    }
+    
+    // Check if all required headers are present
+    if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !transmissionSig) {
+      console.error('Missing required PayPal webhook headers');
+      return false;
+    }
+    
+    // Get access token for verification
+    const accessToken = await getPayPalAccessToken();
+    
+    // Prepare verification request
+    const verificationRequest = {
+      auth_algo: authAlgo,
+      cert_url: certUrl,
+      transmission_id: transmissionId,
+      transmission_sig: transmissionSig,
+      transmission_time: transmissionTime,
+      webhook_id: PAYPAL_WEBHOOK_ID,
+      webhook_event: JSON.parse(body)
+    };
+    
+    // Call PayPal verification endpoint
+    const response = await fetch(`${PAYPAL_BASE_URL}/v1/notifications/verify-webhook-signature`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(verificationRequest),
+    });
+    
+    if (!response.ok) {
+      console.error('PayPal webhook verification failed:', await response.text());
+      return false;
+    }
+    
+    const result = await response.json();
+    return result.verification_status === 'SUCCESS';
+    
+  } catch (error) {
+    console.error('Error verifying PayPal webhook:', error);
+    return false;
+  }
 }
 
 serve(async (req) => {
@@ -105,11 +159,33 @@ serve(async (req) => {
 
     // Health check for GET requests
     if (method === 'GET') {
+      const startTime = Date.now();
+      let apiStatus = 'unknown';
+      let apiResponseTime = 0;
+      
+      // Test API connectivity if configured
+      if (PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET) {
+        try {
+          const tokenStart = Date.now();
+          await getPayPalAccessToken();
+          apiResponseTime = Date.now() - tokenStart;
+          apiStatus = 'healthy';
+        } catch (error) {
+          apiStatus = 'unhealthy';
+          console.error('PayPal health check failed:', error);
+        }
+      }
+      
       return new Response(
         JSON.stringify({ 
-          status: 'ok', 
+          status: 'ok',
+          gateway: 'paypal',
           environment: PAYPAL_ENVIRONMENT,
-          configured: !!(PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET)
+          configured: !!(PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET),
+          apiStatus,
+          apiResponseTime,
+          totalResponseTime: Date.now() - startTime,
+          timestamp: new Date().toISOString()
         }),
         { 
           status: 200, 
@@ -122,7 +198,7 @@ serve(async (req) => {
       const { action, ...payload } = await req.json();
 
       switch (action) {
-        case 'create_order':
+        case 'create_order': {
           const { amount, currency } = payload;
           
           if (!amount || amount <= 0) {
@@ -143,8 +219,9 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
+        }
 
-        case 'capture_order':
+        case 'capture_order': {
           const { orderId } = payload;
           
           if (!orderId) {
@@ -165,12 +242,14 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
+        }
 
-        case 'webhook':
+        case 'webhook': {
           const body = await req.text();
-          const headers = Object.fromEntries(req.headers.entries());
           
-          if (!verifyPayPalWebhook(headers, body)) {
+          // Verify webhook signature
+          const isValid = await verifyPayPalWebhook(req.headers, body);
+          if (!isValid) {
             return new Response(
               JSON.stringify({ error: 'Invalid webhook signature' }),
               { 
@@ -184,6 +263,24 @@ serve(async (req) => {
           const webhookData = JSON.parse(body);
           console.log('PayPal webhook received:', webhookData.event_type);
           
+          // Handle specific webhook events
+          switch (webhookData.event_type) {
+            case 'PAYMENT.CAPTURE.COMPLETED':
+              console.log('Payment captured:', webhookData.resource.id);
+              // TODO: Update order status in database
+              break;
+            case 'PAYMENT.CAPTURE.DENIED':
+              console.log('Payment denied:', webhookData.resource.id);
+              // TODO: Handle payment failure
+              break;
+            case 'PAYMENT.CAPTURE.REFUNDED':
+              console.log('Payment refunded:', webhookData.resource.id);
+              // TODO: Handle refund
+              break;
+            default:
+              console.log('Unhandled webhook event:', webhookData.event_type);
+          }
+          
           return new Response(
             JSON.stringify({ success: true }),
             { 
@@ -191,6 +288,7 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
+        }
 
         default:
           return new Response(

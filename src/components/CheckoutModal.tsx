@@ -15,6 +15,7 @@ import { OrderService } from "@/lib/services/OrderService";
 import { TicketService } from "@/lib/services/TicketService";
 import { EmailService } from "@/lib/services/EmailService";
 import { seatingService } from "@/lib/services/SeatingService";
+import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
 import { toast } from "sonner";
 
 interface SeatDetails {
@@ -267,6 +268,17 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           </DialogDescription>
         </DialogHeader>
 
+        {/* Show auth guard if user is not authenticated */}
+        {!user ? (
+          <CheckoutAuthGuard 
+            itemCount={seatCheckoutMode ? (selectedSeats?.length || 0) : items.length}
+            totalAmount={seatCheckoutMode ? seatTotal : total}
+            onAuthenticated={() => {
+              // The modal will re-render with authenticated user
+              // and show the checkout form
+            }}
+          />
+        ) : (
         <div className="space-y-6">
           {/* Order Summary */}
           <Card>
@@ -542,6 +554,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             )}
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

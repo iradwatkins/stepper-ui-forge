@@ -8,6 +8,8 @@ import { AdvancedFiltersModal } from "@/components/AdvancedFiltersModal";
 import { getCategoryId } from "@/lib/constants/event-categories";
 import { UnifiedSearchComponent } from "@/components/search/UnifiedSearchComponent";
 import { SearchResult } from "@/lib/services/CategorySearchService";
+import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
+import { PastEventImage } from "@/components/event/PastEventImage";
 
 interface EventImageData {
   original?: string;
@@ -37,6 +39,7 @@ const Events = () => {
   const [capacityRange, setCapacityRange] = useState({ min: 0, max: 0 });
   const [timeOfDay, setTimeOfDay] = useState("any");
   const [advancedEventType, setAdvancedEventType] = useState("any");
+  const [showPastEvents, setShowPastEvents] = useState(false);
 
   // Helper function to get state name from abbreviation
   const getStateName = (abbreviation: string): string => {
@@ -84,7 +87,7 @@ const Events = () => {
       setLoading(true);
       try {
         console.log('🔍 Loading events from Events page...');
-        const publicEvents = await EventsService.getPublicEvents(50, 0);
+        const publicEvents = await EventsService.getPublicEvents(50, 0, showPastEvents);
         console.log('📊 Loaded events:', publicEvents);
         
         // Debug: Log category data for each event
@@ -107,7 +110,7 @@ const Events = () => {
     };
 
     loadEvents();
-  }, []);
+  }, [showPastEvents]);
 
 
   const filteredEvents = events.filter(event => {
@@ -354,22 +357,22 @@ const Events = () => {
         <div className="bg-card rounded-xl border-2 border-border overflow-hidden hover:shadow-lg transition-shadow duration-200">
           {/* Image Container */}
           <div className="relative">
-            {imageUrl ? (
-              <img
-                src={imageUrl}
+            <div className="w-full h-56">
+              <PastEventImage
+                eventDate={event.date}
+                imageUrl={imageUrl}
                 alt={event.title}
-                className="w-full h-56 object-cover"
+                className="w-full h-full object-cover"
+                showPlaceholder={true}
               />
-            ) : (
-              <div className="w-full h-56 bg-muted flex items-center justify-center">
-                <span className="text-muted-foreground">No image</span>
+            </div>
+            
+            {/* Price Badge - only show if not past 7 days */}
+            {!isEventPast7Days(event.date) && (
+              <div className="absolute top-3 left-3 bg-card/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-foreground border border-border">
+                {getEventPrice(event)}
               </div>
             )}
-            
-            {/* Price Badge */}
-            <div className="absolute top-3 left-3 bg-card/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-foreground border border-border">
-              {getEventPrice(event)}
-            </div>
           </div>
 
         {/* Content Container */}
@@ -411,8 +414,12 @@ const Events = () => {
             <span className="font-medium">{event.follower_count || 0} followers</span>
           </div>
 
-          {/* Tickets Button */}
-          {shouldShowTicketsButton(event) && (
+          {/* Tickets Button or Past Event Indicator */}
+          {isEventPast(event.date) ? (
+            <div className="w-full mt-4 py-3 px-6 bg-gray-100 text-gray-500 font-semibold rounded-full text-center">
+              Event Ended
+            </div>
+          ) : shouldShowTicketsButton(event) && (
             <button className="w-full mt-4 py-3 px-6 bg-primary text-primary-foreground font-semibold rounded-full hover:bg-primary/90 transition-colors">
               Tickets
             </button>
@@ -618,17 +625,13 @@ const Events = () => {
               <div className="relative">
                 {/* Hero Image */}
                 <div className="relative h-96 md:h-[500px]">
-                  {(featuredEvent.images as EventImages)?.banner?.original || (featuredEvent.images as EventImages)?.postcard?.original ? (
-                    <img
-                      src={(featuredEvent.images as EventImages)?.banner?.original || (featuredEvent.images as EventImages)?.postcard?.original}
-                      alt={featuredEvent.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                      <span className="text-muted-foreground text-xl">Featured Event</span>
-                    </div>
-                  )}
+                  <PastEventImage
+                    eventDate={featuredEvent.date}
+                    imageUrl={(featuredEvent.images as EventImages)?.banner?.original || (featuredEvent.images as EventImages)?.postcard?.original}
+                    alt={featuredEvent.title}
+                    className="w-full h-full object-cover"
+                    showPlaceholder={true}
+                  />
                   
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -703,6 +706,8 @@ const Events = () => {
           setSortBy={setSortBy}
           showAdvancedFilters={showAdvancedFilters}
           setShowAdvancedFilters={setShowAdvancedFilters}
+          showPastEvents={showPastEvents}
+          setShowPastEvents={setShowPastEvents}
         />
 
         {/* Events Display */}

@@ -2,6 +2,8 @@
 // Simplified version for production deployment
 
 import { supabase } from '@/integrations/supabase/client'
+import { RateLimitService } from './RateLimitService'
+import { ticketLogger, TicketEventType } from './TicketLogger'
 
 export interface TicketData {
   id: string
@@ -44,7 +46,7 @@ export interface BulkValidationSummary {
 }
 
 export class QRValidationService {
-  static async validateQRCode(qrCodeData: string): Promise<QRValidationResult> {
+  static async validateQRCode(qrCodeData: string, ipAddress?: string): Promise<QRValidationResult> {
     try {
       let ticketId: string;
       let validationHash: string | null = null;
@@ -64,6 +66,16 @@ export class QRValidationService {
           if (validationHash) {
             const expectedHash = this.generateValidationHash(ticketId, qrData.eventId, qrData.orderId);
             if (validationHash !== expectedHash) {
+              await ticketLogger.warn(
+                TicketEventType.VALIDATION_HASH_MISMATCH,
+                `Validation hash mismatch for ticket ${ticketId}`,
+                {
+                  ticket_id: ticketId,
+                  ip_address: ipAddress,
+                  metadata: { expectedHash, receivedHash: validationHash }
+                }
+              );
+              
               return {
                 valid: false,
                 message: 'Invalid QR code - tampered data detected',
@@ -77,6 +89,44 @@ export class QRValidationService {
         }
       }
       
+      // Check rate limit
+      const rateLimitKey = RateLimitService.getQRValidationKey(ticketId, ipAddress);
+      const { allowed, remainingAttempts, resetTime } = await RateLimitService.checkRateLimit(
+        rateLimitKey,
+        RateLimitService.CONFIGS.QR_VALIDATION
+      );
+
+      if (!allowed) {
+        // Log suspicious activity if blocked
+        if (remainingAttempts === 0) {
+          await RateLimitService.logSuspiciousActivity('qr_validation_blocked', {
+            key: rateLimitKey,
+            attempts: RateLimitService.CONFIGS.QR_VALIDATION.maxAttempts,
+            ipAddress,
+            metadata: { ticketId }
+          });
+          
+          await ticketLogger.warn(
+            TicketEventType.VALIDATION_RATE_LIMITED,
+            `Rate limit exceeded for ticket validation`,
+            {
+              ticket_id: ticketId,
+              ip_address: ipAddress,
+              metadata: { 
+                attempts: RateLimitService.CONFIGS.QR_VALIDATION.maxAttempts,
+                resetTime: new Date(resetTime!).toISOString()
+              }
+            }
+          );
+        }
+        
+        return {
+          valid: false,
+          message: `Too many validation attempts. Please try again later.`,
+          error: `Rate limit exceeded. Reset at ${new Date(resetTime!).toLocaleTimeString()}`
+        };
+      }
+      
       const { data: ticket, error } = await supabase
         .from('tickets')
         .select(`
@@ -88,6 +138,14 @@ export class QRValidationService {
         .single()
 
       if (error || !ticket) {
+        await ticketLogger.logValidation(
+          ticketId,
+          false,
+          'Ticket not found',
+          ipAddress,
+          { error: error?.message }
+        );
+        
         return {
           valid: false,
           message: 'Invalid ticket code',
@@ -96,6 +154,18 @@ export class QRValidationService {
       }
 
       if (ticket.status === 'used') {
+        await ticketLogger.logValidation(
+          ticketId,
+          false,
+          'Ticket already used',
+          ipAddress,
+          { 
+            status: ticket.status,
+            checkedInAt: ticket.checked_in_at,
+            checkedInBy: ticket.checked_in_by
+          }
+        );
+        
         return {
           valid: false,
           message: 'Ticket already used',
@@ -105,6 +175,14 @@ export class QRValidationService {
       }
 
       if (ticket.status !== 'active') {
+        await ticketLogger.logValidation(
+          ticketId,
+          false,
+          `Invalid ticket status: ${ticket.status}`,
+          ipAddress,
+          { status: ticket.status }
+        );
+        
         return {
           valid: false,
           message: 'Ticket is not active',
@@ -112,6 +190,18 @@ export class QRValidationService {
           error: 'Ticket status is not active'
         }
       }
+
+      // Log successful validation
+      await ticketLogger.logValidation(
+        ticketId,
+        true,
+        'Ticket validated successfully',
+        ipAddress,
+        { 
+          eventId: ticket.events?.id,
+          ticketType: ticket.ticket_types?.name
+        }
+      );
 
       return {
         valid: true,
@@ -142,6 +232,14 @@ export class QRValidationService {
         .single()
 
       if (error || !ticket) {
+        await ticketLogger.logCheckIn(
+          ticketId,
+          false,
+          checkedInBy || 'unknown',
+          'Failed to update ticket status',
+          { error: error?.message }
+        );
+        
         return {
           success: false,
           message: 'Check-in failed',
@@ -149,12 +247,28 @@ export class QRValidationService {
         }
       }
 
+      // Log successful check-in
+      await ticketLogger.logCheckIn(
+        ticketId,
+        true,
+        checkedInBy || 'unknown',
+        'Ticket checked in successfully',
+        { ticketData: ticket }
+      );
+
       return {
         success: true,
         message: 'Ticket checked in successfully',
         ticketId
       }
     } catch (error) {
+      await ticketLogger.error(
+        TicketEventType.CHECKIN_FAILED,
+        `Check-in error for ticket ${ticketId}`,
+        error as Error,
+        { ticket_id: ticketId, user_id: checkedInBy }
+      );
+      
       return {
         success: false,
         message: 'Check-in failed',
@@ -163,9 +277,9 @@ export class QRValidationService {
     }
   }
 
-  static async validateAndCheckIn(qrCodeData: string, checkedInBy?: string): Promise<CheckInResult> {
+  static async validateAndCheckIn(qrCodeData: string, checkedInBy?: string, ipAddress?: string): Promise<CheckInResult> {
     try {
-      const validation = await this.validateQRCode(qrCodeData)
+      const validation = await this.validateQRCode(qrCodeData, ipAddress)
       
       if (!validation.valid || !validation.ticket) {
         return {
@@ -174,6 +288,10 @@ export class QRValidationService {
           error: validation.error
         }
       }
+
+      // Record successful validation
+      const rateLimitKey = RateLimitService.getQRValidationKey(validation.ticket.id, ipAddress);
+      RateLimitService.recordSuccess(rateLimitKey);
 
       return await this.checkInTicket(validation.ticket.id, checkedInBy)
     } catch (error) {

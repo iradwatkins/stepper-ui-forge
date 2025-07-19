@@ -19,6 +19,9 @@ import {
   Download,
   RefreshCw
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { AnalyticsService } from '@/lib/services/AnalyticsService'
+import { useToast } from '@/hooks/use-toast'
 
 interface AnalyticsData {
   salesTrend: Array<{ date: string; sales: number; revenue: number }>
@@ -28,45 +31,74 @@ interface AnalyticsData {
 }
 
 export default function TicketAnalytics() {
+  const { user } = useAuth()
+  const { toast } = useToast()
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState('30d')
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d')
 
   useEffect(() => {
     loadAnalyticsData()
-  }, [timeRange])
+  }, [timeRange, user?.id])
 
   const loadAnalyticsData = async () => {
+    if (!user?.id) return
+    
     try {
       setIsLoading(true)
       
-      // TODO: Replace with actual API calls
-      // const analyticsData = await AnalyticsService.getTicketAnalytics(user?.id, timeRange)
-      
-      // For now, initialize with empty data
-      setAnalyticsData({
-        salesTrend: [],
-        topEvents: [],
-        salesByType: [],
-        timeDistribution: []
-      })
+      const data = await AnalyticsService.getTicketAnalytics(user.id, timeRange)
+      setAnalyticsData(data)
       
     } catch (error) {
       console.error('Error loading analytics data:', error)
+      toast({
+        title: 'Error loading analytics',
+        description: 'Failed to load analytics data. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
   const getCurrentStats = () => {
-    if (!analyticsData) return null
+    if (!analyticsData || analyticsData.salesTrend.length === 0) return null
     
     const totalSales = analyticsData.salesTrend.reduce((sum, day) => sum + day.sales, 0)
     const totalRevenue = analyticsData.salesTrend.reduce((sum, day) => sum + day.revenue, 0)
-    const avgDailySales = Math.round(totalSales / analyticsData.salesTrend.length)
-    const avgDailyRevenue = Math.round(totalRevenue / analyticsData.salesTrend.length)
+    const avgDailySales = Math.round(totalSales / analyticsData.salesTrend.length) || 0
+    const avgDailyRevenue = Math.round(totalRevenue / analyticsData.salesTrend.length) || 0
 
     return { totalSales, totalRevenue, avgDailySales, avgDailyRevenue }
+  }
+
+  const handleExport = async () => {
+    if (!user?.id) return
+    
+    try {
+      const blob = await AnalyticsService.exportAnalytics(user.id, timeRange, 'csv')
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ticket-analytics-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast({
+        title: 'Export successful',
+        description: 'Analytics data has been exported to CSV.',
+      })
+    } catch (error) {
+      console.error('Error exporting analytics:', error)
+      toast({
+        title: 'Export failed',
+        description: 'Failed to export analytics data.',
+        variant: 'destructive',
+      })
+    }
   }
 
   const stats = getCurrentStats()
@@ -119,7 +151,7 @@ export default function TicketAnalytics() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -162,7 +194,9 @@ export default function TicketAnalytics() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Avg Ticket Price</p>
-                  <p className="text-2xl font-bold">${Math.round(stats.totalRevenue / stats.totalSales)}</p>
+                  <p className="text-2xl font-bold">
+                    ${stats.totalSales > 0 ? Math.round(stats.totalRevenue / stats.totalSales) : 0}
+                  </p>
                   <p className="text-xs text-green-600 mt-1 flex items-center">
                     <TrendingUp className="w-3 h-3 mr-1" />
                     +5% from last period

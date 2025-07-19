@@ -37,6 +37,8 @@ interface EventFiltersProps {
   setSortBy: (sort: string) => void;
   showAdvancedFilters: boolean;
   setShowAdvancedFilters: (show: boolean) => void;
+  showPastEvents?: boolean;
+  setShowPastEvents?: (show: boolean) => void;
 }
 
 export function EventFilters({ 
@@ -53,7 +55,9 @@ export function EventFilters({
   sortBy,
   setSortBy,
   showAdvancedFilters,
-  setShowAdvancedFilters
+  setShowAdvancedFilters,
+  showPastEvents,
+  setShowPastEvents
 }: EventFiltersProps) {
 
   return (
@@ -157,6 +161,21 @@ export function EventFilters({
               <SlidersHorizontal className="h-5 w-5" />
               Advanced
             </button>
+            
+            {/* Show Past Events Toggle */}
+            {setShowPastEvents && (
+              <label className="flex items-center gap-3 px-6 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl bg-white dark:bg-gray-900 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200 shadow-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showPastEvents || false}
+                  onChange={(e) => setShowPastEvents(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Show Past Events
+                </span>
+              </label>
+            )}
           </div>
         </div>
       </div>

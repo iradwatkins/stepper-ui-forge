@@ -1,8 +1,30 @@
 import { supabase } from '@/integrations/supabase/client'
 import QRCode from 'qrcode'
 import { v4 as uuidv4 } from 'uuid'
+import type { Database } from '@/integrations/supabase/types'
+import { ticketLogger, TicketEventType } from './TicketLogger'
 
-const db = supabase as any
+type Tables = Database['public']['Tables']
+type Order = Tables['orders']['Row']
+type OrderItem = Tables['order_items']['Row']
+type TicketType = Tables['ticket_types']['Row']
+type Event = Tables['events']['Row']
+type Ticket = Tables['tickets']['Row']
+
+interface OrderWithItems extends Order {
+  order_items: Array<OrderItem & {
+    ticket_types: TicketType & {
+      events: Pick<Event, 'id' | 'title' | 'date' | 'venue' | 'location'>
+    }
+  }>
+}
+
+interface TicketWithRelations extends Ticket {
+  ticket_types: TicketType & {
+    events: Pick<Event, 'id' | 'title' | 'date' | 'venue' | 'location' | 'organizer_id'>
+  }
+  orders: Pick<Order, 'id' | 'customer_email' | 'customer_name' | 'total_amount' | 'created_at'>
+}
 
 interface TicketData {
   id: string
@@ -41,9 +63,15 @@ interface QRCodeData {
 
 export class TicketService {
   static async generateTicketsForOrder(orderId: string): Promise<TicketData[]> {
+    const startTime = Date.now();
+    
     try {
+      ticketLogger.info(TicketEventType.TICKET_CREATED, `Starting ticket generation for order ${orderId}`, {
+        metadata: { orderId }
+      });
+      
       // Get order details with items
-      const { data: order, error: orderError } = await db
+      const { data: order, error: orderError } = await supabase
         .from('orders')
         .select(`
           *,
@@ -67,10 +95,11 @@ export class TicketService {
       if (orderError) throw orderError
       if (!order) throw new Error('Order not found')
 
+      const typedOrder = order as unknown as OrderWithItems
       const tickets: TicketData[] = []
 
       // Create individual tickets for each order item
-      for (const item of order.order_items) {
+      for (const item of typedOrder.order_items) {
         const ticketType = item.ticket_types
         const event = ticketType.events
 
@@ -91,14 +120,25 @@ export class TicketService {
           }
 
           // Generate QR code image
-          const qrCodeString = await QRCode.toDataURL(JSON.stringify(qrData), {
-            width: 256,
-            margin: 2,
-            color: {
-              dark: '#000000',
-              light: '#FFFFFF'
-            }
-          })
+          let qrCodeString: string;
+          try {
+            qrCodeString = await QRCode.toDataURL(JSON.stringify(qrData), {
+              width: 256,
+              margin: 2,
+              color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+              }
+            });
+          } catch (qrError) {
+            await ticketLogger.error(
+              TicketEventType.QR_GENERATION_FAILED,
+              `Failed to generate QR code for ticket ${ticketId}`,
+              qrError as Error,
+              { ticket_id: ticketId, event_id: event.id }
+            );
+            throw qrError;
+          }
 
           // Create ticket record
           const ticketInsert: TicketInsert = {
@@ -112,27 +152,60 @@ export class TicketService {
             status: 'active'
           }
 
-          const { data: ticket, error: ticketError } = await db
+          const { data: ticket, error: ticketError } = await supabase
             .from('tickets')
             .insert(ticketInsert)
             .select()
             .single()
 
           if (ticketError) throw ticketError
-          tickets.push(ticket)
+          if (ticket) {
+            tickets.push(ticket as TicketData);
+            
+            // Log successful ticket creation
+            await ticketLogger.logTicketCreated(
+              ticketId,
+              event.id,
+              typedOrder.customer_email,
+              {
+                ticketType: ticketType.name,
+                eventTitle: event.title,
+                orderItemId: item.id
+              }
+            );
+          }
         }
       }
 
+      const duration = Date.now() - startTime;
+      await ticketLogger.info(
+        TicketEventType.TICKET_CREATED,
+        `Successfully generated ${tickets.length} tickets for order ${orderId}`,
+        {
+          metadata: { orderId, ticketCount: tickets.length },
+          duration_ms: duration
+        }
+      );
+
       return tickets
     } catch (error) {
-      console.error('Error generating tickets:', error)
+      const duration = Date.now() - startTime;
+      await ticketLogger.error(
+        TicketEventType.DATABASE_ERROR,
+        `Failed to generate tickets for order ${orderId}`,
+        error as Error,
+        {
+          metadata: { orderId },
+          duration_ms: duration
+        }
+      );
       throw error
     }
   }
 
-  static async getTicketsByUser(userId: string): Promise<TicketData[]> {
+  static async getTicketsByUser(userId: string): Promise<TicketWithRelations[]> {
     try {
-      const { data: tickets, error } = await db
+      const { data: tickets, error } = await supabase
         .from('tickets')
         .select(`
           *,
@@ -159,16 +232,16 @@ export class TicketService {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return tickets || []
+      return (tickets || []) as unknown as TicketWithRelations[]
     } catch (error) {
       console.error('Error fetching user tickets:', error)
       throw error
     }
   }
 
-  static async getTicketById(ticketId: string): Promise<TicketData | null> {
+  static async getTicketById(ticketId: string): Promise<TicketWithRelations | null> {
     try {
-      const { data: ticket, error } = await db
+      const { data: ticket, error } = await supabase
         .from('tickets')
         .select(`
           *,
@@ -187,14 +260,14 @@ export class TicketService {
         .single()
 
       if (error) throw error
-      return ticket
+      return ticket as unknown as TicketWithRelations
     } catch (error) {
       console.error('Error fetching ticket:', error)
       return null
     }
   }
 
-  static async validateTicket(ticketId: string): Promise<{ valid: boolean; ticket?: TicketData; error?: string }> {
+  static async validateTicket(ticketId: string): Promise<{ valid: boolean; ticket?: TicketWithRelations; error?: string }> {
     try {
       const ticket = await this.getTicketById(ticketId)
       
@@ -215,7 +288,7 @@ export class TicketService {
 
   static async markTicketAsUsed(ticketId: string): Promise<boolean> {
     try {
-      const { error } = await db
+      const { error } = await supabase
         .from('tickets')
         .update({ 
           status: 'used',

@@ -28,7 +28,8 @@ export interface PaymentLoggerConfig {
   maxLogEntries: number;
 }
 
-class PaymentLogger {
+export class PaymentLogger {
+  private static instance: PaymentLogger | null = null;
   private config: PaymentLoggerConfig;
   private logs: PaymentLogEntry[] = [];
   private sensitiveKeys = [
@@ -37,8 +38,21 @@ class PaymentLogger {
     'ssn', 'socialSecurityNumber', 'taxId', 'drivingLicense'
   ];
 
-  constructor(config: PaymentLoggerConfig) {
+  private constructor(config: PaymentLoggerConfig) {
     this.config = config;
+  }
+
+  static getInstance(): PaymentLogger {
+    if (!PaymentLogger.instance) {
+      PaymentLogger.instance = new PaymentLogger({
+        enabled: true,
+        level: import.meta.env.DEV ? 'debug' : 'info',
+        includeMetadata: true,
+        redactSensitiveData: true,
+        maxLogEntries: 1000
+      });
+    }
+    return PaymentLogger.instance;
   }
 
   /**
@@ -423,15 +437,54 @@ class PaymentLogger {
   private generateTransactionId(): string {
     return `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
+
+  // Simplified logging methods for easier use
+  debug(message: string, data?: any): void {
+    this.addLog({
+      level: 'debug',
+      gateway: 'system' as PaymentGateway,
+      event: message,
+      metadata: data
+    });
+  }
+
+  info(message: string, data?: any): void {
+    this.addLog({
+      level: 'info',
+      gateway: data?.gateway || 'system' as PaymentGateway,
+      event: message,
+      transactionId: data?.transactionId,
+      orderId: data?.orderId,
+      amount: data?.amount,
+      currency: data?.currency,
+      status: data?.status,
+      duration: data?.duration,
+      metadata: data
+    });
+  }
+
+  warn(message: string, data?: any): void {
+    this.addLog({
+      level: 'warn',
+      gateway: data?.gateway || 'system' as PaymentGateway,
+      event: message,
+      metadata: data
+    });
+  }
+
+  error(message: string, data?: any): void {
+    this.addLog({
+      level: 'error',
+      gateway: data?.gateway || 'system' as PaymentGateway,
+      event: message,
+      error: data?.error,
+      orderId: data?.orderId,
+      metadata: data
+    });
+  }
 }
 
 // Export singleton instance
-export const paymentLogger = new PaymentLogger({
-  enabled: true,
-  level: import.meta.env.DEV ? 'debug' : 'info',
-  includeMetadata: true,
-  redactSensitiveData: true,
-  maxLogEntries: 1000
-});
+export const paymentLogger = PaymentLogger.getInstance();
 
 export default paymentLogger;

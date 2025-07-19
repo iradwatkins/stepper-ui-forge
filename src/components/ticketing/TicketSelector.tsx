@@ -6,7 +6,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TicketCard } from './TicketCard';
 import { PriceCalculator } from './PriceCalculator';
 import { TicketType } from '@/types/database';
-import { AlertCircle, ShoppingCart } from 'lucide-react';
+import { AlertCircle, ShoppingCart, LogIn } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoginDialog } from '@/components/auth/LoginDialog';
+import { toast } from 'sonner';
 
 interface SelectedTicket {
   ticketTypeId: string;
@@ -29,8 +32,10 @@ export const TicketSelector = ({
   isLoading = false,
   className = ""
 }: TicketSelectorProps) => {
+  const { user } = useAuth();
   const [selectedTickets, setSelectedTickets] = useState<SelectedTicket[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [showLogin, setShowLogin] = useState(false);
 
   // Get current effective price for a ticket type (early bird if applicable)
   const getCurrentPrice = (ticketType: TicketType): number => {
@@ -117,6 +122,25 @@ export const TicketSelector = ({
 
   // Handle add to cart
   const handleAddToCart = () => {
+    // Check authentication first
+    if (!user) {
+      setShowLogin(true);
+      toast.info('Please sign in to add tickets to your cart');
+      return;
+    }
+    
+    const validationErrors = validateSelections();
+    setErrors(validationErrors);
+
+    if (validationErrors.length === 0 && selectedTickets.length > 0) {
+      onAddToCart?.(selectedTickets);
+    }
+  };
+  
+  // Handle successful login
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+    // After login, attempt to add to cart again
     const validationErrors = validateSelections();
     setErrors(validationErrors);
 
@@ -220,14 +244,31 @@ export const TicketSelector = ({
               size="lg"
               onClick={handleAddToCart}
               disabled={totalQuantity === 0 || errors.length > 0}
+              variant={!user ? "outline" : "default"}
             >
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              Add {totalQuantity} Ticket{totalQuantity !== 1 ? 's' : ''} to Cart
-              <span className="ml-2 font-bold">${subtotal.toFixed(2)}</span>
+              {!user ? (
+                <>
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In to Add to Cart
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Add {totalQuantity} Ticket{totalQuantity !== 1 ? 's' : ''} to Cart
+                  <span className="ml-2 font-bold">${subtotal.toFixed(2)}</span>
+                </>
+              )}
             </Button>
           </div>
         )}
       </CardContent>
+      
+      {/* Login Dialog */}
+      <LoginDialog
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={handleLoginSuccess}
+      />
     </Card>
   );
 };

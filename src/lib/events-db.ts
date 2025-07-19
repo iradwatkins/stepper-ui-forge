@@ -118,12 +118,14 @@ export class EventsService {
     }
   }
 
-  static async getPublicEvents(limit = 20, offset = 0): Promise<EventWithStats[]> {
-    console.log('getPublicEvents called with limit:', limit, 'offset:', offset)
+  static async getPublicEvents(limit = 20, offset = 0, includePastEvents = false): Promise<EventWithStats[]> {
+    console.log('getPublicEvents called with limit:', limit, 'offset:', offset, 'includePastEvents:', includePastEvents)
     
     try {
       console.log('Attempting to fetch public events from database...')
-      const { data, error } = await supabase
+      
+      // Build query
+      let query = supabase
         .from('events')
         .select(`
           *,
@@ -141,6 +143,14 @@ export class EventsService {
         `)
         .eq('is_public', true)
         .eq('status', 'published')
+      
+      // Only show future events unless explicitly requested to include past events
+      if (!includePastEvents) {
+        const currentDate = new Date().toISOString()
+        query = query.gte('date', currentDate)
+      }
+      
+      const { data, error } = await query
         .order('date', { ascending: true })
         .range(offset, offset + limit - 1)
 

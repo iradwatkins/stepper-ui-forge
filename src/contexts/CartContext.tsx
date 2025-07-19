@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
 import { TicketType, Event } from '@/types/database'
+import { useAuth } from '@/contexts/AuthContext'
 
 // Cart item interface based on approved architecture
 export interface CartItem {
@@ -195,17 +196,36 @@ interface CartProviderProps {
 // Cart provider component
 export const CartProvider = ({ children }: CartProviderProps) => {
   const [state, dispatch] = useReducer(cartReducer, initialState)
+  const { user } = useAuth()
 
-  // localStorage key
-  const CART_STORAGE_KEY = 'stepper-cart-items'
+  // localStorage key - now user-specific when logged in
+  const getCartStorageKey = () => {
+    return user ? `stepper-cart-items-${user.id}` : 'stepper-cart-items-anon'
+  }
+  
+  // Key for anonymous cart that might need merging
+  const ANON_CART_KEY = 'stepper-cart-items-anon'
 
-  // Hydrate cart from localStorage on mount
+  // Hydrate cart from localStorage on mount and when user changes
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem(CART_STORAGE_KEY)
+      const currentCartKey = getCartStorageKey()
+      const savedCart = localStorage.getItem(currentCartKey)
+      
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart) as CartItem[]
         dispatch({ type: 'HYDRATE_CART', payload: parsedCart })
+      } else if (user && currentCartKey !== ANON_CART_KEY) {
+        // User just logged in - check for anonymous cart to merge
+        const anonCart = localStorage.getItem(ANON_CART_KEY)
+        if (anonCart) {
+          const parsedAnonCart = JSON.parse(anonCart) as CartItem[]
+          dispatch({ type: 'HYDRATE_CART', payload: parsedAnonCart })
+          // Clean up anonymous cart after merging
+          localStorage.removeItem(ANON_CART_KEY)
+        } else {
+          dispatch({ type: 'SET_LOADING', payload: false })
+        }
       } else {
         dispatch({ type: 'SET_LOADING', payload: false })
       }
@@ -213,18 +233,19 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       console.error('Failed to load cart from localStorage:', error)
       dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [])
+  }, [user])
 
   // Persist cart to localStorage whenever items change
   useEffect(() => {
     if (!state.isLoading) {
       try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items))
+        const currentCartKey = getCartStorageKey()
+        localStorage.setItem(currentCartKey, JSON.stringify(state.items))
       } catch (error) {
         console.error('Failed to save cart to localStorage:', error)
       }
     }
-  }, [state.items, state.isLoading])
+  }, [state.items, state.isLoading, user])
 
   // Add item to cart
   const addItem = (ticketType: TicketType, event: Event, quantity: number) => {

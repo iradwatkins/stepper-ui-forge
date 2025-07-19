@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 
 // Square API configuration
 const SQUARE_APPLICATION_ID = Deno.env.get('SQUARE_APPLICATION_ID');
@@ -107,10 +108,44 @@ async function refundSquarePayment(paymentId: string, amount?: number, reason?: 
 
 // Verify Square webhook signature
 function verifySquareWebhook(signature: string, body: string, webhookSignatureKey: string): boolean {
-  // In production, implement proper webhook signature verification
-  // This would use HMAC-SHA256 with the webhook signature key
-  // For now, return true - but this should be implemented for security
-  return true;
+  try {
+    if (!webhookSignatureKey) {
+      console.error('SQUARE_WEBHOOK_SIGNATURE_KEY not configured');
+      return false;
+    }
+    
+    if (!signature) {
+      console.error('Missing webhook signature header');
+      return false;
+    }
+    
+    // Square webhook signature format: base64(hmac-sha256(url + body))
+    // Get the request URL from the webhook payload
+    const webhookData = JSON.parse(body);
+    const webhookUrl = webhookData.webhook?.endpoint_url || '';
+    
+    // Concatenate URL and body as Square does
+    const stringToSign = webhookUrl + body;
+    
+    // Create HMAC-SHA256
+    const hmac = createHmac('sha256', webhookSignatureKey);
+    hmac.update(stringToSign);
+    const computedSignature = hmac.digest('base64');
+    
+    // Compare signatures
+    const isValid = computedSignature === signature;
+    
+    if (!isValid) {
+      console.error('Webhook signature mismatch');
+      console.error('Expected:', computedSignature);
+      console.error('Received:', signature);
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('Error verifying Square webhook:', error);
+    return false;
+  }
 }
 
 serve(async (req) => {
@@ -125,11 +160,41 @@ serve(async (req) => {
 
     // Health check for GET requests
     if (method === 'GET') {
+      const startTime = Date.now();
+      let apiStatus = 'unknown';
+      let apiResponseTime = 0;
+      
+      // Test API connectivity if configured
+      if (SQUARE_APPLICATION_ID && SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID) {
+        try {
+          const apiStart = Date.now();
+          // Test with locations endpoint as it's lightweight
+          const response = await fetch(`${SQUARE_BASE_URL}/v2/locations/${SQUARE_LOCATION_ID}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN}`,
+              'Square-Version': '2023-10-18',
+            },
+          });
+          
+          apiResponseTime = Date.now() - apiStart;
+          apiStatus = response.ok ? 'healthy' : 'unhealthy';
+        } catch (error) {
+          apiStatus = 'unhealthy';
+          console.error('Square health check failed:', error);
+        }
+      }
+      
       return new Response(
         JSON.stringify({ 
-          status: 'ok', 
+          status: 'ok',
+          gateway: 'square',
           environment: SQUARE_ENVIRONMENT,
-          configured: !!(SQUARE_APPLICATION_ID && SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID)
+          configured: !!(SQUARE_APPLICATION_ID && SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID),
+          apiStatus,
+          apiResponseTime,
+          totalResponseTime: Date.now() - startTime,
+          timestamp: new Date().toISOString()
         }),
         { 
           status: 200, 
@@ -142,7 +207,7 @@ serve(async (req) => {
       const { action, ...payload } = await req.json();
 
       switch (action) {
-        case 'create_payment':
+        case 'create_payment': {
           const { sourceId, amount, currency } = payload;
           
           if (!sourceId || !amount || amount <= 0) {
@@ -163,8 +228,9 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
+        }
 
-        case 'get_payment':
+        case 'get_payment': {
           const { paymentId } = payload;
           
           if (!paymentId) {
@@ -185,8 +251,9 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
+        }
 
-        case 'refund_payment':
+        case 'refund_payment': {
           const { paymentId: refundPaymentId, amount: refundAmount, reason } = payload;
           
           if (!refundPaymentId) {
@@ -207,8 +274,9 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
+        }
 
-        case 'webhook':
+        case 'webhook': {
           const body = await req.text();
           const signature = req.headers.get('x-square-signature') || '';
           const webhookSignatureKey = Deno.env.get('SQUARE_WEBHOOK_SIGNATURE_KEY') || '';
@@ -227,6 +295,37 @@ serve(async (req) => {
           const webhookData = JSON.parse(body);
           console.log('Square webhook received:', webhookData.type);
           
+          // Handle specific webhook events
+          switch (webhookData.type) {
+            case 'payment.created':
+              console.log('Payment created:', webhookData.data.object.payment?.id);
+              // Payment is created but not yet completed
+              break;
+            case 'payment.updated': {
+              const payment = webhookData.data.object.payment;
+              console.log('Payment updated:', payment?.id, 'Status:', payment?.status);
+              if (payment?.status === 'COMPLETED') {
+                // TODO: Update order status in database
+                console.log('Payment completed successfully');
+              } else if (payment?.status === 'FAILED') {
+                // TODO: Handle payment failure
+                console.log('Payment failed');
+              }
+              break;
+            }
+            case 'refund.created':
+              console.log('Refund created:', webhookData.data.object.refund?.id);
+              // TODO: Update order/payment status
+              break;
+            case 'refund.updated': {
+              const refund = webhookData.data.object.refund;
+              console.log('Refund updated:', refund?.id, 'Status:', refund?.status);
+              break;
+            }
+            default:
+              console.log('Unhandled webhook event:', webhookData.type);
+          }
+          
           return new Response(
             JSON.stringify({ success: true }),
             { 
@@ -234,6 +333,7 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
+        }
 
         default:
           return new Response(

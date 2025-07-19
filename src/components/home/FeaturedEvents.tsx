@@ -4,7 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Calendar, MapPin, Clock } from "lucide-react";
 
 export function FeaturedEvents() {
-  const featuredEvents = [
+  // Filter out past events
+  const allEvents = [
     {
       image: "/lovable-uploads/d2c906eb-d210-4ea5-9f2a-a4541ecce215.png",
       title: "Annual Step Championship",
@@ -30,6 +31,18 @@ export function FeaturedEvents() {
       id: "event-3"
     }
   ];
+
+  // Only show future events
+  const currentDate = new Date();
+  const featuredEvents = allEvents.filter(event => {
+    const eventDate = new Date(event.date);
+    return eventDate >= currentDate;
+  });
+
+  // Don't render section if no future events
+  if (featuredEvents.length === 0) {
+    return null;
+  }
 
   return (
     <div className="bg-background py-16">

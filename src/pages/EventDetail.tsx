@@ -23,6 +23,9 @@ import { EventOrganizer } from "@/components/event/EventOrganizer";
 import { EventActions } from "@/components/event/EventActions";
 import { EventAbout } from "@/components/event/EventAbout";
 import { EventMeta } from "@/components/meta/EventMeta";
+import { PastEventImage } from "@/components/event/PastEventImage";
+import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface EventImageData {
   original?: string;
@@ -42,6 +45,7 @@ const EventDetail = () => {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [galleryStartIndex, setGalleryStartIndex] = useState(0);
@@ -533,18 +537,26 @@ const EventDetail = () => {
             {/* Left - Event Image (Full display with proper sizing) */}
             <div className="lg:col-span-1">
               <div className="relative bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden">
-                <img 
-                  src={primaryImage} 
-                  alt={event.title}
-                  className="w-full h-64 lg:h-80 object-contain rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                <div 
+                  className="w-full h-64 lg:h-80 cursor-pointer"
                   onClick={() => {
-                    setGalleryStartIndex(0);
-                    setIsGalleryOpen(true);
+                    if (!isEventPast7Days(event.date) || (user && event.owner_id === user.id)) {
+                      setGalleryStartIndex(0);
+                      setIsGalleryOpen(true);
+                    }
                   }}
-                />
+                >
+                  <PastEventImage
+                    eventDate={event.date}
+                    imageUrl={primaryImage}
+                    alt={event.title}
+                    className="w-full h-full object-contain rounded-lg shadow-lg hover:opacity-90 transition-opacity"
+                    isOrganizer={user?.id === event.owner_id}
+                  />
+                </div>
                 
-                {/* Image Gallery Button */}
-                {eventImages.length > 1 && (
+                {/* Image Gallery Button - only show if images not hidden */}
+                {eventImages.length > 1 && (!isEventPast7Days(event.date) || (user && event.owner_id === user.id)) && (
                   <button
                     onClick={() => {
                       setGalleryStartIndex(0);
