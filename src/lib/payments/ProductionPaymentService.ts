@@ -34,20 +34,9 @@ export class ProductionPaymentService {
           id: 'paypal',
           name: 'PayPal',
           description: 'Pay with PayPal account or credit card',
-          available: healthStatus.paypal?.healthy === true
-        },
-        {
-          id: 'square',
-          name: 'Credit/Debit Card',
-          description: 'Pay with credit or debit card via Square',
-          available: healthStatus.square?.healthy === true
-        },
-        {
-          id: 'cashapp',
-          name: 'Cash App Pay',
-          description: 'Pay with Cash App',
-          available: false // Edge function not deployed
+          available: healthStatus.paypal?.healthy === true || healthStatus.paypal?.available === true
         }
+        // Square and Cash App disabled until proper frontend integration
       ];
       
       // Filter to only available methods
@@ -135,9 +124,17 @@ export class ProductionPaymentService {
         };
       } else if (paymentData.gateway === 'square') {
         // Square requires create_payment with sourceId
+        if (!paymentData.sourceId) {
+          throw createStandardError(
+            'Square payment requires a payment token',
+            gateway,
+            ERROR_CODES.MISSING_REQUIRED_FIELD,
+            false
+          );
+        }
         requestBody = {
           action: 'create_payment',
-          sourceId: paymentData.sourceId || 'cnon:card-nonce-ok', // Fallback to test nonce
+          sourceId: paymentData.sourceId,
           amount: paymentData.amount,
           currency: 'USD'
         };
@@ -495,7 +492,7 @@ export class ProductionPaymentService {
       error?: string;
     }
   }> {
-    const gateways = ['paypal', 'square', 'cashapp'];
+    const gateways = ['paypal', 'square']; // Cash App disabled until deployed
     const healthChecks: any = {};
     
     await Promise.all(
@@ -532,12 +529,12 @@ export class ProductionPaymentService {
               data.apiResponseTime,
               { environment: data.environment }
             );
-          } else if (response.status === 404 && gateway === 'cashapp') {
-            // Cash App function not deployed
+          } else if (response.status === 404) {
+            // Function not deployed
             healthChecks[gateway] = {
               available: false,
               healthy: false,
-              error: 'Cash App payment function not deployed'
+              error: `${gateway} payment function not deployed`
             };
           } else {
             healthChecks[gateway] = {
@@ -547,10 +544,12 @@ export class ProductionPaymentService {
             };
           }
         } catch (error) {
+          // Handle CORS/network errors for undeployed functions
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           healthChecks[gateway] = {
             available: false,
             healthy: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: errorMessage.includes('Failed to fetch') ? `${gateway} function not accessible` : errorMessage
           };
           
           this.logger.error(`Health check failed for ${gateway}`, { error });
