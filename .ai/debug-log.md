@@ -74,3 +74,7 @@
 | Cart auto-open | CartContext.tsx | Cart opens automatically when items added | No |
 | Cash App Pay Kit | CashAppPay.tsx | Created component for Cash App payments | No |
 | Cart state management | CartContext/Navbar | Moved cart state to context for global access | No |
+| Persistent login | supabase.ts | Added auth persistence config for 7-day sessions | No |
+| Remember me feature | Auth components | Added remember me checkbox to all auth forms | No |
+| Session management | AuthContext | Added session expiry and remember me handling | No |
+| Session config | sessionConfig.ts | Created session configuration for 7-day expiry | No |

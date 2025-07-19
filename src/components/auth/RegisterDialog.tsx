@@ -22,6 +22,8 @@ import {
   UserPlusIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
+import { setRememberMe } from '@/lib/auth/sessionConfig';
 
 interface RegisterDialogProps {
   isOpen: boolean;
@@ -45,6 +47,7 @@ export const RegisterDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [rememberMe, setRememberMeState] = useState(true); // Default to true for better UX
 
   // Handle successful authentication
   useEffect(() => {
@@ -84,6 +87,9 @@ export const RegisterDialog = ({
     setError(null);
     
     try {
+      // Set remember me preference for Google sign in too
+      setRememberMe(rememberMe);
+      
       const { error } = await signInWithGoogle();
       if (error) {
         handleError(error);
@@ -119,6 +125,9 @@ export const RegisterDialog = ({
     setError(null);
 
     try {
+      // Set remember me preference before signing up
+      setRememberMe(rememberMe);
+      
       const { error } = await signUp(email, password);
       if (error) {
         handleError(error);
@@ -221,6 +230,20 @@ export const RegisterDialog = ({
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMeState(checked as boolean)}
+              />
+              <Label
+                htmlFor="remember-me"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Remember me for 7 days
+              </Label>
             </div>
 
             <Button

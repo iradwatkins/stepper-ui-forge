@@ -4,6 +4,7 @@ import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { setupInitialAdmin } from '@/lib/admin/setupAdmin'
 import { toast } from '@/components/ui/sonner'
+import { isRememberMeEnabled, clearSessionData, SESSION_CONFIG } from '@/lib/auth/sessionConfig'
 
 // Real-time registration monitoring system
 const createRegistrationLogger = () => {
@@ -330,6 +331,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }
 
   const signOut = async () => {
+    // Clear session data when signing out
+    clearSessionData()
     const { error } = await supabase.auth.signOut()
     return { error }
   }

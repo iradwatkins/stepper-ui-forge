@@ -24,6 +24,8 @@ import {
   CheckCircleIcon,
   LogInIcon
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { setRememberMe } from '@/lib/auth/sessionConfig'
 
 interface UnifiedAuthModalProps {
   trigger?: React.ReactNode
@@ -47,6 +49,7 @@ export const UnifiedAuthModal = ({
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [rememberMe, setRememberMeState] = useState(true) // Default to true for better UX
 
   // Focus management
   const googleButtonRef = useRef<HTMLButtonElement>(null)
@@ -92,6 +95,9 @@ export const UnifiedAuthModal = ({
     setError(null)
     
     try {
+      // Set remember me preference for Google sign in too
+      setRememberMe(rememberMe)
+      
       const { error } = await signInWithGoogle()
       if (error) {
         handleError(error)
@@ -146,6 +152,9 @@ export const UnifiedAuthModal = ({
     setError(null)
     
     try {
+      // Set remember me preference before authentication
+      setRememberMe(rememberMe)
+      
       const { error } = authMode === 'signup' 
         ? await signUp(email, password)
         : await signIn(email, password)
@@ -319,6 +328,20 @@ export const UnifiedAuthModal = ({
                   disabled={loading}
                   onKeyDown={(e) => e.key === 'Enter' && handleEmailAuth()}
                 />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember-me"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMeState(checked as boolean)}
+                />
+                <Label
+                  htmlFor="remember-me"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Remember me for 7 days
+                </Label>
               </div>
 
               <Button
