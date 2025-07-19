@@ -15,10 +15,11 @@ async function startServer() {
     const server = await createServer({
       configFile: join(__dirname, 'vite.config.ts'),
       server: {
-        host: '127.0.0.1',  // Force IPv4 localhost
+        host: 'localhost',  // Use localhost directly
         port: 8080,
         strictPort: true,
-        open: false,
+        open: true,
+        cors: true,
       },
       logLevel: 'info'
     });
