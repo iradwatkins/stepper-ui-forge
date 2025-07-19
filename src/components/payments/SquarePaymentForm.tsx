@@ -35,10 +35,19 @@ export function SquarePaymentForm({
   const [cashAppAvailable, setCashAppAvailable] = useState(false);
 
   useEffect(() => {
-    // Delay initialization to ensure DOM is ready
-    const timer = setTimeout(() => {
-      initializeSquarePayments();
-    }, 100);
+    // Initialize with proper DOM readiness check
+    const initializeWhenReady = () => {
+      if (cardContainerRef.current) {
+        console.log('✅ Container ref available, initializing Square payments');
+        initializeSquarePayments();
+      } else {
+        console.log('⏳ Container ref not ready, retrying in 200ms');
+        setTimeout(initializeWhenReady, 200);
+      }
+    };
+    
+    // Start initialization after a small delay to ensure React has rendered
+    const timer = setTimeout(initializeWhenReady, 50);
     
     return () => clearTimeout(timer);
   }, []);

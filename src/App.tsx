@@ -90,6 +90,9 @@ const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
 const PayPalCallback = lazy(() => import("./pages/PayPalCallback"));
 const PaymentFunctionTest = lazy(() => import("./pages/PaymentFunctionTest"));
 const PaymentDebugTest = lazy(() => import("./pages/PaymentDebugTest"));
+const CashAppDiagnostic = lazy(() => import("./pages/CashAppDiagnostic"));
+const SquareDebugTest = lazy(() => import("./pages/SquareDebugTest"));
+const SquareMethodsTest = lazy(() => import("./pages/SquareMethodsTest"));
 const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
 const DatabaseTest = lazy(() => import("./pages/DatabaseTest"));
@@ -129,6 +132,9 @@ const AppContent = () => {
         <Route path="/payment-test" element={<PaymentTestPage />} />
         <Route path="/payment-function-test" element={<PaymentFunctionTest />} />
         <Route path="/payment-debug-test" element={<PaymentDebugTest />} />
+        <Route path="/cashapp-diagnostic" element={<CashAppDiagnostic />} />
+        <Route path="/square-debug-test" element={<SquareDebugTest />} />
+        <Route path="/square-methods-test" element={<SquareMethodsTest />} />
         <Route path="/test-premium-event" element={
           <ProtectedRoute>
             <TestPremiumEvent />

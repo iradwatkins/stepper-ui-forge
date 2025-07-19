@@ -180,7 +180,7 @@ export async function createSquarePaymentForm(
   
   console.log(`✅ Square card form attached to #${containerId}`);
 
-  // Try to create Cash App Pay with environment configuration
+  // Try to create Cash App Pay with correct Square Web SDK method
   let cashAppPay: any;
   try {
     const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
@@ -193,26 +193,74 @@ export async function createSquarePaymentForm(
     });
     
     if (cashAppClientId) {
-      // Skip Cash App initialization if environment mismatch is detected
+      // Environment validation
       const isProductionEnv = cashAppEnvironment === 'production';
       const isProductionClientId = cashAppClientId.startsWith('sq0idp-') && !cashAppClientId.includes('sandbox');
       
       if (isProductionEnv && !isProductionClientId) {
         console.error('❌ Cash App Environment Mismatch: Production environment requires production client ID');
-        throw new Error('Cash App configuration error: Production environment detected but client ID may be incorrect. Please verify VITE_CASHAPP_CLIENT_ID and VITE_CASHAPP_ENVIRONMENT settings.');
+        throw new Error('Cash App configuration error: Production environment detected but client ID may be incorrect.');
       }
       
       if (!isProductionEnv && isProductionClientId) {
         console.error('❌ Cash App Environment Mismatch: Sandbox environment with production client ID');
-        throw new Error('Cash App configuration error: Sandbox environment detected but production client ID provided. Please verify VITE_CASHAPP_CLIENT_ID and VITE_CASHAPP_ENVIRONMENT settings.');
+        throw new Error('Cash App configuration error: Sandbox environment detected but production client ID provided.');
       }
       
-      cashAppPay = await payments.cashAppPay({
-        redirectURL: window.location.origin,
-        referenceId: `cashapp-${Date.now()}`
-        // Note: environment parameter removed as it may not be supported in this context
-      });
-      console.log(`✅ Cash App Pay initialized successfully (${cashAppEnvironment})`);
+      // Use the correct Square Web SDK method for Cash App Pay
+      console.log('🔄 Checking available Square payment methods:', Object.keys(payments));
+      
+      // Check if Cash App Pay is supported by testing available methods
+      if (typeof payments.paymentRequest === 'function') {
+        try {
+          console.log('🔄 Initializing Cash App Pay via PaymentRequest API...');
+          
+          const paymentRequest = payments.paymentRequest({
+            countryCode: 'US',
+            currencyCode: 'USD',
+            total: {
+              amount: '100', // $1.00 in cents  
+              label: 'Test Payment'
+            },
+            requestPayerName: false,
+            requestPayerPhone: false,
+            requestPayerEmail: false,
+            requestShipping: false
+          });
+          
+          if (paymentRequest && typeof paymentRequest.canMakePayment === 'function') {
+            const canMakePayment = await paymentRequest.canMakePayment();
+            if (canMakePayment) {
+              cashAppPay = paymentRequest;
+              console.log(`✅ Cash App Pay available via PaymentRequest API (${cashAppEnvironment})`);
+            } else {
+              console.warn('⚠️ PaymentRequest.canMakePayment() returned false - Cash App Pay may not be available');
+            }
+          } else {
+            console.warn('⚠️ PaymentRequest created but canMakePayment method not available');
+          }
+        } catch (paymentRequestError) {
+          console.error('❌ PaymentRequest method failed:', paymentRequestError);
+        }
+      } else if (typeof payments.cashAppPay === 'function') {
+        try {
+          console.log('🔄 Using legacy payments.cashAppPay method...');
+          
+          cashAppPay = await payments.cashAppPay({
+            redirectURL: window.location.origin,
+            referenceId: `cashapp-${Date.now()}`
+          });
+          
+          if (cashAppPay) {
+            console.log(`✅ Cash App Pay initialized via legacy method (${cashAppEnvironment})`);
+          }
+        } catch (legacyError) {
+          console.error('❌ Legacy cashAppPay method failed:', legacyError);
+        }
+      } else {
+        console.error('❌ No Cash App Pay methods available in Square SDK');
+        console.log('🔍 Available methods:', Object.keys(payments));
+      }
     } else {
       console.warn('⚠️ Cash App Pay disabled - VITE_CASHAPP_CLIENT_ID not configured');
     }
