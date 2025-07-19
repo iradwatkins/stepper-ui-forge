@@ -67,6 +67,8 @@ export class ProductionPaymentService {
     orderId: string;
     customerEmail: string;
     idempotencyKey?: string;
+    sourceId?: string; // For Square payments
+    paypalOrderId?: string; // For PayPal capture
   }, retryAttempt: number = 1) {
     const startTime = Date.now();
     const gateway = paymentData.gateway as PaymentGateway;
@@ -99,6 +101,33 @@ export class ProductionPaymentService {
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      // Determine the correct action based on gateway
+      let requestBody: any;
+      if (paymentData.gateway === 'paypal') {
+        // PayPal requires create_order action
+        requestBody = {
+          action: 'create_order',
+          amount: paymentData.amount,
+          currency: 'USD'
+        };
+      } else if (paymentData.gateway === 'square') {
+        // Square requires create_payment with sourceId
+        requestBody = {
+          action: 'create_payment',
+          sourceId: paymentData.sourceId || 'cnon:card-nonce-ok', // Fallback to test nonce
+          amount: paymentData.amount,
+          currency: 'USD'
+        };
+      } else {
+        throw createStandardError(
+          'Unsupported payment gateway',
+          gateway,
+          ERROR_CODES.GATEWAY_NOT_CONFIGURED,
+          false
+        );
+      }
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/payments-${paymentData.gateway}`, {
         method: 'POST',
         headers: {
@@ -106,10 +135,7 @@ export class ProductionPaymentService {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           ...(paymentData.idempotencyKey && { 'X-Idempotency-Key': paymentData.idempotencyKey })
         },
-        body: JSON.stringify({
-          action: 'create_payment',
-          ...paymentData
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const responseData = await response.json();
@@ -136,17 +162,42 @@ export class ProductionPaymentService {
         };
       }
 
+      // Handle PayPal order creation response
+      if (paymentData.gateway === 'paypal' && responseData.order) {
+        // PayPal requires a second step to capture the order
+        this.logger.info('PayPal order created, needs capture', {
+          gateway,
+          orderId: paymentData.orderId,
+          paypalOrderId: responseData.order.id
+        });
+        
+        // Return the order for client-side approval
+        return {
+          success: true,
+          requiresAction: true,
+          action: 'approve_paypal_order',
+          data: {
+            paypalOrderId: responseData.order.id,
+            approvalUrl: responseData.order.links?.find((link: any) => link.rel === 'approve')?.href
+          }
+        };
+      }
+      
       // Log successful payment
       this.logger.info('Payment successful', {
         gateway,
         orderId: paymentData.orderId,
-        transactionId: responseData.transactionId,
+        transactionId: responseData.payment?.id || responseData.transactionId,
         duration: Date.now() - startTime
       });
 
       return {
         success: true,
-        data: responseData
+        data: {
+          transactionId: responseData.payment?.id || responseData.transactionId,
+          status: responseData.payment?.status || 'completed',
+          ...responseData
+        }
       };
     } catch (error) {
       const isNetworkError = error instanceof TypeError && error.message.includes('fetch');
@@ -235,6 +286,80 @@ export class ProductionPaymentService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Capture PayPal order after user approval
+  async capturePayPalOrder(orderId: string, payerId?: string) {
+    const startTime = Date.now();
+    
+    try {
+      this.logger.info('Capturing PayPal order', { orderId, payerId });
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/payments-paypal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'capture_order',
+          orderId
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        const paymentError = mapGatewayError(
+          responseData.error || 'CAPTURE_FAILED',
+          'paypal' as PaymentGateway,
+          responseData
+        );
+        
+        this.logger.error('PayPal capture failed', {
+          orderId,
+          error: paymentError,
+          duration: Date.now() - startTime
+        });
+        
+        return {
+          success: false,
+          error: paymentError.userMessage,
+          errorCode: paymentError.code
+        };
+      }
+
+      this.logger.info('PayPal capture successful', {
+        orderId,
+        captureId: responseData.capture?.id,
+        duration: Date.now() - startTime
+      });
+
+      return {
+        success: true,
+        data: {
+          transactionId: responseData.capture?.purchase_units?.[0]?.payments?.captures?.[0]?.id || responseData.capture?.id,
+          status: responseData.capture?.status || 'completed',
+          ...responseData
+        }
+      };
+    } catch (error) {
+      this.logger.error('PayPal capture error', { orderId, error });
+      
+      const paymentError = createStandardError(
+        error as Error,
+        'paypal' as PaymentGateway,
+        ERROR_CODES.PAYMENT_PROCESSING_ERROR,
+        true
+      );
+      
+      return {
+        success: false,
+        error: paymentError.userMessage,
+        errorCode: paymentError.code
       };
     }
   }

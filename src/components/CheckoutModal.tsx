@@ -157,6 +157,31 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
       const result = await productionPaymentService.processPayment(paymentData);
 
       if (result.success) {
+        // Handle PayPal order approval flow
+        if (result.requiresAction && result.action === 'approve_paypal_order') {
+          console.log('PayPal order created, redirecting for approval:', result.data);
+          
+          // Store order data for after approval
+          sessionStorage.setItem('pendingPayPalOrder', JSON.stringify({
+            paypalOrderId: result.data.paypalOrderId,
+            orderId: orderId,
+            customerEmail,
+            amount: seatCheckoutMode ? seatTotal : total,
+            seatCheckoutMode,
+            items: seatCheckoutMode ? seatDetails : items,
+            sessionId,
+            eventId
+          }));
+          
+          // Redirect to PayPal for approval
+          if (result.data.approvalUrl) {
+            window.location.href = result.data.approvalUrl;
+          } else {
+            throw new Error('PayPal approval URL not provided');
+          }
+          return;
+        }
+        
         try {
           // Create order after successful payment
           console.log('Creating order for payment:', result);
@@ -164,7 +189,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             customer_email: customerEmail,
             customer_name: user?.user_metadata?.full_name || null,
             total_amount: seatCheckoutMode ? seatTotal : total,
-            payment_intent_id: result.transactionId || null,
+            payment_intent_id: result.data?.transactionId || null,
             payment_method: selectedGateway,
             order_status: 'completed',
             payment_status: 'completed'
