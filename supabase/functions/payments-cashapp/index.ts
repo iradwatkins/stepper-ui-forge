@@ -27,23 +27,18 @@ function generateUUID(): string {
 }
 
 // Create Cash App payment using Square API
-async function createCashAppPayment(amount: number, currency: string = 'USD') {
-  // Cash App Pay uses Square's payment API with specific parameters
+async function createCashAppPayment(sourceId: string, amount: number, currency: string = 'USD') {
+  // Cash App Pay uses the payment token from Web SDK
   const paymentData = {
-    source_id: 'CASH_APP', // Special source ID for Cash App
+    source_id: sourceId, // Payment token from Web SDK
     idempotency_key: generateUUID(),
     amount_money: {
       amount: Math.round(amount * 100), // Convert to cents
       currency: currency,
     },
     location_id: SQUARE_LOCATION_ID,
-    app_fee_money: {
-      amount: 0,
-      currency: currency
-    },
     autocomplete: true,
     accept_partial_authorization: false,
-    buyer_email_address: '', // Will be provided by Cash App
     note: 'Cash App Pay transaction'
   };
 
@@ -174,11 +169,11 @@ serve(async (req) => {
 
       switch (action) {
         case 'create_payment': {
-          const { amount, currency } = payload;
+          const { sourceId, amount, currency } = payload;
           
-          if (!amount || amount <= 0) {
+          if (!sourceId || !amount || amount <= 0) {
             return new Response(
-              JSON.stringify({ error: 'Invalid payment parameters' }),
+              JSON.stringify({ error: 'Invalid payment parameters - missing sourceId or invalid amount' }),
               { 
                 status: 400, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -186,20 +181,13 @@ serve(async (req) => {
             );
           }
 
-          // For Cash App, we need to return a redirect URL for the customer
-          // In production, this would initiate the Cash App Pay flow
-          const payment = await createCashAppPayment(amount, currency);
-          
-          // Generate Cash App redirect URL (in production, use actual Cash App SDK)
-          const cashAppRedirectUrl = SQUARE_ENVIRONMENT === 'production'
-            ? `https://cash.app/pay/${payment.payment.id}`
-            : `https://sandbox.cash.app/pay/test_${payment.payment.id}`;
+          // Use the payment token from Web SDK to create payment
+          const payment = await createCashAppPayment(sourceId, amount, currency);
           
           return new Response(
             JSON.stringify({ 
               payment: payment.payment,
-              redirectUrl: cashAppRedirectUrl,
-              requiresRedirect: true
+              success: true
             }),
             { 
               status: 200, 

@@ -152,9 +152,18 @@ export class ProductionPaymentService {
           currency: 'USD'
         };
       } else if (paymentData.gateway === 'cashapp') {
-        // Cash App uses simplified payment flow
+        // Cash App requires payment token just like Square
+        if (!paymentData.sourceId) {
+          throw createStandardError(
+            'Cash App payment requires a payment token',
+            gateway,
+            ERROR_CODES.MISSING_REQUIRED_FIELD,
+            false
+          );
+        }
         requestBody = {
           action: 'create_payment',
+          sourceId: paymentData.sourceId,
           amount: paymentData.amount,
           currency: 'USD'
         };
