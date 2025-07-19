@@ -90,10 +90,25 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
           throw new Error('Cash App SDK not loaded');
         }
 
-        // Initialize Pay Kit
+        // Initialize Pay Kit with enhanced error handling
         const cashAppConfig = getCashAppConfig();
+        
+        // Validate environment configuration before initialization
+        if (cashAppConfig.environment === 'production' && !cashAppConfig.clientId.startsWith('sq0idp-')) {
+          throw new Error('Cash App environment mismatch: Production environment requires production client ID');
+        }
+        
+        console.log('🔍 Cash App Environment Validation:', {
+          environment: cashAppConfig.environment,
+          clientId: cashAppConfig.clientId.substring(0, 15) + '...',
+          isProductionClient: cashAppConfig.clientId.startsWith('sq0idp-'),
+          scriptUrl: cashAppConfig.scriptUrl
+        });
+        
         const pay = await window.CashApp.pay({ clientId: cashAppConfig.clientId });
         payRef.current = pay;
+        
+        console.log('✅ Cash App Pay Kit initialized successfully');
 
         // Listen for payment approval
         pay.addEventListener('CUSTOMER_REQUEST_APPROVED', async (data: any) => {
@@ -160,8 +175,22 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
 
         setIsLoading(false);
       } catch (err) {
-        console.error('Cash App initialization error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize Cash App');
+        console.error('❌ Cash App initialization error:', err);
+        
+        // Enhanced error messaging for common issues
+        let errorMessage = 'Failed to initialize Cash App';
+        if (err instanceof Error) {
+          const errorMsg = err.message.toLowerCase();
+          if (errorMsg.includes('production client id must be used in the production environment')) {
+            errorMessage = 'Cash App configuration error: Production environment detected but client ID may be incorrect. Please verify VITE_CASHAPP_CLIENT_ID and VITE_CASHAPP_ENVIRONMENT settings.';
+          } else if (errorMsg.includes('environment mismatch')) {
+            errorMessage = err.message;
+          } else {
+            errorMessage = err.message;
+          }
+        }
+        
+        setError(errorMessage);
         setIsLoading(false);
       }
     };

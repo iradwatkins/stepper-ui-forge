@@ -37,6 +37,8 @@ export function loadSquareSDK(): Promise<void> {
     // Use production or sandbox URL based on environment
     const paymentConfig = getPaymentConfig();
     const isProduction = paymentConfig.square.environment === 'production';
+    
+    // CRITICAL: Ensure SDK URL matches the environment to prevent mismatch errors
     const scriptUrl = isProduction 
       ? 'https://web.squarecdn.com/v1/square.js'
       : 'https://sandbox.web.squarecdn.com/v1/square.js';
@@ -104,22 +106,27 @@ function validateEnvironmentConfiguration(applicationId: string): void {
   const isProductionAppId = applicationId.startsWith('sq0idp-') && !applicationId.includes('sandbox');
   const isSandboxAppId = applicationId.includes('sandbox') || applicationId.startsWith('sandbox-');
   
-  console.log('🔍 Environment Validation:', {
+  console.log('🔍 Square Environment Validation:', {
     configEnvironment: config.square.environment,
     isProduction,
     applicationId: applicationId.substring(0, 15) + '...',
     isProductionAppId,
-    isSandboxAppId
+    isSandboxAppId,
+    sdkUrl: isProduction ? 'PRODUCTION' : 'SANDBOX'
   });
   
-  // Fail-fast validation
+  // Fail-fast validation with enhanced error messages
   if (isProduction && !isProductionAppId) {
-    throw new Error(`Environment Mismatch: Configuration is set to production but Application ID appears to be for sandbox. Please check VITE_SQUARE_APPLICATION_ID.`);
+    console.error('❌ Square Environment Mismatch: Production environment configured but sandbox Application ID detected');
+    throw new Error(`Square Environment Mismatch: Configuration is set to production but Application ID appears to be for sandbox. Please check VITE_SQUARE_APPLICATION_ID.`);
   }
   
   if (!isProduction && isProductionAppId) {
-    throw new Error(`Environment Mismatch: Configuration is set to sandbox but Application ID appears to be for production. Please check VITE_SQUARE_ENVIRONMENT.`);
+    console.error('❌ Square Environment Mismatch: Sandbox environment configured but production Application ID detected');
+    throw new Error(`Square Environment Mismatch: Configuration is set to sandbox but Application ID appears to be for production. Please check VITE_SQUARE_ENVIRONMENT.`);
   }
+  
+  console.log('✅ Square environment validation passed');
 }
 
 /**

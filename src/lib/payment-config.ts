@@ -22,26 +22,38 @@ export interface PaymentConfig {
 
 // Get payment configuration from environment variables
 export const getPaymentConfig = (): PaymentConfig => {
-  // Force production configuration to fix environment mismatch
-  console.log('🔐 FORCING PRODUCTION PAYMENT CONFIG');
+  // Determine environment based on app IDs and explicit env vars
+  const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || '';
+  const squareAppId = import.meta.env.VITE_SQUARE_APPLICATION_ID || '';
+  const cashappClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID || '';
+  
+  // Auto-detect environment based on application IDs
+  const isPaypalProduction = !paypalClientId.includes('sandbox') && paypalClientId.length > 0;
+  const isSquareProduction = squareAppId.startsWith('sq0idp-') && !squareAppId.includes('sandbox');
+  const isCashappProduction = cashappClientId.startsWith('sq0idp-') && !cashappClientId.includes('sandbox');
+  
+  // Use explicit environment variables, falling back to auto-detection
+  const paypalEnv = import.meta.env.VITE_PAYPAL_ENVIRONMENT || (isPaypalProduction ? 'production' : 'sandbox');
+  const squareEnv = import.meta.env.VITE_SQUARE_ENVIRONMENT || (isSquareProduction ? 'production' : 'sandbox');
+  const cashappEnv = import.meta.env.VITE_CASHAPP_ENVIRONMENT || (isCashappProduction ? 'production' : 'sandbox');
   
   const config: PaymentConfig = {
     paypal: {
-      clientId: 'AWcmEjsKDeNUzvVQJyvc3lq5n4NXsh7-sHPgGT4ZiPFo8X6csYZcElZg2wsu_xsZE22DUoXOtF3MolVK',
-      clientSecret: '',
-      environment: 'production',
+      clientId: paypalClientId,
+      clientSecret: import.meta.env.VITE_PAYPAL_CLIENT_SECRET || '',
+      environment: paypalEnv as 'sandbox' | 'production',
     },
     square: {
-      applicationId: 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
-      accessToken: '',
-      environment: 'production',
-      locationId: 'L0Q2YC1SPBGD8',
+      applicationId: squareAppId,
+      accessToken: import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '',
+      environment: squareEnv as 'sandbox' | 'production',
+      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || '',
     },
     cashapp: {
-      clientId: 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
-      environment: 'production',
+      clientId: cashappClientId,
+      environment: cashappEnv as 'sandbox' | 'production',
     },
-    webhookUrl: 'https://aszzhlgwfbijaotfddsh.supabase.co/functions/v1/payments-webhook',
+    webhookUrl: import.meta.env.VITE_PAYMENT_WEBHOOK_URL || '',
   };
 
   console.log('🔐 Payment Config Loaded:', {
@@ -49,7 +61,12 @@ export const getPaymentConfig = (): PaymentConfig => {
     square_env: config.square.environment,
     cashapp_env: config.cashapp.environment,
     square_app_id: config.square.applicationId.substring(0, 15) + '...',
-    cashapp_client_id: config.cashapp.clientId.substring(0, 15) + '...'
+    cashapp_client_id: config.cashapp.clientId.substring(0, 15) + '...',
+    auto_detected: {
+      paypal_prod: isPaypalProduction,
+      square_prod: isSquareProduction,
+      cashapp_prod: isCashappProduction
+    }
   });
 
   return config;
