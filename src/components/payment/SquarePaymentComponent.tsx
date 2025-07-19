@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Smartphone, Loader2, AlertCircle, Shield } from 'lucide-react';
+import { CreditCard, Smartphone, Loader2, AlertCircle, Shield, RefreshCw } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -36,17 +36,53 @@ export function SquarePaymentComponent({
   const [error, setError] = useState<string | null>(null);
   const [cashAppAvailable, setCashAppAvailable] = useState(false);
   const [cashAppAttached, setCashAppAttached] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [initAttempt, setInitAttempt] = useState(0);
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  const cardAttachedRef = useRef(false);
 
   useEffect(() => {
+    // Set loading timeout
+    timeoutRef.current = setTimeout(() => {
+      if (isLoading && !cardAttachedRef.current) {
+        setLoadingTimeout(true);
+        setIsLoading(false);
+        setError('Square payment form took too long to load. Please try again.');
+      }
+    }, 15000); // 15 second timeout
+
     initializeSquarePayments();
-  }, []);
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // Destroy payment methods
+      if (paymentMethods.card?.destroy) {
+        paymentMethods.card.destroy();
+      }
+      if (paymentMethods.cashAppPay?.destroy) {
+        paymentMethods.cashAppPay.destroy();
+      }
+    };
+  }, [initAttempt]); // Re-run on retry
 
   // Attach Cash App Pay button when cashapp is selected
   useEffect(() => {
     if (selectedMethod === 'cashapp' && paymentMethods.cashAppPay && !cashAppAttached) {
       attachCashAppPay();
     }
-  }, [selectedMethod, paymentMethods.cashAppPay, cashAppAttached]);
+    
+    // Reset Cash App attachment when switching away
+    if (selectedMethod !== 'cashapp' && cashAppAttached) {
+      setCashAppAttached(false);
+      // Clear any Cash App Pay errors
+      if (error?.includes('Cash App')) {
+        setError(null);
+      }
+    }
+  }, [selectedMethod, paymentMethods.cashAppPay, cashAppAttached, error]);
 
   const initializeSquarePayments = async () => {
     try {
@@ -95,19 +131,37 @@ export function SquarePaymentComponent({
       const card = await payments.card();
       
       // Wait for DOM to be ready and container to exist
-      await new Promise((resolve) => {
+      let containerCheckAttempts = 0;
+      const maxContainerChecks = 50; // 5 seconds max (50 * 100ms)
+      
+      await new Promise<void>((resolve, reject) => {
         const checkContainer = () => {
+          containerCheckAttempts++;
           const container = document.getElementById('square-card-container');
+          
           if (container) {
-            resolve(true);
+            console.log(`✅ Square card container found after ${containerCheckAttempts} attempts`);
+            resolve();
+          } else if (containerCheckAttempts >= maxContainerChecks) {
+            console.error('❌ Square card container not found after maximum attempts');
+            reject(new Error('Card container element not found'));
           } else {
+            console.log(`⏳ Container ref not ready, retrying in 100ms (attempt ${containerCheckAttempts}/${maxContainerChecks})`);
             setTimeout(checkContainer, 100);
           }
         };
         checkContainer();
       });
       
+      console.log('🔄 Attaching Square card form...');
       await card.attach('#square-card-container');
+      cardAttachedRef.current = true;
+      console.log('✅ Square card form attached successfully');
+      
+      // Clear timeout since we succeeded
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
       // Initialize Cash App Pay according to Square documentation
       let cashAppPay;
@@ -167,8 +221,21 @@ export function SquarePaymentComponent({
 
       console.log('✅ Square payment methods initialized successfully');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to initialize Square payments';
-      console.error('Square initialization error:', err);
+      console.error('❌ Square initialization error:', err);
+      
+      let errorMessage = 'Failed to initialize Square payments';
+      if (err instanceof Error) {
+        if (err.message.includes('Container element not found')) {
+          errorMessage = 'Payment form container not ready. Please try again.';
+        } else if (err.message.includes('Square SDK not loaded')) {
+          errorMessage = 'Failed to load Square payment system. Please check your internet connection.';
+        } else if (err.message.includes('Missing required Square configuration')) {
+          errorMessage = 'Payment system configuration error. Please contact support.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
       setError(errorMessage);
       onError(errorMessage);
       setIsLoading(false);
@@ -259,27 +326,58 @@ export function SquarePaymentComponent({
     }
   };
 
-  if (isLoading) {
+  const handleRetry = () => {
+    console.log('🔄 Retrying Square payment initialization...');
+    setError(null);
+    setLoadingTimeout(false);
+    setIsLoading(true);
+    setCashAppAttached(false);
+    cardAttachedRef.current = false;
+    setInitAttempt(prev => prev + 1); // Trigger re-initialization
+  };
+
+  if (isLoading && !loadingTimeout) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="flex items-center justify-center space-x-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Loading Square payment form...</span>
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Loading Square payment form...</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This may take a few seconds...
+            </p>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  if (error && !paymentMethods.card) {
+  if ((error && !paymentMethods.card) || loadingTimeout) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          {error}
-        </AlertDescription>
-      </Alert>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-destructive">Payment Form Error</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error || 'Failed to load payment form. Please try again.'}
+            </AlertDescription>
+          </Alert>
+          <Button onClick={handleRetry} variant="outline" className="w-full">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry Loading Payment Form
+          </Button>
+          {initAttempt > 0 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Attempt {initAttempt + 1} • If the problem persists, please refresh the page
+            </p>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
