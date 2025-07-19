@@ -22,34 +22,35 @@ export interface PaymentConfig {
 
 // Get payment configuration from environment variables
 export const getPaymentConfig = (): PaymentConfig => {
-  // Debug logging to see what environment variables are loaded
-  console.log('🔍 Environment Variables Debug:', {
-    VITE_SQUARE_ENVIRONMENT: import.meta.env.VITE_SQUARE_ENVIRONMENT,
-    VITE_SQUARE_APPLICATION_ID: import.meta.env.VITE_SQUARE_APPLICATION_ID?.substring(0, 15) + '...',
-    VITE_CASHAPP_ENVIRONMENT: import.meta.env.VITE_CASHAPP_ENVIRONMENT,
-    VITE_CASHAPP_CLIENT_ID: import.meta.env.VITE_CASHAPP_CLIENT_ID?.substring(0, 15) + '...',
-    DEV: import.meta.env.DEV,
-    MODE: import.meta.env.MODE
-  });
-
+  // Force production configuration to fix environment mismatch
+  console.log('🔐 FORCING PRODUCTION PAYMENT CONFIG');
+  
   const config: PaymentConfig = {
     paypal: {
-      clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || '',
-      clientSecret: import.meta.env.VITE_PAYPAL_CLIENT_SECRET || '',
-      environment: (import.meta.env.VITE_PAYPAL_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+      clientId: 'AWcmEjsKDeNUzvVQJyvc3lq5n4NXsh7-sHPgGT4ZiPFo8X6csYZcElZg2wsu_xsZE22DUoXOtF3MolVK',
+      clientSecret: '',
+      environment: 'production',
     },
     square: {
-      applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID || 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
-      accessToken: import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '',
-      environment: (import.meta.env.VITE_SQUARE_ENVIRONMENT as 'sandbox' | 'production') || 'production',
-      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || 'L0Q2YC1SPBGD8',
+      applicationId: 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
+      accessToken: '',
+      environment: 'production',
+      locationId: 'L0Q2YC1SPBGD8',
     },
     cashapp: {
-      clientId: import.meta.env.VITE_CASHAPP_CLIENT_ID || 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
-      environment: (import.meta.env.VITE_CASHAPP_ENVIRONMENT as 'sandbox' | 'production') || 'production',
+      clientId: 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
+      environment: 'production',
     },
-    webhookUrl: import.meta.env.VITE_PAYMENT_WEBHOOK_URL,
+    webhookUrl: 'https://aszzhlgwfbijaotfddsh.supabase.co/functions/v1/payments-webhook',
   };
+
+  console.log('🔐 Payment Config Loaded:', {
+    paypal_env: config.paypal.environment,
+    square_env: config.square.environment,
+    cashapp_env: config.cashapp.environment,
+    square_app_id: config.square.applicationId.substring(0, 15) + '...',
+    cashapp_client_id: config.cashapp.clientId.substring(0, 15) + '...'
+  });
 
   return config;
 };
