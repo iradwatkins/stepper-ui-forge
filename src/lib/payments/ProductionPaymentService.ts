@@ -25,26 +25,46 @@ export class ProductionPaymentService {
   async getAvailablePaymentMethods() {
     try {
       this.logger.info('Fetching available payment methods');
-      const methods = await PaymentConfigurationService.getAvailablePaymentMethods();
-      this.logger.info(`Found ${methods.length} payment methods`);
-      return methods;
+      
+      // Check gateway health to determine availability
+      const healthStatus = await this.checkGatewayHealth();
+      
+      const methods = [
+        {
+          id: 'paypal',
+          name: 'PayPal',
+          description: 'Pay with PayPal account or credit card',
+          available: healthStatus.paypal?.healthy === true
+        },
+        {
+          id: 'square',
+          name: 'Credit/Debit Card',
+          description: 'Pay with credit or debit card via Square',
+          available: healthStatus.square?.healthy === true
+        },
+        {
+          id: 'cashapp',
+          name: 'Cash App Pay',
+          description: 'Pay with Cash App',
+          available: false // Edge function not deployed
+        }
+      ];
+      
+      // Filter to only available methods
+      const availableMethods = methods.filter(m => m.available);
+      this.logger.info(`Found ${availableMethods.length} available payment methods`);
+      
+      return availableMethods;
     } catch (error) {
-      const paymentError = createStandardError(
-        error as Error,
-        'system' as PaymentGateway,
-        ERROR_CODES.GATEWAY_NOT_CONFIGURED,
-        false
-      );
-      logPaymentError(paymentError);
       this.logger.error('Failed to fetch payment methods', { error });
       
-      // Fallback to basic configuration if database is unavailable
+      // Fallback to PayPal only if everything fails
       return [
         {
           id: 'paypal',
           name: 'PayPal',
           description: 'Pay with your PayPal account',
-          available: false
+          available: true
         }
       ];
     }
@@ -67,6 +87,8 @@ export class ProductionPaymentService {
     orderId: string;
     customerEmail: string;
     idempotencyKey?: string;
+    sourceId?: string; // Required for Square payments
+    paypalOrderId?: string; // For PayPal capture flow
     sourceId?: string; // For Square payments
     paypalOrderId?: string; // For PayPal capture
   }, retryAttempt: number = 1) {
@@ -118,6 +140,24 @@ export class ProductionPaymentService {
           sourceId: paymentData.sourceId || 'cnon:card-nonce-ok', // Fallback to test nonce
           amount: paymentData.amount,
           currency: 'USD'
+        };
+      } else if (paymentData.gateway === 'cashapp') {
+        // Cash App edge function not deployed - return proper error
+        const error = createStandardError(
+          'Cash App payments are temporarily unavailable',
+          gateway,
+          ERROR_CODES.GATEWAY_NOT_CONFIGURED,
+          false
+        );
+        this.logger.error('Cash App gateway not configured', {
+          gateway,
+          orderId: paymentData.orderId
+        });
+        return {
+          success: false,
+          error: error.userMessage,
+          errorCode: error.code,
+          retryable: false
         };
       } else {
         throw createStandardError(
@@ -446,7 +486,7 @@ export class ProductionPaymentService {
       error?: string;
     }
   }> {
-    const gateways = ['paypal', 'square'];
+    const gateways = ['paypal', 'square', 'cashapp'];
     const healthChecks: any = {};
     
     await Promise.all(
@@ -483,6 +523,13 @@ export class ProductionPaymentService {
               data.apiResponseTime,
               { environment: data.environment }
             );
+          } else if (response.status === 404 && gateway === 'cashapp') {
+            // Cash App function not deployed
+            healthChecks[gateway] = {
+              available: false,
+              healthy: false,
+              error: 'Cash App payment function not deployed'
+            };
           } else {
             healthChecks[gateway] = {
               available: false,

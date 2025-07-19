@@ -89,6 +89,7 @@ const SellerPayouts = lazy(() => import("./pages/SellerPayouts"));
 const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
 const PayPalCallback = lazy(() => import("./pages/PayPalCallback"));
 const PaymentFunctionTest = lazy(() => import("./pages/PaymentFunctionTest"));
+const PaymentDebugTest = lazy(() => import("./pages/PaymentDebugTest"));
 const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
 const DatabaseTest = lazy(() => import("./pages/DatabaseTest"));
@@ -127,6 +128,7 @@ const AppContent = () => {
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/payment-test" element={<PaymentTestPage />} />
         <Route path="/payment-function-test" element={<PaymentFunctionTest />} />
+        <Route path="/payment-debug-test" element={<PaymentDebugTest />} />
         <Route path="/test-premium-event" element={
           <ProtectedRoute>
             <TestPremiumEvent />

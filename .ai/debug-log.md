@@ -66,3 +66,7 @@
 | Add retry mechanism | ProductionPaymentService.ts | Added exponential backoff retry with idempotency | No |
 | Create health check endpoints | Edge Functions & Service | Added gateway health monitoring | No |
 | Fix Edge Function linting | payments-paypal/square | Added block scopes to case statements | No |
+| Fix payment errors | ProductionPaymentService | Cash App function missing, added proper error handling | No |
+| Update payment methods | ProductionPaymentService | Use health check for availability instead of DB | No |
+| PayPal flow verified | Edge Functions | PayPal create_order endpoint working correctly | No |
+| Square internal error | Edge Functions | Square endpoint returns 500, needs investigation | No |
