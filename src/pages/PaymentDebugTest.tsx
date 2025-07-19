@@ -177,3 +177,5 @@ export function PaymentDebugTest() {
     </div>
   );
 }
+
+export default PaymentDebugTest;
