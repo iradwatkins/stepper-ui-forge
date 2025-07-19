@@ -37,11 +37,25 @@ export function loadSquareSDK(): Promise<void> {
     // Use production or sandbox URL based on environment
     const paymentConfig = getPaymentConfig();
     const isProduction = paymentConfig.square.environment === 'production';
-    script.src = isProduction 
+    const scriptUrl = isProduction 
       ? 'https://web.squarecdn.com/v1/square.js'
       : 'https://sandbox.web.squarecdn.com/v1/square.js';
+    
+    // Add cache busting and runtime logging
+    const cacheBuster = `?t=${Date.now()}`;
+    script.src = scriptUrl + cacheBuster;
     script.async = true;
     script.defer = true;
+    
+    // Enhanced logging for debugging
+    console.group('🟦 Square SDK Initialization');
+    console.log('Environment Config:', paymentConfig.square.environment);
+    console.log('Is Production Mode:', isProduction);
+    console.log('Application ID:', paymentConfig.square.applicationId);
+    console.log('Location ID:', paymentConfig.square.locationId);
+    console.log('Script URL:', scriptUrl);
+    console.log('Full Script SRC:', script.src);
+    console.groupEnd();
 
     script.onload = () => {
       if (window.Square) {
@@ -82,11 +96,43 @@ export function getSquareSDK(): any {
 }
 
 /**
+ * Validate environment configuration before initialization
+ */
+function validateEnvironmentConfiguration(applicationId: string): void {
+  const config = getPaymentConfig();
+  const isProduction = config.square.environment === 'production';
+  const isProductionAppId = applicationId.startsWith('sq0idp-') && !applicationId.includes('sandbox');
+  const isSandboxAppId = applicationId.includes('sandbox') || applicationId.startsWith('sandbox-');
+  
+  console.log('🔍 Environment Validation:', {
+    configEnvironment: config.square.environment,
+    isProduction,
+    applicationId: applicationId.substring(0, 15) + '...',
+    isProductionAppId,
+    isSandboxAppId
+  });
+  
+  // Fail-fast validation
+  if (isProduction && !isProductionAppId) {
+    throw new Error(`Environment Mismatch: Configuration is set to production but Application ID appears to be for sandbox. Please check VITE_SQUARE_APPLICATION_ID.`);
+  }
+  
+  if (!isProduction && isProductionAppId) {
+    throw new Error(`Environment Mismatch: Configuration is set to sandbox but Application ID appears to be for production. Please check VITE_SQUARE_ENVIRONMENT.`);
+  }
+}
+
+/**
  * Initialize Square Payments
  */
 export async function initializeSquarePayments(applicationId: string, locationId: string): Promise<any> {
+  // Validate environment configuration first
+  validateEnvironmentConfiguration(applicationId);
+  
   await loadSquareSDK();
   const Square = getSquareSDK();
+  
+  console.log('✅ Square Payments initialized with validated configuration');
   return Square.payments(applicationId, locationId);
 }
 

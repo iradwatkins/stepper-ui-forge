@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CreditCard, Smartphone, Loader2, AlertCircle } from 'lucide-react';
+import { CreditCard, Smartphone, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { createSquarePaymentForm, tokenizePayment } from '@/lib/payments/square-sdk';
 import { getPaymentConfig } from '@/lib/payment-config';
 
@@ -220,9 +220,15 @@ export function SquarePaymentForm({
       {selectedMethod === 'card' && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Card Information
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Card Information
+              </div>
+              <Badge variant={getPaymentConfig().square.environment === 'production' ? 'default' : 'secondary'} className="text-xs">
+                <Shield className="w-3 h-3 mr-1" />
+                {getPaymentConfig().square.environment === 'production' ? 'LIVE' : 'TEST'}
+              </Badge>
             </CardTitle>
             <CardDescription>
               Enter your card details below. All information is encrypted and secure.

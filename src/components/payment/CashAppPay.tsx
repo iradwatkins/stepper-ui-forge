@@ -56,10 +56,20 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
         return;
       }
 
-      // Load Cash App Pay Kit script
+      // Load Cash App Pay Kit script with cache busting
       const script = document.createElement('script');
-      script.src = cashAppConfig.scriptUrl;
+      const cacheBuster = `?t=${Date.now()}`;
+      script.src = cashAppConfig.scriptUrl + cacheBuster;
       script.async = true;
+      
+      // Enhanced logging for debugging
+      console.group('💰 CashApp SDK Initialization');
+      console.log('Environment Config:', cashAppConfig.environment);
+      console.log('Client ID:', cashAppConfig.clientId);
+      console.log('Script URL:', cashAppConfig.scriptUrl);
+      console.log('Full Script SRC:', script.src);
+      console.log('Is Production Mode:', cashAppConfig.environment === 'production');
+      console.groupEnd();
 
       script.onload = async () => {
         scriptLoadedRef.current = true;
