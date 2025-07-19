@@ -78,3 +78,7 @@
 | Remember me feature | Auth components | Added remember me checkbox to all auth forms | No |
 | Session management | AuthContext | Added session expiry and remember me handling | No |
 | Session config | sessionConfig.ts | Created session configuration for 7-day expiry | No |
+| Payment debug fix | PaymentDebugTest.tsx | Added missing default export | Yes |
+| Square error handling | payments-square/index.ts | Enhanced error logging and debugging | No |
+| Cash App disabled | ProductionPaymentService.ts | Removed from health checks until deployed | No |
+| Version tracking | ProductionPaymentService.ts | Added v2.0.1 for cache debugging | No |
