@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/dialog'
 import { ReferralService, ReferralStats } from '@/lib/services/ReferralService'
 import { FollowerService } from '@/lib/services/FollowerService'
+import { PromotionalMaterialsGenerator } from '@/components/marketing/PromotionalMaterialsGenerator'
+import type { Event } from '@/types/database'
 
 interface TicketSellerDashboardProps {
   userId: string
@@ -38,6 +40,8 @@ interface SellingPermission {
   organizer_id: string
   organizer_name: string
   commission_rate: number
+  commission_type?: 'percentage' | 'fixed'
+  commission_fixed_amount?: number
   can_sell_tickets: boolean
 }
 
@@ -48,6 +52,8 @@ interface ReferralCodeWithDetails {
   qrCodeUrl: string
   organizerName: string
   eventTitle?: string
+  eventId?: string
+  event?: Event // Full event data for image generation
   stats: ReferralStats
 }
 
@@ -191,14 +197,15 @@ export function TicketSellerDashboard({ userId }: TicketSellerDashboardProps) {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Commission</CardTitle>
+            <CardTitle className="text-sm font-medium">Commission Types</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {sellingPermissions.length > 0 
-                ? (sellingPermissions.reduce((sum, p) => sum + p.commission_rate, 0) / sellingPermissions.length * 100).toFixed(1)
-                : 0}%
+            <div className="text-xl font-bold">
+              {sellingPermissions.filter(p => p.commission_type === 'fixed').length} Fixed
+            </div>
+            <div className="text-sm text-gray-500">
+              {sellingPermissions.filter(p => p.commission_type !== 'fixed').length} Percentage
             </div>
           </CardContent>
         </Card>
@@ -237,7 +244,10 @@ export function TicketSellerDashboard({ userId }: TicketSellerDashboardProps) {
                           {permission.organizer_name}
                         </TableCell>
                         <TableCell>
-                          {(permission.commission_rate * 100).toFixed(1)}%
+                          {permission.commission_type === 'fixed' 
+                            ? `$${permission.commission_fixed_amount?.toFixed(2)}/ticket`
+                            : `${(permission.commission_rate * 100).toFixed(1)}%`
+                          }
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">Active</Badge>
@@ -317,94 +327,53 @@ export function TicketSellerDashboard({ userId }: TicketSellerDashboardProps) {
         </TabsContent>
 
         <TabsContent value="materials">
-          <Card>
-            <CardHeader>
-              <CardTitle>Promotional Materials</CardTitle>
-              <CardDescription>
-                Ready-to-use content for social media and marketing
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {referralCodes.length === 0 ? (
-                <div className="text-center py-8">
+          {referralCodes.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
                   <Download className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No materials available</h3>
                   <p className="text-gray-600">Generate referral codes to access promotional materials.</p>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {referralCodes.map((code) => {
-                    const materials = generatePromotionalMaterials(code)
-                    return (
-                      <div key={code.id} className="border rounded-lg p-4">
-                        <h4 className="font-medium mb-3">{code.organizerName} - {code.code}</h4>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor={`social-${code.id}`}>Social Media Post</Label>
-                            <Textarea
-                              id={`social-${code.id}`}
-                              value={materials.socialMediaPost}
-                              readOnly
-                              className="mt-1"
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="mt-2"
-                              onClick={() => copyToClipboard(materials.socialMediaPost)}
-                            >
-                              <Copy className="h-3 w-3 mr-1" />
-                              Copy
-                            </Button>
-                          </div>
-
-                          <div>
-                            <Label htmlFor={`email-${code.id}`}>Email Template</Label>
-                            <Textarea
-                              id={`email-${code.id}`}
-                              value={materials.emailTemplate}
-                              readOnly
-                              rows={6}
-                              className="mt-1"
-                            />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="mt-2"
-                              onClick={() => copyToClipboard(materials.emailTemplate)}
-                            >
-                              <Copy className="h-3 w-3 mr-1" />
-                              Copy
-                            </Button>
-                          </div>
-
-                          <div>
-                            <Label htmlFor={`url-${code.id}`}>Referral URL</Label>
-                            <div className="flex mt-1">
-                              <Input
-                                id={`url-${code.id}`}
-                                value={materials.shortUrl}
-                                readOnly
-                                className="mr-2"
-                              />
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => copyToClipboard(materials.shortUrl)}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {referralCodes.map((code) => (
+                <div key={code.id}>
+                  <h3 className="text-lg font-medium mb-4">
+                    {code.eventTitle || 'Event'} - {code.organizerName}
+                  </h3>
+                  {code.event ? (
+                    <PromotionalMaterialsGenerator
+                      referralCode={{
+                        id: code.id,
+                        promotion_id: '',
+                        event_id: code.eventId || null,
+                        code: code.code,
+                        qr_code_url: code.qrCodeUrl,
+                        referral_url: code.referralUrl,
+                        is_active: true,
+                        clicks_count: code.stats.clicks,
+                        conversions_count: code.stats.conversions,
+                        created_at: '',
+                        updated_at: ''
+                      }}
+                      event={code.event}
+                    />
+                  ) : (
+                    <Card>
+                      <CardContent className="py-8">
+                        <p className="text-center text-gray-600">
+                          Event details not available for promotional materials
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

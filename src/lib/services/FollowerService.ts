@@ -46,6 +46,8 @@ export interface UserPermissions {
   can_work_events: boolean
   is_co_organizer: boolean
   commission_rate: number
+  commission_type?: 'percentage' | 'fixed'
+  commission_fixed_amount?: number
 }
 
 export class FollowerService {
@@ -386,7 +388,9 @@ export class FollowerService {
         can_sell_tickets: permissions.can_sell_tickets || false,
         can_work_events: permissions.can_work_events || false,
         is_co_organizer: permissions.is_co_organizer || false,
-        commission_rate: permissions.commission_rate || 0
+        commission_rate: permissions.commission_rate || 0,
+        commission_type: permissions.commission_type || 'percentage',
+        commission_fixed_amount: permissions.commission_fixed_amount || 0
       };
 
       let result;
@@ -465,7 +469,9 @@ export class FollowerService {
         can_sell_tickets: false,
         can_work_events: false,
         is_co_organizer: false,
-        commission_rate: 0
+        commission_rate: 0,
+        commission_type: 'percentage',
+        commission_fixed_amount: 0
       };
     }
     
@@ -475,7 +481,9 @@ export class FollowerService {
         can_sell_tickets: false,
         can_work_events: false,
         is_co_organizer: false,
-        commission_rate: 0
+        commission_rate: 0,
+        commission_type: 'percentage',
+        commission_fixed_amount: 0
       };
     }
     
@@ -492,7 +500,9 @@ export class FollowerService {
           can_sell_tickets: permissions.can_sell_tickets || false,
           can_work_events: permissions.can_work_events || false,
           is_co_organizer: permissions.is_co_organizer || false,
-          commission_rate: parseFloat(permissions.commission_rate) || 0
+          commission_rate: parseFloat(permissions.commission_rate) || 0,
+          commission_type: permissions.commission_type || 'percentage',
+          commission_fixed_amount: parseFloat(permissions.commission_fixed_amount) || 0
         };
       }
 
@@ -533,7 +543,9 @@ export class FollowerService {
         can_sell_tickets: false,
         can_work_events: false,
         is_co_organizer: false,
-        commission_rate: 0
+        commission_rate: 0,
+        commission_type: 'percentage',
+        commission_fixed_amount: 0
       };
 
     } catch (error) {
@@ -544,7 +556,9 @@ export class FollowerService {
         can_sell_tickets: false,
         can_work_events: false,
         is_co_organizer: false,
-        commission_rate: 0
+        commission_rate: 0,
+        commission_type: 'percentage',
+        commission_fixed_amount: 0
       };
     }
   }

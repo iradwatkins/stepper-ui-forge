@@ -125,6 +125,8 @@ export type Database = {
           organizer_id: string
           promotion_type: string
           updated_at: string
+          commission_type: string
+          commission_fixed_amount: number
         }
         Insert: {
           created_at?: string
@@ -135,6 +137,8 @@ export type Database = {
           organizer_id: string
           promotion_type?: string
           updated_at?: string
+          commission_type?: string
+          commission_fixed_amount?: number
         }
         Update: {
           created_at?: string
@@ -145,6 +149,8 @@ export type Database = {
           organizer_id?: string
           promotion_type?: string
           updated_at?: string
+          commission_type?: string
+          commission_fixed_amount?: number
         }
         Relationships: []
       }

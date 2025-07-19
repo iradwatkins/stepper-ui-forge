@@ -165,7 +165,9 @@ export function FollowerManagementDashboard({ organizerId }: FollowerManagementD
       can_sell_tickets: follower.permissions?.can_sell_tickets || false,
       can_work_events: follower.permissions?.can_work_events || false,
       is_co_organizer: follower.permissions?.is_co_organizer || false,
-      commission_rate: follower.permissions?.commission_rate || 0
+      commission_rate: follower.permissions?.commission_rate || 0,
+      commission_type: follower.permissions?.commission_type || 'percentage',
+      commission_fixed_amount: follower.permissions?.commission_fixed_amount || 0
     })
     setShowPermissionsDialog(true)
   }
@@ -318,8 +320,14 @@ export function FollowerManagementDashboard({ organizerId }: FollowerManagementD
                       </div>
                     </TableCell>
                     <TableCell>
-                      {follower.permissions?.can_sell_tickets && follower.permissions.commission_rate > 0 ? (
-                        <span className="font-medium">{(follower.permissions.commission_rate * 100).toFixed(1)}%</span>
+                      {follower.permissions?.can_sell_tickets ? (
+                        follower.permissions.commission_type === 'fixed' ? (
+                          <span className="font-medium">${follower.permissions.commission_fixed_amount?.toFixed(2)}/ticket</span>
+                        ) : follower.permissions.commission_rate > 0 ? (
+                          <span className="font-medium">{(follower.permissions.commission_rate * 100).toFixed(1)}%</span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
@@ -386,28 +394,93 @@ export function FollowerManagementDashboard({ organizerId }: FollowerManagementD
             </div>
 
             {tempPermissions.can_sell_tickets && (
-              <div className="space-y-2">
-                <Label htmlFor="commission-rate" className="text-sm font-medium">
-                  Commission Rate (%)
-                </Label>
-                <Input
-                  id="commission-rate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={tempPermissions.commission_rate * 100}
-                  onChange={(e) => 
-                    setTempPermissions(prev => ({ 
-                      ...prev, 
-                      commission_rate: parseFloat(e.target.value) / 100 
-                    }))
-                  }
-                  placeholder="5.0"
-                />
-                <p className="text-xs text-gray-600">
-                  Percentage of each sale this follower will earn
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Commission Type</Label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name="commission-type"
+                        value="percentage"
+                        checked={tempPermissions.commission_type === 'percentage'}
+                        onChange={(e) => 
+                          setTempPermissions(prev => ({ 
+                            ...prev, 
+                            commission_type: 'percentage' as const
+                          }))
+                        }
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm">Percentage</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name="commission-type"
+                        value="fixed"
+                        checked={tempPermissions.commission_type === 'fixed'}
+                        onChange={(e) => 
+                          setTempPermissions(prev => ({ 
+                            ...prev, 
+                            commission_type: 'fixed' as const
+                          }))
+                        }
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm">Fixed Amount</span>
+                    </label>
+                  </div>
+                </div>
+
+                {tempPermissions.commission_type === 'percentage' ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="commission-rate" className="text-sm font-medium">
+                      Commission Rate (%)
+                    </Label>
+                    <Input
+                      id="commission-rate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={tempPermissions.commission_rate * 100}
+                      onChange={(e) => 
+                        setTempPermissions(prev => ({ 
+                          ...prev, 
+                          commission_rate: parseFloat(e.target.value) / 100 
+                        }))
+                      }
+                      placeholder="5.0"
+                    />
+                    <p className="text-xs text-gray-600">
+                      Percentage of each sale this follower will earn
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="commission-fixed" className="text-sm font-medium">
+                      Fixed Amount per Ticket ($)
+                    </Label>
+                    <Input
+                      id="commission-fixed"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={tempPermissions.commission_fixed_amount || 0}
+                      onChange={(e) => 
+                        setTempPermissions(prev => ({ 
+                          ...prev, 
+                          commission_fixed_amount: parseFloat(e.target.value) || 0
+                        }))
+                      }
+                      placeholder="2.00"
+                    />
+                    <p className="text-xs text-gray-600">
+                      Fixed dollar amount this follower will earn per ticket sold
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

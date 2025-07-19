@@ -279,6 +279,7 @@ npm run dev
 ### 2. **If localhost doesn't work, use 127.0.0.1**:
 - Try: http://127.0.0.1:8080 instead of http://localhost:8080
 - The server might bind to 127.0.0.1 specifically
+- **CONFIRMED WORKING**: Use http://127.0.0.1:8080/ when localhost:8080 refuses to connect
 
 ### 3. **Verify server is running**:
 ```bash
@@ -333,7 +334,18 @@ kill -9 <PID>
 
 **PROBLEM**: "localhost refused to connect" or "ERR_CONNECTION_REFUSED" errors occur frequently during development.
 
-**ROOT CAUSE**: Vite server process gets killed or stops responding but doesn't properly release the port.
+**ROOT CAUSE**: Two common issues:
+1. Vite server process gets killed or stops responding but doesn't properly release the port
+2. IPv6/IPv4 binding issues - Vite must bind to both protocols for localhost to work properly
+
+**SOLUTION FOR IPv6/IPv4 ISSUES**: 
+Ensure vite.config.ts has `host: true` in server configuration:
+```typescript
+server: {
+  host: true,  // This binds to both IPv4 and IPv6
+  port: 8080,
+}
+```
 
 **IMMEDIATE SOLUTION** (Run these commands in sequence):
 ```bash

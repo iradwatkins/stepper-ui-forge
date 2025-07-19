@@ -13,6 +13,7 @@ export interface CommissionEarning {
   sale_amount: number
   commission_rate: number
   commission_amount: number
+  commission_type: 'percentage' | 'fixed'
   status: 'pending' | 'confirmed' | 'paid'
   created_at: string
   updated_at: string
@@ -40,9 +41,20 @@ export interface ReferralPerformance {
 
 export class CommissionService {
   /**
-   * Calculate commission amount based on sale and rate
+   * Calculate commission amount based on sale and rate/fixed amount
    */
-  static calculateCommission(saleAmount: number, commissionRate: number): number {
+  static calculateCommission(
+    saleAmount: number, 
+    commissionRate: number, 
+    commissionType: 'percentage' | 'fixed' = 'percentage',
+    commissionFixedAmount: number = 0,
+    ticketQuantity: number = 1
+  ): number {
+    if (commissionType === 'fixed') {
+      // For fixed commissions, multiply by number of tickets
+      return Math.round(commissionFixedAmount * ticketQuantity * 100) / 100
+    }
+    // For percentage, calculate based on total sale amount
     return Math.round(saleAmount * commissionRate * 100) / 100
   }
 
@@ -56,10 +68,19 @@ export class CommissionService {
     organizerId: string,
     eventId: string,
     saleAmount: number,
-    commissionRate: number
+    commissionRate: number,
+    commissionType: 'percentage' | 'fixed' = 'percentage',
+    commissionFixedAmount: number = 0,
+    ticketQuantity: number = 1
   ): Promise<{ success: boolean; earning?: CommissionEarning; error?: string }> {
     try {
-      const commissionAmount = this.calculateCommission(saleAmount, commissionRate)
+      const commissionAmount = this.calculateCommission(
+        saleAmount, 
+        commissionRate,
+        commissionType,
+        commissionFixedAmount,
+        ticketQuantity
+      )
 
       const { data, error } = await supabase
         .from('commission_earnings')
@@ -72,6 +93,7 @@ export class CommissionService {
           sale_amount: saleAmount,
           commission_rate: commissionRate,
           commission_amount: commissionAmount,
+          commission_type: commissionType,
           status: 'pending'
         })
         .select()

@@ -3,9 +3,10 @@
 
 import { supabase } from '@/integrations/supabase/client'
 import QRCode from 'qrcode'
+import { ImageGenerationService, type PromotionalImageOptions } from './ImageGenerationService'
 import type { 
   ReferralCode, ReferralCodeInsert, ReferralCodeUpdate,
-  CommissionEarning, CommissionEarningInsert
+  CommissionEarning, CommissionEarningInsert, Event
 } from '@/types/database'
 
 // Type assertion for supabase client
@@ -380,28 +381,81 @@ export class ReferralService {
   /**
    * Generate promotional materials for a referral code
    */
-  static generatePromotionalMaterials(referralCode: ReferralCode, eventTitle?: string): {
+  static generatePromotionalMaterials(
+    referralCode: ReferralCode, 
+    eventTitle?: string,
+    platform?: 'facebook' | 'instagram' | 'twitter' | 'whatsapp' | 'email'
+  ): {
     socialMediaPost: string
     emailTemplate: string
     shortUrl: string
+    trackingUrl: string
   } {
     const eventText = eventTitle ? ` for ${eventTitle}` : '';
     
-    return {
-      socialMediaPost: `🎉 Get your tickets${eventText}! Use my link for exclusive access: ${referralCode.referral_url} #Events #Tickets`,
-      
-      emailTemplate: `Hi there!
+    // Add UTM parameters for tracking
+    const trackingUrl = this.addUTMParameters(referralCode.referral_url, {
+      source: platform || 'direct',
+      medium: 'social',
+      campaign: `referral-${referralCode.code}`
+    });
+    
+    // Platform-specific messages
+    const platformMessages = {
+      facebook: `🎉 Don't miss out on ${eventTitle}! I've got an exclusive link just for you. Get your tickets now and let's have an amazing time together! ${trackingUrl} #SteppersLife #Events`,
+      instagram: `🎉 ${eventTitle} is going to be AMAZING! Swipe up or click the link in my bio for tickets! Use my special code: ${referralCode.code} 💃🕺 #SteppersLife #${eventTitle?.replace(/\s+/g, '')}`,
+      twitter: `🎉 Who's ready for ${eventTitle}? Get your tickets with my exclusive link: ${trackingUrl} #SteppersLife #Events`,
+      whatsapp: `Hey! 👋 I wanted to make sure you don't miss ${eventTitle}. Here's my exclusive link for tickets: ${trackingUrl}. See you there! 🎉`,
+      email: `Hi there!
 
-I wanted to share this amazing event${eventText} with you. 
+I'm excited to share that I'll be at ${eventTitle} and I'd love for you to join me!
 
-Get your tickets here: ${referralCode.referral_url}
+I have a special link that you can use to get your tickets: ${trackingUrl}
+
+Event Details:
+${eventTitle}
+Use code: ${referralCode.code}
+
+This is going to be an amazing event with great music, dancing, and vibes. Don't miss out!
 
 Looking forward to seeing you there!
 
 Best regards`,
-
-      shortUrl: referralCode.referral_url
+      default: `🎉 Get your tickets${eventText}! Use my link for exclusive access: ${trackingUrl} #SteppersLife #Events`
     };
+    
+    return {
+      socialMediaPost: platformMessages[platform || 'default'] || platformMessages.default,
+      emailTemplate: platformMessages.email,
+      shortUrl: referralCode.referral_url,
+      trackingUrl
+    };
+  }
+
+  /**
+   * Add UTM parameters to a URL for tracking
+   */
+  static addUTMParameters(url: string, params: {
+    source?: string
+    medium?: string
+    campaign?: string
+    term?: string
+    content?: string
+  }): string {
+    try {
+      const urlObj = new URL(url);
+      
+      if (params.source) urlObj.searchParams.set('utm_source', params.source);
+      if (params.medium) urlObj.searchParams.set('utm_medium', params.medium);
+      if (params.campaign) urlObj.searchParams.set('utm_campaign', params.campaign);
+      if (params.term) urlObj.searchParams.set('utm_term', params.term);
+      if (params.content) urlObj.searchParams.set('utm_content', params.content);
+      
+      return urlObj.toString();
+    } catch (error) {
+      console.error('Failed to add UTM parameters:', error);
+      return url;
+    }
   }
 
   /**
@@ -444,6 +498,93 @@ Best regards`,
     } catch (error) {
       console.error('Failed to validate referral code:', error);
       return { valid: false };
+    }
+  }
+
+  /**
+   * Generate promotional images for social media
+   */
+  static async generatePromotionalImages(
+    referralCode: ReferralCode,
+    event: Event,
+    platforms?: Array<'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'whatsapp'>
+  ): Promise<{ success: boolean; images?: any[]; error?: string }> {
+    try {
+      const platformsToGenerate = platforms || ['instagram', 'facebook', 'twitter', 'linkedin', 'whatsapp'];
+      const images = [];
+      
+      for (const platform of platformsToGenerate) {
+        try {
+          const image = await ImageGenerationService.generatePromotionalImage({
+            event,
+            platform,
+            qrCodeUrl: referralCode.qr_code_url || undefined,
+            referralCode: referralCode.code,
+            includeQR: true,
+            includeReferralCode: true,
+            brandingText: 'All things Stepping. Get tickets at stepperslife.com'
+          });
+          
+          images.push({
+            platform,
+            ...image
+          });
+        } catch (error) {
+          console.error(`Failed to generate image for ${platform}:`, error);
+        }
+      }
+      
+      return {
+        success: true,
+        images
+      };
+    } catch (error) {
+      console.error('Failed to generate promotional images:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Store referral click with UTM parameters
+   */
+  static async trackReferralClickWithUTM(
+    referralCode: string,
+    utmParams?: {
+      source?: string
+      medium?: string
+      campaign?: string
+      term?: string
+      content?: string
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // First track the basic click
+      const trackResult = await this.trackReferralClick(referralCode);
+      
+      if (!trackResult.success) {
+        return trackResult;
+      }
+      
+      // Store UTM parameters in a separate analytics table if they exist
+      if (utmParams && Object.keys(utmParams).length > 0) {
+        // This would require a new table for detailed analytics
+        // For now, we'll just log it
+        console.log('UTM Parameters tracked:', {
+          referralCode,
+          ...utmParams
+        });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to track referral click with UTM:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 }

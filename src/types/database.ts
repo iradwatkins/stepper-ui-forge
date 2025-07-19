@@ -503,6 +503,8 @@ export interface Database {
           can_work_events: boolean
           is_co_organizer: boolean
           commission_rate: number
+          commission_type: 'percentage' | 'fixed'
+          commission_fixed_amount: number
           created_at: string
           updated_at: string
         }
@@ -515,6 +517,8 @@ export interface Database {
           can_work_events?: boolean
           is_co_organizer?: boolean
           commission_rate?: number
+          commission_type?: 'percentage' | 'fixed'
+          commission_fixed_amount?: number
           created_at?: string
           updated_at?: string
         }
@@ -527,6 +531,8 @@ export interface Database {
           can_work_events?: boolean
           is_co_organizer?: boolean
           commission_rate?: number
+          commission_type?: 'percentage' | 'fixed'
+          commission_fixed_amount?: number
           created_at?: string
           updated_at?: string
         }
