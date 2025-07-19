@@ -50,20 +50,49 @@ export function PaymentDebugTest() {
   const testSquarePayment = async () => {
     setLoading('square');
     try {
-      // Square requires proper Web Payments SDK integration for production
-      // This test will fail without a valid payment token
-      const result = await productionPaymentService.processPayment({
-        amount: 1.00,
-        gateway: 'square',
-        orderId: `test_${Date.now()}`,
-        customerEmail: 'test@example.com'
-        // sourceId would come from Square Web Payments SDK
+      // First, let's test the Square API directly to get better error info
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      // Test with a sandbox test token
+      const testResponse = await fetch(`${supabaseUrl}/functions/v1/payments-square`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${anonKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'create_payment',
+          sourceId: 'cnon:card-nonce-ok', // Square sandbox test nonce
+          amount: 1.00,
+          currency: 'USD'
+        })
       });
-      setResults(prev => ({ ...prev, square: result }));
+      
+      const testData = await testResponse.json();
+      
+      if (!testResponse.ok) {
+        setResults(prev => ({ ...prev, square: { 
+          error: testData.error || 'Square API error',
+          details: testData.details || {},
+          status: testResponse.status,
+          note: 'Check Supabase logs for detailed error',
+          possibleCauses: [
+            'Environment mismatch (sandbox token with production URL)',
+            'Invalid access token or location ID',
+            'Edge function not updated with better error handling'
+          ]
+        } }));
+      } else {
+        setResults(prev => ({ ...prev, square: { 
+          success: true,
+          data: testData 
+        } }));
+      }
     } catch (error) {
       setResults(prev => ({ ...prev, square: { 
-        error: error.message || 'Square requires Web Payments SDK integration',
-        note: 'Square payments need frontend token generation'
+        error: error.message || 'Square test failed',
+        note: 'Network or configuration error'
       } }));
     }
     setLoading(null);
