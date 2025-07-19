@@ -3,26 +3,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { CreditCard, Smartphone, Loader2, AlertCircle, Shield } from 'lucide-react';
-import { createSquarePaymentForm, tokenizePayment } from '@/lib/payments/square-sdk';
-import { getPaymentConfig } from '@/lib/payment-config';
 
-interface SquarePaymentFormProps {
+declare global {
+  interface Window {
+    Square: any;
+    CashAppPay: any;
+  }
+}
+
+interface SquarePaymentComponentProps {
   amount: number;
   onPaymentToken: (token: string, paymentMethod: 'card' | 'cashapp') => void;
   onError: (error: string) => void;
   isProcessing?: boolean;
-  customerEmail?: string;
 }
 
-export function SquarePaymentForm({ 
+export function SquarePaymentComponent({ 
   amount, 
   onPaymentToken, 
   onError, 
-  isProcessing = false,
-  customerEmail 
-}: SquarePaymentFormProps) {
+  isProcessing = false 
+}: SquarePaymentComponentProps) {
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paymentMethods, setPaymentMethods] = useState<{
@@ -35,12 +37,7 @@ export function SquarePaymentForm({
   const [cashAppAvailable, setCashAppAvailable] = useState(false);
 
   useEffect(() => {
-    // Delay initialization to ensure DOM is ready
-    const timer = setTimeout(() => {
-      initializeSquarePayments();
-    }, 100);
-    
-    return () => clearTimeout(timer);
+    initializeSquarePayments();
   }, []);
 
   const initializeSquarePayments = async () => {
@@ -48,57 +45,71 @@ export function SquarePaymentForm({
       setIsLoading(true);
       setError(null);
 
-      // Wait for DOM element to be available
-      if (!cardContainerRef.current) {
-        throw new Error('Payment form container not ready. Please try again.');
-      }
-
-      // Check required environment variables
-      const squareAppId = import.meta.env.VITE_SQUARE_APP_ID;
-      const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+      // Get environment variables from Vite
+      const squareApplicationId = import.meta.env.VITE_SQUARE_APP_ID;
       const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
+      const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
       const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
       const cashAppEnvironment = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
-      
-      console.log('🔧 Square Payment Initialization:', {
-        squareAppId: squareAppId?.substring(0, 15) + '...',
-        squareEnvironment,
-        squareLocationId,
-        cashAppClientId: cashAppClientId?.substring(0, 15) + '...',
-        cashAppEnvironment,
-        containerExists: !!cardContainerRef.current
-      });
-      
-      if (!squareAppId || squareAppId.includes('XXXXX') || squareAppId === 'your_square_application_id_here') {
+
+      console.log('🔧 Initializing Square with Vite Environment Variables:');
+      console.log('VITE_SQUARE_APP_ID:', squareApplicationId);
+      console.log('VITE_SQUARE_ENVIRONMENT:', squareEnvironment);
+      console.log('VITE_SQUARE_LOCATION_ID:', squareLocationId);
+      console.log('VITE_CASHAPP_CLIENT_ID:', cashAppClientId);
+      console.log('VITE_CASHAPP_ENVIRONMENT:', cashAppEnvironment);
+
+      // Validate required environment variables
+      if (!squareApplicationId || squareApplicationId.includes('XXXXX')) {
         throw new Error('Square Application ID not configured. Please set VITE_SQUARE_APP_ID in your environment variables.');
       }
 
-      if (!squareLocationId || squareLocationId.includes('XXXXX') || squareLocationId === 'your_square_location_id_here') {
+      if (!squareLocationId || squareLocationId.includes('XXXXX')) {
         throw new Error('Square Location ID not configured. Please set VITE_SQUARE_LOCATION_ID in your environment variables.');
       }
 
-      // Environment validation for Cash App
-      if (cashAppClientId && cashAppEnvironment === 'production' && !cashAppClientId.startsWith('sq0idp-')) {
-        console.warn('⚠️ Cash App: Production environment detected but client ID format suggests sandbox');
+      // Dynamic Square SDK URL based on environment
+      const squareSdkUrl = squareEnvironment === 'production'
+        ? 'https://web.squarecdn.com/v1/square.js'
+        : 'https://sandbox.web.squarecdn.com/v1/square.js';
+
+      console.log('📦 Loading Square SDK from:', squareSdkUrl);
+
+      // Load Square SDK if not already loaded
+      if (!window.Square) {
+        await loadSquareSDK(squareSdkUrl);
       }
+
+      // Initialize Square payments
+      const payments = window.Square.payments(squareApplicationId, squareLocationId);
       
-      if (cashAppClientId && cashAppEnvironment === 'sandbox' && cashAppClientId.startsWith('sq0idp-')) {
-        console.warn('⚠️ Cash App: Sandbox environment detected but client ID format suggests production');
+      // Create card payment method
+      const card = await payments.card();
+      await card.attach('#square-card-container');
+
+      // Try to create Cash App Pay with environment configuration
+      let cashAppPay;
+      try {
+        if (cashAppClientId) {
+          cashAppPay = await payments.cashAppPay({
+            redirectURL: window.location.origin,
+            referenceId: `cashapp-${Date.now()}`,
+            // Explicitly pass environment to Cash App Pay
+            environment: cashAppEnvironment
+          });
+          setCashAppAvailable(true);
+          console.log(`✅ Cash App Pay initialized (${cashAppEnvironment})`);
+        } else {
+          console.warn('Cash App Pay disabled - VITE_CASHAPP_CLIENT_ID not configured');
+        }
+      } catch (cashAppError) {
+        console.warn('Cash App Pay not available:', cashAppError);
       }
 
-      const result = await createSquarePaymentForm('square-card-container');
-
-      setPaymentMethods(result);
-      
-      // Check if Cash App Pay is available
-      if (result.cashAppPay) {
-        setCashAppAvailable(true);
-        console.log('✅ Cash App Pay is available');
-      } else {
-        console.log('ℹ️ Cash App Pay not available in this environment');
-      }
-
+      setPaymentMethods({ payments, card, cashAppPay });
       setIsLoading(false);
+
+      console.log('✅ Square payment methods initialized successfully');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initialize Square payments';
       console.error('Square initialization error:', err);
@@ -108,14 +119,43 @@ export function SquarePaymentForm({
     }
   };
 
+  const loadSquareSDK = (scriptUrl: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = scriptUrl;
+      script.async = true;
+      script.defer = true;
+
+      script.onload = () => {
+        if (window.Square) {
+          console.log('✅ Square Web SDK loaded successfully');
+          resolve();
+        } else {
+          reject(new Error('Square SDK loaded but Square object not available'));
+        }
+      };
+
+      script.onerror = () => {
+        reject(new Error('Failed to load Square Web SDK'));
+      };
+
+      document.head.appendChild(script);
+    });
+  };
+
   const handleCardPayment = async () => {
     try {
       if (!paymentMethods.card) {
         throw new Error('Card payment method not initialized');
       }
 
-      const token = await tokenizePayment(paymentMethods.card);
-      onPaymentToken(token, 'card');
+      const tokenResult = await paymentMethods.card.tokenize();
+      
+      if (tokenResult.status === 'OK') {
+        onPaymentToken(tokenResult.token, 'card');
+      } else {
+        throw new Error(`Card tokenization failed: ${tokenResult.errors?.[0]?.message || 'Unknown error'}`);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Card tokenization failed';
       console.error('Card payment error:', err);
@@ -130,7 +170,6 @@ export function SquarePaymentForm({
         throw new Error('Cash App Pay not available');
       }
 
-      // For Cash App Pay, we need to start the payment flow
       const paymentRequest = paymentMethods.cashAppPay.requestPayment({
         amount: {
           amount: Math.round(amount * 100), // Convert to cents
@@ -187,8 +226,18 @@ export function SquarePaymentForm({
     );
   }
 
+  const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
+
   return (
     <div className="space-y-4">
+      {/* Environment Badge */}
+      <div className="flex justify-center">
+        <Badge variant={squareEnvironment === 'production' ? 'default' : 'secondary'} className="text-xs">
+          <Shield className="w-3 h-3 mr-1" />
+          {squareEnvironment === 'production' ? 'LIVE PAYMENTS' : 'TEST MODE'}
+        </Badge>
+      </div>
+
       {/* Payment Method Selection */}
       <div className="grid gap-3">
         <div
@@ -244,21 +293,13 @@ export function SquarePaymentForm({
         )}
       </div>
 
-      <Separator />
-
       {/* Payment Form */}
       {selectedMethod === 'card' && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                Card Information
-              </div>
-              <Badge variant={getPaymentConfig().square.environment === 'production' ? 'default' : 'secondary'} className="text-xs">
-                <Shield className="w-3 h-3 mr-1" />
-                {getPaymentConfig().square.environment === 'production' ? 'LIVE' : 'TEST'}
-              </Badge>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Card Information
             </CardTitle>
             <CardDescription>
               Enter your card details below. All information is encrypted and secure.
@@ -354,7 +395,7 @@ export function SquarePaymentForm({
       </Button>
 
       <div className="text-center text-xs text-muted-foreground">
-        Powered by Square • PCI DSS Compliant
+        Powered by Square • PCI DSS Compliant • {squareEnvironment.toUpperCase()} Mode
       </div>
     </div>
   );

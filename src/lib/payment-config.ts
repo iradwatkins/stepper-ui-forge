@@ -22,20 +22,17 @@ export interface PaymentConfig {
 
 // Get payment configuration from environment variables
 export const getPaymentConfig = (): PaymentConfig => {
-  // Determine environment based on app IDs and explicit env vars
+  // Get credentials from Vite environment variables
   const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || '';
-  const squareAppId = import.meta.env.VITE_SQUARE_APPLICATION_ID || '';
+  const squareAppId = import.meta.env.VITE_SQUARE_APP_ID || import.meta.env.VITE_SQUARE_APPLICATION_ID || '';
+  const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID || '';
+  const squareAccessToken = import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '';
   const cashappClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID || '';
   
-  // Auto-detect environment based on application IDs
-  const isPaypalProduction = !paypalClientId.includes('sandbox') && paypalClientId.length > 0;
-  const isSquareProduction = squareAppId.startsWith('sq0idp-') && !squareAppId.includes('sandbox');
-  const isCashappProduction = cashappClientId.startsWith('sq0idp-') && !cashappClientId.includes('sandbox');
-  
-  // Use explicit environment variables, falling back to auto-detection
-  const paypalEnv = import.meta.env.VITE_PAYPAL_ENVIRONMENT || (isPaypalProduction ? 'production' : 'sandbox');
-  const squareEnv = import.meta.env.VITE_SQUARE_ENVIRONMENT || (isSquareProduction ? 'production' : 'sandbox');
-  const cashappEnv = import.meta.env.VITE_CASHAPP_ENVIRONMENT || (isCashappProduction ? 'production' : 'sandbox');
+  // Get environment settings from Vite environment variables
+  const paypalEnv = import.meta.env.VITE_PAYPAL_ENVIRONMENT || 'sandbox';
+  const squareEnv = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
+  const cashappEnv = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
   
   const config: PaymentConfig = {
     paypal: {
@@ -45,9 +42,9 @@ export const getPaymentConfig = (): PaymentConfig => {
     },
     square: {
       applicationId: squareAppId,
-      accessToken: import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '',
+      accessToken: squareAccessToken,
       environment: squareEnv as 'sandbox' | 'production',
-      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || '',
+      locationId: squareLocationId,
     },
     cashapp: {
       clientId: cashappClientId,
@@ -60,42 +57,21 @@ export const getPaymentConfig = (): PaymentConfig => {
     paypal_env: config.paypal.environment,
     square_env: config.square.environment,
     cashapp_env: config.cashapp.environment,
-    square_app_id: config.square.applicationId.substring(0, 15) + '...',
-    cashapp_client_id: config.cashapp.clientId.substring(0, 15) + '...',
-    auto_detected: {
-      paypal_prod: isPaypalProduction,
-      square_prod: isSquareProduction,
-      cashapp_prod: isCashappProduction
-    }
+    square_app_id: config.square.applicationId ? config.square.applicationId.substring(0, 15) + '...' : 'NOT SET',
+    cashapp_client_id: config.cashapp.clientId ? config.cashapp.clientId.substring(0, 15) + '...' : 'NOT SET',
   });
 
   // ENHANCED DEBUGGING: Log raw environment variables
-  console.log('🔍 RAW ENV VARIABLES:', {
+  console.log('🔍 VITE ENV VARIABLES:', {
     VITE_SQUARE_ENVIRONMENT: import.meta.env.VITE_SQUARE_ENVIRONMENT,
-    VITE_SQUARE_APPLICATION_ID: import.meta.env.VITE_SQUARE_APPLICATION_ID,
+    VITE_SQUARE_APP_ID: import.meta.env.VITE_SQUARE_APP_ID,
+    VITE_SQUARE_LOCATION_ID: import.meta.env.VITE_SQUARE_LOCATION_ID,
     VITE_CASHAPP_ENVIRONMENT: import.meta.env.VITE_CASHAPP_ENVIRONMENT,
     VITE_CASHAPP_CLIENT_ID: import.meta.env.VITE_CASHAPP_CLIENT_ID,
     VITE_MODE: import.meta.env.MODE,
     VITE_DEV: import.meta.env.DEV,
     VITE_PROD: import.meta.env.PROD
   });
-
-  // CRITICAL VALIDATION: Check for environment mismatches
-  if (config.square.environment === 'production' && !isSquareProduction) {
-    console.error('🚨 SQUARE ENVIRONMENT MISMATCH DETECTED!', {
-      configEnv: config.square.environment,
-      appIdDetection: isSquareProduction,
-      appId: config.square.applicationId
-    });
-  }
-
-  if (config.cashapp.environment === 'production' && !isCashappProduction) {
-    console.error('🚨 CASH APP ENVIRONMENT MISMATCH DETECTED!', {
-      configEnv: config.cashapp.environment,
-      clientIdDetection: isCashappProduction,
-      clientId: config.cashapp.clientId
-    });
-  }
 
   return config;
 };
@@ -112,7 +88,7 @@ export const validatePaymentConfig = (): { isValid: boolean; missing: string[] }
 
   // Check Square
   if (!config.square.applicationId) {
-    missing.push('VITE_SQUARE_APPLICATION_ID');
+    missing.push('VITE_SQUARE_APP_ID');
   }
   if (!config.square.accessToken) {
     missing.push('VITE_SQUARE_ACCESS_TOKEN');

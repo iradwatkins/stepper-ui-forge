@@ -1,7 +1,7 @@
 // Square Web SDK Loader
 // Dynamically loads the Square Web SDK for payment processing
 
-import { getPaymentConfig } from '../payment-config';
+// Square Web SDK Loader
 
 declare global {
   interface Window {
@@ -13,7 +13,7 @@ let squareSDKLoaded = false;
 let squareSDKPromise: Promise<void> | null = null;
 
 /**
- * Load Square Web SDK
+ * Load Square Web SDK with Vite environment variables
  */
 export function loadSquareSDK(): Promise<void> {
   if (squareSDKLoaded) {
@@ -32,35 +32,32 @@ export function loadSquareSDK(): Promise<void> {
       return;
     }
 
-    // Create script element
-    const script = document.createElement('script');
-    // Use production or sandbox URL based on environment
-    const paymentConfig = getPaymentConfig();
-    const isProduction = paymentConfig.square.environment === 'production';
+    // Get environment from Vite environment variables
+    const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
+    const isProduction = squareEnvironment === 'production';
     
-    // CRITICAL: Ensure SDK URL matches the environment to prevent mismatch errors
-    const scriptUrl = isProduction 
+    // CRITICAL: Dynamic Square SDK URL based on VITE_SQUARE_ENVIRONMENT
+    const scriptUrl = isProduction
       ? 'https://web.squarecdn.com/v1/square.js'
       : 'https://sandbox.web.squarecdn.com/v1/square.js';
     
-    // Add cache busting and runtime logging
-    const cacheBuster = `?t=${Date.now()}`;
-    script.src = scriptUrl + cacheBuster;
+    // Create script element
+    const script = document.createElement('script');
+    script.src = scriptUrl;
     script.async = true;
     script.defer = true;
     
     // Enhanced logging for debugging
     console.group('🟦 Square SDK Initialization');
-    console.log('Environment Config:', paymentConfig.square.environment);
+    console.log('VITE_SQUARE_ENVIRONMENT:', squareEnvironment);
+    console.log('VITE_SQUARE_APPLICATION_ID:', import.meta.env.VITE_SQUARE_APP_ID);
+    console.log('VITE_SQUARE_LOCATION_ID:', import.meta.env.VITE_SQUARE_LOCATION_ID);
     console.log('Is Production Mode:', isProduction);
-    console.log('Application ID:', paymentConfig.square.applicationId);
-    console.log('Location ID:', paymentConfig.square.locationId);
     console.log('Script URL Selected:', scriptUrl);
-    console.log('Full Script SRC with cache buster:', script.src);
     
     // CRITICAL DEBUG: Track URL selection logic
     console.log('🔍 URL SELECTION DEBUG:', {
-      configEnvironment: paymentConfig.square.environment,
+      viteEnvironment: squareEnvironment,
       isProductionBool: isProduction,
       expectedURL: isProduction ? 'web.squarecdn.com' : 'sandbox.web.squarecdn.com',
       actualURL: scriptUrl,
@@ -108,78 +105,120 @@ export function getSquareSDK(): any {
 }
 
 /**
- * Validate environment configuration before initialization
+ * Validate environment configuration using Vite environment variables
  */
-function validateEnvironmentConfiguration(applicationId: string): void {
-  const config = getPaymentConfig();
-  const isProduction = config.square.environment === 'production';
-  const isProductionAppId = applicationId.startsWith('sq0idp-') && !applicationId.includes('sandbox');
-  const isSandboxAppId = applicationId.includes('sandbox') || applicationId.startsWith('sandbox-');
+function validateEnvironmentConfiguration(): void {
+  const squareApplicationId = import.meta.env.VITE_SQUARE_APP_ID;
+  const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
+  const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
+  const cashAppEnvironment = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
   
-  console.log('🔍 Square Environment Validation:', {
-    configEnvironment: config.square.environment,
-    isProduction,
-    applicationId: applicationId.substring(0, 15) + '...',
-    isProductionAppId,
-    isSandboxAppId,
-    sdkUrl: isProduction ? 'PRODUCTION' : 'SANDBOX'
+  console.log('🔍 Environment Validation with Vite Variables:', {
+    VITE_SQUARE_ENVIRONMENT: squareEnvironment,
+    VITE_SQUARE_APP_ID: squareApplicationId?.substring(0, 15) + '...',
+    VITE_CASHAPP_ENVIRONMENT: cashAppEnvironment,
+    VITE_CASHAPP_CLIENT_ID: cashAppClientId?.substring(0, 15) + '...',
   });
   
-  // Fail-fast validation with enhanced error messages
-  if (isProduction && !isProductionAppId) {
-    console.error('❌ Square Environment Mismatch: Production environment configured but sandbox Application ID detected');
-    throw new Error(`Square Environment Mismatch: Configuration is set to production but Application ID appears to be for sandbox. Please check VITE_SQUARE_APPLICATION_ID.`);
+  // Validate required environment variables are present
+  if (!squareApplicationId) {
+    throw new Error('VITE_SQUARE_APP_ID is required but not found in environment variables');
   }
   
-  if (!isProduction && isProductionAppId) {
-    console.error('❌ Square Environment Mismatch: Sandbox environment configured but production Application ID detected');
-    throw new Error(`Square Environment Mismatch: Configuration is set to sandbox but Application ID appears to be for production. Please check VITE_SQUARE_ENVIRONMENT.`);
+  if (!cashAppClientId) {
+    console.warn('VITE_CASHAPP_CLIENT_ID not found - Cash App Pay will be disabled');
   }
   
-  console.log('✅ Square environment validation passed');
+  console.log('✅ Environment variable validation passed');
 }
 
 /**
- * Initialize Square Payments
+ * Initialize Square Payments with Vite environment variables
  */
-export async function initializeSquarePayments(applicationId: string, locationId: string): Promise<any> {
+export async function initializeSquarePayments(): Promise<any> {
   // Validate environment configuration first
-  validateEnvironmentConfiguration(applicationId);
+  validateEnvironmentConfiguration();
   
   await loadSquareSDK();
   const Square = getSquareSDK();
   
-  console.log('✅ Square Payments initialized with validated configuration');
-  return Square.payments(applicationId, locationId);
+  // Get credentials from Vite environment variables
+  const squareApplicationId = import.meta.env.VITE_SQUARE_APP_ID;
+  const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+  
+  if (!squareApplicationId || !squareLocationId) {
+    throw new Error('Missing required Square configuration: VITE_SQUARE_APP_ID and VITE_SQUARE_LOCATION_ID');
+  }
+  
+  console.log('✅ Square Payments initialized with Vite environment variables');
+  return Square.payments(squareApplicationId, squareLocationId);
 }
 
 /**
- * Create payment form with Square
+ * Create payment form with Square using Vite environment variables
  */
 export async function createSquarePaymentForm(
-  applicationId: string,
-  locationId: string,
   containerId: string
 ): Promise<{
   payments: any;
   card: any;
   cashAppPay?: any;
 }> {
-  const payments = await initializeSquarePayments(applicationId, locationId);
+  // Verify DOM element exists before proceeding
+  const containerElement = document.getElementById(containerId);
+  if (!containerElement) {
+    throw new Error(`Element with ID '${containerId}' not found in DOM. Make sure the container exists before initializing Square payments.`);
+  }
+  
+  console.log(`✅ Container element '${containerId}' found in DOM`);
+  
+  const payments = await initializeSquarePayments();
   
   // Create card payment method
   const card = await payments.card();
   await card.attach(`#${containerId}`);
+  
+  console.log(`✅ Square card form attached to #${containerId}`);
 
-  // Try to create Cash App Pay (may not be available in all environments)
-  let cashAppPay;
+  // Try to create Cash App Pay with environment configuration
+  let cashAppPay: any;
   try {
-    cashAppPay = await payments.cashAppPay({
-      redirectURL: window.location.origin,
-      referenceId: `cashapp-${Date.now()}`
+    const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
+    const cashAppEnvironment = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
+    
+    console.log('💳 Cash App Pay Configuration:', {
+      clientId: cashAppClientId?.substring(0, 15) + '...',
+      environment: cashAppEnvironment,
+      isProduction: cashAppEnvironment === 'production'
     });
+    
+    if (cashAppClientId) {
+      // Skip Cash App initialization if environment mismatch is detected
+      const isProductionEnv = cashAppEnvironment === 'production';
+      const isProductionClientId = cashAppClientId.startsWith('sq0idp-') && !cashAppClientId.includes('sandbox');
+      
+      if (isProductionEnv && !isProductionClientId) {
+        console.error('❌ Cash App Environment Mismatch: Production environment requires production client ID');
+        throw new Error('Cash App configuration error: Production environment detected but client ID may be incorrect. Please verify VITE_CASHAPP_CLIENT_ID and VITE_CASHAPP_ENVIRONMENT settings.');
+      }
+      
+      if (!isProductionEnv && isProductionClientId) {
+        console.error('❌ Cash App Environment Mismatch: Sandbox environment with production client ID');
+        throw new Error('Cash App configuration error: Sandbox environment detected but production client ID provided. Please verify VITE_CASHAPP_CLIENT_ID and VITE_CASHAPP_ENVIRONMENT settings.');
+      }
+      
+      cashAppPay = await payments.cashAppPay({
+        redirectURL: window.location.origin,
+        referenceId: `cashapp-${Date.now()}`
+        // Note: environment parameter removed as it may not be supported in this context
+      });
+      console.log(`✅ Cash App Pay initialized successfully (${cashAppEnvironment})`);
+    } else {
+      console.warn('⚠️ Cash App Pay disabled - VITE_CASHAPP_CLIENT_ID not configured');
+    }
   } catch (error) {
-    console.warn('Cash App Pay not available:', error);
+    console.error('❌ Cash App Pay initialization failed:', error);
+    // Don't throw here - allow the component to work with just card payments
   }
 
   return {
