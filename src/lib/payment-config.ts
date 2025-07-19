@@ -24,7 +24,7 @@ export interface PaymentConfig {
 export const getPaymentConfig = (): PaymentConfig => {
   // Get credentials from Vite environment variables
   const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || '';
-  const squareAppId = import.meta.env.VITE_SQUARE_APP_ID || import.meta.env.VITE_SQUARE_APPLICATION_ID || '';
+  const squareAppId = import.meta.env.VITE_SQUARE_APP_ID || '';
   const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID || '';
   const squareAccessToken = import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '';
   const cashappClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID || '';

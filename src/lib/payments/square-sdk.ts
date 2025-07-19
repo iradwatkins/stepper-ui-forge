@@ -50,7 +50,7 @@ export function loadSquareSDK(): Promise<void> {
     // Enhanced logging for debugging
     console.group('🟦 Square SDK Initialization');
     console.log('VITE_SQUARE_ENVIRONMENT:', squareEnvironment);
-    console.log('VITE_SQUARE_APPLICATION_ID:', import.meta.env.VITE_SQUARE_APP_ID);
+    console.log('VITE_SQUARE_APP_ID:', import.meta.env.VITE_SQUARE_APP_ID);
     console.log('VITE_SQUARE_LOCATION_ID:', import.meta.env.VITE_SQUARE_LOCATION_ID);
     console.log('Is Production Mode:', isProduction);
     console.log('Script URL Selected:', scriptUrl);
@@ -176,6 +176,13 @@ export async function createSquarePaymentForm(
   
   // Create card payment method
   const card = await payments.card();
+  
+  // Double-check container still exists before attaching
+  const finalCheck = document.getElementById(containerId);
+  if (!finalCheck) {
+    throw new Error(`Container '${containerId}' disappeared before card attachment`);
+  }
+  
   await card.attach(`#${containerId}`);
   
   console.log(`✅ Square card form attached to #${containerId}`);
@@ -194,17 +201,17 @@ export async function createSquarePaymentForm(
     
     if (cashAppClientId) {
       // Environment validation
+      // Note: Cash App uses Square's infrastructure, so Square App IDs (sq0idp-) are valid
       const isProductionEnv = cashAppEnvironment === 'production';
-      const isProductionClientId = cashAppClientId.startsWith('sq0idp-') && !cashAppClientId.includes('sandbox');
+      const isSandboxClientId = cashAppClientId.includes('sandbox');
       
-      if (isProductionEnv && !isProductionClientId) {
-        console.error('❌ Cash App Environment Mismatch: Production environment requires production client ID');
-        throw new Error('Cash App configuration error: Production environment detected but client ID may be incorrect.');
+      if (isProductionEnv && isSandboxClientId) {
+        console.error('❌ Cash App Environment Mismatch: Production environment with sandbox client ID');
+        throw new Error('Cash App configuration error: Production environment detected but sandbox client ID provided.');
       }
       
-      if (!isProductionEnv && isProductionClientId) {
-        console.error('❌ Cash App Environment Mismatch: Sandbox environment with production client ID');
-        throw new Error('Cash App configuration error: Sandbox environment detected but production client ID provided.');
+      if (!isProductionEnv && !isSandboxClientId && cashAppClientId.startsWith('sq0idp-')) {
+        console.warn('⚠️ Cash App: Using production client ID in sandbox environment - this is allowed but may have limitations');
       }
       
       // Use the correct Square Web SDK method for Cash App Pay

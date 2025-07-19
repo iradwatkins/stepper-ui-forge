@@ -88,6 +88,7 @@ const CreateBusiness = lazy(() => import("./pages/CreateBusiness"));
 const SellerPayouts = lazy(() => import("./pages/SellerPayouts"));
 const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
 const PayPalCallback = lazy(() => import("./pages/PayPalCallback"));
+const SquareOAuthCallback = lazy(() => import("./pages/SquareOAuthCallback"));
 const PaymentFunctionTest = lazy(() => import("./pages/PaymentFunctionTest"));
 const PaymentDebugTest = lazy(() => import("./pages/PaymentDebugTest"));
 const CashAppDiagnostic = lazy(() => import("./pages/CashAppDiagnostic"));
@@ -175,6 +176,8 @@ const AppContent = () => {
         
         {/* Payment callback routes */}
         <Route path="/payment/paypal/callback" element={<PayPalCallback />} />
+        <Route path="/auth/callback" element={<SquareOAuthCallback />} />
+        <Route path="/auth/square/callback" element={<SquareOAuthCallback />} />
         
         <Route path="/dashboard" element={
           <ProtectedRoute>

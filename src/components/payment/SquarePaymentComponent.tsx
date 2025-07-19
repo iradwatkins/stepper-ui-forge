@@ -85,6 +85,20 @@ export function SquarePaymentComponent({
       
       // Create card payment method
       const card = await payments.card();
+      
+      // Wait for DOM to be ready and container to exist
+      await new Promise((resolve) => {
+        const checkContainer = () => {
+          const container = document.getElementById('square-card-container');
+          if (container) {
+            resolve(true);
+          } else {
+            setTimeout(checkContainer, 100);
+          }
+        };
+        checkContainer();
+      });
+      
       await card.attach('#square-card-container');
 
       // Try to create Cash App Pay with environment configuration

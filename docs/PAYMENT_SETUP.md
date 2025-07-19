@@ -42,7 +42,7 @@ VITE_PAYPAL_ENVIRONMENT=production
 5. Add to `.env.local`:
 
 ```env
-VITE_SQUARE_APPLICATION_ID=your_sandbox_app_id
+VITE_SQUARE_APP_ID=your_sandbox_app_id
 VITE_SQUARE_ACCESS_TOKEN=your_sandbox_access_token
 VITE_SQUARE_LOCATION_ID=your_sandbox_location_id
 VITE_SQUARE_ENVIRONMENT=sandbox
@@ -50,7 +50,7 @@ VITE_SQUARE_ENVIRONMENT=sandbox
 
 ### Production
 ```env
-VITE_SQUARE_APPLICATION_ID=your_production_app_id
+VITE_SQUARE_APP_ID=your_production_app_id
 VITE_SQUARE_ACCESS_TOKEN=your_production_access_token
 VITE_SQUARE_LOCATION_ID=your_production_location_id
 VITE_SQUARE_ENVIRONMENT=production
@@ -96,7 +96,7 @@ VITE_PAYPAL_CLIENT_SECRET=EMj9fEXAMPLE
 VITE_PAYPAL_ENVIRONMENT=sandbox
 
 # Square Configuration  
-VITE_SQUARE_APPLICATION_ID=sq0idp-EXAMPLE
+VITE_SQUARE_APP_ID=sq0idp-EXAMPLE
 VITE_SQUARE_ACCESS_TOKEN=EAAAEOjEXAMPLE
 VITE_SQUARE_ENVIRONMENT=sandbox
 VITE_SQUARE_LOCATION_ID=LH1EXAMPLE

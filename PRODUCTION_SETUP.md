@@ -48,7 +48,7 @@ VITE_PAYPAL_CLIENT_SECRET=your_production_paypal_client_secret
 VITE_PAYPAL_ENVIRONMENT=production
 
 # Square Configuration - PRODUCTION
-VITE_SQUARE_APPLICATION_ID=your_production_square_application_id
+VITE_SQUARE_APP_ID=your_production_square_application_id
 VITE_SQUARE_ACCESS_TOKEN=your_production_square_access_token
 VITE_SQUARE_LOCATION_ID=your_production_square_location_id
 VITE_SQUARE_ENVIRONMENT=production
@@ -87,7 +87,7 @@ In your Vercel project dashboard, add these environment variables:
 - `VITE_PAYPAL_CLIENT_ID`
 - `VITE_PAYPAL_CLIENT_SECRET`
 - `VITE_PAYPAL_ENVIRONMENT` (set to "production")
-- `VITE_SQUARE_APPLICATION_ID`
+- `VITE_SQUARE_APP_ID`
 - `VITE_SQUARE_ACCESS_TOKEN`
 - `VITE_SQUARE_LOCATION_ID`
 - `VITE_SQUARE_ENVIRONMENT` (set to "production")

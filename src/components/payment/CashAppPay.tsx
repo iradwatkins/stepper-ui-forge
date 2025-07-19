@@ -94,7 +94,8 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
         const cashAppConfig = getCashAppConfig();
         
         // Validate environment configuration before initialization
-        if (cashAppConfig.environment === 'production' && !cashAppConfig.clientId.startsWith('sq0idp-')) {
+        // Note: Cash App uses Square's infrastructure, so Square App IDs are valid
+        if (cashAppConfig.environment === 'production' && cashAppConfig.clientId.includes('sandbox')) {
           throw new Error('Cash App environment mismatch: Production environment requires production client ID');
         }
         

@@ -26,7 +26,7 @@
 ### Step 2: Update Payment Gateway Credentials (Optional)
 If you want to enable payment functionality, update these in `vercel.json`:
 - `VITE_PAYPAL_CLIENT_ID`: Your PayPal client ID
-- `VITE_SQUARE_APPLICATION_ID`: Your Square application ID  
+- `VITE_SQUARE_APP_ID`: Your Square application ID  
 - `VITE_CASHAPP_CLIENT_ID`: Your Cash App client ID
 - `VITE_PAYMENT_WEBHOOK_URL`: Your payment webhook URL
 

@@ -22,7 +22,7 @@ VITE_SQUARE_ACCESS_TOKEN=token    # ❌ Exposed to client
 ```env
 # Client-side (Safe to expose)
 VITE_PAYPAL_CLIENT_ID=public_id   # ✅ Public data only
-VITE_SQUARE_APPLICATION_ID=app_id # ✅ Public data only
+VITE_SQUARE_APP_ID=app_id # ✅ Public data only
 
 # Server-side (Hidden from client)
 PAYPAL_CLIENT_SECRET=secret       # ✅ Server-only

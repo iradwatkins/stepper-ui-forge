@@ -140,7 +140,7 @@ function checkPaymentConfig() {
   console.log('\n6. Payment Configuration:');
   const paymentConfigs = [
     { name: 'PayPal', key: 'VITE_PAYPAL_CLIENT_ID' },
-    { name: 'Square', key: 'VITE_SQUARE_APPLICATION_ID' },
+    { name: 'Square', key: 'VITE_SQUARE_APP_ID' },
     { name: 'Cash App', key: 'VITE_CASHAPP_CLIENT_ID' },
   ];
   

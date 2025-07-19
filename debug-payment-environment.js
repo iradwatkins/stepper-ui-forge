@@ -17,7 +17,7 @@ console.log('1. ENVIRONMENT VARIABLES CHECK');
 console.log('='.repeat(60));
 
 const envVars = {
-  'VITE_SQUARE_APPLICATION_ID': process.env.VITE_SQUARE_APPLICATION_ID,
+  'VITE_SQUARE_APP_ID': process.env.VITE_SQUARE_APP_ID,
   'VITE_SQUARE_ENVIRONMENT': process.env.VITE_SQUARE_ENVIRONMENT,
   'VITE_SQUARE_LOCATION_ID': process.env.VITE_SQUARE_LOCATION_ID,
   'VITE_SQUARE_ACCESS_TOKEN': process.env.VITE_SQUARE_ACCESS_TOKEN,
@@ -39,7 +39,7 @@ console.log('\n' + '='.repeat(60));
 console.log('2. ENVIRONMENT DETECTION LOGIC');
 console.log('='.repeat(60));
 
-const squareAppId = process.env.VITE_SQUARE_APPLICATION_ID;
+const squareAppId = process.env.VITE_SQUARE_APP_ID;
 const squareEnv = process.env.VITE_SQUARE_ENVIRONMENT;
 const cashappClientId = process.env.VITE_CASHAPP_CLIENT_ID;
 const cashappEnv = process.env.VITE_CASHAPP_ENVIRONMENT;

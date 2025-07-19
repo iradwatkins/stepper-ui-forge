@@ -15,7 +15,7 @@ console.log('🔍 Payment Environment Validation\n');
 // Test 1: Environment Variable Detection
 console.log('1. Environment Variables:');
 const requiredVars = [
-  'VITE_SQUARE_APPLICATION_ID',
+  'VITE_SQUARE_APP_ID',
   'VITE_SQUARE_ENVIRONMENT', 
   'VITE_SQUARE_LOCATION_ID',
   'VITE_SQUARE_ACCESS_TOKEN',
@@ -38,7 +38,7 @@ requiredVars.forEach(varName => {
 
 // Test 2: Environment Consistency 
 console.log('\n2. Environment Consistency:');
-const squareAppId = process.env.VITE_SQUARE_APPLICATION_ID;
+const squareAppId = process.env.VITE_SQUARE_APP_ID;
 const squareEnv = process.env.VITE_SQUARE_ENVIRONMENT;
 const cashappClientId = process.env.VITE_CASHAPP_CLIENT_ID;
 const cashappEnv = process.env.VITE_CASHAPP_ENVIRONMENT;

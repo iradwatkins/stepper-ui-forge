@@ -30,7 +30,7 @@ To fully enable production payments, update these in `.env`:
 
 ### Square Production:
 ```
-VITE_SQUARE_APPLICATION_ID=your_production_app_id
+VITE_SQUARE_APP_ID=your_production_app_id
 VITE_SQUARE_ACCESS_TOKEN=your_production_access_token
 VITE_SQUARE_LOCATION_ID=your_production_location_id
 ```
