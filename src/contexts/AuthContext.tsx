@@ -101,21 +101,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     regLogger.log('init', 'AuthContext: Initializing authentication system')
     
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      regLogger.log('session', 'Initial session retrieved', {
-        hasSession: !!session,
-        userEmail: session?.user?.email,
-        error: error?.message
-      })
-      
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-      setAuthStateId(prev => prev + 1)
-    })
-
-    // Listen for auth changes with enhanced monitoring
+    // Listen for auth changes with enhanced monitoring FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -142,9 +128,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         })
       }
       
-      // Add a small delay to ensure state consistency
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
+      // Update state immediately
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -158,26 +142,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           rawMetadata: session.user.raw_user_meta_data
         })
         
-        // Check if profile exists in database
-        try {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-            
-          regLogger.log('profile_check', 'Profile existence check', {
-            profileExists: !!profile,
-            profileData: profile,
-            error: profileError?.message,
-            userId: session.user.id
-          })
-        } catch (err) {
-          regLogger.log('profile_error', 'Error checking profile', {
-            error: err,
-            userId: session.user.id
-          })
-        }
+        // Check if profile exists in database (deferred to prevent deadlock)
+        setTimeout(async () => {
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+              
+            regLogger.log('profile_check', 'Profile existence check', {
+              profileExists: !!profile,
+              profileData: profile,
+              error: profileError?.message,
+              userId: session.user.id
+            })
+          } catch (err) {
+            regLogger.log('profile_error', 'Error checking profile', {
+              error: err,
+              userId: session.user.id
+            })
+          }
+        }, 100)
         
         const userName = session.user.user_metadata?.full_name || 
                         session.user.email?.split('@')[0] || 
@@ -208,6 +194,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           authStateId: authStateId + 1
         })
       }, 50)
+    })
+
+    // Get initial session AFTER setting up listener
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      regLogger.log('session', 'Initial session retrieved', {
+        hasSession: !!session,
+        userEmail: session?.user?.email,
+        error: error?.message
+      })
+      
+      // Only update if we haven't already received this session from the listener
+      if (!user || user.id !== session?.user?.id) {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
+        setAuthStateId(prev => prev + 1)
+      }
     })
 
     return () => {

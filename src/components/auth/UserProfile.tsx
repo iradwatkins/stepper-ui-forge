@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -17,6 +18,7 @@ import { UserIcon, LogOutIcon, Loader2Icon, LayoutDashboardIcon, TicketIcon, Bel
 import { AuthButton } from './AuthButton'
 import { ProfileService } from '@/lib/profiles'
 import { Database } from '@/types/database'
+import { AvatarService } from '@/lib/avatars'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -68,17 +70,18 @@ export const UserProfile = () => {
     loadProfile()
   }, [user])
   
-  // Debug logging for user state changes
+  // Debug logging for user state changes with improved logic
   useEffect(() => {
     console.log('👤 UserProfile: State changed - Loading:', loading, 'User:', user ? 'USER_PRESENT' : 'USER_NULL', 'AuthStateId:', authStateId)
+    
     if (user) {
       console.log('👤 UserProfile: User email:', user.email)
-      console.log('👤 UserProfile: User metadata:', user.user_metadata)
       console.log('✅ Authentication successful - User profile loaded!')
       
       // Show highlight for newly authenticated users
       setIsNewlyAuthenticated(true)
-      setTimeout(() => setIsNewlyAuthenticated(false), 8000) // Remove highlight after 8 seconds
+      const timer = setTimeout(() => setIsNewlyAuthenticated(false), 8000)
+      return () => clearTimeout(timer)
     }
   }, [user, loading, authStateId])
 
@@ -93,9 +96,9 @@ export const UserProfile = () => {
     }
   }
 
-  // Show loading spinner while auth state is being determined
-  if (loading) {
-    console.log('👤 UserProfile: Rendering loading state')
+  // Show loading spinner only during initial auth check, not after user is determined
+  if (loading && authStateId === 0) {
+    console.log('👤 UserProfile: Rendering initial loading state')
     return (
       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled>
         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -121,9 +124,9 @@ export const UserProfile = () => {
   console.log('👤 UserProfile: Rendering user dropdown (user present)')
   console.log('✅ HEADER UPDATE: Sign In button changed to user profile dropdown!')
 
-  const userInitials = user.email
-    ? user.email.substring(0, 2).toUpperCase()
-    : 'U'
+  // Get user avatar and initials using the AvatarService
+  const userAvatarUrl = AvatarService.getAvatarUrl(user, profile)
+  const userInitials = AvatarService.getInitials(user, profile)
 
   return (
     <DropdownMenu>
@@ -137,7 +140,7 @@ export const UserProfile = () => {
           }`}
         >
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || ''} />
+            <AvatarImage src={userAvatarUrl} alt={user.email || ''} />
             <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
           {isNewlyAuthenticated && (
@@ -155,7 +158,7 @@ export const UserProfile = () => {
           <div className="flex flex-col space-y-1">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium leading-none">
-                {user.user_metadata?.full_name || 'User'}
+                {user.user_metadata?.full_name || profile?.full_name || 'User'}
               </p>
               {isNewlyAuthenticated && (
                 <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
