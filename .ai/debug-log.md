@@ -82,3 +82,4 @@
 | Square error handling | payments-square/index.ts | Enhanced error logging and debugging | No |
 | Cash App disabled | ProductionPaymentService.ts | Removed from health checks until deployed | No |
 | Version tracking | ProductionPaymentService.ts | Added v2.0.1 for cache debugging | No |
+| Deploy Square function | payments-square/index.ts | Added version comment to trigger deployment | No |
