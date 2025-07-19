@@ -43,8 +43,8 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
   useEffect(() => {
     const cashAppConfig = getCashAppConfig();
     
-    if (!cashAppConfig.clientId) {
-      setError('Cash App is not configured. Please contact support.');
+    if (!cashAppConfig.clientId || cashAppConfig.clientId.includes('XXXXX') || cashAppConfig.clientId === 'your_cashapp_client_id_here') {
+      setError('Cash App is not configured. Please set VITE_CASHAPP_CLIENT_ID in your environment variables.');
       setIsLoading(false);
       return;
     }

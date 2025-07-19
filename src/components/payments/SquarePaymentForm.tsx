@@ -44,12 +44,12 @@ export function SquarePaymentForm({
       setError(null);
 
       const squareConfig = getPaymentConfig().square;
-      if (!squareConfig.applicationId) {
-        throw new Error('Square Application ID not configured');
+      if (!squareConfig.applicationId || squareConfig.applicationId.includes('XXXXX') || squareConfig.applicationId === 'your_square_application_id_here') {
+        throw new Error('Square Application ID not configured. Please set VITE_SQUARE_APPLICATION_ID in your environment variables.');
       }
 
-      if (!squareConfig.locationId) {
-        throw new Error('Square Location ID not configured');
+      if (!squareConfig.locationId || squareConfig.locationId.includes('XXXXX') || squareConfig.locationId === 'your_square_location_id_here') {
+        throw new Error('Square Location ID not configured. Please set VITE_SQUARE_LOCATION_ID in your environment variables.');
       }
 
       const result = await createSquarePaymentForm(

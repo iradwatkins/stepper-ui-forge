@@ -29,13 +29,13 @@ export const getPaymentConfig = (): PaymentConfig => {
       environment: (import.meta.env.VITE_PAYPAL_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
     },
     square: {
-      applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID || 'sandbox-sq0idb-_XJTjWl8-PzQaZQmk5NqA', // Fallback sandbox app ID
+      applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID || '',
       accessToken: import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '',
       environment: (import.meta.env.VITE_SQUARE_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
-      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || 'LH2A4RF3K8YBD', // Fallback sandbox location ID
+      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || '',
     },
     cashapp: {
-      clientId: import.meta.env.VITE_CASHAPP_CLIENT_ID || 'CAS-CI_DEMO_CHA123', // Fallback sandbox client ID
+      clientId: import.meta.env.VITE_CASHAPP_CLIENT_ID || '',
       environment: (import.meta.env.VITE_CASHAPP_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
     },
     webhookUrl: import.meta.env.VITE_PAYMENT_WEBHOOK_URL,
