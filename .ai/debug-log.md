@@ -70,3 +70,7 @@
 | Update payment methods | ProductionPaymentService | Use health check for availability instead of DB | No |
 | PayPal flow verified | Edge Functions | PayPal create_order endpoint working correctly | No |
 | Square internal error | Edge Functions | Square endpoint returns 500, needs investigation | No |
+| Cash App edge function | payments-cashapp/index.ts | Created using Square API infrastructure | No |
+| Cart auto-open | CartContext.tsx | Cart opens automatically when items added | No |
+| Cash App Pay Kit | CashAppPay.tsx | Created component for Cash App payments | No |
+| Cart state management | CartContext/Navbar | Moved cart state to context for global access | No |

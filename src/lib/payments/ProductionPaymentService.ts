@@ -142,22 +142,11 @@ export class ProductionPaymentService {
           currency: 'USD'
         };
       } else if (paymentData.gateway === 'cashapp') {
-        // Cash App edge function not deployed - return proper error
-        const error = createStandardError(
-          'Cash App payments are temporarily unavailable',
-          gateway,
-          ERROR_CODES.GATEWAY_NOT_CONFIGURED,
-          false
-        );
-        this.logger.error('Cash App gateway not configured', {
-          gateway,
-          orderId: paymentData.orderId
-        });
-        return {
-          success: false,
-          error: error.userMessage,
-          errorCode: error.code,
-          retryable: false
+        // Cash App uses simplified payment flow
+        requestBody = {
+          action: 'create_payment',
+          amount: paymentData.amount,
+          currency: 'USD'
         };
       } else {
         throw createStandardError(
@@ -202,7 +191,7 @@ export class ProductionPaymentService {
         };
       }
 
-      // Handle PayPal order creation response
+      // Handle redirect-based payment flows (PayPal and Cash App)
       if (paymentData.gateway === 'paypal' && responseData.order) {
         // PayPal requires a second step to capture the order
         this.logger.info('PayPal order created, needs capture', {
@@ -219,6 +208,26 @@ export class ProductionPaymentService {
           data: {
             paypalOrderId: responseData.order.id,
             approvalUrl: responseData.order.links?.find((link: any) => link.rel === 'approve')?.href
+          }
+        };
+      }
+      
+      // Handle Cash App redirect flow
+      if (paymentData.gateway === 'cashapp' && responseData.requiresRedirect) {
+        this.logger.info('Cash App payment initiated, requires redirect', {
+          gateway,
+          orderId: paymentData.orderId,
+          paymentId: responseData.payment?.id
+        });
+        
+        return {
+          success: true,
+          requiresAction: true,
+          action: 'redirect_cashapp',
+          data: {
+            paymentId: responseData.payment?.id,
+            redirectUrl: responseData.redirectUrl,
+            transactionId: responseData.payment?.id
           }
         };
       }

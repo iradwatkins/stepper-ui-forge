@@ -17,8 +17,7 @@ const Navbar = () => {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const { user } = useAuth();
-  const { totalItems } = useCart();
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { totalItems, isCartOpen, setIsCartOpen } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const handleThemeToggle = (isDay: boolean) => {

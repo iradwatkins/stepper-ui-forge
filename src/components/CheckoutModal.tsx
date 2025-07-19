@@ -182,6 +182,31 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           return;
         }
         
+        // Handle Cash App redirect flow
+        if (result.requiresAction && result.action === 'redirect_cashapp') {
+          console.log('Cash App payment initiated, redirecting:', result.data);
+          
+          // Store order data for after redirect
+          sessionStorage.setItem('pendingCashAppOrder', JSON.stringify({
+            paymentId: result.data.paymentId,
+            orderId: orderId,
+            customerEmail,
+            amount: seatCheckoutMode ? seatTotal : total,
+            seatCheckoutMode,
+            items: seatCheckoutMode ? seatDetails : items,
+            sessionId,
+            eventId
+          }));
+          
+          // Redirect to Cash App
+          if (result.data.redirectUrl) {
+            window.location.href = result.data.redirectUrl;
+          } else {
+            throw new Error('Cash App redirect URL not provided');
+          }
+          return;
+        }
+        
         try {
           // Create order after successful payment
           console.log('Creating order for payment:', result);

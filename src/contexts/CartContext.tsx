@@ -28,6 +28,7 @@ export interface CartState {
   fees: number
   total: number
   isLoading: boolean
+  isCartOpen: boolean
 }
 
 // Cart actions for useReducer
@@ -38,6 +39,7 @@ export type CartAction =
   | { type: 'CLEAR_CART' }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'HYDRATE_CART'; payload: CartItem[] }
+  | { type: 'SET_CART_OPEN'; payload: boolean }
 
 // Cart context interface
 interface CartContextType extends CartState {
@@ -47,6 +49,7 @@ interface CartContextType extends CartState {
   clearCart: () => void
   getItemQuantity: (ticketTypeId: string) => number
   isInCart: (ticketTypeId: string) => boolean
+  setIsCartOpen: (open: boolean) => void
 }
 
 // Fee calculation configuration (3% processing fee as per existing checkout)
@@ -103,7 +106,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       return {
         ...state,
         items: newItems,
-        ...totals
+        ...totals,
+        isCartOpen: true // Open cart when item is added
       }
     }
     
@@ -161,6 +165,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       }
     }
     
+    case 'SET_CART_OPEN': {
+      return {
+        ...state,
+        isCartOpen: action.payload
+      }
+    }
+    
     default:
       return state
   }
@@ -173,7 +184,8 @@ const initialState: CartState = {
   subtotal: 0,
   fees: 0,
   total: 0,
-  isLoading: true
+  isLoading: true,
+  isCartOpen: false
 }
 
 // Create context
@@ -299,6 +311,11 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     return state.items.some(item => item.ticketTypeId === ticketTypeId)
   }
 
+  // Set cart open state
+  const setIsCartOpen = (open: boolean) => {
+    dispatch({ type: 'SET_CART_OPEN', payload: open })
+  }
+
   const value: CartContextType = {
     ...state,
     addItem,
@@ -306,7 +323,8 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     updateQuantity,
     clearCart,
     getItemQuantity,
-    isInCart
+    isInCart,
+    setIsCartOpen
   }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
