@@ -9,9 +9,11 @@ import type { PaymentGateway } from './types';
 export class ProductionPaymentService {
   private static instance: ProductionPaymentService;
   private logger: PaymentLogger;
+  private version = '2.0.1'; // Version to track deployments
 
   private constructor() {
     this.logger = PaymentLogger.getInstance();
+    console.log('[ProductionPaymentService] Version:', this.version);
   }
 
   static getInstance(): ProductionPaymentService {
@@ -493,6 +495,7 @@ export class ProductionPaymentService {
     }
   }> {
     const gateways = ['paypal', 'square']; // Cash App disabled until deployed
+    console.log('[Health Check] Checking gateways:', gateways, 'Version:', this.version);
     const healthChecks: any = {};
     
     await Promise.all(
@@ -564,7 +567,8 @@ export class ProductionPaymentService {
   getStatus() {
     return {
       initialized: true,
-      hasAvailableGateways: true
+      hasAvailableGateways: true,
+      version: this.version
     };
   }
 }
