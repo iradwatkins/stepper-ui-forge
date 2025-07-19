@@ -101,23 +101,55 @@ export function SquarePaymentComponent({
       
       await card.attach('#square-card-container');
 
-      // Try to create Cash App Pay with environment configuration
+      // Try to create Cash App Pay with the new PaymentRequest API
       let cashAppPay;
       try {
         if (cashAppClientId) {
-          cashAppPay = await payments.cashAppPay({
-            redirectURL: window.location.origin,
-            referenceId: `cashapp-${Date.now()}`,
-            // Explicitly pass environment to Cash App Pay
-            environment: cashAppEnvironment
+          console.log('🔄 Creating PaymentRequest for Cash App Pay...');
+          
+          // First create a payment request
+          const paymentRequest = payments.paymentRequest({
+            countryCode: 'US',
+            currencyCode: 'USD',
+            total: {
+              amount: Math.round(amount * 100).toString(), // Convert to cents as string
+              label: 'Payment'
+            }
           });
-          setCashAppAvailable(true);
-          console.log(`✅ Cash App Pay initialized (${cashAppEnvironment})`);
+          
+          // Then initialize Cash App Pay with the payment request
+          try {
+            cashAppPay = await payments.cashAppPay({
+              paymentRequest: paymentRequest,
+              redirectURL: window.location.origin,
+              referenceId: `cashapp-${Date.now()}`
+            });
+            
+            if (cashAppPay) {
+              setCashAppAvailable(true);
+              console.log(`✅ Cash App Pay initialized (${cashAppEnvironment})`);
+            }
+          } catch (cashAppError) {
+            console.error('❌ Cash App Pay initialization failed:', cashAppError);
+            // Try fallback without paymentRequest
+            try {
+              cashAppPay = await payments.cashAppPay({
+                redirectURL: window.location.origin,
+                referenceId: `cashapp-${Date.now()}`
+              });
+              if (cashAppPay) {
+                setCashAppAvailable(true);
+                console.log(`✅ Cash App Pay initialized with fallback (${cashAppEnvironment})`);
+              }
+            } catch (fallbackError) {
+              console.warn('Cash App Pay not available:', fallbackError);
+            }
+          }
         } else {
           console.warn('Cash App Pay disabled - VITE_CASHAPP_CLIENT_ID not configured');
         }
-      } catch (cashAppError) {
-        console.warn('Cash App Pay not available:', cashAppError);
+      } catch (error) {
+        console.warn('Failed to create PaymentRequest:', error);
       }
 
       setPaymentMethods({ payments, card, cashAppPay });
@@ -184,19 +216,32 @@ export function SquarePaymentComponent({
         throw new Error('Cash App Pay not available');
       }
 
-      const paymentRequest = paymentMethods.cashAppPay.requestPayment({
-        amount: {
-          amount: Math.round(amount * 100), // Convert to cents
-          currencyCode: 'USD'
+      // Check if we need to use the new API or old API
+      if (typeof paymentMethods.cashAppPay.tokenize === 'function') {
+        // New API - tokenize directly
+        const tokenResult = await paymentMethods.cashAppPay.tokenize();
+        
+        if (tokenResult.status === 'OK') {
+          onPaymentToken(tokenResult.token, 'cashapp');
+        } else {
+          throw new Error(tokenResult.errors?.[0]?.message || 'Cash App payment failed');
         }
-      });
-
-      const paymentResult = await paymentRequest;
-      
-      if (paymentResult.status === 'OK') {
-        onPaymentToken(paymentResult.token, 'cashapp');
+      } else if (typeof paymentMethods.cashAppPay.requestPayment === 'function') {
+        // Old API - request payment
+        const paymentResult = await paymentMethods.cashAppPay.requestPayment({
+          amount: {
+            amount: Math.round(amount * 100), // Convert to cents
+            currencyCode: 'USD'
+          }
+        });
+        
+        if (paymentResult.status === 'OK') {
+          onPaymentToken(paymentResult.token, 'cashapp');
+        } else {
+          throw new Error(paymentResult.errors?.[0]?.message || 'Cash App payment failed');
+        }
       } else {
-        throw new Error(paymentResult.errors?.[0]?.message || 'Cash App payment failed');
+        throw new Error('Cash App Pay API not recognized');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Cash App payment failed';
