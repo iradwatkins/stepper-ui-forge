@@ -446,4 +446,4 @@ serve(async (req) => {
       }
     );
   }
-});
+});// Version: 2025-01-19-v2 - Improved error handling
