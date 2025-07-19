@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
+import { getPaymentConfig } from '@/lib/payment-config';
 
 interface CashAppPayProps {
   amount: number;
@@ -12,14 +13,17 @@ interface CashAppPayProps {
   onError: (error: string) => void;
 }
 
-// Cash App Client IDs from environment
-const CASH_APP_CLIENT_ID = import.meta.env.VITE_CASH_APP_CLIENT_ID || import.meta.env.VITE_SQUARE_APPLICATION_ID;
-const CASH_APP_ENVIRONMENT = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
-
-// Script URL based on environment
-const CASH_APP_SCRIPT_URL = CASH_APP_ENVIRONMENT === 'production' 
-  ? 'https://kit.cash.app/v1/pay.js'
-  : 'https://sandbox.kit.cash.app/v1/pay.js';
+// Get Cash App configuration from central config
+const getCashAppConfig = () => {
+  const config = getPaymentConfig();
+  return {
+    clientId: config.cashapp.clientId,
+    environment: config.cashapp.environment,
+    scriptUrl: config.cashapp.environment === 'production' 
+      ? 'https://kit.cash.app/v1/pay.js'
+      : 'https://sandbox.kit.cash.app/v1/pay.js'
+  };
+};
 
 declare global {
   interface Window {
@@ -37,7 +41,9 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
   const scriptLoadedRef = useRef(false);
 
   useEffect(() => {
-    if (!CASH_APP_CLIENT_ID) {
+    const cashAppConfig = getCashAppConfig();
+    
+    if (!cashAppConfig.clientId) {
       setError('Cash App is not configured. Please contact support.');
       setIsLoading(false);
       return;
@@ -52,7 +58,7 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
 
       // Load Cash App Pay Kit script
       const script = document.createElement('script');
-      script.src = CASH_APP_SCRIPT_URL;
+      script.src = cashAppConfig.scriptUrl;
       script.async = true;
 
       script.onload = async () => {
@@ -75,7 +81,8 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
         }
 
         // Initialize Pay Kit
-        const pay = await window.CashApp.pay({ clientId: CASH_APP_CLIENT_ID });
+        const cashAppConfig = getCashAppConfig();
+        const pay = await window.CashApp.pay({ clientId: cashAppConfig.clientId });
         payRef.current = pay;
 
         // Listen for payment approval

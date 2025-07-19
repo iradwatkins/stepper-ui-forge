@@ -68,6 +68,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
       const loadPaymentMethods = async () => {
         try {
           const methods = await productionPaymentService.getAvailablePaymentMethods();
+          console.log('💳 Loaded payment methods:', methods);
           setPaymentMethods(methods);
           setSelectedGateway(methods[0]?.id || 'paypal');
         } catch (error) {
