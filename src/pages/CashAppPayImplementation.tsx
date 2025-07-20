@@ -1,26 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, Smartphone, CreditCard, Info } from 'lucide-react';
-import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
-
-declare global {
-  interface Window {
-    Square: any;
-  }
-}
+import { Info, Smartphone, CreditCard, AlertCircle } from 'lucide-react';
+import { CashAppPaySquareOnly } from '@/components/payment/CashAppPaySquareOnly';
 
 export function CashAppPayImplementation() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [payments, setPayments] = useState<any>(null);
-  const [cashAppPay, setCashAppPay] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [paymentToken, setPaymentToken] = useState<string | null>(null);
-  const [paymentResult, setPaymentResult] = useState<any>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-
+  const [paymentResults, setPaymentResults] = useState<any[]>([]);
+  
   // Test order details
   const orderDetails = {
     items: [
@@ -30,248 +18,26 @@ export function CashAppPayImplementation() {
     total: 10.80
   };
 
-  useEffect(() => {
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      initializeSquarePayments();
-    }, 100);
-    
-    return () => {
-      clearTimeout(timer);
-      // Clean up Cash App Pay instance
-      if (cashAppPay?.destroy) {
-        cashAppPay.destroy();
-      }
-    };
-  }, []);
-
-  const initializeSquarePayments = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Get Square credentials from environment
-      const squareApplicationId = import.meta.env.VITE_SQUARE_APP_ID;
-      const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
-      const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
-
-      console.log('🔧 Initializing Cash App Pay with Square credentials:');
-      console.log('Application ID:', squareApplicationId?.substring(0, 15) + '...');
-      console.log('Location ID:', squareLocationId);
-      console.log('Environment:', squareEnvironment);
-
-      // Validate credentials
-      if (!squareApplicationId || !squareLocationId) {
-        throw new Error('Missing Square credentials. Please check your environment variables.');
-      }
-
-      // Load Square SDK
-      const scriptUrl = squareEnvironment === 'production'
-        ? 'https://web.squarecdn.com/v1/square.js'
-        : 'https://sandbox.web.squarecdn.com/v1/square.js';
-
-      if (!window.Square) {
-        await loadSquareSDK(scriptUrl);
-      }
-
-      // Initialize Square payments
-      const squarePayments = window.Square.payments(squareApplicationId, squareLocationId);
-      setPayments(squarePayments);
-
-      // Create payment request for Cash App Pay
-      const paymentRequest = squarePayments.paymentRequest({
-        countryCode: 'US',
-        currencyCode: 'USD',
-        total: {
-          amount: orderDetails.total.toFixed(2),
-          label: 'Total'
-        }
-      });
-
-      console.log('📱 Initializing Cash App Pay...');
-      console.log('Payment request:', {
-        countryCode: 'US',
-        currencyCode: 'USD',
-        total: {
-          amount: orderDetails.total.toFixed(2),
-          label: 'Total'
-        }
-      });
-
-      // Initialize Cash App Pay
-      // Note: Cash App Pay uses Square's application ID, not a separate Cash App ID
-      const cashApp = await squarePayments.cashAppPay(paymentRequest, {
-        redirectURL: window.location.href,
-        referenceId: `order-${Date.now()}`
-      });
-
-      // Wait for container to exist
-      await waitForElement('#cash-app-pay-container');
-      
-      // Attach to DOM
-      await cashApp.attach('#cash-app-pay-container');
-      setCashAppPay(cashApp);
-
-      // Set up event listener for payment authorization
-      cashApp.addEventListener('ontokenization', async (event: any) => {
-        console.log('Cash App Pay tokenization event:', event.detail);
-        const { tokenResult, error } = event.detail;
-        
-        if (error) {
-          console.error('Cash App Pay error:', error);
-          setError(error.message || 'Payment authorization failed');
-          return;
-        }
-
-        if (tokenResult.status === 'OK') {
-          console.log('✅ Cash App Pay token received:', tokenResult.token);
-          setPaymentToken(tokenResult.token);
-          // Automatically process the payment
-          await processPayment(tokenResult.token);
-        } else {
-          const errorMessage = tokenResult.errors?.[0]?.message || 'Payment authorization failed';
-          console.error('Tokenization failed:', errorMessage);
-          setError(errorMessage);
-        }
-      });
-      
-      // Also listen for ready event
-      cashApp.addEventListener('ready', () => {
-        console.log('✅ Cash App Pay button is ready');
-      });
-
-      console.log('✅ Cash App Pay initialized successfully');
-      setIsLoading(false);
-
-    } catch (err) {
-      console.error('❌ Initialization error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize Cash App Pay');
-      setIsLoading(false);
-    }
+  const handlePaymentSuccess = (result: any) => {
+    console.log('Payment successful:', result);
+    setPaymentResults(prev => [...prev, { 
+      success: true, 
+      ...result, 
+      timestamp: new Date().toISOString() 
+    }]);
   };
 
-  const waitForElement = (selector: string, timeout = 5000): Promise<HTMLElement> => {
-    return new Promise((resolve, reject) => {
-      const startTime = Date.now();
-      
-      const checkElement = () => {
-        const element = document.querySelector(selector) as HTMLElement;
-        
-        if (element) {
-          console.log('✅ Found element:', selector);
-          resolve(element);
-        } else if (Date.now() - startTime > timeout) {
-          reject(new Error(`Element ${selector} not found after ${timeout}ms`));
-        } else {
-          setTimeout(checkElement, 50);
-        }
-      };
-      
-      checkElement();
-    });
-  };
-
-  const loadSquareSDK = (scriptUrl: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const existingScript = document.querySelector(`script[src="${scriptUrl}"]`);
-      if (existingScript) {
-        if (window.Square) {
-          resolve();
-          return;
-        }
-        // Wait for existing script to load
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-          checkCount++;
-          if (window.Square) {
-            clearInterval(checkInterval);
-            resolve();
-          } else if (checkCount > 50) {
-            clearInterval(checkInterval);
-            reject(new Error('Square SDK failed to load'));
-          }
-        }, 100);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = scriptUrl;
-      script.async = true;
-      script.defer = true;
-      script.crossOrigin = 'anonymous';
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Square SDK loading timeout'));
-      }, 30000);
-
-      script.onload = () => {
-        clearTimeout(timeout);
-        setTimeout(() => {
-          if (window.Square) {
-            resolve();
-          } else {
-            reject(new Error('Square SDK loaded but not available'));
-          }
-        }, 100);
-      };
-
-      script.onerror = () => {
-        clearTimeout(timeout);
-        reject(new Error('Failed to load Square SDK'));
-      };
-
-      document.head.appendChild(script);
-    });
-  };
-
-  const processPayment = async (token: string) => {
-    setIsProcessing(true);
-    setPaymentResult(null);
-    
-    try {
-      console.log('💳 Processing payment with token:', token.substring(0, 20) + '...');
-      
-      const result = await productionPaymentService.processPayment({
-        amount: orderDetails.total,
-        gateway: 'cashapp',
-        sourceId: token,
-        orderId: `cashapp_${Date.now()}`,
-        customerEmail: 'test@example.com',
-        idempotencyKey: `cashapp_${Date.now()}_${Math.random()}`
-      });
-      
-      console.log('Payment result:', result);
-      setPaymentResult(result);
-      
-      if (!result.success) {
-        setError(result.error || 'Payment processing failed');
-      }
-    } catch (error) {
-      console.error('Payment processing error:', error);
-      setError(error instanceof Error ? error.message : 'Payment processing failed');
-      setPaymentResult({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
-      setIsProcessing(false);
-    }
+  const handlePaymentError = (error: string) => {
+    console.error('Payment error:', error);
+    setPaymentResults(prev => [...prev, { 
+      success: false, 
+      error, 
+      timestamp: new Date().toISOString() 
+    }]);
   };
 
   const environment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
   const isProduction = environment === 'production';
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-4 max-w-2xl">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center justify-center space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span>Loading Cash App Pay...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto p-4 max-w-2xl">
@@ -284,14 +50,23 @@ export function CashAppPayImplementation() {
         </Badge>
       </div>
 
-      {/* Important Note for Production */}
+      {/* Important Notice */}
+      <Alert className="mb-6 border-blue-500">
+        <Info className="h-4 w-4" />
+        <AlertTitle>Square SDK Implementation</AlertTitle>
+        <AlertDescription>
+          This implementation uses ONLY Square's Web Payments SDK for Cash App Pay. 
+          No separate Cash App SDK is loaded. Your Square Application ID works for both 
+          card payments and Cash App Pay.
+        </AlertDescription>
+      </Alert>
+
       {isProduction && (
         <Alert className="mb-6 border-orange-500">
-          <Info className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Production Mode Active</AlertTitle>
           <AlertDescription>
             You are using production Square credentials. Any payments made will be real transactions.
-            Cash App Pay works with your Square Application ID - no separate Cash App ID needed.
           </AlertDescription>
         </Alert>
       )}
@@ -320,7 +95,7 @@ export function CashAppPayImplementation() {
           </CardContent>
         </Card>
 
-        {/* Cash App Pay Button */}
+        {/* Cash App Pay Component */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -328,104 +103,95 @@ export function CashAppPayImplementation() {
               Pay with Cash App
             </CardTitle>
             <CardDescription>
-              Click the button below to pay with Cash App. On mobile, you'll be redirected to Cash App.
-              On desktop, scan the QR code with your Cash App.
+              Using Square Web Payments SDK - No separate Cash App SDK needed
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Cash App Pay Button Container - Must exist before initialization */}
-            <div 
-              id="cash-app-pay-container" 
-              className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
-              style={{ minHeight: '60px' }}
-            >
-              {isLoading && (
-                <span className="text-sm text-muted-foreground">Cash App Pay button will appear here...</span>
-              )}
-            </div>
-            
-            {error && (
-              <Alert variant="destructive" className="mt-4">
-                <XCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {paymentToken && !paymentResult && (
-              <Alert className="mt-4">
-                <CheckCircle2 className="h-4 w-4" />
-                <AlertTitle>Payment Authorized</AlertTitle>
-                <AlertDescription>
-                  Token received. Processing payment...
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {paymentResult && (
-              <Alert 
-                className={`mt-4 ${paymentResult.success ? 'border-green-500' : 'border-red-500'}`}
-                variant={paymentResult.success ? 'default' : 'destructive'}
-              >
-                <AlertTitle>
-                  {paymentResult.success ? 'Payment Successful!' : 'Payment Failed'}
-                </AlertTitle>
-                <AlertDescription>
-                  {paymentResult.success ? (
-                    <div className="space-y-1">
-                      <p>Transaction ID: {paymentResult.data?.transactionId}</p>
-                      <p>Status: {paymentResult.data?.status}</p>
-                    </div>
-                  ) : (
-                    <p>{paymentResult.error || 'Unknown error occurred'}</p>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {isProcessing && (
-              <div className="mt-4 flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Processing payment...</span>
-              </div>
-            )}
+            <CashAppPaySquareOnly
+              amount={orderDetails.total}
+              orderId={`demo_${Date.now()}`}
+              customerEmail="test@example.com"
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
           </CardContent>
         </Card>
+
+        {/* Payment Results */}
+        {paymentResults.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Results</CardTitle>
+              <CardDescription>
+                Transaction history for this session
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {paymentResults.map((result, index) => (
+                  <div 
+                    key={index} 
+                    className={`p-3 rounded-lg border ${
+                      result.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                    }`}
+                  >
+                    <div className="font-medium">
+                      {result.success ? '✅ Success' : '❌ Failed'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {result.timestamp}
+                    </div>
+                    {result.error && (
+                      <div className="text-sm text-red-600 mt-1">{result.error}</div>
+                    )}
+                    {result.data?.transactionId && (
+                      <div className="text-sm mt-1">
+                        Transaction: {result.data.transactionId}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Implementation Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Implementation Details</CardTitle>
+            <CardTitle>Clean Implementation Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="font-semibold mb-2">How Cash App Pay Works:</h4>
-              <ol className="list-decimal list-inside space-y-1 text-sm">
-                <li>Customer clicks the Cash App Pay button</li>
-                <li>On mobile: Redirects to Cash App app</li>
-                <li>On desktop: Shows QR code to scan</li>
-                <li>Customer approves payment in Cash App</li>
-                <li>Payment token is sent to your server</li>
-                <li>Server processes payment via Square API</li>
-              </ol>
+              <h4 className="font-semibold mb-2">What's Different:</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>NO Cash App direct SDK (kit.cash.app) - removed completely</li>
+                <li>ONLY Square's Web Payments SDK is loaded</li>
+                <li>Single initialization flow - no duplicate instances</li>
+                <li>Proper cleanup on component unmount</li>
+                <li>Uses Square Application ID for Cash App Pay</li>
+              </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold mb-2">Key Points:</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Uses your Square Application ID (no separate Cash App ID needed)</li>
-                <li>Works in both sandbox and production environments</li>
-                <li>Supports both mobile and desktop experiences</li>
-                <li>Payment processing uses Square's payment API</li>
-              </ul>
+              <h4 className="font-semibold mb-2">SDK Flow:</h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm">
+                <li>Load Square Web SDK (web.squarecdn.com)</li>
+                <li>Initialize Square.payments() once</li>
+                <li>Create payments.cashAppPay() instance once</li>
+                <li>Attach to DOM element</li>
+                <li>Handle tokenization events</li>
+                <li>Process payment on backend</li>
+              </ol>
             </div>
 
             <div>
               <h4 className="font-semibold mb-2">Current Configuration:</h4>
               <div className="bg-muted p-3 rounded text-sm font-mono">
                 <p>Environment: {environment}</p>
-                <p>App ID: {import.meta.env.VITE_SQUARE_APP_ID?.substring(0, 15)}...</p>
+                <p>Square App ID: {import.meta.env.VITE_SQUARE_APP_ID?.substring(0, 15)}...</p>
                 <p>Location: {import.meta.env.VITE_SQUARE_LOCATION_ID}</p>
+                <p>SDK: Square Web Payments SDK only</p>
               </div>
             </div>
           </CardContent>

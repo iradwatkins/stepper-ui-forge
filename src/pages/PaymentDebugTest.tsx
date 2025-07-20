@@ -6,6 +6,7 @@ import { productionPaymentService } from '@/lib/payments/ProductionPaymentServic
 import { Loader2, CheckCircle, XCircle, Smartphone, AlertCircle } from 'lucide-react';
 import { getPaymentConfig } from '@/lib/payment-config';
 import { CashAppPay } from '@/components/payment/CashAppPay';
+import { CashAppPaySquareOnly } from '@/components/payment/CashAppPaySquareOnly';
 import { SquarePaymentComponent } from '@/components/payment/SquarePaymentComponent';
 import { SquareDiagnostics } from '@/components/payment/SquareDiagnostics';
 import { SquareProductionTest } from '@/components/payment/SquareProductionTest';
@@ -496,9 +497,9 @@ export function PaymentDebugTest() {
         {/* Cash App Pay Complete Implementation */}
         <Card>
           <CardHeader>
-            <CardTitle>Cash App Pay Complete Implementation</CardTitle>
+            <CardTitle>Cash App Pay - Square SDK Only</CardTitle>
             <CardDescription>
-              Production-ready Cash App Pay with Square integration
+              Clean implementation using ONLY Square's Web Payments SDK (no Cash App direct SDK)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -507,30 +508,45 @@ export function PaymentDebugTest() {
               variant="default"
             >
               <Smartphone className="mr-2 h-4 w-4" />
-              {showCashAppComplete ? 'Hide' : 'Show'} Cash App Pay
+              {showCashAppComplete ? 'Hide' : 'Show'} Clean Cash App Pay
             </Button>
           </CardContent>
         </Card>
 
         {showCashAppComplete && (
-          <CashAppPayComplete
-            amount={10.80}
-            onSuccess={(paymentId) => {
-              console.log('Payment successful:', paymentId);
-              setResults(prev => ({ ...prev, 'cashapp-complete': { 
-                success: true, 
-                paymentId,
-                timestamp: new Date().toISOString()
-              }}));
-            }}
-            onError={(error) => {
-              console.error('Payment error:', error);
-              setResults(prev => ({ ...prev, 'cashapp-complete': { 
-                error,
-                timestamp: new Date().toISOString()
-              }}));
-            }}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5" />
+                Cash App Pay - Square SDK Only
+              </CardTitle>
+              <CardDescription>
+                NO Cash App direct SDK loaded - using Square Web Payments SDK exclusively
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CashAppPaySquareOnly
+                amount={10.80}
+                orderId={`test_${Date.now()}`}
+                customerEmail="test@example.com"
+                onSuccess={(result) => {
+                  console.log('Payment successful:', result);
+                  setResults(prev => ({ ...prev, 'cashapp-square-only': { 
+                    success: true, 
+                    ...result,
+                    timestamp: new Date().toISOString()
+                  }}));
+                }}
+                onError={(error) => {
+                  console.error('Payment error:', error);
+                  setResults(prev => ({ ...prev, 'cashapp-square-only': { 
+                    error,
+                    timestamp: new Date().toISOString()
+                  }}));
+                }}
+              />
+            </CardContent>
+          </Card>
         )}
 
         {/* Cash App Pay Diagnostic Tool */}

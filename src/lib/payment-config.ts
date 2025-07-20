@@ -14,7 +14,7 @@ export interface PaymentConfig {
     locationId: string;
   };
   cashapp: {
-    clientId: string;
+    clientId: string; // Note: This is the same as Square Application ID
     environment: 'sandbox' | 'production';
   };
   webhookUrl?: string;
@@ -27,7 +27,8 @@ export const getPaymentConfig = (): PaymentConfig => {
   const squareAppId = import.meta.env.VITE_SQUARE_APP_ID || '';
   const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID || '';
   const squareAccessToken = import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '';
-  const cashappClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID || '';
+  // Cash App uses Square Application ID - no separate client ID needed
+  const cashappClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID || squareAppId;
   
   // Get environment settings from Vite environment variables
   const paypalEnv = import.meta.env.VITE_PAYPAL_ENVIRONMENT || 'sandbox';
@@ -97,10 +98,8 @@ export const validatePaymentConfig = (): { isValid: boolean; missing: string[] }
     missing.push('VITE_SQUARE_LOCATION_ID');
   }
 
-  // Check Cash App
-  if (!config.cashapp.clientId) {
-    missing.push('VITE_CASHAPP_CLIENT_ID');
-  }
+  // Note: Cash App uses Square Application ID, so we don't need to check separately
+  // The VITE_CASHAPP_CLIENT_ID is optional and defaults to Square App ID
 
   return {
     isValid: missing.length === 0,
