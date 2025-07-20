@@ -33,7 +33,18 @@ export function CashAppPayComplete({
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
 
   useEffect(() => {
-    initializeCashAppPay();
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      initializeCashAppPay();
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      // Clean up
+      if (cashAppPay?.destroy) {
+        cashAppPay.destroy();
+      }
+    };
   }, []);
 
   const initializeCashAppPay = async () => {
@@ -78,6 +89,9 @@ export function CashAppPayComplete({
         referenceId: orderId,
       });
 
+      // Wait for container to exist
+      await waitForElement('#cash-app-pay-button');
+      
       // Attach to container
       await cashApp.attach('#cash-app-pay-button');
       setCashAppPay(cashApp);
@@ -94,6 +108,26 @@ export function CashAppPayComplete({
       setIsInitializing(false);
       onError?.(errorMessage);
     }
+  };
+
+  const waitForElement = (selector: string, timeout = 5000): Promise<HTMLElement> => {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      
+      const checkElement = () => {
+        const element = document.querySelector(selector) as HTMLElement;
+        
+        if (element) {
+          resolve(element);
+        } else if (Date.now() - startTime > timeout) {
+          reject(new Error(`Element ${selector} not found after ${timeout}ms`));
+        } else {
+          setTimeout(checkElement, 50);
+        }
+      };
+      
+      checkElement();
+    });
   };
 
   const loadSquareSDK = (url: string): Promise<void> => {
@@ -257,7 +291,17 @@ export function CashAppPayComplete({
         </div>
 
         {/* Cash App Pay Button Container */}
-        <div id="cash-app-pay-button" className="min-h-[60px]" />
+        <div 
+          id="cash-app-pay-button" 
+          className="min-h-[60px]"
+          style={{ minHeight: '60px' }}
+        >
+          {isInitializing && (
+            <div className="flex items-center justify-center h-[60px]">
+              <span className="text-sm text-muted-foreground">Loading Cash App Pay...</span>
+            </div>
+          )}
+        </div>
 
         {/* Status Display */}
         {getStatusDisplay()}

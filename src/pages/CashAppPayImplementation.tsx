@@ -31,7 +31,18 @@ export function CashAppPayImplementation() {
   };
 
   useEffect(() => {
-    initializeSquarePayments();
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      initializeSquarePayments();
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      // Clean up Cash App Pay instance
+      if (cashAppPay?.destroy) {
+        cashAppPay.destroy();
+      }
+    };
   }, []);
 
   const initializeSquarePayments = async () => {
@@ -78,6 +89,14 @@ export function CashAppPayImplementation() {
       });
 
       console.log('📱 Initializing Cash App Pay...');
+      console.log('Payment request:', {
+        countryCode: 'US',
+        currencyCode: 'USD',
+        total: {
+          amount: orderDetails.total.toFixed(2),
+          label: 'Total'
+        }
+      });
 
       // Initialize Cash App Pay
       // Note: Cash App Pay uses Square's application ID, not a separate Cash App ID
@@ -86,12 +105,16 @@ export function CashAppPayImplementation() {
         referenceId: `order-${Date.now()}`
       });
 
+      // Wait for container to exist
+      await waitForElement('#cash-app-pay-container');
+      
       // Attach to DOM
       await cashApp.attach('#cash-app-pay-container');
       setCashAppPay(cashApp);
 
       // Set up event listener for payment authorization
       cashApp.addEventListener('ontokenization', async (event: any) => {
+        console.log('Cash App Pay tokenization event:', event.detail);
         const { tokenResult, error } = event.detail;
         
         if (error) {
@@ -111,6 +134,11 @@ export function CashAppPayImplementation() {
           setError(errorMessage);
         }
       });
+      
+      // Also listen for ready event
+      cashApp.addEventListener('ready', () => {
+        console.log('✅ Cash App Pay button is ready');
+      });
 
       console.log('✅ Cash App Pay initialized successfully');
       setIsLoading(false);
@@ -120,6 +148,27 @@ export function CashAppPayImplementation() {
       setError(err instanceof Error ? err.message : 'Failed to initialize Cash App Pay');
       setIsLoading(false);
     }
+  };
+
+  const waitForElement = (selector: string, timeout = 5000): Promise<HTMLElement> => {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      
+      const checkElement = () => {
+        const element = document.querySelector(selector) as HTMLElement;
+        
+        if (element) {
+          console.log('✅ Found element:', selector);
+          resolve(element);
+        } else if (Date.now() - startTime > timeout) {
+          reject(new Error(`Element ${selector} not found after ${timeout}ms`));
+        } else {
+          setTimeout(checkElement, 50);
+        }
+      };
+      
+      checkElement();
+    });
   };
 
   const loadSquareSDK = (scriptUrl: string): Promise<void> => {
@@ -284,7 +333,16 @@ export function CashAppPayImplementation() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div id="cash-app-pay-container" className="min-h-[60px]" />
+            {/* Cash App Pay Button Container - Must exist before initialization */}
+            <div 
+              id="cash-app-pay-container" 
+              className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
+              style={{ minHeight: '60px' }}
+            >
+              {isLoading && (
+                <span className="text-sm text-muted-foreground">Cash App Pay button will appear here...</span>
+              )}
+            </div>
             
             {error && (
               <Alert variant="destructive" className="mt-4">

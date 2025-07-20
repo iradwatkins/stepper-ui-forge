@@ -10,6 +10,7 @@ import { SquarePaymentComponent } from '@/components/payment/SquarePaymentCompon
 import { SquareDiagnostics } from '@/components/payment/SquareDiagnostics';
 import { SquareProductionTest } from '@/components/payment/SquareProductionTest';
 import { CashAppPayComplete } from '@/components/payment/CashAppPayComplete';
+import { CashAppPayDiagnostic } from '@/components/payment/CashAppPayDiagnostic';
 
 export function PaymentDebugTest() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -531,6 +532,9 @@ export function PaymentDebugTest() {
             }}
           />
         )}
+
+        {/* Cash App Pay Diagnostic Tool */}
+        <CashAppPayDiagnostic />
 
         {Object.entries(results).map(([key, value]) => (
           <Card key={key}>
