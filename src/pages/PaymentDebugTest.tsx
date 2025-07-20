@@ -19,6 +19,7 @@ import { SquareCardFormFix } from '@/components/payment/SquareCardFormFix';
 import { SquareCardMinimal } from '@/components/payment/SquareCardMinimal';
 import { StablePaymentWrapper } from '@/components/payment/StablePaymentWrapper';
 import { SquarePaymentStable } from '@/components/payment/SquarePaymentStable';
+import { SquareProductionFix } from '@/components/payment/SquareProductionFix';
 
 declare global {
   interface Window {
@@ -272,20 +273,44 @@ export function PaymentDebugTest() {
     <div className="container mx-auto p-4 max-w-4xl">
       <h1 className="text-3xl font-bold mb-6">Payment System Debug</h1>
       
-      {/* Auth Re-render Fix Info */}
-      <Card className="mb-6 border-green-500 bg-green-50">
-        <CardHeader>
-          <CardTitle className="text-green-800">Auth Re-render Issue Fixed</CardTitle>
-          <CardDescription className="text-green-700">
-            The Square payment form wasn't rendering because authentication was causing multiple re-renders
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-green-700">
-          <p className="mb-2"><strong>Problem:</strong> Auth state changes 4 times rapidly, preventing Square SDK from finding stable DOM containers.</p>
-          <p className="mb-2"><strong>Solution:</strong> Added StablePaymentWrapper that waits for auth to stabilize before mounting payment components.</p>
-          <p><strong>Result:</strong> Square credit card inputs should now render properly in the components below.</p>
-        </CardContent>
-      </Card>
+      {/* Production Fix Alert */}
+      <Alert className="mb-6 border-2 border-blue-500 bg-blue-50">
+        <AlertCircle className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-800">
+          <strong className="text-lg">Production Issue Detected: Infinite Retry Loop</strong>
+          <div className="mt-2 space-y-2">
+            <p>Your logs show "Container ref not ready, retrying in 200ms" (89 times)</p>
+            <p className="font-semibold">Quick Fix: Use the "Square Production Fix" component below or run this in console:</p>
+            <pre className="mt-2 p-2 bg-white rounded text-xs overflow-x-auto">
+{`// Copy and paste this entire block into your browser console:
+for(let i=1;i<9999;i++){clearInterval(i);clearTimeout(i)}
+console.log('Stopped retry loops');`}
+            </pre>
+          </div>
+        </AlertDescription>
+      </Alert>
+      
+      {/* Square Production Fix - IMMEDIATE SOLUTION */}
+      <div className="mb-6">
+        <SquareProductionFix 
+          amount={25.00}
+          onSuccess={(token) => {
+            console.log('Production Fix Success:', token);
+            setResults(prev => ({ ...prev, 'production-fix': { 
+              success: true,
+              token: token.substring(0, 30) + '...',
+              timestamp: new Date().toISOString()
+            }}));
+          }}
+          onError={(error) => {
+            console.error('Production Fix Error:', error);
+            setResults(prev => ({ ...prev, 'production-fix': { 
+              error,
+              timestamp: new Date().toISOString()
+            }}));
+          }}
+        />
+      </div>
       
       <div className="space-y-4">
         {/* Stable Payment Section - Prevents auth re-render issues */}
