@@ -17,7 +17,7 @@ import { TicketService } from "@/lib/services/TicketService";
 import { EmailService } from "@/lib/services/EmailService";
 import { seatingService } from "@/lib/services/SeatingService";
 import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
-import { SquarePaymentForm } from "@/components/payments/SquarePaymentForm";
+import { SquarePaymentFormFixed } from "@/components/payments/SquarePaymentFormFixed";
 import { CashAppPay } from "@/components/payment/CashAppPay";
 import { toast } from "sonner";
 
@@ -654,7 +654,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
                {/* Square Payment Form */}
                {selectedGateway === 'square' && (
-                 <SquarePaymentForm
+                 <SquarePaymentFormFixed
                    amount={seatCheckoutMode ? seatTotal : total}
                    onPaymentToken={handleSquarePaymentToken}
                    onError={handleSquarePaymentError}
