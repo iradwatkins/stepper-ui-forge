@@ -36,32 +36,31 @@ export function SquarePaymentForm({
   const [cashAppAvailable, setCashAppAvailable] = useState(false);
 
   useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 25; // 5 seconds max
+    // Only initialize when card method is selected
+    if (selectedMethod !== 'card') {
+      return;
+    }
     
-    // Initialize with proper DOM readiness check
-    const initializeWhenReady = () => {
-      if (cardContainerRef.current) {
-        console.log('✅ Container ref available, initializing Square payments');
-        initializeSquarePayments();
-      } else if (retryCount < maxRetries) {
-        retryCount++;
-        if (retryCount % 5 === 1) { // Log every 5th attempt to reduce noise
-          console.log(`⏳ Container ref not ready, retry ${retryCount}/${maxRetries}`);
-        }
-        setTimeout(initializeWhenReady, 200);
-      } else {
-        console.error('❌ Container ref never became available after 5 seconds');
-        setError('Payment form failed to initialize. Please refresh the page and try again.');
+    // Simple initialization - no retry loops
+    const initializePayment = async () => {
+      // Wait a moment for React to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check if container exists by ID
+      const container = document.getElementById('square-card-container');
+      if (!container) {
+        console.error('❌ Square card container not found in DOM');
+        setError('Payment form container not found. Please refresh and try again.');
         setIsLoading(false);
+        return;
       }
+      
+      console.log('✅ Container found, initializing Square payments');
+      initializeSquarePayments();
     };
     
-    // Start initialization after a small delay to ensure React has rendered
-    const timer = setTimeout(initializeWhenReady, 50);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    initializePayment();
+  }, [selectedMethod]); // Re-run when payment method changes
 
   const initializeSquarePayments = async () => {
     try {

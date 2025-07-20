@@ -43,44 +43,35 @@ export function SquarePaymentComponent({
   const cardAttachedRef = useRef(false);
   const [containerReady, setContainerReady] = useState(false);
 
-  // Use useLayoutEffect to check for container readiness
+  // Simple container ready check
   useLayoutEffect(() => {
-    const checkContainer = () => {
-      if (cardContainerRef.current) {
-        console.log('✅ Container ref is ready');
-        setContainerReady(true);
-      } else {
-        console.log('⏳ Container ref not ready yet');
-      }
-    };
-    
-    // Check immediately
-    checkContainer();
-    
-    // If not ready, check after a small delay
-    if (!containerReady) {
-      const timer = setTimeout(checkContainer, 100);
-      return () => clearTimeout(timer);
+    if (cardContainerRef.current) {
+      console.log('✅ Container ref is ready');
+      setContainerReady(true);
     }
   }, []);
 
   useEffect(() => {
     let mounted = true;
     
-    // Don't initialize until container is ready
-    if (!containerReady) {
-      return;
-    }
-    
     const init = async () => {
-      // Set loading timeout - increased to 25 seconds for production
+      // Wait for React to render
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Verify container exists
+      if (!document.getElementById('square-card-container')) {
+        console.log('⏳ Waiting for square-card-container to appear in DOM');
+        return;
+      }
+      
+      // Set loading timeout
       timeoutRef.current = setTimeout(() => {
         if (mounted && isLoading && !cardAttachedRef.current) {
           setLoadingTimeout(true);
           setIsLoading(false);
           setError('Square payment form took too long to load. This may be due to network issues or browser extensions blocking the payment SDK.');
         }
-      }, 25000); // 25 second timeout for production
+      }, 20000); // 20 second timeout
 
       try {
         await initializeSquarePayments();
@@ -90,7 +81,10 @@ export function SquarePaymentComponent({
       }
     };
     
-    init();
+    // Only run when component is visible and selectedMethod is 'card'
+    if (selectedMethod === 'card') {
+      init();
+    }
 
     // Cleanup on unmount
     return () => {
@@ -106,7 +100,7 @@ export function SquarePaymentComponent({
         paymentMethods.cashAppPay.destroy();
       }
     };
-  }, [initAttempt, containerReady]); // Re-run on retry or when container becomes ready
+  }, [initAttempt, selectedMethod]); // Re-run on retry or method change
 
   // Attach Cash App Pay button when cashapp is selected
   useEffect(() => {

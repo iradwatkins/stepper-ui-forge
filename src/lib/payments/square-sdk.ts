@@ -186,27 +186,13 @@ export async function createSquarePaymentForm(
   card: any;
   cashAppPay?: any;
 }> {
-  // Wait for DOM element with exponential backoff
-  let attempts = 0;
-  const maxAttempts = 50; // 5 seconds max
-  let containerElement = null;
-  
-  while (attempts < maxAttempts && !containerElement) {
-    containerElement = document.getElementById(containerId);
-    if (!containerElement) {
-      attempts++;
-      if (attempts % 10 === 1) {
-        console.log(`⏳ Waiting for container '${containerId}' (attempt ${attempts}/${maxAttempts})`);
-      }
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-  
+  // Simple check - no retry loops
+  const containerElement = document.getElementById(containerId);
   if (!containerElement) {
-    throw new Error(`Element with ID '${containerId}' not found after ${maxAttempts} attempts. Make sure the container exists before initializing Square payments.`);
+    throw new Error(`Container element with ID '${containerId}' not found. Make sure the container exists before calling this function.`);
   }
   
-  console.log(`✅ Container element '${containerId}' found after ${attempts} attempts`);
+  console.log(`✅ Container element '${containerId}' found`);
   
   const payments = await initializeSquarePayments();
   
