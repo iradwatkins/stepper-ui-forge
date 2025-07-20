@@ -32,7 +32,13 @@
     <meta name="twitter:description" content="Comprehensive event management and ticketing platform for stepping and dance events" />
     <meta name="twitter:image" content="https://stepperslife.com/og-image.jpg" />
     
-    <!-- Square Web SDK - Removed hardcoded sandbox URL to allow dynamic loading -->
+    <!-- Preconnect to Square CDN for faster SDK loading -->
+    <link rel="preconnect" href="https://web.squarecdn.com" crossorigin>
+    <link rel="preconnect" href="https://sandbox.web.squarecdn.com" crossorigin>
+    <link rel="dns-prefetch" href="https://web.squarecdn.com">
+    <link rel="dns-prefetch" href="https://sandbox.web.squarecdn.com">
+    
+    <!-- Square Web SDK - Dynamically loaded based on environment -->
   </head>
 
   <body>

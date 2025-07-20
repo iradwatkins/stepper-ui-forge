@@ -7,12 +7,16 @@ import { Loader2, CheckCircle, XCircle, Smartphone, AlertCircle } from 'lucide-r
 import { getPaymentConfig } from '@/lib/payment-config';
 import { CashAppPay } from '@/components/payment/CashAppPay';
 import { SquarePaymentComponent } from '@/components/payment/SquarePaymentComponent';
+import { SquareDiagnostics } from '@/components/payment/SquareDiagnostics';
+import { SquareProductionTest } from '@/components/payment/SquareProductionTest';
 
 export function PaymentDebugTest() {
   const [loading, setLoading] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, any>>({});
   const [showCashAppTest, setShowCashAppTest] = useState(false);
   const [showSquareTest, setShowSquareTest] = useState(false);
+  const [showSquareDiagnostics, setShowSquareDiagnostics] = useState(false);
+  const [showSquareProductionTest, setShowSquareProductionTest] = useState(false);
   const [cashAppToken, setCashAppToken] = useState<string | null>(null);
 
   const testHealthCheck = async () => {
@@ -56,11 +60,26 @@ export function PaymentDebugTest() {
   const testSquarePayment = async () => {
     setLoading('square');
     try {
-      // First, let's test the Square API directly to get better error info
+      // First check if we're in production or sandbox
+      const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
+      const isProduction = squareEnvironment === 'production';
+      
+      if (isProduction) {
+        // In production, we can't use test tokens
+        setResults(prev => ({ ...prev, square: { 
+          warning: 'Cannot test with fake tokens in production',
+          environment: squareEnvironment,
+          message: 'Use the Square Payment Component below to generate a real payment token',
+          note: 'Production Square API requires real payment tokens from the Web SDK'
+        }}));
+        setLoading(null);
+        return;
+      }
+      
+      // Only test with sandbox tokens if in sandbox mode
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      // Test with a sandbox test token
       const testResponse = await fetch(`${supabaseUrl}/functions/v1/payments-square`, {
         method: 'POST',
         headers: {
@@ -100,6 +119,34 @@ export function PaymentDebugTest() {
         error: error.message || 'Square test failed',
         note: 'Network or configuration error'
       } }));
+    }
+    setLoading(null);
+  };
+
+  const testSquareHealth = async () => {
+    setLoading('square-health');
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/payments-square`, {
+        method: 'GET',
+        headers: { 
+          'Authorization': `Bearer ${anonKey}` 
+        }
+      });
+      
+      const data = await response.json();
+      
+      setResults(prev => ({ ...prev, 'square-health': {
+        ...data,
+        httpStatus: response.status,
+        timestamp: new Date().toISOString()
+      }}));
+    } catch (error) {
+      setResults(prev => ({ ...prev, 'square-health': { 
+        error: error.message || 'Health check failed'
+      }}));
     }
     setLoading(null);
   };
@@ -294,6 +341,16 @@ export function PaymentDebugTest() {
             </Button>
             
             <Button 
+              onClick={testSquareHealth} 
+              disabled={loading === 'square-health'}
+              className="mr-2"
+              variant="outline"
+            >
+              {loading === 'square-health' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Test Square Health
+            </Button>
+            
+            <Button 
               onClick={testSquarePayment} 
               disabled={loading === 'square'}
               className="mr-2"
@@ -331,6 +388,14 @@ export function PaymentDebugTest() {
                 variant="outline"
               >
                 {showSquareTest ? 'Hide' : 'Show'} Square SDK Test
+              </Button>
+              
+              <Button 
+                onClick={() => setShowSquareDiagnostics(!showSquareDiagnostics)}
+                className="mb-2"
+                variant="outline"
+              >
+                {showSquareDiagnostics ? 'Hide' : 'Show'} Square Diagnostics
               </Button>
               
               {cashAppToken && (
@@ -396,6 +461,33 @@ export function PaymentDebugTest() {
               />
             </CardContent>
           </Card>
+        )}
+
+        {/* Square Diagnostics */}
+        {showSquareDiagnostics && (
+          <SquareDiagnostics />
+        )}
+
+        {/* Square Production Test */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Square Production Payment Test</CardTitle>
+            <CardDescription>
+              Test Square payments with proper production/sandbox handling
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => setShowSquareProductionTest(!showSquareProductionTest)}
+              variant="default"
+            >
+              {showSquareProductionTest ? 'Hide' : 'Show'} Production Test
+            </Button>
+          </CardContent>
+        </Card>
+
+        {showSquareProductionTest && (
+          <SquareProductionTest />
         )}
 
         {Object.entries(results).map(([key, value]) => (

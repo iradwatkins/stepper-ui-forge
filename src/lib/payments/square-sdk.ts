@@ -41,43 +41,71 @@ export function loadSquareSDK(): Promise<void> {
       ? 'https://web.squarecdn.com/v1/square.js'
       : 'https://sandbox.web.squarecdn.com/v1/square.js';
     
+    // Check if script already exists
+    const existingScript = document.querySelector(`script[src="${scriptUrl}"]`);
+    if (existingScript) {
+      console.log('⚡ Square SDK script already exists, waiting for load...');
+      // Set up polling to check if Square object appears
+      let checkCount = 0;
+      const checkInterval = setInterval(() => {
+        checkCount++;
+        if (window.Square) {
+          clearInterval(checkInterval);
+          squareSDKLoaded = true;
+          console.log('✅ Square SDK became available');
+          resolve();
+        } else if (checkCount > 100) { // 10 seconds
+          clearInterval(checkInterval);
+          reject(new Error('Square SDK script exists but failed to initialize'));
+        }
+      }, 100);
+      return;
+    }
+    
     // Create script element
     const script = document.createElement('script');
     script.src = scriptUrl;
     script.async = true;
     script.defer = true;
     
+    // Add attributes to help with loading
+    script.setAttribute('crossorigin', 'anonymous');
+    
     // Enhanced logging for debugging
     console.group('🟦 Square SDK Initialization');
     console.log('VITE_SQUARE_ENVIRONMENT:', squareEnvironment);
-    console.log('VITE_SQUARE_APP_ID:', import.meta.env.VITE_SQUARE_APP_ID);
+    console.log('VITE_SQUARE_APP_ID:', import.meta.env.VITE_SQUARE_APP_ID?.substring(0, 15) + '...');
     console.log('VITE_SQUARE_LOCATION_ID:', import.meta.env.VITE_SQUARE_LOCATION_ID);
     console.log('Is Production Mode:', isProduction);
     console.log('Script URL Selected:', scriptUrl);
-    
-    // CRITICAL DEBUG: Track URL selection logic
-    console.log('🔍 URL SELECTION DEBUG:', {
-      viteEnvironment: squareEnvironment,
-      isProductionBool: isProduction,
-      expectedURL: isProduction ? 'web.squarecdn.com' : 'sandbox.web.squarecdn.com',
-      actualURL: scriptUrl,
-      urlMatch: scriptUrl.includes(isProduction ? 'web.squarecdn.com' : 'sandbox.web.squarecdn.com')
-    });
-    
     console.groupEnd();
+    
+    // Add timeout for script loading
+    const loadTimeout = setTimeout(() => {
+      squareSDKPromise = null; // Reset promise so it can be retried
+      reject(new Error('Square SDK loading timed out after 30 seconds'));
+    }, 30000); // 30 second timeout
 
     script.onload = () => {
-      if (window.Square) {
-        squareSDKLoaded = true;
-        console.log(`✅ Square Web SDK loaded successfully (${isProduction ? 'Production' : 'Sandbox'})`);
-        resolve();
-      } else {
-        reject(new Error('Square SDK loaded but Square object not available'));
-      }
+      clearTimeout(loadTimeout);
+      // Give Square SDK a moment to initialize
+      setTimeout(() => {
+        if (window.Square) {
+          squareSDKLoaded = true;
+          console.log(`✅ Square Web SDK loaded successfully (${isProduction ? 'Production' : 'Sandbox'})`);
+          resolve();
+        } else {
+          squareSDKPromise = null; // Reset promise so it can be retried
+          reject(new Error('Square SDK loaded but Square object not available'));
+        }
+      }, 100);
     };
 
-    script.onerror = () => {
-      reject(new Error('Failed to load Square Web SDK'));
+    script.onerror = (error) => {
+      clearTimeout(loadTimeout);
+      squareSDKPromise = null; // Reset promise so it can be retried
+      console.error('Square SDK loading error:', error);
+      reject(new Error('Failed to load Square Web SDK - check network connection'));
     };
 
     // Add script to document head

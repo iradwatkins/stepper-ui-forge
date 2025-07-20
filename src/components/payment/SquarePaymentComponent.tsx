@@ -42,19 +42,26 @@ export function SquarePaymentComponent({
   const cardAttachedRef = useRef(false);
 
   useEffect(() => {
-    // Set loading timeout
-    timeoutRef.current = setTimeout(() => {
-      if (isLoading && !cardAttachedRef.current) {
-        setLoadingTimeout(true);
-        setIsLoading(false);
-        setError('Square payment form took too long to load. Please try again.');
-      }
-    }, 15000); // 15 second timeout
+    let mounted = true;
+    
+    const init = async () => {
+      // Set loading timeout - increased to 25 seconds for production
+      timeoutRef.current = setTimeout(() => {
+        if (mounted && isLoading && !cardAttachedRef.current) {
+          setLoadingTimeout(true);
+          setIsLoading(false);
+          setError('Square payment form took too long to load. Please try again.');
+        }
+      }, 25000); // 25 second timeout for production
 
-    initializeSquarePayments();
+      await initializeSquarePayments();
+    };
+    
+    init();
 
     // Cleanup on unmount
     return () => {
+      mounted = false;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
@@ -121,7 +128,12 @@ export function SquarePaymentComponent({
 
       // Load Square SDK if not already loaded
       if (!window.Square) {
+        console.log('⏳ Square SDK not found, loading from:', squareSdkUrl);
+        const loadStartTime = Date.now();
         await loadSquareSDK(squareSdkUrl);
+        console.log(`✅ Square SDK loaded in ${Date.now() - loadStartTime}ms`);
+      } else {
+        console.log('✅ Square SDK already loaded, skipping download');
       }
 
       // Initialize Square payments
@@ -132,7 +144,7 @@ export function SquarePaymentComponent({
       
       // Wait for DOM to be ready and container to exist
       let containerCheckAttempts = 0;
-      const maxContainerChecks = 50; // 5 seconds max (50 * 100ms)
+      const maxContainerChecks = 100; // 10 seconds max (100 * 100ms) - increased for production
       
       await new Promise<void>((resolve, reject) => {
         const checkContainer = () => {
@@ -146,11 +158,15 @@ export function SquarePaymentComponent({
             console.error('❌ Square card container not found after maximum attempts');
             reject(new Error('Card container element not found'));
           } else {
-            console.log(`⏳ Container ref not ready, retrying in 100ms (attempt ${containerCheckAttempts}/${maxContainerChecks})`);
+            // Log less frequently to reduce console noise
+            if (containerCheckAttempts % 10 === 1) {
+              console.log(`⏳ Waiting for container (attempt ${containerCheckAttempts}/${maxContainerChecks})`);
+            }
             setTimeout(checkContainer, 100);
           }
         };
-        checkContainer();
+        // Add small initial delay to ensure React has rendered
+        setTimeout(checkContainer, 100);
       });
       
       console.log('🔄 Attaching Square card form...');
@@ -267,12 +283,42 @@ export function SquarePaymentComponent({
 
   const loadSquareSDK = (scriptUrl: string): Promise<void> => {
     return new Promise((resolve, reject) => {
+      // Check if script already exists
+      const existingScript = document.querySelector(`script[src="${scriptUrl}"]`);
+      if (existingScript) {
+        console.log('⚡ Square SDK script tag already exists');
+        // Wait for it to load
+        if (window.Square) {
+          resolve();
+          return;
+        }
+        // Wait a bit for existing script to finish loading
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+          checkCount++;
+          if (window.Square) {
+            clearInterval(checkInterval);
+            resolve();
+          } else if (checkCount > 50) { // 5 seconds
+            clearInterval(checkInterval);
+            reject(new Error('Existing Square SDK script failed to load'));
+          }
+        }, 100);
+        return;
+      }
+      
       const script = document.createElement('script');
       script.src = scriptUrl;
       script.async = true;
       script.defer = true;
+      
+      // Add timeout for script loading
+      const scriptTimeout = setTimeout(() => {
+        reject(new Error('Square SDK script loading timed out'));
+      }, 20000); // 20 second timeout
 
       script.onload = () => {
+        clearTimeout(scriptTimeout);
         if (window.Square) {
           console.log('✅ Square Web SDK loaded successfully');
           resolve();
@@ -282,6 +328,7 @@ export function SquarePaymentComponent({
       };
 
       script.onerror = () => {
+        clearTimeout(scriptTimeout);
         reject(new Error('Failed to load Square Web SDK'));
       };
 

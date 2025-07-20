@@ -253,7 +253,10 @@ serve(async (req) => {
           apiStatus,
           apiResponseTime,
           totalResponseTime: Date.now() - startTime,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          note: SQUARE_ENVIRONMENT === 'production' 
+            ? 'Production environment - only real payment tokens will work. Test tokens like cnon:card-nonce-ok will fail.'
+            : 'Sandbox environment - test tokens accepted'
         }),
         { 
           status: 200, 
