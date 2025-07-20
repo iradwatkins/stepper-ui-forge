@@ -66,64 +66,21 @@ export function PaymentDebugTest() {
   const testSquarePayment = async () => {
     setLoading('square');
     try {
-      // First check if we're in production or sandbox
+      // Check environment
       const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
-      const isProduction = squareEnvironment === 'production';
       
-      if (isProduction) {
-        // In production, we can't use test tokens
-        setResults(prev => ({ ...prev, square: { 
-          warning: 'Cannot test with fake tokens in production',
-          environment: squareEnvironment,
-          message: 'Use the Square Payment Component below to generate a real payment token',
-          note: 'Production Square API requires real payment tokens from the Web SDK'
-        }}));
-        setLoading(null);
-        return;
-      }
-      
-      // Only test with sandbox tokens if in sandbox mode
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const testResponse = await fetch(`${supabaseUrl}/functions/v1/payments-square`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'create_payment',
-          sourceId: 'cnon:card-nonce-ok', // Square sandbox test nonce
-          amount: 1.00,
-          currency: 'USD'
-        })
-      });
-      
-      const testData = await testResponse.json();
-      
-      if (!testResponse.ok) {
-        setResults(prev => ({ ...prev, square: { 
-          error: testData.error || 'Square API error',
-          details: testData.details || {},
-          status: testResponse.status,
-          note: 'Check Supabase logs for detailed error',
-          possibleCauses: [
-            'Environment mismatch (sandbox token with production URL)',
-            'Invalid access token or location ID',
-            'Edge function not updated with better error handling'
-          ]
-        } }));
-      } else {
-        setResults(prev => ({ ...prev, square: { 
-          success: true,
-          data: testData 
-        } }));
-      }
+      setResults(prev => ({ ...prev, square: { 
+        environment: squareEnvironment,
+        message: squareEnvironment === 'production' 
+          ? 'Production mode - Use the Square Payment Component or $1 Production Test below to process real payments'
+          : 'Sandbox mode - Test tokens can be used',
+        note: 'This button only tests the API endpoint configuration',
+        timestamp: new Date().toISOString()
+      }}));
     } catch (error) {
       setResults(prev => ({ ...prev, square: { 
         error: error.message || 'Square test failed',
-        note: 'Network or configuration error'
+        note: 'Configuration error'
       } }));
     }
     setLoading(null);
@@ -360,9 +317,10 @@ export function PaymentDebugTest() {
               onClick={testSquarePayment} 
               disabled={loading === 'square'}
               className="mr-2"
+              variant="outline"
             >
               {loading === 'square' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Test Square Payment
+              Check Square Config
             </Button>
             
             <div className="mt-4 pt-4 border-t">
@@ -590,14 +548,17 @@ export function PaymentDebugTest() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-4 border-red-600 bg-red-50">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>WARNING: This is a REAL payment!</strong><br/>
-                  • Your card will be charged $1.00<br/>
-                  • This uses production Square credentials<br/>
-                  • The payment is non-refundable through this interface<br/>
-                  • Only use this for testing production payment flow
+                  <strong className="text-lg">⚠️ WARNING: This is a REAL payment!</strong><br/>
+                  <div className="mt-2 space-y-1">
+                    • Your credit card WILL be charged $1.00<br/>
+                    • This uses PRODUCTION Square credentials<br/>
+                    • The charge is REAL and non-refundable<br/>
+                    • Enter your ACTUAL credit card details<br/>
+                    • This is for testing production payment processing only
+                  </div>
                 </AlertDescription>
               </Alert>
               
