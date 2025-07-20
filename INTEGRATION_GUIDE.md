@@ -8,6 +8,11 @@ This guide shows how to integrate Cash App Pay using **ONLY the Square Web Payme
 
 **DO NOT** load the Cash App SDK (`https://kit.cash.app/v1/pay.js`). Square's Web Payments SDK includes Cash App Pay functionality. Loading both SDKs will cause conflicts.
 
+**Key Points**:
+- Square Application ID (format: `sq0idp-XXXXX`) works for both Square card payments AND Cash App Pay
+- No separate Cash App client ID is needed
+- Both payment methods use the same Square environment setting
+
 ## Important: Payment Request Requirement
 
 As of the latest Square SDK update, Cash App Pay requires a `paymentRequest` object during initialization. This object must include:
@@ -59,9 +64,13 @@ Make sure your `.env` file has your Square credentials:
 ```env
 VITE_SQUARE_APP_ID=your_square_app_id
 VITE_SQUARE_LOCATION_ID=your_location_id
+VITE_SQUARE_ENVIRONMENT=sandbox  # or 'production'
 ```
 
-**Note**: Use your Square Application ID, NOT a Cash App client ID. Square's SDK handles Cash App Pay through your Square credentials.
+**Important**: 
+- Use your Square Application ID for both Square and Cash App Pay
+- Do NOT set a separate `VITE_CASHAPP_CLIENT_ID` - it's not needed
+- Cash App Pay automatically uses your Square credentials
 
 ### Step 3: Initialize Payment Manager
 

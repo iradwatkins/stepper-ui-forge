@@ -14,7 +14,7 @@ export interface PaymentConfig {
     locationId: string;
   };
   cashapp: {
-    clientId: string; // Note: This is the same as Square Application ID
+    // Cash App Pay uses Square Application ID - no separate client ID needed
     environment: 'sandbox' | 'production';
   };
   webhookUrl?: string;
@@ -27,13 +27,10 @@ export const getPaymentConfig = (): PaymentConfig => {
   const squareAppId = import.meta.env.VITE_SQUARE_APP_ID || '';
   const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID || '';
   const squareAccessToken = import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '';
-  // Cash App uses Square Application ID - no separate client ID needed
-  const cashappClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID || squareAppId;
-  
   // Get environment settings from Vite environment variables
   const paypalEnv = import.meta.env.VITE_PAYPAL_ENVIRONMENT || 'sandbox';
   const squareEnv = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
-  const cashappEnv = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
+  const cashappEnv = squareEnv; // Cash App uses the same environment as Square
   
   const config: PaymentConfig = {
     paypal: {
@@ -48,7 +45,7 @@ export const getPaymentConfig = (): PaymentConfig => {
       locationId: squareLocationId,
     },
     cashapp: {
-      clientId: cashappClientId,
+      // Cash App Pay uses Square credentials
       environment: cashappEnv as 'sandbox' | 'production',
     },
     webhookUrl: import.meta.env.VITE_PAYMENT_WEBHOOK_URL || '',
@@ -59,7 +56,7 @@ export const getPaymentConfig = (): PaymentConfig => {
     square_env: config.square.environment,
     cashapp_env: config.cashapp.environment,
     square_app_id: config.square.applicationId ? config.square.applicationId.substring(0, 15) + '...' : 'NOT SET',
-    cashapp_client_id: config.cashapp.clientId ? config.cashapp.clientId.substring(0, 15) + '...' : 'NOT SET',
+    cashapp_uses_square: true,
   });
 
   // ENHANCED DEBUGGING: Log raw environment variables
@@ -67,8 +64,7 @@ export const getPaymentConfig = (): PaymentConfig => {
     VITE_SQUARE_ENVIRONMENT: import.meta.env.VITE_SQUARE_ENVIRONMENT,
     VITE_SQUARE_APP_ID: import.meta.env.VITE_SQUARE_APP_ID,
     VITE_SQUARE_LOCATION_ID: import.meta.env.VITE_SQUARE_LOCATION_ID,
-    VITE_CASHAPP_ENVIRONMENT: import.meta.env.VITE_CASHAPP_ENVIRONMENT,
-    VITE_CASHAPP_CLIENT_ID: import.meta.env.VITE_CASHAPP_CLIENT_ID,
+    // Cash App uses Square environment
     VITE_MODE: import.meta.env.MODE,
     VITE_DEV: import.meta.env.DEV,
     VITE_PROD: import.meta.env.PROD
@@ -98,8 +94,7 @@ export const validatePaymentConfig = (): { isValid: boolean; missing: string[] }
     missing.push('VITE_SQUARE_LOCATION_ID');
   }
 
-  // Note: Cash App uses Square Application ID, so we don't need to check separately
-  // The VITE_CASHAPP_CLIENT_ID is optional and defaults to Square App ID
+  // Cash App uses Square Application ID directly - no separate validation needed
 
   return {
     isValid: missing.length === 0,

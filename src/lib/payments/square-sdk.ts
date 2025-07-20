@@ -138,14 +138,10 @@ export function getSquareSDK(): any {
 function validateEnvironmentConfiguration(): void {
   const squareApplicationId = import.meta.env.VITE_SQUARE_APP_ID;
   const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
-  const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
-  const cashAppEnvironment = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
   
   console.log('🔍 Environment Validation with Vite Variables:', {
     VITE_SQUARE_ENVIRONMENT: squareEnvironment,
     VITE_SQUARE_APP_ID: squareApplicationId?.substring(0, 15) + '...',
-    VITE_CASHAPP_ENVIRONMENT: cashAppEnvironment,
-    VITE_CASHAPP_CLIENT_ID: cashAppClientId?.substring(0, 15) + '...',
   });
   
   // Validate required environment variables are present
@@ -153,11 +149,8 @@ function validateEnvironmentConfiguration(): void {
     throw new Error('VITE_SQUARE_APP_ID is required but not found in environment variables');
   }
   
-  if (!cashAppClientId) {
-    console.warn('VITE_CASHAPP_CLIENT_ID not found - Cash App Pay will be disabled');
-  }
-  
   console.log('✅ Environment variable validation passed');
+  console.log('ℹ️ Cash App Pay uses Square Application ID - no separate client ID needed');
 }
 
 /**
@@ -218,29 +211,19 @@ export async function createSquarePaymentForm(
   // Try to create Cash App Pay with correct Square Web SDK method
   let cashAppPay: any;
   try {
-    const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
-    const cashAppEnvironment = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
+    // Cash App Pay uses Square Application ID
+    const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
     
     console.log('💳 Cash App Pay Configuration:', {
-      clientId: cashAppClientId?.substring(0, 15) + '...',
-      environment: cashAppEnvironment,
-      isProduction: cashAppEnvironment === 'production'
+      uses_square_app_id: true,
+      environment: squareEnvironment,
+      isProduction: squareEnvironment === 'production'
     });
     
-    if (cashAppClientId) {
-      // Environment validation
-      // Note: Cash App uses Square's infrastructure, so Square App IDs (sq0idp-) are valid
-      const isProductionEnv = cashAppEnvironment === 'production';
-      const isSandboxClientId = cashAppClientId.includes('sandbox');
-      
-      if (isProductionEnv && isSandboxClientId) {
-        console.error('❌ Cash App Environment Mismatch: Production environment with sandbox client ID');
-        throw new Error('Cash App configuration error: Production environment detected but sandbox client ID provided.');
-      }
-      
-      if (!isProductionEnv && !isSandboxClientId && cashAppClientId.startsWith('sq0idp-')) {
-        console.warn('⚠️ Cash App: Using production client ID in sandbox environment - this is allowed but may have limitations');
-      }
+    // Always try to initialize Cash App Pay using Square credentials
+    if (true) {
+      // Cash App Pay uses Square's environment settings
+      const isProductionEnv = squareEnvironment === 'production';
       
       // Use the correct Square Web SDK method for Cash App Pay
       console.log('🔄 Checking available Square payment methods:', Object.keys(payments));
@@ -268,7 +251,7 @@ export async function createSquarePaymentForm(
         });
         
         if (cashAppPay) {
-          console.log(`✅ Cash App Pay initialized successfully (${cashAppEnvironment})`);
+          console.log(`✅ Cash App Pay initialized successfully (${squareEnvironment})`);
           
           // Note: The attach() method should be called where the component is rendered
           // Not here in the SDK initialization
@@ -277,8 +260,6 @@ export async function createSquarePaymentForm(
         console.error('❌ Cash App Pay initialization failed:', error);
         // Don't try fallback - if it fails, it means Cash App Pay isn't available
       }
-    } else {
-      console.warn('⚠️ Cash App Pay disabled - VITE_CASHAPP_CLIENT_ID not configured');
     }
   } catch (error) {
     console.error('❌ Cash App Pay initialization failed:', error);

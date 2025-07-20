@@ -66,16 +66,13 @@ export function SquarePaymentForm({
       const squareAppId = import.meta.env.VITE_SQUARE_APP_ID;
       const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
       const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
-      const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
-      const cashAppEnvironment = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
       
       console.log('🔧 Square Payment Initialization:', {
         squareAppId: squareAppId?.substring(0, 15) + '...',
         squareEnvironment,
         squareLocationId,
-        cashAppClientId: cashAppClientId?.substring(0, 15) + '...',
-        cashAppEnvironment,
-        containerExists: !!cardContainerRef.current
+        containerExists: !!cardContainerRef.current,
+        cashAppUsesSquareId: true
       });
       
       if (!squareAppId || squareAppId.includes('XXXXX') || squareAppId === 'your_square_application_id_here') {
@@ -86,14 +83,7 @@ export function SquarePaymentForm({
         throw new Error('Square Location ID not configured. Please set VITE_SQUARE_LOCATION_ID in your environment variables.');
       }
 
-      // Environment validation for Cash App
-      if (cashAppClientId && cashAppEnvironment === 'production' && !cashAppClientId.startsWith('sq0idp-')) {
-        console.warn('⚠️ Cash App: Production environment detected but client ID format suggests sandbox');
-      }
-      
-      if (cashAppClientId && cashAppEnvironment === 'sandbox' && cashAppClientId.startsWith('sq0idp-')) {
-        console.warn('⚠️ Cash App: Sandbox environment detected but client ID format suggests production');
-      }
+      // Cash App Pay uses Square credentials - no separate validation needed
 
       const result = await createSquarePaymentForm('square-card-container');
 
