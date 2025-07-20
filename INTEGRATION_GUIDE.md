@@ -1,8 +1,12 @@
-# Cash App Pay Integration Guide - Slide-out Cart
+# Cash App Pay Integration Guide - Using Square SDK ONLY
 
 ## Overview
 
-This guide shows how to integrate Cash App Pay with Square payments in a unified payment manager to avoid SDK conflicts.
+This guide shows how to integrate Cash App Pay using **ONLY the Square Web Payments SDK**. 
+
+### ⚠️ CRITICAL: Use Square SDK Only
+
+**DO NOT** load the Cash App SDK (`https://kit.cash.app/v1/pay.js`). Square's Web Payments SDK includes Cash App Pay functionality. Loading both SDKs will cause conflicts.
 
 ## Important: Payment Request Requirement
 
@@ -16,10 +20,11 @@ As of the latest Square SDK update, Cash App Pay requires a `paymentRequest` obj
 ### 1. Global Payment Manager (`/src/lib/services/paymentManager.ts`)
 
 The payment manager ensures:
-- Single Square SDK initialization
-- Shared payment instance across the app
-- Proper cleanup of payment instances
+- Single Square Web Payments SDK initialization
+- Shared Square payments instance across the app
+- Proper cleanup of Cash App Pay instances
 - No duplicate SDK loading
+- Uses ONLY Square SDK (no Cash App SDK)
 
 ### 2. Updated Components
 
@@ -50,11 +55,13 @@ import { CartDrawerWithPayment } from '@/components/cart/CartDrawerWithPayment';
 
 ### Step 2: Ensure Environment Variables
 
-Make sure your `.env` file has:
+Make sure your `.env` file has your Square credentials:
 ```env
 VITE_SQUARE_APP_ID=your_square_app_id
 VITE_SQUARE_LOCATION_ID=your_location_id
 ```
+
+**Note**: Use your Square Application ID, NOT a Cash App client ID. Square's SDK handles Cash App Pay through your Square credentials.
 
 ### Step 3: Initialize Payment Manager
 
@@ -141,7 +148,32 @@ cashAppPay.addEventListener('ontokenization', (event) => {
 
 ## Important Notes
 
-1. **Never load Cash App SDK directly** - Always use Square's Cash App Pay
-2. **Use unique container IDs** - Each instance needs its own container
-3. **Clean up on unmount** - Always destroy payment instances
-4. **Check for Square SDK** - Ensure it's loaded before initializing
+1. **NEVER load Cash App SDK (`kit.cash.app`)** - Only use Square Web Payments SDK
+2. **Square SDK includes Cash App Pay** - Access via `payments.cashAppPay()`
+3. **Use unique container IDs** - Each instance needs its own container
+4. **Clean up on unmount** - Always destroy payment instances
+5. **Check for Square SDK** - Ensure `window.Square` exists before initializing
+
+### What NOT to do:
+
+```javascript
+// ❌ WRONG - Never load Cash App SDK
+import('https://kit.cash.app/v1/pay.js')
+<script src="https://kit.cash.app/v1/pay.js"></script>
+window.CashApp.pay(...)
+
+// ❌ WRONG - Don't use Cash App client IDs
+const pay = await window.CashApp.pay({ clientId: 'cash-app-client-id' });
+```
+
+### What TO do:
+
+```javascript
+// ✅ CORRECT - Use Square SDK only
+<script src="https://web.squarecdn.com/v1/square.js"></script>
+
+// ✅ CORRECT - Use Square's cashAppPay method
+const payments = window.Square.payments(appId, locationId);
+const paymentRequest = payments.paymentRequest({...});
+const cashAppPay = await payments.cashAppPay(paymentRequest, {...});
+```

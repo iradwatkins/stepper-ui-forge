@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, CreditCard, Loader2, ShoppingCart } from "lucide-react";
+import { PayPalLogo, CashAppLogo, CreditCardIcon, VisaLogo, MastercardLogo, AmexLogo } from "@/components/payment/PaymentLogos";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { productionPaymentService } from "@/lib/payments/ProductionPaymentService";
@@ -69,8 +70,26 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
         try {
           const methods = await productionPaymentService.getAvailablePaymentMethods();
           console.log('💳 Loaded payment methods:', methods);
-          setPaymentMethods(methods);
-          setSelectedGateway(methods[0]?.id || 'paypal');
+          
+          // Reorder payment methods: Square (Credit Card), Cash App, PayPal
+          const orderedMethods = [];
+          const squareMethod = methods.find(m => m.id === 'square');
+          const cashappMethod = methods.find(m => m.id === 'cashapp');
+          const paypalMethod = methods.find(m => m.id === 'paypal');
+          
+          if (squareMethod) orderedMethods.push(squareMethod);
+          if (cashappMethod) orderedMethods.push(cashappMethod);
+          if (paypalMethod) orderedMethods.push(paypalMethod);
+          
+          // Add any other methods that might exist
+          methods.forEach(method => {
+            if (!orderedMethods.find(m => m.id === method.id)) {
+              orderedMethods.push(method);
+            }
+          });
+          
+          setPaymentMethods(orderedMethods);
+          setSelectedGateway(orderedMethods[0]?.id || 'square');
         } catch (error) {
           console.error('Failed to load payment methods:', error);
           // Fallback to empty array if loading fails
@@ -587,7 +606,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                     {paymentMethods.map((method) => (
                       <div
                         key={method.id}
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                           selectedGateway === method.id
                             ? 'border-primary bg-primary/5'
                             : 'border-border hover:border-primary/50'
@@ -595,14 +614,32 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                         onClick={() => setSelectedGateway(method.id)}
                       >
                         <div className="flex items-center justify-between">
-                         <div>
-                           <h4 className="font-medium">{method.name}</h4>
-                           <p className="text-sm text-muted-foreground">
-                             {method.id === 'paypal' && 'Pay with PayPal account or credit card'}
-                             {method.id === 'square' && 'Pay with credit or debit card via Square'}
-                             {method.id === 'cashapp' && 'Pay with Cash App'}
-                           </p>
-                         </div>
+                          <div className="flex items-center gap-3">
+                            {method.id === 'square' && (
+                              <div className="flex items-center gap-2">
+                                <CreditCardIcon className="h-6 w-6 text-primary" />
+                                <div className="flex gap-1">
+                                  <VisaLogo className="h-3" />
+                                  <MastercardLogo className="h-3" />
+                                  <AmexLogo className="h-3" />
+                                </div>
+                              </div>
+                            )}
+                            {method.id === 'cashapp' && <CashAppLogo className="h-8" />}
+                            {method.id === 'paypal' && <PayPalLogo className="h-6" />}
+                            <div>
+                              <h4 className="font-medium">
+                                {method.id === 'square' && 'Credit or Debit Card'}
+                                {method.id === 'cashapp' && 'Cash App'}
+                                {method.id === 'paypal' && 'PayPal'}
+                              </h4>
+                              <p className="text-sm text-muted-foreground">
+                                {method.id === 'paypal' && 'Pay with PayPal account'}
+                                {method.id === 'square' && 'Secure payment via Square'}
+                                {method.id === 'cashapp' && 'Instant payment with Cash App'}
+                              </p>
+                            </div>
+                          </div>
                           <div className={`w-4 h-4 rounded-full border-2 ${
                             selectedGateway === method.id
                               ? 'border-primary bg-primary'
