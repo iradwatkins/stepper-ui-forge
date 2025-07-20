@@ -9,6 +9,7 @@ import { CashAppPay } from '@/components/payment/CashAppPay';
 import { SquarePaymentComponent } from '@/components/payment/SquarePaymentComponent';
 import { SquareDiagnostics } from '@/components/payment/SquareDiagnostics';
 import { SquareProductionTest } from '@/components/payment/SquareProductionTest';
+import { CashAppPayComplete } from '@/components/payment/CashAppPayComplete';
 
 export function PaymentDebugTest() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -17,6 +18,7 @@ export function PaymentDebugTest() {
   const [showSquareTest, setShowSquareTest] = useState(false);
   const [showSquareDiagnostics, setShowSquareDiagnostics] = useState(false);
   const [showSquareProductionTest, setShowSquareProductionTest] = useState(false);
+  const [showCashAppComplete, setShowCashAppComplete] = useState(false);
   const [cashAppToken, setCashAppToken] = useState<string | null>(null);
 
   const testHealthCheck = async () => {
@@ -488,6 +490,46 @@ export function PaymentDebugTest() {
 
         {showSquareProductionTest && (
           <SquareProductionTest />
+        )}
+
+        {/* Cash App Pay Complete Implementation */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cash App Pay Complete Implementation</CardTitle>
+            <CardDescription>
+              Production-ready Cash App Pay with Square integration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => setShowCashAppComplete(!showCashAppComplete)}
+              variant="default"
+            >
+              <Smartphone className="mr-2 h-4 w-4" />
+              {showCashAppComplete ? 'Hide' : 'Show'} Cash App Pay
+            </Button>
+          </CardContent>
+        </Card>
+
+        {showCashAppComplete && (
+          <CashAppPayComplete
+            amount={10.80}
+            onSuccess={(paymentId) => {
+              console.log('Payment successful:', paymentId);
+              setResults(prev => ({ ...prev, 'cashapp-complete': { 
+                success: true, 
+                paymentId,
+                timestamp: new Date().toISOString()
+              }}));
+            }}
+            onError={(error) => {
+              console.error('Payment error:', error);
+              setResults(prev => ({ ...prev, 'cashapp-complete': { 
+                error,
+                timestamp: new Date().toISOString()
+              }}));
+            }}
+          />
         )}
 
         {Object.entries(results).map(([key, value]) => (

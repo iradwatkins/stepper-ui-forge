@@ -97,6 +97,7 @@ const SquareMethodsTest = lazy(() => import("./pages/SquareMethodsTest"));
 const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
 const DatabaseTest = lazy(() => import("./pages/DatabaseTest"));
+const CashAppPayImplementation = lazy(() => import("./pages/CashAppPayImplementation"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -141,6 +142,7 @@ const AppContent = () => {
             <TestPremiumEvent />
           </ProtectedRoute>
         } />
+        <Route path="/cashapp-pay-implementation" element={<CashAppPayImplementation />} />
         <Route path="/test-seating" element={
           <ProtectedRoute>
             <TestSeating />
