@@ -200,23 +200,40 @@ export function SquarePaymentComponent({
       }
       
       // Wait for DOM to be ready and container to exist
-      // Since we've already confirmed container exists via useLayoutEffect,
-      // this should be quick, but we'll still verify
+      // Add a small delay to ensure React has rendered
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       const container = document.getElementById('square-card-container');
-      if (!container && cardContainerRef.current) {
-        // If getElementById fails but ref exists, use the ref directly
-        console.log('⚠️ getElementById failed, using ref directly');
-      } else if (!container) {
+      if (!container) {
+        console.error('❌ Square card container not found in DOM after delay');
         throw new Error('Card container element not found in DOM');
       }
       
-      console.log('✅ Square card container verified');
+      // Force the container to be visible and have dimensions
+      container.style.display = 'block';
+      container.style.minHeight = '120px';
+      container.style.position = 'relative';
+      
+      console.log('✅ Square card container verified and styled');
       
       console.log('🔄 Attaching Square card form...');
       try {
+        // Clear any existing content
+        container.innerHTML = '';
+        
         await card.attach('#square-card-container');
         cardAttachedRef.current = true;
         console.log('✅ Square card form attached successfully');
+        
+        // Verify the form actually rendered
+        setTimeout(() => {
+          const hasInputs = container.querySelector('iframe') || container.querySelector('input');
+          if (!hasInputs) {
+            console.error('❌ Card form attached but no inputs rendered');
+          } else {
+            console.log('✅ Card input fields verified in container');
+          }
+        }, 500);
       } catch (attachError) {
         console.error('❌ Failed to attach Square card form:', attachError);
         throw new Error(`Failed to attach payment form: ${attachError.message || 'Unknown error'}`);
@@ -578,17 +595,30 @@ export function SquarePaymentComponent({
           <CardContent>
             <div className="space-y-4">
               {/* Square Card Container */}
-              <div 
-                ref={cardContainerRef}
-                id="square-card-container"
-                className="border rounded-lg p-4 min-h-[60px] bg-background"
-                style={{ minHeight: '60px' }}
-              >
-                {!paymentMethods.card && (
-                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Initializing card form...
-                  </div>
+              <div className="space-y-2">
+                <div 
+                  ref={cardContainerRef}
+                  id="square-card-container"
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white"
+                  style={{ 
+                    minHeight: '120px',
+                    display: 'block',
+                    position: 'relative',
+                    backgroundColor: '#ffffff'
+                  }}
+                >
+                  {!cardAttachedRef.current && (
+                    <div className="flex flex-col items-center justify-center min-h-[100px] text-muted-foreground text-sm">
+                      <Loader2 className="h-5 w-5 animate-spin mb-2" />
+                      <span>Initializing secure payment form...</span>
+                      <span className="text-xs mt-1">This may take a few seconds</span>
+                    </div>
+                  )}
+                </div>
+                {cardAttachedRef.current && (
+                  <p className="text-xs text-muted-foreground animate-in fade-in">
+                    ✓ Secure payment form loaded
+                  </p>
                 )}
               </div>
               

@@ -13,6 +13,10 @@ import { SquareDiagnostics } from '@/components/payment/SquareDiagnostics';
 import { SquareProductionTest } from '@/components/payment/SquareProductionTest';
 import { CashAppPayComplete } from '@/components/payment/CashAppPayComplete';
 import { CashAppPayDiagnostic } from '@/components/payment/CashAppPayDiagnostic';
+import { SquareLocationDiagnostic } from '@/components/payment/SquareLocationDiagnostic';
+import { SquareCreditCardTest } from '@/components/payment/SquareCreditCardTest';
+import { SquareCardFormFix } from '@/components/payment/SquareCardFormFix';
+import { SquareCardMinimal } from '@/components/payment/SquareCardMinimal';
 
 declare global {
   interface Window {
@@ -267,6 +271,32 @@ export function PaymentDebugTest() {
       <h1 className="text-3xl font-bold mb-6">Payment System Debug</h1>
       
       <div className="space-y-4">
+        {/* Square Card Minimal - CRITICAL TEST */}
+        <SquareCardMinimal />
+        
+        {/* Square Credit Card Fix - TOP PRIORITY */}
+        <SquareCardFormFix 
+          amount={25.00}
+          onPaymentToken={(token) => {
+            console.log('Credit Card Token:', token);
+            setResults(prev => ({ ...prev, 'card-fix': { 
+              success: true,
+              token: token.substring(0, 30) + '...',
+              timestamp: new Date().toISOString()
+            }}));
+          }}
+          onError={(error) => {
+            console.error('Credit Card Error:', error);
+            setResults(prev => ({ ...prev, 'card-fix': { 
+              error,
+              timestamp: new Date().toISOString()
+            }}));
+          }}
+        />
+        
+        {/* Square Credit Card Test - Priority */}
+        <SquareCreditCardTest />
+        
         <Card>
           <CardHeader>
             <CardTitle>Test Controls</CardTitle>
@@ -517,6 +547,9 @@ export function PaymentDebugTest() {
 
         {/* Cash App Pay Diagnostic Tool */}
         <CashAppPayDiagnostic />
+
+        {/* Square Location Settings Diagnostic */}
+        <SquareLocationDiagnostic />
 
         {/* Square SDK Manual Test */}
         <Card>
