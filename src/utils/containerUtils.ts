@@ -7,6 +7,7 @@ export interface ContainerWaitOptions {
   maxAttempts?: number;
   interval?: number;
   requiresRef?: boolean;
+  requireSize?: boolean;
 }
 
 /**
@@ -20,18 +21,58 @@ export const waitForContainer = async (
   ref?: React.RefObject<HTMLElement> | null,
   options: ContainerWaitOptions = {}
 ): Promise<void> => {
-  const { maxAttempts = 10, interval = 100, requiresRef = false } = options;
+  const { maxAttempts = 30, interval = 100, requiresRef = false, requireSize = true } = options;
+
+  console.log(`[waitForContainer] Starting search for #${containerId}`);
 
   for (let i = 0; i < maxAttempts; i++) {
     const container = document.getElementById(containerId);
     const refReady = !requiresRef || (ref?.current && document.contains(ref.current));
     
-    if (container && document.contains(container) && refReady) {
+    if (container) {
+      // Check if container is in DOM
+      if (!document.body.contains(container)) {
+        console.log(`[waitForContainer] Container found but not in DOM body, attempt ${i + 1}`);
+        await new Promise(resolve => setTimeout(resolve, interval));
+        continue;
+      }
+
+      // Check if container has size
+      if (requireSize) {
+        const rect = container.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          console.log(`[waitForContainer] Container has no size (${rect.width}x${rect.height}), attempt ${i + 1}`);
+          await new Promise(resolve => setTimeout(resolve, interval));
+          continue;
+        }
+      }
+
+      // Check ref if required
+      if (requiresRef && !refReady) {
+        console.log(`[waitForContainer] Ref not ready, attempt ${i + 1}`);
+        await new Promise(resolve => setTimeout(resolve, interval));
+        continue;
+      }
+
+      console.log(`[waitForContainer] Container #${containerId} ready after ${i + 1} attempts`);
       return;
+    }
+    
+    if (i % 5 === 0) {
+      console.log(`[waitForContainer] Still searching for #${containerId}, attempt ${i + 1}/${maxAttempts}`);
     }
     
     await new Promise(resolve => setTimeout(resolve, interval));
   }
+  
+  // Log final state
+  const finalCheck = document.getElementById(containerId);
+  console.error(`[waitForContainer] Failed to find container #${containerId}:`, {
+    exists: !!finalCheck,
+    inDOM: finalCheck ? document.body.contains(finalCheck) : false,
+    hasRef: !!ref?.current,
+    refInDOM: ref?.current ? document.body.contains(ref.current) : false
+  });
   
   throw new Error(`Container #${containerId} not found after ${maxAttempts} attempts`);
 };
@@ -87,4 +128,50 @@ export const waitForCashAppContainer = async (
     interval: 100,
     requiresRef: true
   });
+};
+
+/**
+ * Detect browser extension interference
+ */
+export const detectBrowserExtensions = (): { hasExtensions: boolean; message?: string } => {
+  try {
+    // Check for extension-injected elements
+    const suspiciousElements = document.querySelectorAll('[id*="extension"], [class*="extension"]');
+    
+    // Check for extension messages in console errors
+    const hasExtensionError = !!(window as any).__extensionError;
+    
+    // Check for common extension global variables
+    const extensionGlobals = [
+      'chrome.runtime',
+      '__REACT_DEVTOOLS_GLOBAL_HOOK__',
+      '__REDUX_DEVTOOLS_EXTENSION__'
+    ];
+    
+    const hasExtensionGlobal = extensionGlobals.some(path => {
+      try {
+        const parts = path.split('.');
+        let obj: any = window;
+        for (const part of parts) {
+          obj = obj[part];
+          if (!obj) return false;
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (suspiciousElements.length > 0 || hasExtensionError || hasExtensionGlobal) {
+      return {
+        hasExtensions: true,
+        message: 'Browser extensions detected. Some extensions may interfere with payment processing. Try disabling extensions or using incognito mode.'
+      };
+    }
+
+    return { hasExtensions: false };
+  } catch (error) {
+    console.warn('[detectBrowserExtensions] Error detecting extensions:', error);
+    return { hasExtensions: false };
+  }
 };

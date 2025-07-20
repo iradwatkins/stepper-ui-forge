@@ -94,3 +94,6 @@
 | Browser extension error | SquarePaymentComponent, SquarePaymentForm | Added better error messages for extensions | Yes |
 | Cash App logo update | PaymentLogos, SquarePaymentForm, SquarePaymentComponent | Replaced Smartphone icon with official logo | Yes |
 | $1 credit card test | PaymentDebugTest.tsx | Added dedicated test component for debugging | Yes |
+| Square container error fix | containerUtils.ts | Enhanced waitForContainer with better DOM checking, size validation | No |
+| Square payment form update | SquarePaymentForm.tsx | Added useLayoutEffect backup container, improved error handling | No |
+| Browser extension detection | containerUtils.ts | Added detectBrowserExtensions function for interference detection | No |

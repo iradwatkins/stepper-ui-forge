@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,6 +8,7 @@ import { CreditCard, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { createSquarePaymentForm, tokenizePayment } from '@/lib/payments/square-sdk';
 import { getPaymentConfig } from '@/lib/payment-config';
 import { CashAppLogo } from '@/components/payment/PaymentLogos';
+import { waitForContainer, detectBrowserExtensions } from '@/utils/containerUtils';
 
 interface SquarePaymentFormProps {
   amount: number;
@@ -34,6 +35,22 @@ export function SquarePaymentForm({
   const [selectedMethod, setSelectedMethod] = useState<'card' | 'cashapp'>('card');
   const [error, setError] = useState<string | null>(null);
   const [cashAppAvailable, setCashAppAvailable] = useState(false);
+  const [extensionWarning, setExtensionWarning] = useState<string | null>(null);
+
+  // Create container on mount to ensure it exists
+  useLayoutEffect(() => {
+    if (selectedMethod === 'card' && !document.getElementById('square-card-container')) {
+      console.log('[Square] Creating container element in useLayoutEffect');
+      const container = document.createElement('div');
+      container.id = 'square-card-container-backup';
+      document.body.appendChild(container);
+    }
+    
+    return () => {
+      const backup = document.getElementById('square-card-container-backup');
+      if (backup) backup.remove();
+    };
+  }, [selectedMethod]);
 
   useEffect(() => {
     // Only initialize when card method is selected
@@ -41,32 +58,61 @@ export function SquarePaymentForm({
       return;
     }
     
-    // Robust container detection (similar to CashApp fix)
-    const waitForContainer = async (maxAttempts = 10): Promise<void> => {
-      for (let i = 0; i < maxAttempts; i++) {
-        const container = document.getElementById('square-card-container');
-        if (container && document.contains(container) && cardContainerRef.current) {
-          return;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      throw new Error('Payment form container not found after maximum attempts');
-    };
+    // Check for browser extensions
+    const { hasExtensions, message } = detectBrowserExtensions();
+    if (hasExtensions) {
+      setExtensionWarning(message || null);
+    }
 
     const initializePayment = async () => {
       try {
-        // Wait for container to be ready in DOM
-        await waitForContainer();
-        console.log('✅ Container found, initializing Square payments');
-        initializeSquarePayments();
+        console.log('[Square] Starting initialization process');
+        
+        // Wait for container using improved utility
+        await waitForContainer('square-card-container', cardContainerRef, {
+          maxAttempts: 30,
+          interval: 100,
+          requiresRef: true,
+          requireSize: true
+        });
+        
+        console.log('[Square] Container ready, initializing Square payments');
+        await initializeSquarePayments();
       } catch (error) {
-        console.error('❌ Container detection failed:', error);
-        setError('Payment form container not found. Please refresh and try again.');
-        setIsLoading(false);
+        console.error('[Square] Container detection failed:', error);
+        
+        // Try backup container if main fails
+        try {
+          console.log('[Square] Trying backup container');
+          await waitForContainer('square-card-container-backup', null, {
+            maxAttempts: 10,
+            interval: 100,
+            requireSize: false
+          });
+          
+          // Move backup container into component
+          const backup = document.getElementById('square-card-container-backup');
+          const target = cardContainerRef.current;
+          if (backup && target) {
+            target.appendChild(backup);
+            backup.id = 'square-card-container';
+          }
+          
+          await initializeSquarePayments();
+        } catch (backupError) {
+          console.error('[Square] Backup container also failed:', backupError);
+          setError('Unable to initialize payment form. Please refresh the page and try again.');
+          setIsLoading(false);
+        }
       }
     };
     
-    initializePayment();
+    // Delay initialization slightly to ensure React has rendered
+    const timer = setTimeout(initializePayment, 100);
+    
+    return () => {
+      clearTimeout(timer);
+    };
   }, [selectedMethod]); // Re-run when payment method changes
 
   const initializeSquarePayments = async () => {
@@ -292,8 +338,15 @@ export function SquarePaymentForm({
               <div 
                 ref={cardContainerRef}
                 id="square-card-container"
-                className="border rounded-lg p-4 min-h-[60px] bg-background"
+                className="border rounded-lg p-4 min-h-[100px] bg-background"
               />
+              
+              {extensionWarning && (
+                <Alert className="border-yellow-200 bg-yellow-50">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-800">{extensionWarning}</AlertDescription>
+                </Alert>
+              )}
               
               {error && (
                 <Alert variant="destructive">
