@@ -17,6 +17,8 @@ import { SquareLocationDiagnostic } from '@/components/payment/SquareLocationDia
 import { SquareCreditCardTest } from '@/components/payment/SquareCreditCardTest';
 import { SquareCardFormFix } from '@/components/payment/SquareCardFormFix';
 import { SquareCardMinimal } from '@/components/payment/SquareCardMinimal';
+import { StablePaymentWrapper } from '@/components/payment/StablePaymentWrapper';
+import { SquarePaymentStable } from '@/components/payment/SquarePaymentStable';
 
 declare global {
   interface Window {
@@ -270,32 +272,72 @@ export function PaymentDebugTest() {
     <div className="container mx-auto p-4 max-w-4xl">
       <h1 className="text-3xl font-bold mb-6">Payment System Debug</h1>
       
+      {/* Auth Re-render Fix Info */}
+      <Card className="mb-6 border-green-500 bg-green-50">
+        <CardHeader>
+          <CardTitle className="text-green-800">Auth Re-render Issue Fixed</CardTitle>
+          <CardDescription className="text-green-700">
+            The Square payment form wasn't rendering because authentication was causing multiple re-renders
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-green-700">
+          <p className="mb-2"><strong>Problem:</strong> Auth state changes 4 times rapidly, preventing Square SDK from finding stable DOM containers.</p>
+          <p className="mb-2"><strong>Solution:</strong> Added StablePaymentWrapper that waits for auth to stabilize before mounting payment components.</p>
+          <p><strong>Result:</strong> Square credit card inputs should now render properly in the components below.</p>
+        </CardContent>
+      </Card>
+      
       <div className="space-y-4">
-        {/* Square Card Minimal - CRITICAL TEST */}
-        <SquareCardMinimal />
-        
-        {/* Square Credit Card Fix - TOP PRIORITY */}
-        <SquareCardFormFix 
-          amount={25.00}
-          onPaymentToken={(token) => {
-            console.log('Credit Card Token:', token);
-            setResults(prev => ({ ...prev, 'card-fix': { 
-              success: true,
-              token: token.substring(0, 30) + '...',
-              timestamp: new Date().toISOString()
-            }}));
-          }}
-          onError={(error) => {
-            console.error('Credit Card Error:', error);
-            setResults(prev => ({ ...prev, 'card-fix': { 
-              error,
-              timestamp: new Date().toISOString()
-            }}));
-          }}
-        />
-        
-        {/* Square Credit Card Test - Priority */}
-        <SquareCreditCardTest />
+        {/* Stable Payment Section - Prevents auth re-render issues */}
+        <StablePaymentWrapper>
+          <div className="space-y-4">
+            {/* Square Payment Stable - RECOMMENDED SOLUTION */}
+            <SquarePaymentStable 
+              amount={25.00}
+              onPaymentToken={(token) => {
+                console.log('Stable Payment Token:', token);
+                setResults(prev => ({ ...prev, 'stable-payment': { 
+                  success: true,
+                  token: token.substring(0, 30) + '...',
+                  timestamp: new Date().toISOString()
+                }}));
+              }}
+              onError={(error) => {
+                console.error('Stable Payment Error:', error);
+                setResults(prev => ({ ...prev, 'stable-payment': { 
+                  error,
+                  timestamp: new Date().toISOString()
+                }}));
+              }}
+            />
+            
+            {/* Square Card Minimal - CRITICAL TEST */}
+            <SquareCardMinimal />
+            
+            {/* Square Credit Card Fix - TOP PRIORITY */}
+            <SquareCardFormFix 
+              amount={25.00}
+              onPaymentToken={(token) => {
+                console.log('Credit Card Token:', token);
+                setResults(prev => ({ ...prev, 'card-fix': { 
+                  success: true,
+                  token: token.substring(0, 30) + '...',
+                  timestamp: new Date().toISOString()
+                }}));
+              }}
+              onError={(error) => {
+                console.error('Credit Card Error:', error);
+                setResults(prev => ({ ...prev, 'card-fix': { 
+                  error,
+                  timestamp: new Date().toISOString()
+                }}));
+              }}
+            />
+            
+            {/* Square Credit Card Test - Priority */}
+            <SquareCreditCardTest />
+          </div>
+        </StablePaymentWrapper>
         
         <Card>
           <CardHeader>
