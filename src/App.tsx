@@ -98,6 +98,7 @@ const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
 const DatabaseTest = lazy(() => import("./pages/DatabaseTest"));
 const CashAppPayImplementation = lazy(() => import("./pages/CashAppPayImplementation"));
+const PaymentSystemTest = lazy(() => import("./pages/PaymentSystemTest"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -132,6 +133,7 @@ const AppContent = () => {
         } />
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/payment-test" element={<PaymentTestPage />} />
+        <Route path="/payment-system-test" element={<PaymentSystemTest />} />
         <Route path="/payment-function-test" element={<PaymentFunctionTest />} />
         <Route path="/payment-debug-test" element={<PaymentDebugTest />} />
         <Route path="/cashapp-diagnostic" element={<CashAppDiagnostic />} />
@@ -271,24 +273,35 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <AuthProvider>
-            <CartProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AppContent />
-              </BrowserRouter>
-            </CartProvider>
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </HelmetProvider>
-);
+const App = () => {
+  // CRITICAL: Stop all retry loops and timers on app load to prevent payment system issues
+  if (typeof window !== 'undefined') {
+    // Stop all intervals on app load
+    for (let i = 1; i < 9999; i++) {
+      clearInterval(i);
+      clearTimeout(i);
+    }
+  }
+
+  return (
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <TooltipProvider>
+            <AuthProvider>
+              <CartProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <AppContent />
+                </BrowserRouter>
+              </CartProvider>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
+  );
+};
 
 export default App;
