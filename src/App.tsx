@@ -274,14 +274,8 @@ const AppContent = () => {
 };
 
 const App = () => {
-  // CRITICAL: Stop all retry loops and timers on app load to prevent payment system issues
-  if (typeof window !== 'undefined') {
-    // Stop all intervals on app load
-    for (let i = 1; i < 9999; i++) {
-      clearInterval(i);
-      clearTimeout(i);
-    }
-  }
+  // Note: Removed aggressive timer clearing as it was interfering with PayPal/CashApp
+  // Payment system issues should be handled by individual components
 
   return (
     <HelmetProvider>
