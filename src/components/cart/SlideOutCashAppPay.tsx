@@ -1,24 +1,42 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
 import { paymentManager } from '@/lib/services/paymentManager';
+import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
 
-interface CashAppPayProps {
+interface SlideOutCashAppPayProps {
   amount: number;
   orderId: string;
   customerEmail: string;
+  isOpen: boolean;
   onSuccess: (result: any) => void;
   onError: (error: string) => void;
 }
 
-
-export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError }: CashAppPayProps) {
+export function SlideOutCashAppPay({ 
+  amount, 
+  orderId, 
+  customerEmail, 
+  isOpen,
+  onSuccess, 
+  onError 
+}: SlideOutCashAppPayProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cashAppInstance, setCashAppInstance] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isOpen) {
+      // Clean up when cart closes
+      if (cashAppInstance) {
+        paymentManager.destroyCashAppPay(cashAppInstance);
+        setCashAppInstance(null);
+      }
+      return;
+    }
+
     let instance: any = null;
 
     const initializeCashAppPay = async () => {
@@ -33,7 +51,7 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
 
         // Create Cash App Pay instance using payment manager
         instance = await paymentManager.createCashAppPay(
-          '#cash-app-pay-container',
+          containerRef.current!,
           { 
             referenceId: orderId,
             amount: Math.round(amount * 100) // Convert to cents
@@ -67,10 +85,11 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
           }
         });
 
+        setCashAppInstance(instance);
         setIsLoading(false);
 
       } catch (err) {
-        console.error('Cash App Pay error:', err);
+        console.error('Cart Cash App Pay error:', err);
         const errorMessage = err instanceof Error ? err.message : 'Failed to initialize Cash App Pay';
         setError(errorMessage);
         onError(errorMessage);
@@ -78,16 +97,17 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
       }
     };
 
-    // Initialize Cash App Pay
-    initializeCashAppPay();
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(initializeCashAppPay, 100);
 
     // Cleanup
     return () => {
+      clearTimeout(timer);
       if (instance) {
         paymentManager.destroyCashAppPay(instance);
       }
     };
-  }, [amount, orderId, customerEmail, onSuccess, onError]);
+  }, [isOpen, amount, orderId, customerEmail, onSuccess, onError]);
 
   if (error) {
     return (
@@ -107,11 +127,11 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
       )}
       
       {/* Cash App Pay button will be rendered here */}
-      <div ref={containerRef} id="cash-app-pay-container" className="cash-app-pay-container" />
+      <div ref={containerRef} className="cash-app-pay-container" />
       
       {!isLoading && (
         <div className="text-xs text-muted-foreground text-center">
-          On mobile, you'll be redirected to Cash App. On desktop, scan the QR code with your phone.
+          Click the button above to pay with Cash App
         </div>
       )}
     </div>
