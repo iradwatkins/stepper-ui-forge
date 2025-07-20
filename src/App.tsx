@@ -75,6 +75,7 @@ const EventAssignments = lazy(() => import("./pages/dashboard/EventAssignments")
 const TestPremiumEvent = lazy(() => import("./pages/TestPremiumEvent"));
 const TestSeating = lazy(() => import("./pages/TestSeating"));
 const SquareTest = lazy(() => import("./pages/SquareTest"));
+const SquarePaymentDebug = lazy(() => import("./pages/SquarePaymentDebug"));
 const Schedule = lazy(() => import("./pages/dashboard/Schedule"));
 const AudienceInsights = lazy(() => import("./pages/dashboard/AudienceInsights"));
 const VenueManagement = lazy(() => import("./pages/dashboard/VenueManagement"));
@@ -153,6 +154,7 @@ const AppContent = () => {
         } />
         <Route path="/database-test" element={<DatabaseTest />} />
         <Route path="/square-test" element={<SquareTest />} />
+        <Route path="/square-debug" element={<SquarePaymentDebug />} />
         <Route path="/create-event" element={
           <ProtectedRoute>
             <CreateEventWizard />

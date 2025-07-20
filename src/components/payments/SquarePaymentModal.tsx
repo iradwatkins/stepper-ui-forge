@@ -1,14 +1,15 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CreditCard, Loader2 } from 'lucide-react';
 
-interface SquarePaymentSimpleProps {
+interface SquarePaymentModalProps {
   amount: number;
   onPaymentToken: (token: string, paymentMethod: 'card' | 'cashapp') => void;
   onError: (error: string) => void;
   isProcessing?: boolean;
+  isVisible?: boolean; // New prop to know when modal is visible
 }
 
 declare global {
@@ -17,81 +18,85 @@ declare global {
   }
 }
 
-export function SquarePaymentSimple({ 
+export function SquarePaymentModal({ 
   amount, 
   onPaymentToken, 
   onError, 
-  isProcessing = false
-}: SquarePaymentSimpleProps) {
+  isProcessing = false,
+  isVisible = true
+}: SquarePaymentModalProps) {
   const cardRef = useRef<any>(null);
-  const hasInitialized = useRef(false);
-  const [isReady, setIsReady] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const initStarted = useRef(false);
 
-  useLayoutEffect(() => {
-    // Prevent double initialization
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+  useEffect(() => {
+    // Only initialize when visible and not already started
+    if (!isVisible || initStarted.current) return;
+    
+    initStarted.current = true;
 
-    // Simple initialization - no loops, no waiting
     const initSquare = async () => {
       try {
-        console.log('[SquareSimple] Starting initialization');
+        console.log('[SquareModal] Starting initialization');
         
-        // Check if Square is loaded
+        // Wait a bit for modal animation to complete
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         if (!window.Square) {
-          throw new Error('Square.js not loaded. Please check your internet connection.');
+          throw new Error('Square.js not loaded');
         }
 
-        // Check if container is visible
-        const container = document.getElementById('square-card-simple');
-        if (!container) {
-          console.log('[SquareSimple] Container not found, waiting...');
-          setTimeout(initSquare, 100);
-          return;
-        }
-
-        const appId = import.meta.env.VITE_SQUARE_APP_ID;
-        const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
-
-        console.log('[SquareSimple] Creating payments instance');
-        const payments = window.Square.payments(appId, locationId);
+        const payments = window.Square.payments(
+          import.meta.env.VITE_SQUARE_APP_ID,
+          import.meta.env.VITE_SQUARE_LOCATION_ID
+        );
         
-        console.log('[SquareSimple] Creating card instance');
         const card = await payments.card();
         
-        console.log('[SquareSimple] Attaching to container #square-card-simple');
-        // The container exists because we checked above
-        await card.attach('#square-card-simple');
+        // Try to attach with retries
+        let attached = false;
+        for (let i = 0; i < 5; i++) {
+          try {
+            await card.attach('#square-modal-container');
+            attached = true;
+            break;
+          } catch (e) {
+            console.log(`[SquareModal] Attach attempt ${i + 1} failed, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        }
+        
+        if (!attached) {
+          throw new Error('Could not attach card form after 5 attempts');
+        }
         
         cardRef.current = card;
         setIsReady(true);
-        setError(null);
+        console.log('[SquareModal] ✅ Initialization complete');
         
-        console.log('[SquareSimple] ✅ Initialization complete');
       } catch (error) {
-        console.error('[SquareSimple] Init error:', error);
+        console.error('[SquareModal] Init error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Failed to load payment form';
         setError(errorMessage);
         onError(errorMessage);
       }
     };
 
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(initSquare, 100);
+    initSquare();
 
-    // Cleanup
     return () => {
-      clearTimeout(timer);
-      if (cardRef.current && cardRef.current.destroy) {
+      if (cardRef.current?.destroy) {
         try {
           cardRef.current.destroy();
+          cardRef.current = null;
         } catch (e) {
-          console.error('[SquareSimple] Cleanup error:', e);
+          console.error('[SquareModal] Cleanup error:', e);
         }
       }
+      initStarted.current = false;
     };
-  }, []); // Empty deps = run once
+  }, [isVisible, onError]);
 
   const handlePayment = async () => {
     if (!cardRef.current) {
@@ -104,7 +109,6 @@ export function SquarePaymentSimple({
       const result = await cardRef.current.tokenize();
       
       if (result.status === 'OK') {
-        console.log('[SquareSimple] Token generated:', result.token);
         onPaymentToken(result.token, 'card');
       } else {
         const errorMessage = result.errors?.[0]?.message || 'Card validation failed';
@@ -131,10 +135,10 @@ export function SquarePaymentSimple({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* This div MUST have the exact ID that Square is looking for */}
           <div 
-            id="square-card-simple" 
+            id="square-modal-container" 
             className="min-h-[100px] border rounded-lg p-3 bg-background"
+            style={{ position: 'relative' }}
           />
           
           {error && (

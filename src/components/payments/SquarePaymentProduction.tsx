@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CreditCard, Loader2 } from 'lucide-react';
 
-interface SquarePaymentSimpleProps {
+interface SquarePaymentProductionProps {
   amount: number;
   onPaymentToken: (token: string, paymentMethod: 'card' | 'cashapp') => void;
   onError: (error: string) => void;
@@ -17,81 +17,85 @@ declare global {
   }
 }
 
-export function SquarePaymentSimple({ 
+export function SquarePaymentProduction({ 
   amount, 
   onPaymentToken, 
   onError, 
   isProcessing = false
-}: SquarePaymentSimpleProps) {
+}: SquarePaymentProductionProps) {
   const cardRef = useRef<any>(null);
   const hasInitialized = useRef(false);
   const [isReady, setIsReady] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   useLayoutEffect(() => {
-    // Prevent double initialization
     if (hasInitialized.current) return;
     hasInitialized.current = true;
 
-    // Simple initialization - no loops, no waiting
     const initSquare = async () => {
       try {
-        console.log('[SquareSimple] Starting initialization');
+        console.log('[SquareProduction] Starting initialization');
         
-        // Check if Square is loaded
         if (!window.Square) {
-          throw new Error('Square.js not loaded. Please check your internet connection.');
+          throw new Error('Square.js not loaded');
         }
 
-        // Check if container is visible
-        const container = document.getElementById('square-card-simple');
+        // Check if container exists
+        const container = document.getElementById('square-card-production');
         if (!container) {
-          console.log('[SquareSimple] Container not found, waiting...');
+          console.log('[SquareProduction] Container not found, waiting...');
           setTimeout(initSquare, 100);
           return;
         }
 
+        // IMPORTANT: Use production credentials that match your payment processor
+        // You'll need to get the sandbox credentials from your Supabase dashboard
+        // or update the edge function to use production credentials
+        
         const appId = import.meta.env.VITE_SQUARE_APP_ID;
         const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
 
-        console.log('[SquareSimple] Creating payments instance');
+        console.log('[SquareProduction] Using credentials:', {
+          appId: appId?.substring(0, 20) + '...',
+          environment: import.meta.env.VITE_SQUARE_ENVIRONMENT
+        });
+
         const payments = window.Square.payments(appId, locationId);
-        
-        console.log('[SquareSimple] Creating card instance');
         const card = await payments.card();
         
-        console.log('[SquareSimple] Attaching to container #square-card-simple');
-        // The container exists because we checked above
-        await card.attach('#square-card-simple');
+        await card.attach('#square-card-production');
         
         cardRef.current = card;
         setIsReady(true);
-        setError(null);
+        console.log('[SquareProduction] ✅ Initialization complete');
         
-        console.log('[SquareSimple] ✅ Initialization complete');
       } catch (error) {
-        console.error('[SquareSimple] Init error:', error);
+        console.error('[SquareProduction] Init error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Failed to load payment form';
-        setError(errorMessage);
+        
+        // Check for environment mismatch
+        if (errorMessage.includes('ApplicationIdEnvironmentMismatchError')) {
+          setError('Configuration error: Square credentials mismatch. Please contact support.');
+        } else {
+          setError(errorMessage);
+        }
         onError(errorMessage);
       }
     };
 
-    // Small delay to ensure DOM is ready
     const timer = setTimeout(initSquare, 100);
 
-    // Cleanup
     return () => {
       clearTimeout(timer);
-      if (cardRef.current && cardRef.current.destroy) {
+      if (cardRef.current?.destroy) {
         try {
           cardRef.current.destroy();
         } catch (e) {
-          console.error('[SquareSimple] Cleanup error:', e);
+          console.error('[SquareProduction] Cleanup error:', e);
         }
       }
     };
-  }, []); // Empty deps = run once
+  }, [onError]);
 
   const handlePayment = async () => {
     if (!cardRef.current) {
@@ -104,7 +108,7 @@ export function SquarePaymentSimple({
       const result = await cardRef.current.tokenize();
       
       if (result.status === 'OK') {
-        console.log('[SquareSimple] Token generated:', result.token);
+        console.log('[SquareProduction] Token generated');
         onPaymentToken(result.token, 'card');
       } else {
         const errorMessage = result.errors?.[0]?.message || 'Card validation failed';
@@ -131,9 +135,8 @@ export function SquarePaymentSimple({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* This div MUST have the exact ID that Square is looking for */}
           <div 
-            id="square-card-simple" 
+            id="square-card-production" 
             className="min-h-[100px] border rounded-lg p-3 bg-background"
           />
           
@@ -167,6 +170,15 @@ export function SquarePaymentSimple({
               </>
             )}
           </Button>
+          
+          {error?.includes('mismatch') && (
+            <div className="text-xs text-muted-foreground space-y-1 p-3 bg-yellow-50 rounded-lg">
+              <p className="font-semibold text-yellow-800">Configuration Issue Detected</p>
+              <p>The payment system is experiencing a configuration mismatch.</p>
+              <p>Your payment gateway is configured for sandbox mode while the application is in production mode.</p>
+              <p>Please use PayPal or Cash App as alternative payment methods.</p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
