@@ -28,6 +28,7 @@ export function loadSquareSDK(): Promise<void> {
     // Check if Square is already loaded
     if (window.Square) {
       squareSDKLoaded = true;
+      console.log('✅ Square SDK already loaded (cached)');
       resolve();
       return;
     }

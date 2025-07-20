@@ -571,9 +571,20 @@ export function PaymentDebugTest() {
                 </div>
               </div>
 
-              <SquarePaymentComponent
-                amount={1.00}
-                onPaymentToken={async (token, method) => {
+              <div className="space-y-4">
+                <div className="p-3 bg-blue-50 rounded text-sm">
+                  <p className="font-medium">Troubleshooting Tips:</p>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    <li>• Check browser console for errors (F12)</li>
+                    <li>• Disable ad blockers and privacy extensions</li>
+                    <li>• Try incognito/private browsing mode</li>
+                    <li>• Ensure you're on HTTPS (required for production)</li>
+                  </ul>
+                </div>
+                
+                <SquarePaymentComponent
+                  amount={1.00}
+                  onPaymentToken={async (token, method) => {
                   console.log('$1 Production Payment Token:', { token, method });
                   setResults(prev => ({ ...prev, 'dollar-production-test': { 
                     status: 'token_received',
@@ -615,7 +626,8 @@ export function PaymentDebugTest() {
                     environment: import.meta.env.VITE_SQUARE_ENVIRONMENT
                   }}));
                 }}
-              />
+                />
+              </div>
             </CardContent>
           </Card>
         )}

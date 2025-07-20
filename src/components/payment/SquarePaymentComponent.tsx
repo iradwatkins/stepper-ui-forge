@@ -75,11 +75,16 @@ export function SquarePaymentComponent({
         if (mounted && isLoading && !cardAttachedRef.current) {
           setLoadingTimeout(true);
           setIsLoading(false);
-          setError('Square payment form took too long to load. Please try again.');
+          setError('Square payment form took too long to load. This may be due to network issues or browser extensions blocking the payment SDK.');
         }
       }, 25000); // 25 second timeout for production
 
-      await initializeSquarePayments();
+      try {
+        await initializeSquarePayments();
+      } catch (err) {
+        console.error('❌ Init failed:', err);
+        // Error is already handled in initializeSquarePayments
+      }
     };
     
     init();
@@ -150,6 +155,11 @@ export function SquarePaymentComponent({
         : 'https://sandbox.web.squarecdn.com/v1/square.js';
 
       console.log('📦 Loading Square SDK from:', squareSdkUrl);
+      console.log('🔧 Square Configuration:', {
+        environment: squareEnvironment,
+        applicationId: squareApplicationId?.substring(0, 20) + '...',
+        locationId: squareLocationId?.substring(0, 20) + '...'
+      });
 
       // Load Square SDK if not already loaded
       if (!window.Square) {
@@ -171,7 +181,15 @@ export function SquarePaymentComponent({
       }
 
       // Initialize Square payments
-      const payments = window.Square.payments(squareApplicationId, squareLocationId);
+      console.log('🔄 Initializing Square payments object...');
+      let payments;
+      try {
+        payments = window.Square.payments(squareApplicationId, squareLocationId);
+        console.log('✅ Square payments object created');
+      } catch (initError) {
+        console.error('❌ Failed to create Square payments object:', initError);
+        throw new Error(`Square initialization failed: ${initError.message || 'Invalid credentials or configuration'}`);
+      }
       
       // Create card payment method
       const card = await payments.card();
@@ -190,9 +208,14 @@ export function SquarePaymentComponent({
       console.log('✅ Square card container verified');
       
       console.log('🔄 Attaching Square card form...');
-      await card.attach('#square-card-container');
-      cardAttachedRef.current = true;
-      console.log('✅ Square card form attached successfully');
+      try {
+        await card.attach('#square-card-container');
+        cardAttachedRef.current = true;
+        console.log('✅ Square card form attached successfully');
+      } catch (attachError) {
+        console.error('❌ Failed to attach Square card form:', attachError);
+        throw new Error(`Failed to attach payment form: ${attachError.message || 'Unknown error'}`);
+      }
       
       // Clear timeout since we succeeded
       if (timeoutRef.current) {
@@ -419,6 +442,21 @@ export function SquarePaymentComponent({
             <p className="text-xs text-muted-foreground">
               This may take a few seconds...
             </p>
+            <p className="text-xs text-muted-foreground">
+              Environment: {import.meta.env.VITE_SQUARE_ENVIRONMENT || 'Not Set'}
+            </p>
+            {/* Show retry button after 10 seconds */}
+            {initAttempt === 0 && (
+              <Button 
+                onClick={handleRetry} 
+                variant="outline" 
+                size="sm"
+                className="mt-4"
+              >
+                <RefreshCw className="mr-2 h-3 w-3" />
+                Taking too long? Click to retry
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
