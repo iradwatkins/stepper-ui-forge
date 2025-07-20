@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
 import { Loader2, CheckCircle, XCircle, Smartphone, AlertCircle, CreditCard } from 'lucide-react';
 import { getPaymentConfig } from '@/lib/payment-config';
@@ -553,12 +554,15 @@ export function PaymentDebugTest() {
         {/* Cash App Pay Diagnostic Tool */}
         <CashAppPayDiagnostic />
 
-        {/* $1 Credit Card Test */}
+        {/* $1 Production Credit Card Test */}
         <Card>
           <CardHeader>
-            <CardTitle>$1 Credit Card Test</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              $1 Production Credit Card Test
+              <Badge variant="destructive">LIVE</Badge>
+            </CardTitle>
             <CardDescription>
-              Test Square credit card payments with exactly $1.00 to debug loading issues
+              Test Square credit card payments with a real $1.00 charge in production
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -566,7 +570,7 @@ export function PaymentDebugTest() {
               onClick={() => setShowDollarTest(!showDollarTest)}
               variant="default"
             >
-              {showDollarTest ? 'Hide' : 'Show'} $1 Test
+              {showDollarTest ? 'Hide' : 'Show'} $1 Production Test
             </Button>
           </CardContent>
         </Card>
@@ -574,42 +578,80 @@ export function PaymentDebugTest() {
         {showDollarTest && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                $1.00 Credit Card Test
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  $1.00 Production Credit Card Test
+                </div>
+                <Badge variant="destructive">REAL PAYMENT</Badge>
               </CardTitle>
               <CardDescription>
-                Enter test card details to verify Square payment processing
+                This will charge your credit card $1.00 to verify production payment processing
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Alert className="mb-4">
+              <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Test Cards:</strong><br/>
-                  • Visa: 4111 1111 1111 1111<br/>
-                  • Mastercard: 5105 1051 0510 5100<br/>
-                  • Use any future expiry date and any 3-digit CVV
+                  <strong>WARNING: This is a REAL payment!</strong><br/>
+                  • Your card will be charged $1.00<br/>
+                  • This uses production Square credentials<br/>
+                  • The payment is non-refundable through this interface<br/>
+                  • Only use this for testing production payment flow
                 </AlertDescription>
               </Alert>
+              
+              <div className="mb-4 p-4 bg-muted rounded-lg">
+                <p className="text-sm font-medium mb-2">Production Environment Status:</p>
+                <div className="space-y-1 text-xs">
+                  <div>• Square Environment: {import.meta.env.VITE_SQUARE_ENVIRONMENT || 'Not Set'}</div>
+                  <div>• Square App ID: {import.meta.env.VITE_SQUARE_APP_ID ? '✓ Configured' : '✗ Missing'}</div>
+                  <div>• Square Location ID: {import.meta.env.VITE_SQUARE_LOCATION_ID ? '✓ Configured' : '✗ Missing'}</div>
+                </div>
+              </div>
+
               <SquarePaymentComponent
                 amount={1.00}
-                onPaymentToken={(token, method) => {
-                  console.log('$1 Test Payment Token:', { token, method });
-                  setResults(prev => ({ ...prev, 'dollar-test': { 
-                    success: true,
+                onPaymentToken={async (token, method) => {
+                  console.log('$1 Production Payment Token:', { token, method });
+                  setResults(prev => ({ ...prev, 'dollar-production-test': { 
+                    status: 'token_received',
                     token: token.substring(0, 20) + '...',
                     method,
                     amount: 1.00,
                     timestamp: new Date().toISOString()
                   }}));
+                  
+                  // Process the actual payment
+                  try {
+                    const result = await productionPaymentService.processPayment({
+                      amount: 1.00,
+                      gateway: 'square',
+                      sourceId: token,
+                      orderId: `prod_test_${Date.now()}`,
+                      customerEmail: 'test@stepperslife.com'
+                    });
+                    
+                    setResults(prev => ({ ...prev, 'dollar-production-test': { 
+                      ...prev['dollar-production-test'],
+                      payment_result: result,
+                      success: result.success,
+                      payment_id: result.data?.paymentId
+                    }}));
+                  } catch (error) {
+                    setResults(prev => ({ ...prev, 'dollar-production-test': { 
+                      ...prev['dollar-production-test'],
+                      payment_error: error instanceof Error ? error.message : 'Payment processing failed'
+                    }}));
+                  }
                 }}
                 onError={(error) => {
-                  console.error('$1 Test Payment Error:', error);
-                  setResults(prev => ({ ...prev, 'dollar-test': { 
+                  console.error('$1 Production Payment Error:', error);
+                  setResults(prev => ({ ...prev, 'dollar-production-test': { 
                     error,
                     amount: 1.00,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    environment: import.meta.env.VITE_SQUARE_ENVIRONMENT
                   }}));
                 }}
               />
