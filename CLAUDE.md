@@ -203,6 +203,60 @@ This is a **React/TypeScript event management platform** with Supabase backend, 
 - Cash App payments
 - Commission tracking for referral sales
 
+## Payment System Status & Working Integrations
+
+### ✅ PayPal Integration (WORKING)
+- **Primary Component**: `CheckoutModal.tsx` with PayPal gateway selection
+- **Flow**: Order creation → PayPal approval redirect → `PayPalCallback.tsx` completion
+- **Key Files**: 
+  - `src/components/CheckoutModal.tsx` (lines 195-218)
+  - `src/pages/PayPalCallback.tsx` 
+  - `src/lib/payments/ProductionPaymentService.ts`
+- **Working Pattern**: sessionStorage persistence + approval URL redirect
+- **Status**: Fully functional, no container issues
+
+### ✅ Cash App Integration (WORKING - FIXED)
+- **Primary Component**: `CashAppPay.tsx` with container detection fix
+- **Flow**: Container detection → Cash App SDK → tokenization → payment processing
+- **Key Files**:
+  - `src/components/payment/CashAppPay.tsx` (with waitForContainer fix)
+  - `src/lib/services/paymentManager.ts`
+- **Working Pattern**: `waitForContainer()` with 10 retry attempts, 100ms intervals
+- **Fix Applied**: Resolved "Container #cash-app-pay-container not found" error
+- **Status**: Fully functional after container timing fix
+
+### 🔧 Square Credit Card (RECENTLY FIXED - PENDING VALIDATION)
+- **Primary Component**: `SquarePaymentComponent.tsx` with container detection fix
+- **Flow**: Container detection → Square SDK → card form → tokenization
+- **Key Files**:
+  - `src/components/payment/SquarePaymentComponent.tsx` (with waitForContainer fix)
+  - `src/utils/containerUtils.ts` (new utility)
+- **Applied Fix**: Same waitForContainer pattern as Cash App
+- **Status**: Fix applied, waiting for "Great, the code is working!" confirmation
+
+### 🛠️ Container Detection Pattern (CRITICAL FIX)
+```typescript
+const waitForContainer = async (maxAttempts = 10): Promise<void> => {
+  for (let i = 0; i < maxAttempts; i++) {
+    const container = document.getElementById(containerId);
+    if (container && document.contains(container) && ref?.current) {
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('Container not found after maximum attempts');
+};
+```
+- **Applied to**: Cash App (working), Square (pending validation)
+- **Replaces**: Simple setTimeout() that caused container race conditions
+- **Key Insight**: React components need time for DOM containers to be fully rendered
+
+### 📋 Payment System Next Steps
+1. Test Square credit card processing thoroughly
+2. Once user confirms "Great, the code is working!", update Square status to WORKING
+3. Create reusable code extraction in "code-to-download" folder for other projects
+4. Document unified payment component patterns for external use
+
 ### Dashboard Navigation Structure
 
 **Mobile-First Design**: 

@@ -63,31 +63,27 @@ export function SquareCardMinimal() {
         const card = await payments.card();
         console.log('[Minimal] Card created');
 
-        // Attach to container - wait for DOM
-        await new Promise(r => setTimeout(r, 500));
-        
-        // Try multiple container IDs
-        const containerIds = ['square-minimal-container', 'square-card-container', 'card-container'];
-        let attached = false;
-        
-        for (const id of containerIds) {
-          try {
-            const element = document.getElementById(id);
-            if (element) {
-              console.log(`[Minimal] Trying to attach to #${id}`);
-              await card.attach(`#${id}`);
-              attached = true;
-              console.log(`[Minimal] ✅ Attached to #${id}`);
-              break;
+        // Wait for container to be ready (same pattern as CashApp/Square fix)
+        const waitForContainer = async (maxAttempts = 10): Promise<string> => {
+          const containerIds = ['square-minimal-container', 'square-card-container', 'card-container'];
+          
+          for (let i = 0; i < maxAttempts; i++) {
+            for (const id of containerIds) {
+              const element = document.getElementById(id);
+              if (element && document.contains(element)) {
+                return id;
+              }
             }
-          } catch (e) {
-            console.log(`[Minimal] Failed to attach to #${id}:`, e);
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
-        }
-
-        if (!attached) {
-          throw new Error('Could not attach card form to any container');
-        }
+          throw new Error('No valid container found after maximum attempts');
+        };
+        
+        const containerId = await waitForContainer();
+        console.log(`[Minimal] ✅ Container found: #${containerId}`);
+        
+        await card.attach(`#${containerId}`);
+        console.log(`[Minimal] ✅ Card attached to #${containerId}`);
 
         setStatus('ready');
         

@@ -54,13 +54,28 @@ export function SquarePaymentComponent({
   useEffect(() => {
     let mounted = true;
     
+    const waitForContainer = async (maxAttempts = 10): Promise<void> => {
+      for (let i = 0; i < maxAttempts; i++) {
+        const container = document.getElementById('square-card-container');
+        if (container && document.contains(container) && cardContainerRef.current) {
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      throw new Error('Payment form container not found after maximum attempts');
+    };
+    
     const init = async () => {
-      // Wait for React to render
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Verify container exists
-      if (!document.getElementById('square-card-container')) {
-        console.log('⏳ Waiting for square-card-container to appear in DOM');
+      try {
+        // Wait for container to be ready in DOM (same pattern as CashApp fix)
+        await waitForContainer();
+        console.log('✅ Square container found, initializing payments');
+      } catch (error) {
+        console.error('❌ Container detection failed:', error);
+        if (mounted) {
+          setError('Payment form container not found. Please refresh and try again.');
+          setIsLoading(false);
+        }
         return;
       }
       
