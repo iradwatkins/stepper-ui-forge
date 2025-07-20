@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -40,9 +40,33 @@ export function SquarePaymentComponent({
   const [initAttempt, setInitAttempt] = useState(0);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const cardAttachedRef = useRef(false);
+  const [containerReady, setContainerReady] = useState(false);
+
+  // Use useLayoutEffect to check for container readiness
+  useLayoutEffect(() => {
+    const checkContainer = () => {
+      if (cardContainerRef.current) {
+        setContainerReady(true);
+      }
+    };
+    
+    // Check immediately
+    checkContainer();
+    
+    // If not ready, check after a small delay
+    if (!containerReady) {
+      const timer = setTimeout(checkContainer, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
+    
+    // Don't initialize until container is ready
+    if (!containerReady) {
+      return;
+    }
     
     const init = async () => {
       // Set loading timeout - increased to 25 seconds for production
@@ -73,7 +97,7 @@ export function SquarePaymentComponent({
         paymentMethods.cashAppPay.destroy();
       }
     };
-  }, [initAttempt]); // Re-run on retry
+  }, [initAttempt, containerReady]); // Re-run on retry or when container becomes ready
 
   // Attach Cash App Pay button when cashapp is selected
   useEffect(() => {
@@ -130,8 +154,17 @@ export function SquarePaymentComponent({
       if (!window.Square) {
         console.log('⏳ Square SDK not found, loading from:', squareSdkUrl);
         const loadStartTime = Date.now();
-        await loadSquareSDK(squareSdkUrl);
-        console.log(`✅ Square SDK loaded in ${Date.now() - loadStartTime}ms`);
+        try {
+          await loadSquareSDK(squareSdkUrl);
+          console.log(`✅ Square SDK loaded in ${Date.now() - loadStartTime}ms`);
+        } catch (sdkError) {
+          console.error('❌ Failed to load Square SDK:', sdkError);
+          // Check for common browser extension conflicts
+          if (sdkError.message?.includes('connection') || sdkError.message?.includes('Receiving end')) {
+            throw new Error('Failed to load Square SDK. Please disable any ad blockers or privacy extensions and try again.');
+          }
+          throw sdkError;
+        }
       } else {
         console.log('✅ Square SDK already loaded, skipping download');
       }
@@ -143,31 +176,17 @@ export function SquarePaymentComponent({
       const card = await payments.card();
       
       // Wait for DOM to be ready and container to exist
-      let containerCheckAttempts = 0;
-      const maxContainerChecks = 100; // 10 seconds max (100 * 100ms) - increased for production
+      // Since we've already confirmed container exists via useLayoutEffect,
+      // this should be quick, but we'll still verify
+      const container = document.getElementById('square-card-container');
+      if (!container && cardContainerRef.current) {
+        // If getElementById fails but ref exists, use the ref directly
+        console.log('⚠️ getElementById failed, using ref directly');
+      } else if (!container) {
+        throw new Error('Card container element not found in DOM');
+      }
       
-      await new Promise<void>((resolve, reject) => {
-        const checkContainer = () => {
-          containerCheckAttempts++;
-          const container = document.getElementById('square-card-container');
-          
-          if (container) {
-            console.log(`✅ Square card container found after ${containerCheckAttempts} attempts`);
-            resolve();
-          } else if (containerCheckAttempts >= maxContainerChecks) {
-            console.error('❌ Square card container not found after maximum attempts');
-            reject(new Error('Card container element not found'));
-          } else {
-            // Log less frequently to reduce console noise
-            if (containerCheckAttempts % 10 === 1) {
-              console.log(`⏳ Waiting for container (attempt ${containerCheckAttempts}/${maxContainerChecks})`);
-            }
-            setTimeout(checkContainer, 100);
-          }
-        };
-        // Add small initial delay to ensure React has rendered
-        setTimeout(checkContainer, 100);
-      });
+      console.log('✅ Square card container verified');
       
       console.log('🔄 Attaching Square card form...');
       await card.attach('#square-card-container');
@@ -247,6 +266,8 @@ export function SquarePaymentComponent({
           errorMessage = 'Failed to load Square payment system. Please check your internet connection.';
         } else if (err.message.includes('Missing required Square configuration')) {
           errorMessage = 'Payment system configuration error. Please contact support.';
+        } else if (err.message.includes('ad blockers') || err.message.includes('privacy extensions')) {
+          errorMessage = err.message;
         } else {
           errorMessage = err.message;
         }
@@ -514,7 +535,15 @@ export function SquarePaymentComponent({
                 ref={cardContainerRef}
                 id="square-card-container"
                 className="border rounded-lg p-4 min-h-[60px] bg-background"
-              />
+                style={{ minHeight: '60px' }}
+              >
+                {!paymentMethods.card && (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Initializing card form...
+                  </div>
+                )}
+              </div>
               
               {error && (
                 <Alert variant="destructive">

@@ -185,13 +185,27 @@ export async function createSquarePaymentForm(
   card: any;
   cashAppPay?: any;
 }> {
-  // Verify DOM element exists before proceeding
-  const containerElement = document.getElementById(containerId);
-  if (!containerElement) {
-    throw new Error(`Element with ID '${containerId}' not found in DOM. Make sure the container exists before initializing Square payments.`);
+  // Wait for DOM element with exponential backoff
+  let attempts = 0;
+  const maxAttempts = 50; // 5 seconds max
+  let containerElement = null;
+  
+  while (attempts < maxAttempts && !containerElement) {
+    containerElement = document.getElementById(containerId);
+    if (!containerElement) {
+      attempts++;
+      if (attempts % 10 === 1) {
+        console.log(`⏳ Waiting for container '${containerId}' (attempt ${attempts}/${maxAttempts})`);
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   }
   
-  console.log(`✅ Container element '${containerId}' found in DOM`);
+  if (!containerElement) {
+    throw new Error(`Element with ID '${containerId}' not found after ${maxAttempts} attempts. Make sure the container exists before initializing Square payments.`);
+  }
+  
+  console.log(`✅ Container element '${containerId}' found after ${attempts} attempts`);
   
   const payments = await initializeSquarePayments();
   
@@ -223,7 +237,6 @@ export async function createSquarePaymentForm(
     // Always try to initialize Cash App Pay using Square credentials
     if (true) {
       // Cash App Pay uses Square's environment settings
-      const isProductionEnv = squareEnvironment === 'production';
       
       // Use the correct Square Web SDK method for Cash App Pay
       console.log('🔄 Checking available Square payment methods:', Object.keys(payments));

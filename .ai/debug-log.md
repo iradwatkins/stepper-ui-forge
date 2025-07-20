@@ -88,3 +88,5 @@
 | Fix UserProfile loading | UserProfile.tsx | Changed loading condition to prevent stuck state | No |
 | Add storage cleanup | AuthContext.tsx | Clean old session keys on init | No |
 | Remove setRememberMe | Auth components | Removed sessionConfig usage from all auth forms | No |
+| Square container error | SquarePaymentComponent.tsx | Container not found after max attempts in production | No |
+| Fix container timing | square-sdk.ts, SquarePaymentComponent.tsx | Added retry logic and useLayoutEffect | Yes |
