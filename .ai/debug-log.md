@@ -90,3 +90,7 @@
 | Remove setRememberMe | Auth components | Removed sessionConfig usage from all auth forms | No |
 | Square container error | SquarePaymentComponent.tsx | Container not found after max attempts in production | No |
 | Fix container timing | square-sdk.ts, SquarePaymentComponent.tsx | Added retry logic and useLayoutEffect | Yes |
+| Cash App wrong amount | CashAppPay, SquarePaymentForm, paymentManager | Fixed cents to dollars conversion issue | Yes |
+| Browser extension error | SquarePaymentComponent, SquarePaymentForm | Added better error messages for extensions | Yes |
+| Cash App logo update | PaymentLogos, SquarePaymentForm, SquarePaymentComponent | Replaced Smartphone icon with official logo | Yes |
+| $1 credit card test | PaymentDebugTest.tsx | Added dedicated test component for debugging | Yes |

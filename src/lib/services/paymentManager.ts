@@ -88,7 +88,7 @@ class PaymentManager {
         countryCode: 'US',
         currencyCode: 'USD',
         total: {
-          amount: String(options.amount || 0), // Amount in cents as string
+          amount: (options.amount || 0).toFixed(2), // Amount in dollars as string (e.g., "25.00")
           label: 'Total',
         },
         requestShippingAddress: false,

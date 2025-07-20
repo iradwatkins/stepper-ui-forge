@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CreditCard, Smartphone, Loader2, AlertCircle, Shield } from 'lucide-react';
+import { CreditCard, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { createSquarePaymentForm, tokenizePayment } from '@/lib/payments/square-sdk';
 import { getPaymentConfig } from '@/lib/payment-config';
+import { CashAppLogo } from '@/components/payment/PaymentLogos';
 
 interface SquarePaymentFormProps {
   amount: number;
@@ -99,7 +100,13 @@ export function SquarePaymentForm({
 
       setIsLoading(false);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to initialize Square payments';
+      let errorMessage = err instanceof Error ? err.message : 'Failed to initialize Square payments';
+      
+      // Check for browser extension interference
+      if (err instanceof Error && (err.message.includes('connection') || err.message.includes('Receiving end'))) {
+        errorMessage = 'Unable to load payment form. Please disable any ad blockers or privacy extensions and try again.';
+      }
+      
       console.error('Square initialization error:', err);
       setError(errorMessage);
       onError(errorMessage);
@@ -132,7 +139,7 @@ export function SquarePaymentForm({
       // For Cash App Pay, we need to start the payment flow
       const paymentRequest = paymentMethods.cashAppPay.requestPayment({
         amount: {
-          amount: Math.round(amount * 100), // Convert to cents
+          amount: amount.toFixed(2), // Amount in dollars as string (e.g., "25.00")
           currencyCode: 'USD'
         }
       });
@@ -227,7 +234,7 @@ export function SquarePaymentForm({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Smartphone className="w-5 h-5" />
+                <CashAppLogo className="w-5 h-5" />
                 <div>
                   <div className="font-medium">Cash App Pay</div>
                   <div className="text-sm text-muted-foreground">
@@ -293,7 +300,7 @@ export function SquarePaymentForm({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Smartphone className="w-5 h-5" />
+              <CashAppLogo className="w-5 h-5" />
               Cash App Pay
             </CardTitle>
             <CardDescription>
@@ -304,7 +311,7 @@ export function SquarePaymentForm({
             <div className="space-y-4">
               <div className="bg-green-50 p-4 rounded-lg">
                 <div className="flex items-center gap-2 text-green-800">
-                  <Smartphone className="w-4 h-4" />
+                  <CashAppLogo className="w-4 h-4" />
                   <span className="font-medium">Ready to pay with Cash App</span>
                 </div>
                 <p className="text-sm text-green-700 mt-1">
@@ -344,7 +351,7 @@ export function SquarePaymentForm({
               </>
             ) : (
               <>
-                <Smartphone className="mr-2 h-4 w-4" />
+                <CashAppLogo className="mr-2 h-4 w-4" />
                 Pay ${amount.toFixed(2)} with Cash App
               </>
             )}

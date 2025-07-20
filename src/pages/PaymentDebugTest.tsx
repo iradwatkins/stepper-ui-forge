@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
-import { Loader2, CheckCircle, XCircle, Smartphone, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Smartphone, AlertCircle, CreditCard } from 'lucide-react';
 import { getPaymentConfig } from '@/lib/payment-config';
 import { CashAppPay } from '@/components/payment/CashAppPay';
 import { CashAppPaySquareOnly } from '@/components/payment/CashAppPaySquareOnly';
@@ -22,6 +22,7 @@ export function PaymentDebugTest() {
   const [showSquareProductionTest, setShowSquareProductionTest] = useState(false);
   const [showCashAppComplete, setShowCashAppComplete] = useState(false);
   const [cashAppToken, setCashAppToken] = useState<string | null>(null);
+  const [showDollarTest, setShowDollarTest] = useState(false);
 
   const testHealthCheck = async () => {
     setLoading('health');
@@ -551,6 +552,70 @@ export function PaymentDebugTest() {
 
         {/* Cash App Pay Diagnostic Tool */}
         <CashAppPayDiagnostic />
+
+        {/* $1 Credit Card Test */}
+        <Card>
+          <CardHeader>
+            <CardTitle>$1 Credit Card Test</CardTitle>
+            <CardDescription>
+              Test Square credit card payments with exactly $1.00 to debug loading issues
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => setShowDollarTest(!showDollarTest)}
+              variant="default"
+            >
+              {showDollarTest ? 'Hide' : 'Show'} $1 Test
+            </Button>
+          </CardContent>
+        </Card>
+
+        {showDollarTest && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                $1.00 Credit Card Test
+              </CardTitle>
+              <CardDescription>
+                Enter test card details to verify Square payment processing
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Test Cards:</strong><br/>
+                  • Visa: 4111 1111 1111 1111<br/>
+                  • Mastercard: 5105 1051 0510 5100<br/>
+                  • Use any future expiry date and any 3-digit CVV
+                </AlertDescription>
+              </Alert>
+              <SquarePaymentComponent
+                amount={1.00}
+                onPaymentToken={(token, method) => {
+                  console.log('$1 Test Payment Token:', { token, method });
+                  setResults(prev => ({ ...prev, 'dollar-test': { 
+                    success: true,
+                    token: token.substring(0, 20) + '...',
+                    method,
+                    amount: 1.00,
+                    timestamp: new Date().toISOString()
+                  }}));
+                }}
+                onError={(error) => {
+                  console.error('$1 Test Payment Error:', error);
+                  setResults(prev => ({ ...prev, 'dollar-test': { 
+                    error,
+                    amount: 1.00,
+                    timestamp: new Date().toISOString()
+                  }}));
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {Object.entries(results).map(([key, value]) => (
           <Card key={key}>

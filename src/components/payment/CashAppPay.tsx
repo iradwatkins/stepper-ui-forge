@@ -36,7 +36,7 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
           '#cash-app-pay-container',
           { 
             referenceId: orderId,
-            amount: Math.round(amount * 100) // Convert to cents
+            amount: amount // Pass amount in dollars (Square expects dollars, not cents)
           }
         );
         

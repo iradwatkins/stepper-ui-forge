@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Smartphone, Loader2, AlertCircle, Shield, RefreshCw } from 'lucide-react';
+import { CreditCard, Loader2, AlertCircle, Shield, RefreshCw } from 'lucide-react';
+import { CashAppLogo } from '@/components/payment/PaymentLogos';
 
 declare global {
   interface Window {
@@ -268,6 +269,8 @@ export function SquarePaymentComponent({
           errorMessage = 'Payment system configuration error. Please contact support.';
         } else if (err.message.includes('ad blockers') || err.message.includes('privacy extensions')) {
           errorMessage = err.message;
+        } else if (err.message.includes('connection') || err.message.includes('Receiving end')) {
+          errorMessage = 'Unable to load payment form. Please disable any ad blockers or privacy extensions and try again.';
         } else {
           errorMessage = err.message;
         }
@@ -500,7 +503,7 @@ export function SquarePaymentComponent({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Smartphone className="w-5 h-5" />
+                <CashAppLogo className="w-5 h-5" />
                 <div>
                   <div className="font-medium">Cash App Pay</div>
                   <div className="text-sm text-muted-foreground">
@@ -566,7 +569,7 @@ export function SquarePaymentComponent({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Smartphone className="w-5 h-5" />
+              <CashAppLogo className="w-5 h-5" />
               Cash App Pay
             </CardTitle>
             <CardDescription>
