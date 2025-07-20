@@ -50,13 +50,15 @@ export function SlideOutCashAppPay({
         }
 
         // Create Cash App Pay instance using payment manager
-        instance = await paymentManager.createCashAppPay(
-          containerRef.current!,
+        const result = await paymentManager.createCashAppPay(
+          '#slide-out-cash-app-pay',
           { 
             referenceId: orderId,
             amount: Math.round(amount * 100) // Convert to cents
           }
         );
+        
+        instance = result.cashAppPay;
 
         // Add event listeners
         instance.addEventListener('ontokenization', async (event: any) => {
@@ -127,7 +129,7 @@ export function SlideOutCashAppPay({
       )}
       
       {/* Cash App Pay button will be rendered here */}
-      <div ref={containerRef} className="cash-app-pay-container" />
+      <div ref={containerRef} id="slide-out-cash-app-pay" className="cash-app-pay-container" />
       
       {!isLoading && (
         <div className="text-xs text-muted-foreground text-center">

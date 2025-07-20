@@ -32,13 +32,15 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
         }
 
         // Create Cash App Pay instance using payment manager
-        instance = await paymentManager.createCashAppPay(
+        const result = await paymentManager.createCashAppPay(
           '#cash-app-pay-container',
           { 
             referenceId: orderId,
             amount: Math.round(amount * 100) // Convert to cents
           }
         );
+        
+        instance = result.cashAppPay;
 
         // Add event listeners
         instance.addEventListener('ontokenization', async (event: any) => {
@@ -84,7 +86,7 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
     // Cleanup
     return () => {
       if (instance) {
-        paymentManager.destroyCashAppPay(instance);
+        paymentManager.destroyCashAppPay(instance).catch(console.error);
       }
     };
   }, [amount, orderId, customerEmail, onSuccess, onError]);

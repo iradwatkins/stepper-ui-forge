@@ -4,6 +4,13 @@
 
 This guide shows how to integrate Cash App Pay with Square payments in a unified payment manager to avoid SDK conflicts.
 
+## Important: Payment Request Requirement
+
+As of the latest Square SDK update, Cash App Pay requires a `paymentRequest` object during initialization. This object must include:
+- `countryCode`: The country code (e.g., 'US')
+- `currencyCode`: The currency code (e.g., 'USD')
+- `total`: An object with `amount` (as string) and `label`
+
 ## Key Components
 
 ### 1. Global Payment Manager (`/src/lib/services/paymentManager.ts`)
@@ -65,9 +72,41 @@ useEffect(() => {
 ## How It Works
 
 1. **Single SDK Load**: Square SDK loads once when payment manager initializes
-2. **Shared Instance**: All payment components share the same Square payments instance
-3. **Container-based Rendering**: Each Cash App Pay button renders in its own container
-4. **Proper Cleanup**: Instances are destroyed when components unmount
+2. **Payment Request Creation**: Each Cash App Pay instance requires a payment request with amount details
+3. **Shared Instance**: All payment components share the same Square payments instance
+4. **Container-based Rendering**: Each Cash App Pay button renders in its own container
+5. **Proper Cleanup**: Instances are destroyed when components unmount
+
+### Payment Flow
+
+```typescript
+// 1. Create payment request
+const paymentRequest = payments.paymentRequest({
+  countryCode: 'US',
+  currencyCode: 'USD',
+  total: {
+    amount: '1000', // $10.00 in cents as string
+    label: 'Total',
+  },
+});
+
+// 2. Create Cash App Pay instance with payment request
+const cashAppPay = await payments.cashAppPay(paymentRequest, {
+  redirectURL: window.location.href,
+  referenceId: 'order-123',
+});
+
+// 3. Attach to container
+await cashAppPay.attach('#cash-app-pay-button');
+
+// 4. Handle tokenization
+cashAppPay.addEventListener('ontokenization', (event) => {
+  const { tokenResult } = event.detail;
+  if (tokenResult.status === 'OK') {
+    // Process payment with tokenResult.token
+  }
+});
+```
 
 ## Benefits
 

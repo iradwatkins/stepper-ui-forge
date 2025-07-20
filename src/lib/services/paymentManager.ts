@@ -83,11 +83,27 @@ class PaymentManager {
     }
 
     try {
-      // Create new Cash App Pay instance for this container
-      const cashAppPay = await payments.cashAppPay({
+      // Create payment request first (REQUIRED by Square SDK)
+      const paymentRequest = payments.paymentRequest({
+        countryCode: 'US',
+        currencyCode: 'USD',
+        total: {
+          amount: String(options.amount || 0), // Amount in cents as string
+          label: 'Total',
+        },
+        requestShippingAddress: false,
+        requestBillingAddress: false,
+      });
+
+      console.log('Creating Cash App Pay with payment request:', {
+        amount: options.amount,
+        referenceId: options.referenceId
+      });
+
+      // Create Cash App Pay instance with payment request
+      const cashAppPay = await payments.cashAppPay(paymentRequest, {
         redirectURL: window.location.href,
         referenceId: options.referenceId || `order-${Date.now()}`,
-        ...options
       });
 
       // Attach to specific container
@@ -104,7 +120,7 @@ class PaymentManager {
       // Track active instance
       this.activeInstances.set(containerId, cashAppPay);
 
-      return cashAppPay;
+      return { cashAppPay, paymentRequest };
     } catch (error) {
       console.error('Error creating Cash App Pay instance:', error);
       throw error;
@@ -113,13 +129,18 @@ class PaymentManager {
 
   // Destroy a Cash App Pay instance
   async destroyCashAppPay(instance: any): Promise<void> {
-    if (instance && typeof instance.destroy === 'function') {
+    if (!instance) return;
+    
+    // Handle both the instance object and the result object
+    const cashAppInstance = instance.cashAppPay || instance;
+    
+    if (cashAppInstance && typeof cashAppInstance.destroy === 'function') {
       try {
-        await instance.destroy();
+        await cashAppInstance.destroy();
         
         // Remove from active instances
         for (const [key, value] of this.activeInstances.entries()) {
-          if (value === instance) {
+          if (value === cashAppInstance || value === instance) {
             this.activeInstances.delete(key);
             break;
           }
