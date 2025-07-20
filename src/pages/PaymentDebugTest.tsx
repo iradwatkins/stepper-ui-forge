@@ -14,6 +14,12 @@ import { SquareProductionTest } from '@/components/payment/SquareProductionTest'
 import { CashAppPayComplete } from '@/components/payment/CashAppPayComplete';
 import { CashAppPayDiagnostic } from '@/components/payment/CashAppPayDiagnostic';
 
+declare global {
+  interface Window {
+    Square: any;
+  }
+}
+
 export function PaymentDebugTest() {
   const [loading, setLoading] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, any>>({});
@@ -511,6 +517,47 @@ export function PaymentDebugTest() {
 
         {/* Cash App Pay Diagnostic Tool */}
         <CashAppPayDiagnostic />
+
+        {/* Square SDK Manual Test */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Square SDK Manual Test</CardTitle>
+            <CardDescription>
+              Test if Square SDK loads at all
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={async () => {
+                try {
+                  console.log('Testing Square SDK load...');
+                  const script = document.createElement('script');
+                  script.src = 'https://web.squarecdn.com/v1/square.js';
+                  script.onload = () => {
+                    setResults(prev => ({ ...prev, 'sdk-test': { 
+                      success: true,
+                      hasSquare: !!window.Square,
+                      message: window.Square ? 'Square SDK loaded successfully' : 'Script loaded but Square not available'
+                    }}));
+                  };
+                  script.onerror = () => {
+                    setResults(prev => ({ ...prev, 'sdk-test': { 
+                      error: 'Failed to load Square SDK script'
+                    }}));
+                  };
+                  document.head.appendChild(script);
+                } catch (error) {
+                  setResults(prev => ({ ...prev, 'sdk-test': { 
+                    error: error.message
+                  }}));
+                }
+              }}
+              variant="outline"
+            >
+              Test Square SDK Load
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* $1 Production Credit Card Test */}
         <Card>

@@ -47,7 +47,10 @@ export function SquarePaymentComponent({
   useLayoutEffect(() => {
     const checkContainer = () => {
       if (cardContainerRef.current) {
+        console.log('✅ Container ref is ready');
         setContainerReady(true);
+      } else {
+        console.log('⏳ Container ref not ready yet');
       }
     };
     
@@ -192,7 +195,15 @@ export function SquarePaymentComponent({
       }
       
       // Create card payment method
-      const card = await payments.card();
+      console.log('🔄 Creating card payment method...');
+      let card;
+      try {
+        card = await payments.card();
+        console.log('✅ Card payment method created');
+      } catch (cardError) {
+        console.error('❌ Failed to create card:', cardError);
+        throw new Error(`Failed to create card payment method: ${cardError.message || 'Unknown error'}`);
+      }
       
       // Wait for DOM to be ready and container to exist
       // Since we've already confirmed container exists via useLayoutEffect,
@@ -330,53 +341,54 @@ export function SquarePaymentComponent({
 
   const loadSquareSDK = (scriptUrl: string): Promise<void> => {
     return new Promise((resolve, reject) => {
+      // Check if Square is already available
+      if (window.Square) {
+        console.log('✅ Square already available');
+        resolve();
+        return;
+      }
+
       // Check if script already exists
       const existingScript = document.querySelector(`script[src="${scriptUrl}"]`);
       if (existingScript) {
-        console.log('⚡ Square SDK script tag already exists');
-        // Wait for it to load
-        if (window.Square) {
-          resolve();
-          return;
-        }
-        // Wait a bit for existing script to finish loading
-        let checkCount = 0;
+        console.log('⚡ Square SDK script tag already exists, waiting for Square object...');
+        // Poll for Square object
+        let attempts = 0;
         const checkInterval = setInterval(() => {
-          checkCount++;
+          attempts++;
           if (window.Square) {
             clearInterval(checkInterval);
+            console.log(`✅ Square became available after ${attempts} checks`);
             resolve();
-          } else if (checkCount > 50) { // 5 seconds
+          } else if (attempts > 100) { // 10 seconds
             clearInterval(checkInterval);
-            reject(new Error('Existing Square SDK script failed to load'));
+            reject(new Error('Square SDK script exists but Square object never appeared'));
           }
         }, 100);
         return;
       }
       
+      console.log('📥 Creating new Square SDK script tag...');
       const script = document.createElement('script');
       script.src = scriptUrl;
       script.async = true;
-      script.defer = true;
       
-      // Add timeout for script loading
-      const scriptTimeout = setTimeout(() => {
-        reject(new Error('Square SDK script loading timed out'));
-      }, 20000); // 20 second timeout
-
       script.onload = () => {
-        clearTimeout(scriptTimeout);
-        if (window.Square) {
-          console.log('✅ Square Web SDK loaded successfully');
-          resolve();
-        } else {
-          reject(new Error('Square SDK loaded but Square object not available'));
-        }
+        console.log('✅ Square SDK script loaded');
+        // Give it a moment to initialize
+        setTimeout(() => {
+          if (window.Square) {
+            console.log('✅ window.Square is available');
+            resolve();
+          } else {
+            reject(new Error('Square SDK loaded but window.Square is undefined'));
+          }
+        }, 1000);
       };
 
-      script.onerror = () => {
-        clearTimeout(scriptTimeout);
-        reject(new Error('Failed to load Square Web SDK'));
+      script.onerror = (error) => {
+        console.error('❌ Square SDK script failed to load:', error);
+        reject(new Error('Failed to load Square SDK script'));
       };
 
       document.head.appendChild(script);

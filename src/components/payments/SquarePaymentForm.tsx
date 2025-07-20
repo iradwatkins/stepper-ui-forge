@@ -36,14 +36,24 @@ export function SquarePaymentForm({
   const [cashAppAvailable, setCashAppAvailable] = useState(false);
 
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 25; // 5 seconds max
+    
     // Initialize with proper DOM readiness check
     const initializeWhenReady = () => {
       if (cardContainerRef.current) {
         console.log('✅ Container ref available, initializing Square payments');
         initializeSquarePayments();
-      } else {
-        console.log('⏳ Container ref not ready, retrying in 200ms');
+      } else if (retryCount < maxRetries) {
+        retryCount++;
+        if (retryCount % 5 === 1) { // Log every 5th attempt to reduce noise
+          console.log(`⏳ Container ref not ready, retry ${retryCount}/${maxRetries}`);
+        }
         setTimeout(initializeWhenReady, 200);
+      } else {
+        console.error('❌ Container ref never became available after 5 seconds');
+        setError('Payment form failed to initialize. Please refresh the page and try again.');
+        setIsLoading(false);
       }
     };
     
