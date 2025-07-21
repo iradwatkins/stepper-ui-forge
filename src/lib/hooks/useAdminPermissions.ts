@@ -52,7 +52,7 @@ export const useAdminPermissions = (): AdminPermissions => {
         setPermissions(prev => ({ ...prev, loading: true, error: null }));
 
         // Special fallback for designated admin email
-        if (user.email === 'iradwatkins@gmail.com') {
+        if (user.email === import.meta.env.VITE_ADMIN_EMAIL) {
           console.log('🔐 useAdminPermissions: Designated admin email detected:', user.email);
           console.log('🔐 useAdminPermissions: Granting admin access automatically');
           

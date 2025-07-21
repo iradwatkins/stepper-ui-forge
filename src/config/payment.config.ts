@@ -6,8 +6,8 @@ export const PAYMENT_CONFIG = {
       environment: 'production' as const
     },
     sandbox: {
-      appId: process.env.VITE_SQUARE_SANDBOX_APP_ID || 'sandbox-sq0idb-A5J5J5J5J5J5J5J5J5J5JA',
-      locationId: process.env.VITE_SQUARE_SANDBOX_LOCATION_ID || 'LH2G2G2G2G2G2G2G2G2G2G2G2G',
+      appId: process.env.VITE_SQUARE_SANDBOX_APP_ID || '',
+      locationId: process.env.VITE_SQUARE_SANDBOX_LOCATION_ID || '',
       environment: 'sandbox' as const
     }
   },

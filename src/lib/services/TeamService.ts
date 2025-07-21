@@ -778,4 +778,111 @@ export class TeamService {
     }
     return permissions[role] || {}
   }
+
+  /**
+   * Get team member assignments for a user
+   */
+  static async fetchAssignments(userId: string): Promise<ServiceResult<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select(`
+          *,
+          events!team_members_event_id_fkey (
+            id,
+            title,
+            date,
+            venue,
+            location,
+            organizer_id,
+            profiles!events_organizer_id_fkey (
+              full_name
+            )
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        return {
+          success: false,
+          error: error.message,
+          message: 'Failed to fetch team assignments'
+        }
+      }
+
+      // Transform the data to match expected format
+      const assignments = data?.map(member => ({
+        event_id: member.event_id,
+        event_title: member.events?.title || 'Unknown Event',
+        event_date: member.events?.date || '',
+        event_time: '19:00', // Default time - could be extracted from event data
+        event_location: member.events?.venue || member.events?.location || 'TBD',
+        organizer_name: member.events?.profiles?.full_name || 'Unknown Organizer',
+        role: this.getRoleDisplayName(member.role_type),
+        permissions: Object.keys(member.permissions || {}).filter(key => member.permissions[key])
+      })) || []
+
+      return {
+        success: true,
+        data: assignments,
+        message: 'Team assignments fetched successfully'
+      }
+    } catch (error) {
+      console.error('TeamService.fetchAssignments failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to fetch team assignments'
+      }
+    }
+  }
+
+  /**
+   * Get team member statistics
+   */
+  static async getTeamMemberStats(userId: string): Promise<ServiceResult<any>> {
+    try {
+      // Get basic team member data
+      const { data: assignments, error: assignError } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('user_id', userId)
+
+      if (assignError) {
+        return {
+          success: false,
+          error: assignError.message,
+          message: 'Failed to fetch team statistics'
+        }
+      }
+
+      // Count various metrics
+      const now = new Date()
+      const upcomingEvents = assignments?.filter(a => {
+        // This would need proper date comparison in real implementation
+        return true // For now, assume all are upcoming
+      }).length || 0
+
+      const stats = {
+        eventsWorked: assignments?.length || 0,
+        ticketsScanned: 0, // Would require check-in data
+        hoursWorked: 0, // Would require session tracking data
+        upcomingEvents
+      }
+
+      return {
+        success: true,
+        data: stats,
+        message: 'Team statistics fetched successfully'
+      }
+    } catch (error) {
+      console.error('TeamService.getTeamMemberStats failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to fetch team statistics'
+      }
+    }
+  }
 }

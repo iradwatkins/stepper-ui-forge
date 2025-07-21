@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import { FollowerService, FollowerWithPermissions, UserPermissions } from '@/lib/services/FollowerService'
 import { ReferralService } from '@/lib/services/ReferralService'
+import { CommissionService } from '@/lib/services/CommissionService'
 
 interface FollowerManagementDashboardProps {
   organizerId: string
@@ -88,9 +89,10 @@ export function FollowerManagementDashboard({ organizerId }: FollowerManagementD
         return;
       }
       
-      const [followersData, followerCount] = await Promise.all([
+      const [followersData, followerCount, totalCommissionPaid] = await Promise.all([
         FollowerService.getFollowersWithPermissions(organizerId),
-        FollowerService.getFollowerCount(organizerId)
+        FollowerService.getFollowerCount(organizerId),
+        CommissionService.calculateTotalPaid(organizerId)
       ])
 
       setFollowers(followersData)
@@ -101,7 +103,7 @@ export function FollowerManagementDashboard({ organizerId }: FollowerManagementD
         totalPromoted: followersData.filter(f => hasAnyPermissions(f.permissions)).length,
         totalSellers: followersData.filter(f => f.permissions?.can_sell_tickets).length,
         totalTeamMembers: followersData.filter(f => f.permissions?.can_work_events).length,
-        totalCommissionPaid: 0 // TODO: Calculate from commission earnings
+        totalCommissionPaid
       }
       
       setFollowerStats(stats)

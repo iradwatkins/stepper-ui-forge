@@ -433,4 +433,28 @@ export class CommissionService {
       return []
     }
   }
+
+  /**
+   * Calculate total commission paid by an organizer to all followers
+   */
+  static async calculateTotalPaid(organizerId: string): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('commission_earnings')
+        .select('commission_amount')
+        .eq('organizer_id', organizerId)
+        .eq('status', 'paid')
+
+      if (error) {
+        console.error('Error calculating total commission paid:', error)
+        return 0
+      }
+
+      const totalPaid = data?.reduce((sum, earning) => sum + earning.commission_amount, 0) || 0
+      return Math.round(totalPaid * 100) / 100 // Round to 2 decimal places
+    } catch (error) {
+      console.error('Failed to calculate total commission paid:', error)
+      return 0
+    }
+  }
 }

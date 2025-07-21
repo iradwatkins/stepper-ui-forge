@@ -237,7 +237,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Check if we've already attempted admin setup this session
       const setupAttempted = sessionStorage.getItem('adminSetupAttempted')
       
-      if (user && user.email === 'iradwatkins@gmail.com' && !setupAttempted) {
+      if (user && user.email === import.meta.env.VITE_ADMIN_EMAIL && !setupAttempted) {
         console.log('🔐 Auto-setting up admin for:', user.email)
         // Mark as attempted to prevent repeated tries
         sessionStorage.setItem('adminSetupAttempted', 'true')

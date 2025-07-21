@@ -44,7 +44,7 @@ export class ClaudeAPIManager {
     }
 
     this.secondaryConfig = {
-      apiKey: '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',
+      apiKey: process.env.CLAUDE_SECONDARY_API_KEY || '',
       baseUrl: 'https://api.anthropic.com',
       name: 'Secondary',
       errorCount: 0,

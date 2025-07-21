@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client'
  */
 export const setupInitialAdmin = async () => {
   try {
-    const adminEmail = 'iradwatkins@gmail.com'
+    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@example.com'
     
     console.log('Setting up initial admin user:', adminEmail)
     
@@ -111,7 +111,7 @@ export const setupInitialAdmin = async () => {
  */
 export const checkAdminSetup = async () => {
   try {
-    const adminEmail = 'iradwatkins@gmail.com'
+    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@example.com'
     
     // First check if admin columns exist
     const { error: columnCheckError } = await supabase

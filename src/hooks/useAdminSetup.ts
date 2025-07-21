@@ -15,7 +15,7 @@ export const useAdminSetup = () => {
       if (!user || setupAttempted) return
       
       // Only attempt setup for the designated admin email
-      if (user.email === 'iradwatkins@gmail.com') {
+      if (user.email === import.meta.env.VITE_ADMIN_EMAIL) {
         console.log('Performing admin setup for designated admin user')
         setSetupAttempted(true)
         
@@ -44,6 +44,6 @@ export const useAdminSetup = () => {
   return {
     setupAttempted,
     setupResult,
-    isDesignatedAdmin: user?.email === 'iradwatkins@gmail.com'
+    isDesignatedAdmin: user?.email === import.meta.env.VITE_ADMIN_EMAIL
   }
 }

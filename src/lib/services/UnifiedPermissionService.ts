@@ -242,7 +242,7 @@ export class UnifiedPermissionService {
         .single()
 
       // Designated admin email bypass
-      if (profile?.email === 'iradwatkins@gmail.com') {
+      if (profile?.email === import.meta.env.VITE_ADMIN_EMAIL) {
         return {
           isAdmin: true,
           adminLevel: 3,

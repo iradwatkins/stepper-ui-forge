@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/dialog'
 import { QRScanner } from '@/components/QRScanner'
 import { FollowerService } from '@/lib/services/FollowerService'
+import { TeamService } from '@/lib/services/TeamService'
+import { QRValidationService } from '@/lib/services/QRValidationService'
 
 interface TeamMemberDashboardProps {
   userId: string
@@ -81,20 +83,36 @@ export function TeamMemberDashboard({ userId }: TeamMemberDashboardProps) {
     setError(null)
 
     try {
-      // TODO: Implement services to fetch team member data
-      // For now, using mock data
-      const mockAssignments: EventAssignment[] = []
-      const mockActivities: CheckInActivity[] = []
-      const mockStats: TeamStats = {
-        eventsWorked: 0,
-        ticketsScanned: 0,
-        hoursWorked: 0,
-        upcomingEvents: 0
+      // Fetch real team member assignments
+      const assignmentsResult = await TeamService.fetchAssignments(userId)
+      const statsResult = await TeamService.getTeamMemberStats(userId)
+
+      if (assignmentsResult.success) {
+        setEventAssignments(assignmentsResult.data || [])
+      } else {
+        console.warn('Failed to fetch assignments:', assignmentsResult.error)
+        setEventAssignments([])
       }
 
-      setEventAssignments(mockAssignments)
-      setCheckInActivities(mockActivities)
-      setTeamStats(mockStats)
+      if (statsResult.success) {
+        setTeamStats(statsResult.data || {
+          eventsWorked: 0,
+          ticketsScanned: 0,
+          hoursWorked: 0,
+          upcomingEvents: 0
+        })
+      } else {
+        console.warn('Failed to fetch stats:', statsResult.error)
+        setTeamStats({
+          eventsWorked: 0,
+          ticketsScanned: 0,
+          hoursWorked: 0,
+          upcomingEvents: 0
+        })
+      }
+
+      // Mock check-in activities for now (would need separate service)
+      setCheckInActivities([])
 
     } catch (err) {
       console.error('Failed to load team member data:', err)
@@ -106,10 +124,22 @@ export function TeamMemberDashboard({ userId }: TeamMemberDashboardProps) {
 
   const handleQRScan = async (scannedCode: string) => {
     try {
-      // TODO: Implement ticket validation logic
-      console.log('Scanned QR code:', scannedCode)
-      setShowQRScanner(false)
-      // Show success message
+      // Validate the QR code using the real service
+      const validationResult = await QRValidationService.validateQRCode(scannedCode)
+      
+      if (validationResult.valid) {
+        console.log('Valid ticket scanned:', validationResult.ticket)
+        setShowQRScanner(false)
+        
+        // Refresh data to show updated stats
+        loadTeamMemberData()
+        
+        // Show success message - could use toast here
+        alert(`✅ Valid ticket! Holder: ${validationResult.ticket?.holder_name}`)
+      } else {
+        console.warn('Invalid QR code:', validationResult.message)
+        setError(validationResult.message || 'Invalid QR code')
+      }
     } catch (err) {
       console.error('Failed to process QR scan:', err)
       setError('Failed to validate ticket')

@@ -1,14 +1,14 @@
 /**
  * Manual Admin Setup Utility
  * 
- * This utility can be used to manually set up iradwatkins@gmail.com as admin
+ * This utility can be used to manually set up the configured admin email as admin
  * when the automatic setup doesn't work due to database constraints.
  */
 
 import { supabase } from '@/lib/supabase'
 
 export const manualAdminSetup = async () => {
-  const adminEmail = 'iradwatkins@gmail.com'
+  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@example.com'
   
   console.log('🔐 Manual admin setup for:', adminEmail)
   
@@ -132,7 +132,7 @@ export const manualAdminSetup = async () => {
 }
 
 // Function to check admin status
-export const checkAdminStatus = async (email: string = 'iradwatkins@gmail.com') => {
+export const checkAdminStatus = async (email: string = import.meta.env.VITE_ADMIN_EMAIL || 'admin@example.com') => {
   try {
     // First check if admin columns exist
     const { error: columnCheckError } = await supabase
