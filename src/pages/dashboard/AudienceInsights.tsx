@@ -170,9 +170,9 @@ export default function AudienceInsights() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{audienceData?.totalAttendees.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{audienceData?.totalAttendees.toLocaleString() || 0}</div>
             <p className="text-xs text-muted-foreground">
-              +12% from last period
+              Unique attendees
             </p>
           </CardContent>
         </Card>
@@ -184,10 +184,12 @@ export default function AudienceInsights() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {audienceData && Math.round((audienceData.repeatAttendees / audienceData.totalAttendees) * 100)}%
+              {audienceData && audienceData.totalAttendees > 0 
+                ? Math.round((audienceData.repeatAttendees / audienceData.totalAttendees) * 100)
+                : 0}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {audienceData?.repeatAttendees.toLocaleString()} returning attendees
+              {audienceData?.repeatAttendees.toLocaleString() || 0} returning attendees
             </p>
           </CardContent>
         </Card>
@@ -198,9 +200,9 @@ export default function AudienceInsights() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{audienceData?.averageAge}</div>
+            <div className="text-2xl font-bold">{audienceData?.averageAge || 'N/A'}</div>
             <p className="text-xs text-muted-foreground">
-              Years old
+              {audienceData?.averageAge ? 'Years old' : 'No age data'}
             </p>
           </CardContent>
         </Card>
@@ -211,9 +213,9 @@ export default function AudienceInsights() {
             <Heart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{audienceData?.socialEngagement.followers.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{audienceData?.socialEngagement.followers.toLocaleString() || 0}</div>
             <p className="text-xs text-muted-foreground">
-              +{audienceData?.socialEngagement.likes.toLocaleString()} likes this period
+              {audienceData?.socialEngagement.likes.toLocaleString() || 0} event likes
             </p>
           </CardContent>
         </Card>

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { CommissionService } from '@/lib/services/CommissionService'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -33,8 +35,10 @@ interface Sale {
   quantity: number
   unitPrice: number
   commission: number
+  commissionRate: number
   total: number
   purchaserName: string
+  purchaserEmail?: string
   purchaseDate: string
   referralCode: string
   status: 'completed' | 'pending' | 'refunded'
@@ -60,26 +64,120 @@ export default function SalesDashboard() {
   // Load sales data from API
   useEffect(() => {
     const loadSalesData = async () => {
+      if (!user?.id) return
+      
       setIsLoading(true)
       
       try {
-        // TODO: Replace with actual API calls
-        // const salesData = await CommissionService.getUserSales(user?.id, selectedPeriod)
-        // const salesStats = await CommissionService.getUserSalesStats(user?.id, selectedPeriod)
+        // Get commission transactions from database
+        const { data: transactions, error: transError } = await supabase
+          .from('commission_transactions')
+          .select(`
+            *,
+            orders!inner(
+              id,
+              customer_name,
+              customer_email,
+              created_at
+            ),
+            events!inner(
+              id,
+              title
+            ),
+            ticket_types!inner(
+              name
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('status', 'confirmed')
+          .order('created_at', { ascending: false })
+
+        if (transError) throw transError
+
+        // Calculate date range
+        const now = new Date()
+        let startDate = new Date()
         
-        // For now, initialize with empty data
-        setStats({
-          totalEarnings: 0,
-          totalSales: 0,
-          monthlyEarnings: 0,
-          commissionsEarned: 0,
-          averageCommissionRate: 0,
-          topEvent: ''
+        switch (selectedPeriod) {
+          case '7d':
+            startDate.setDate(now.getDate() - 7)
+            break
+          case '30d':
+            startDate.setDate(now.getDate() - 30)
+            break
+          case '90d':
+            startDate.setDate(now.getDate() - 90)
+            break
+          case 'all':
+            startDate = new Date(0) // Beginning of time
+            break
+        }
+
+        // Filter transactions by period
+        const filteredTransactions = transactions?.filter(t => 
+          new Date(t.created_at) >= startDate
+        ) || []
+
+        // Calculate stats
+        const totalEarnings = filteredTransactions.reduce((sum, t) => sum + t.commission_amount, 0)
+        const totalSales = filteredTransactions.length
+        
+        // Calculate monthly earnings (last 30 days)
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(now.getDate() - 30)
+        const monthlyTransactions = filteredTransactions.filter(t => 
+          new Date(t.created_at) >= thirtyDaysAgo
+        )
+        const monthlyEarnings = monthlyTransactions.reduce((sum, t) => sum + t.commission_amount, 0)
+        
+        // Calculate average commission rate
+        const avgRate = filteredTransactions.length > 0
+          ? filteredTransactions.reduce((sum, t) => sum + parseFloat(t.commission_rate), 0) / filteredTransactions.length
+          : 0
+
+        // Find top event
+        const eventSales: Record<string, { title: string; count: number }> = {}
+        filteredTransactions.forEach(t => {
+          const eventId = t.events.id
+          if (!eventSales[eventId]) {
+            eventSales[eventId] = { title: t.events.title, count: 0 }
+          }
+          eventSales[eventId].count += t.quantity
         })
-        setSales([])
+        
+        const topEventData = Object.values(eventSales).sort((a, b) => b.count - a.count)[0]
+        
+        setStats({
+          totalEarnings: totalEarnings / 100, // Convert from cents
+          totalSales,
+          monthlyEarnings: monthlyEarnings / 100,
+          commissionsEarned: totalEarnings / 100,
+          averageCommissionRate: avgRate,
+          topEvent: topEventData?.title || 'N/A'
+        })
+
+        // Map transactions to sales format
+        const salesData: Sale[] = filteredTransactions.map(t => ({
+          id: t.id,
+          eventTitle: t.events.title,
+          ticketType: t.ticket_types.name,
+          quantity: t.quantity,
+          unitPrice: t.ticket_price / 100, // Convert from cents
+          total: (t.ticket_price * t.quantity) / 100, // Total in dollars
+          purchaserName: t.orders.customer_name || 'Guest',
+          purchaserEmail: t.orders.customer_email,
+          commission: t.commission_amount / 100,
+          commissionRate: parseFloat(t.commission_rate),
+          referralCode: t.referral_code || '',
+          purchaseDate: t.created_at,
+          status: 'completed' as const
+        }))
+
+        setSales(salesData)
         
       } catch (error) {
         console.error('Error loading sales data:', error)
+        toast.error('Failed to load sales data')
       } finally {
         setIsLoading(false)
       }
@@ -262,6 +360,7 @@ export default function SalesDashboard() {
                       <TableCell>${sale.total.toFixed(2)}</TableCell>
                       <TableCell className="text-green-600 font-medium">
                         ${sale.commission.toFixed(2)}
+                        <span className="text-xs text-gray-500 ml-1">({sale.commissionRate}%)</span>
                       </TableCell>
                       <TableCell>
                         {new Date(sale.purchaseDate).toLocaleDateString()}

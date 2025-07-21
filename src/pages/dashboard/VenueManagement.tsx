@@ -23,71 +23,56 @@ import {
   Upload,
   Download,
   Eye,
-  Settings
+  Settings,
+  AlertTriangle
 } from 'lucide-react';
 import SeatingLayoutManager from '@/components/seating/SeatingLayoutManager';
 import { toast } from 'sonner';
-
-interface VenueLayout {
-  id: string;
-  name: string;
-  description: string;
-  venueType: 'theater' | 'stadium' | 'arena' | 'table-service' | 'general-admission';
-  imageUrl: string;
-  capacity: number;
-  priceCategories: Array<{
-    id: string;
-    name: string;
-    price: number;
-    color: string;
-  }>;
-  seats: Array<{
-    id: string;
-    x: number;
-    y: number;
-    seatNumber: string;
-    priceCategory: string;
-    isADA: boolean;
-    price: number;
-  }>;
-  isTemplate: boolean;
-  tags: string[];
-  createdAt: Date;
-  updatedAt: Date;
-  eventCount: number; // Number of events using this layout
-}
+import { useAuth } from '@/contexts/AuthContext';
+import { VenueService, type VenueLayout } from '@/lib/services/VenueService';
 
 const VenueManagement: React.FC = () => {
+  const { user } = useAuth();
   const [venues, setVenues] = useState<VenueLayout[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueLayout | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [venueServiceAvailable, setVenueServiceAvailable] = useState(true);
 
-  // Load venues from localStorage (mock data)
+  // Check if venue service is available
   useEffect(() => {
-    const savedVenues = localStorage.getItem('venue_layouts');
-    if (savedVenues) {
-      try {
-        const parsedVenues = JSON.parse(savedVenues).map((venue: Partial<VenueLayout>) => ({
-          ...venue,
-          createdAt: new Date(venue.createdAt),
-          updatedAt: new Date(venue.updatedAt)
-        }));
-        setVenues(parsedVenues);
-      } catch (error) {
-        console.error('Error loading venues:', error);
-      }
-    }
+    const checkAvailability = async () => {
+      const available = await VenueService.isVenueAvailable();
+      setVenueServiceAvailable(available);
+    };
+    checkAvailability();
   }, []);
 
-  // Save venues to localStorage
-  const saveVenues = (updatedVenues: VenueLayout[]) => {
-    localStorage.setItem('venue_layouts', JSON.stringify(updatedVenues));
-    setVenues(updatedVenues);
-  };
+  // Load venues from database
+  useEffect(() => {
+    const loadVenues = async () => {
+      if (!user?.id || !venueServiceAvailable) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const userVenues = await VenueService.getUserVenues(user.id);
+        setVenues(userVenues);
+      } catch (error) {
+        console.error('Error loading venues:', error);
+        toast.error('Failed to load venues');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVenues();
+  }, [user?.id, venueServiceAvailable]);
 
   const handleCreateVenue = () => {
     setSelectedVenue(null);
@@ -101,106 +86,155 @@ const VenueManagement: React.FC = () => {
     setIsEditing(true);
   };
 
-  const handleVenueLayoutSaved = (layout: Partial<VenueLayout>) => {
-    const venueLayout: VenueLayout = {
-      id: layout.id || `venue_${Date.now()}`,
-      name: layout.name,
-      description: layout.description,
-      venueType: layout.venueType,
-      imageUrl: layout.imageUrl,
-      capacity: layout.capacity,
-      priceCategories: layout.priceCategories,
-      seats: layout.seats,
-      isTemplate: layout.isTemplate,
-      tags: layout.tags,
-      createdAt: selectedVenue?.createdAt || new Date(),
-      updatedAt: new Date(),
-      eventCount: selectedVenue?.eventCount || 0
-    };
+  const handleVenueLayoutSaved = async (layout: Partial<VenueLayout>) => {
+    try {
+      setLoading(true);
+      
+      if (selectedVenue) {
+        // Update existing venue
+        const updated = await VenueService.updateVenue(selectedVenue.id, {
+          name: layout.name,
+          description: layout.description,
+          layout_data: {
+            venueType: layout.venueType,
+            imageUrl: layout.imageUrl,
+            capacity: layout.capacity,
+            priceCategories: layout.priceCategories,
+            seats: layout.seats,
+            isTemplate: layout.isTemplate,
+            tags: layout.tags
+          }
+        });
+        
+        if (updated) {
+          const updatedVenues = venues.map(v => 
+            v.id === selectedVenue.id ? updated : v
+          );
+          setVenues(updatedVenues);
+          toast.success('Venue layout updated successfully');
+        } else {
+          throw new Error('Failed to update venue');
+        }
+      } else {
+        // Create new venue
+        const created = await VenueService.createVenue({
+          name: layout.name,
+          description: layout.description,
+          layout_data: {
+            venueType: layout.venueType,
+            imageUrl: layout.imageUrl,
+            capacity: layout.capacity,
+            priceCategories: layout.priceCategories,
+            seats: layout.seats,
+            isTemplate: layout.isTemplate,
+            tags: layout.tags
+          }
+        });
+        
+        if (created) {
+          setVenues([...venues, created]);
+          toast.success('Venue layout created successfully');
+        } else {
+          throw new Error('Failed to create venue');
+        }
+      }
 
-    if (selectedVenue) {
-      // Update existing venue
-      const updatedVenues = venues.map(v => 
-        v.id === selectedVenue.id ? venueLayout : v
-      );
-      saveVenues(updatedVenues);
-      toast.success('Venue layout updated successfully');
-    } else {
-      // Create new venue
-      const updatedVenues = [...venues, venueLayout];
-      saveVenues(updatedVenues);
-      toast.success('Venue layout created successfully');
+      setIsCreating(false);
+      setIsEditing(false);
+      setSelectedVenue(null);
+    } catch (error) {
+      console.error('Failed to save venue:', error);
+      toast.error(selectedVenue ? 'Failed to update venue' : 'Failed to create venue');
+    } finally {
+      setLoading(false);
     }
-
-    setIsCreating(false);
-    setIsEditing(false);
-    setSelectedVenue(null);
   };
 
-  const handleDuplicateVenue = (venue: VenueLayout) => {
-    const duplicatedVenue: VenueLayout = {
-      ...venue,
-      id: `venue_${Date.now()}`,
-      name: `${venue.name} (Copy)`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      eventCount: 0
-    };
-
-    const updatedVenues = [...venues, duplicatedVenue];
-    saveVenues(updatedVenues);
-    toast.success('Venue layout duplicated successfully');
+  const handleDuplicateVenue = async (venue: VenueLayout) => {
+    try {
+      setLoading(true);
+      const duplicated = await VenueService.duplicateVenue(
+        venue.id, 
+        `${venue.name} (Copy)`
+      );
+      
+      if (duplicated) {
+        setVenues([...venues, duplicated]);
+        toast.success('Venue layout duplicated successfully');
+      } else {
+        throw new Error('Failed to duplicate venue');
+      }
+    } catch (error) {
+      console.error('Failed to duplicate venue:', error);
+      toast.error('Failed to duplicate venue layout');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteVenue = (venue: VenueLayout) => {
-    if (venue.eventCount > 0) {
+  const handleDeleteVenue = async (venue: VenueLayout) => {
+    if (venue.eventCount && venue.eventCount > 0) {
       toast.error(`Cannot delete venue. It's being used by ${venue.eventCount} event(s).`);
       return;
     }
 
     if (confirm(`Are you sure you want to delete "${venue.name}"?`)) {
-      const updatedVenues = venues.filter(v => v.id !== venue.id);
-      saveVenues(updatedVenues);
-      toast.success('Venue layout deleted successfully');
+      try {
+        setLoading(true);
+        await VenueService.deleteVenue(venue.id);
+        const updatedVenues = venues.filter(v => v.id !== venue.id);
+        setVenues(updatedVenues);
+        toast.success('Venue layout deleted successfully');
+      } catch (error: any) {
+        console.error('Failed to delete venue:', error);
+        toast.error(error.message || 'Failed to delete venue layout');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const handleExportVenue = (venue: VenueLayout) => {
-    const dataStr = JSON.stringify(venue, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `venue-${venue.name.replace(/[^a-zA-Z0-9]/g, '-')}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    toast.success('Venue layout exported successfully');
+    try {
+      const dataStr = VenueService.exportVenueLayout(venue);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      
+      const exportFileDefaultName = `venue-${venue.name.replace(/[^a-zA-Z0-9]/g, '-')}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+      
+      toast.success('Venue layout exported successfully');
+    } catch (error) {
+      console.error('Failed to export venue:', error);
+      toast.error('Failed to export venue layout');
+    }
   };
 
-  const handleImportVenue = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportVenue = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const importedVenue = JSON.parse(e.target?.result as string);
-        const newVenue: VenueLayout = {
-          ...importedVenue,
-          id: `venue_${Date.now()}`,
-          name: `${importedVenue.name} (Imported)`,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          eventCount: 0
-        };
+        setLoading(true);
+        const jsonData = e.target?.result as string;
+        const imported = await VenueService.importVenueLayout(jsonData);
         
-        const updatedVenues = [...venues, newVenue];
-        saveVenues(updatedVenues);
-        toast.success('Venue layout imported successfully');
+        if (imported) {
+          setVenues([...venues, imported]);
+          toast.success('Venue layout imported successfully');
+        } else {
+          throw new Error('Failed to import venue');
+        }
       } catch (error) {
+        console.error('Failed to import venue:', error);
         toast.error('Error importing venue layout file');
+      } finally {
+        setLoading(false);
       }
     };
     reader.readAsText(file);
@@ -300,7 +334,7 @@ const VenueManagement: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <label htmlFor="import-venue">
-            <Button variant="outline" className="cursor-pointer">
+            <Button variant="outline" className="cursor-pointer" disabled={loading || !venueServiceAvailable}>
               <Upload className="w-4 h-4 mr-2" />
               Import Layout
             </Button>
@@ -312,12 +346,23 @@ const VenueManagement: React.FC = () => {
             onChange={handleImportVenue}
             className="hidden"
           />
-          <Button onClick={handleCreateVenue}>
+          <Button onClick={handleCreateVenue} disabled={loading || !venueServiceAvailable}>
             <Plus className="w-4 h-4 mr-2" />
             Create Venue
           </Button>
         </div>
       </div>
+
+      {/* Service Not Available Alert */}
+      {!venueServiceAvailable && (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            Venue management requires database tables that are not yet created. 
+            Please run the migration: <code className="font-mono bg-yellow-100 px-1 py-0.5 rounded text-sm">20250121_dashboard_production_fixes.sql</code>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -409,8 +454,18 @@ const VenueManagement: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading venues...</p>
+          </div>
+        </div>
+      )}
+
       {/* Venues Grid */}
-      {filteredVenues.length === 0 ? (
+      {!loading && filteredVenues.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

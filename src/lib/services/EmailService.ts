@@ -41,32 +41,86 @@ export class EmailService {
    */
   static async sendTicketConfirmation(data: TicketEmailData): Promise<EmailResult> {
     try {
-      // Generate email template
-      const template = this.generateTicketEmailTemplate(data)
+      console.log('📧 Email Service - Sending ticket confirmation to:', data.customerEmail)
       
-      // For now, this is a mock implementation
-      // In production, this would integrate with an actual email service
-      console.log('📧 Email Service - Sending ticket confirmation:')
-      console.log(`To: ${data.customerEmail}`)
-      console.log(`Subject: ${template.subject}`)
-      console.log(`Tickets: ${data.tickets.length}`)
-      console.log('Template generated successfully')
+      // Get Supabase URL and anon key from environment
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
       
-      // Simulate email sending with a small delay
-      await new Promise(resolve => setTimeout(resolve, 500))
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn('Supabase configuration missing, falling back to mock email')
+        return this.mockEmailSend(data)
+      }
       
-      // Mock success response
-      return {
-        success: true,
-        messageId: `mock_email_${Date.now()}`,
+      // Call the Supabase edge function
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          to: data.customerEmail,
+          type: 'ticket_confirmation',
+          data: data
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
+        console.log('✅ Email sent successfully:', result.messageId)
+        return {
+          success: true,
+          messageId: result.messageId,
+        }
+      } else {
+        console.error('❌ Email sending failed:', result.error)
+        // Fall back to mock for development
+        if (import.meta.env.DEV) {
+          console.log('📧 Development mode - Logging email content:')
+          return this.mockEmailSend(data)
+        }
+        return {
+          success: false,
+          error: result.error || 'Failed to send email',
+        }
       }
       
     } catch (error) {
       console.error('EmailService.sendTicketConfirmation failed:', error)
+      // Fall back to mock in case of network errors during development
+      if (import.meta.env.DEV) {
+        console.log('📧 Development fallback - Logging email content:')
+        return this.mockEmailSend(data)
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown email error',
       }
+    }
+  }
+  
+  /**
+   * Mock email send for development/fallback
+   */
+  private static async mockEmailSend(data: TicketEmailData): Promise<EmailResult> {
+    const template = this.generateTicketEmailTemplate(data)
+    
+    console.log('📧 Mock Email Service - Ticket Confirmation:')
+    console.log(`To: ${data.customerEmail}`)
+    console.log(`Subject: ${template.subject}`)
+    console.log(`Tickets: ${data.tickets.length}`)
+    console.log('--- Email Content Preview ---')
+    console.log(template.textContent)
+    console.log('--- End Email Content ---')
+    
+    // Simulate email sending with a small delay
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    return {
+      success: true,
+      messageId: `mock_email_${Date.now()}`,
     }
   }
 

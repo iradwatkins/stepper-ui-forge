@@ -18,6 +18,12 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  LiveAnalyticsService, 
+  type LiveAnalyticsStats,
+  type DuplicateAlert,
+  type StaffPerformance 
+} from '@/lib/services/LiveAnalyticsService'
 
 interface RealTimeAnalyticsDashboardProps {
   eventId: string
@@ -25,32 +31,6 @@ interface RealTimeAnalyticsDashboardProps {
   compact?: boolean
 }
 
-interface AnalyticsStats {
-  total_attempts: number
-  successful_checkins: number
-  duplicate_attempts: number
-  invalid_tickets: number
-  error_rate: number
-  current_rate: number
-  peak_time: string | null
-}
-
-interface DuplicateAlert {
-  id: string
-  ticket_id: string
-  duplicate_attempts: string[]
-  alert_level: 'low' | 'medium' | 'high'
-  resolved: boolean
-  created_at: string
-}
-
-interface StaffPerformance {
-  staff_id: string
-  staff_name: string
-  total_scans: number
-  successful_scans: number
-  duplicate_detections: number
-}
 
 export function RealTimeAnalyticsDashboard({ 
   eventId, 
@@ -59,7 +39,7 @@ export function RealTimeAnalyticsDashboard({
 }: RealTimeAnalyticsDashboardProps) {
   const [alertsEnabled, setAlertsEnabled] = useState(true)
   const [showDetails, setShowDetails] = useState(!compact)
-  const [stats, setStats] = useState<AnalyticsStats | null>(null)
+  const [stats, setStats] = useState<LiveAnalyticsStats | null>(null)
   const [duplicateAlerts, setDuplicateAlerts] = useState<DuplicateAlert[]>([])
   const [staffPerformance, setStaffPerformance] = useState<StaffPerformance[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,61 +48,53 @@ export function RealTimeAnalyticsDashboard({
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
+    if (!eventId) return
+    
     loadAnalyticsData()
     
     // Set up auto-refresh
     const interval = setInterval(loadAnalyticsData, 10000) // Refresh every 10 seconds
-    return () => clearInterval(interval)
+    
+    // Set up real-time subscription
+    const subscription = LiveAnalyticsService.subscribeToCheckIns(eventId, (checkIn) => {
+      // Refresh data when new check-in arrives
+      loadAnalyticsData()
+    })
+    
+    return () => {
+      clearInterval(interval)
+      subscription.unsubscribe()
+    }
   }, [eventId])
 
   const loadAnalyticsData = async () => {
+    if (!eventId) return
+    
     try {
       setIsRefreshing(true)
       setError(null)
       
-      // Mock data for development - replace with actual service calls
-      const mockStats: AnalyticsStats = {
-        total_attempts: 157,
-        successful_checkins: 145,
-        duplicate_attempts: 8,
-        invalid_tickets: 4,
-        error_rate: 7.6,
-        current_rate: 12,
-        peak_time: '14:30'
-      }
+      // Load real data from service
+      const [analyticsStats, alerts, performance] = await Promise.all([
+        LiveAnalyticsService.getEventAnalytics(eventId),
+        LiveAnalyticsService.getDuplicateAlerts(eventId),
+        LiveAnalyticsService.getStaffPerformance(eventId)
+      ])
 
-      const mockAlerts: DuplicateAlert[] = [
-        {
-          id: 'alert_1',
-          ticket_id: 'ticket_12345',
-          duplicate_attempts: ['attempt_1', 'attempt_2'],
-          alert_level: 'medium',
-          resolved: false,
-          created_at: new Date().toISOString()
-        }
-      ]
-
-      const mockStaffPerformance: StaffPerformance[] = [
-        {
-          staff_id: 'staff_1',
-          staff_name: 'Alex Johnson',
-          total_scans: 45,
-          successful_scans: 44,
-          duplicate_detections: 1
-        },
-        {
-          staff_id: 'staff_2',
-          staff_name: 'Jordan Smith',
-          total_scans: 38,
-          successful_scans: 37,
-          duplicate_detections: 1
-        }
-      ]
-
-      setStats(mockStats)
-      setDuplicateAlerts(mockAlerts)
-      setStaffPerformance(mockStaffPerformance)
+      setStats(analyticsStats)
+      setDuplicateAlerts(alerts)
+      setStaffPerformance(performance)
       setLastUpdated(new Date())
+      
+      // Notify parent about unresolved alerts
+      const unresolvedCount = alerts.filter(a => !a.resolved).length
+      if (unresolvedCount > 0 && onDuplicateAlert) {
+        alerts.forEach(alert => {
+          if (!alert.resolved) {
+            onDuplicateAlert(alert.id)
+          }
+        })
+      }
       
     } catch (err) {
       setError('Failed to load analytics data')
@@ -476,9 +448,11 @@ export function RealTimeAnalyticsDashboard({
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium">{staff.successful_scans}/{staff.total_scans}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {staff.duplicate_detections} duplicates detected
+                        <Badge variant={staff.success_rate >= 95 ? 'default' : 'secondary'}>
+                          {staff.success_rate.toFixed(1)}%
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {staff.duplicate_detections} duplicates
                         </div>
                       </div>
                     </div>
