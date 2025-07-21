@@ -70,7 +70,7 @@ async function createSquarePayment(sourceId: string, amount: number, currency: s
     source_id: sourceId,
     idempotency_key: generateUUID(),
     amount_money: {
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: amount, // Amount is already in cents from frontend
       currency: currency,
     },
     location_id: SQUARE_LOCATION_ID,
@@ -145,7 +145,7 @@ async function refundSquarePayment(paymentId: string, amount?: number, reason?: 
     payment_id: paymentId,
     ...(amount && {
       amount_money: {
-        amount: Math.round(amount * 100), // Convert to cents
+        amount: amount, // Amount is already in cents
         currency: 'USD',
       }
     }),
