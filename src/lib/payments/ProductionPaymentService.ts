@@ -148,14 +148,14 @@ export class ProductionPaymentService {
         requestBody = {
           action: 'create_payment',
           sourceId: paymentData.sourceId,
-          amount: paymentData.amount / 100, // Convert cents to dollars for Square
+          amount: paymentData.amount, // Keep amount in cents
           currency: 'USD'
         };
         
         console.log('[SQUARE] Sending payment request:', {
           sourceIdPrefix: paymentData.sourceId.substring(0, 30),
           amountInCents: paymentData.amount,
-          amountInDollars: paymentData.amount / 100
+          note: 'Amount is in cents, edge function will handle conversion'
         });
       } else if (paymentData.gateway === 'cashapp') {
         // Cash App requires payment token just like Square

@@ -7,6 +7,16 @@ const SQUARE_ACCESS_TOKEN = Deno.env.get('SQUARE_ACCESS_TOKEN');
 const SQUARE_LOCATION_ID = Deno.env.get('SQUARE_LOCATION_ID');
 const SQUARE_ENVIRONMENT = Deno.env.get('SQUARE_ENVIRONMENT') || 'sandbox';
 
+// Log configuration status for debugging
+console.log('Square Edge Function Configuration:', {
+  hasApplicationId: !!SQUARE_APPLICATION_ID,
+  hasAccessToken: !!SQUARE_ACCESS_TOKEN,
+  hasLocationId: !!SQUARE_LOCATION_ID,
+  environment: SQUARE_ENVIRONMENT,
+  applicationIdPrefix: SQUARE_APPLICATION_ID ? SQUARE_APPLICATION_ID.substring(0, 15) + '...' : 'NOT SET',
+  locationId: SQUARE_LOCATION_ID || 'NOT SET'
+});
+
 const SQUARE_BASE_URL = SQUARE_ENVIRONMENT === 'production' 
   ? 'https://connect.squareup.com'
   : 'https://connect.squareupsandbox.com';
@@ -43,7 +53,17 @@ async function createSquarePayment(sourceId: string, amount: number, currency: s
 
   // Validate configuration
   if (!SQUARE_ACCESS_TOKEN || !SQUARE_LOCATION_ID) {
-    throw new Error('Square configuration missing: Access token or Location ID not set');
+    const missingVars = [];
+    if (!SQUARE_ACCESS_TOKEN) missingVars.push('SQUARE_ACCESS_TOKEN');
+    if (!SQUARE_LOCATION_ID) missingVars.push('SQUARE_LOCATION_ID');
+    
+    console.error('Square configuration error:', {
+      missing: missingVars,
+      environment: SQUARE_ENVIRONMENT,
+      hint: 'Please set these environment variables in Supabase Dashboard → Edge Functions → Secrets'
+    });
+    
+    throw new Error(`Square configuration missing: ${missingVars.join(', ')} not set. Please configure in Supabase Dashboard.`);
   }
 
   const paymentData = {
@@ -293,17 +313,26 @@ serve(async (req) => {
             );
           } catch (error) {
             console.error('Payment creation failed:', error);
+            
+            // Check if it's a configuration error
+            const isConfigError = error.message && error.message.includes('Square configuration missing');
+            
             return new Response(
               JSON.stringify({ 
                 error: error.message || 'Payment creation failed',
                 details: {
                   environment: SQUARE_ENVIRONMENT,
                   baseUrl: SQUARE_BASE_URL,
-                  hasCredentials: !!SQUARE_ACCESS_TOKEN && !!SQUARE_LOCATION_ID
+                  hasCredentials: !!SQUARE_ACCESS_TOKEN && !!SQUARE_LOCATION_ID,
+                  configuredAppId: !!SQUARE_APPLICATION_ID,
+                  configuredLocationId: !!SQUARE_LOCATION_ID,
+                  configuredAccessToken: !!SQUARE_ACCESS_TOKEN,
+                  isConfigError,
+                  hint: isConfigError ? 'Please configure Square environment variables in Supabase Dashboard' : undefined
                 }
               }),
               { 
-                status: 500, 
+                status: isConfigError ? 503 : 500, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
               }
             );
