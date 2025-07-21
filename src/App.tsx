@@ -79,7 +79,7 @@ const SquarePaymentDebug = lazy(() => import("./pages/SquarePaymentDebug"));
 const Schedule = lazy(() => import("./pages/dashboard/Schedule"));
 const AudienceInsights = lazy(() => import("./pages/dashboard/AudienceInsights"));
 const VenueManagement = lazy(() => import("./pages/dashboard/VenueManagement"));
-const PaymentTestPage = lazy(() => import("./pages/PaymentTest"));
+const PaymentTestPage = lazy(() => import("./pages/PaymentTestPage"));
 const CashPaymentDashboardPage = lazy(() => import("./pages/CashPaymentDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));

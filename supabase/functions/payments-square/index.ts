@@ -1,17 +1,71 @@
 // supabase/functions/payments-square/index.ts
-// FIXED VERSION - Handles all common issues
+// FIXED VERSION - Handles GET health checks and POST payments
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
 }
 
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  // Handle GET requests (health checks)
+  if (req.method === 'GET') {
+    const url = new URL(req.url)
+    
+    // Health check endpoint
+    if (url.pathname.includes('health') || url.searchParams.has('health')) {
+      const hasToken = !!Deno.env.get('SQUARE_ACCESS_TOKEN')
+      const hasLocation = !!Deno.env.get('SQUARE_LOCATION_ID')
+      
+      return new Response(
+        JSON.stringify({
+          status: 'healthy',
+          gateway: 'square',
+          timestamp: new Date().toISOString(),
+          environment: Deno.env.get('SQUARE_ENVIRONMENT') || 'production',
+          configured: hasToken && hasLocation,
+          details: {
+            hasAccessToken: hasToken,
+            hasLocationId: hasLocation
+          }
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      )
+    }
+    
+    // Default GET response for health check
+    return new Response(
+      JSON.stringify({
+        status: 'healthy',
+        gateway: 'square',
+        message: 'Square payment gateway is operational'
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
+    )
+  }
+
+  // Handle POST requests (payments)
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed. Use POST for payments or GET for health check.' }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 405
+      }
+    )
   }
 
   console.log('Payment request received')
