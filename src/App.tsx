@@ -17,8 +17,6 @@ import { Loader2 } from "lucide-react";
 // Load admin setup utilities for browser console access
 import "@/utils/setupAdmin";
 
-// Load registration tracer for Gmail registration testing
-import { registrationTracer } from "@/utils/registrationTracer";
 
 // Loading component for lazy loaded routes
 const PageLoader = () => (
@@ -72,17 +70,11 @@ const SalesDashboard = lazy(() => import("./pages/dashboard/SalesDashboard"));
 const ReferralCodes = lazy(() => import("./pages/dashboard/ReferralCodes"));
 const Earnings = lazy(() => import("./pages/dashboard/Earnings"));
 const EventAssignments = lazy(() => import("./pages/dashboard/EventAssignments"));
-const TestPremiumEvent = lazy(() => import("./pages/TestPremiumEvent"));
-const TestSeating = lazy(() => import("./pages/TestSeating"));
-const SquareTest = lazy(() => import("./pages/SquareTest"));
-const SquarePaymentDebug = lazy(() => import("./pages/SquarePaymentDebug"));
 const Schedule = lazy(() => import("./pages/dashboard/Schedule"));
 const AudienceInsights = lazy(() => import("./pages/dashboard/AudienceInsights"));
 const VenueManagement = lazy(() => import("./pages/dashboard/VenueManagement"));
-const PaymentTestPage = lazy(() => import("./pages/PaymentTestPage"));
 const CashPaymentDashboardPage = lazy(() => import("./pages/CashPaymentDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const Auth = lazy(() => import("./pages/Auth"));
 const AdminAuth = lazy(() => import("./pages/AdminAuth"));
 const AccountAuth = lazy(() => import("./pages/AccountAuth"));
 const PaymentConfiguration = lazy(() => import("./pages/dashboard/admin/PaymentConfiguration"));
@@ -91,17 +83,8 @@ const SellerPayouts = lazy(() => import("./pages/SellerPayouts"));
 const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
 const PayPalCallback = lazy(() => import("./pages/PayPalCallback"));
 const SquareOAuthCallback = lazy(() => import("./pages/SquareOAuthCallback"));
-const PaymentFunctionTest = lazy(() => import("./pages/PaymentFunctionTest"));
-const PaymentDebugTest = lazy(() => import("./pages/PaymentDebugTest"));
-const CashAppDiagnostic = lazy(() => import("./pages/CashAppDiagnostic"));
-const SquareDebugTest = lazy(() => import("./pages/SquareDebugTest"));
-const SquareMethodsTest = lazy(() => import("./pages/SquareMethodsTest"));
 const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
-const DatabaseTest = lazy(() => import("./pages/DatabaseTest"));
-const CashAppPayImplementation = lazy(() => import("./pages/CashAppPayImplementation"));
-const PaymentSystemTest = lazy(() => import("./pages/PaymentSystemTest"));
-const CreateProductionEvents = lazy(() => import("./pages/CreateProductionEvents"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -135,28 +118,6 @@ const AppContent = () => {
           </ProtectedRoute>
         } />
         <Route path="/my-tickets" element={<MyTickets />} />
-        <Route path="/payment-test" element={<PaymentTestPage />} />
-        <Route path="/payment-system-test" element={<PaymentSystemTest />} />
-        <Route path="/payment-function-test" element={<PaymentFunctionTest />} />
-        <Route path="/payment-debug-test" element={<PaymentDebugTest />} />
-        <Route path="/cashapp-diagnostic" element={<CashAppDiagnostic />} />
-        <Route path="/square-debug-test" element={<SquareDebugTest />} />
-        <Route path="/square-methods-test" element={<SquareMethodsTest />} />
-        <Route path="/test-premium-event" element={
-          <ProtectedRoute>
-            <TestPremiumEvent />
-          </ProtectedRoute>
-        } />
-        <Route path="/cashapp-pay-implementation" element={<CashAppPayImplementation />} />
-        <Route path="/test-seating" element={
-          <ProtectedRoute>
-            <TestSeating />
-          </ProtectedRoute>
-        } />
-        <Route path="/database-test" element={<DatabaseTest />} />
-        <Route path="/square-test" element={<SquareTest />} />
-        <Route path="/create-production-events" element={<CreateProductionEvents />} />
-        <Route path="/square-debug" element={<SquarePaymentDebug />} />
         <Route path="/create-event" element={
           <ProtectedRoute>
             <CreateEventWizard />

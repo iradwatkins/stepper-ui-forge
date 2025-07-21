@@ -183,3 +183,5 @@ export function PayPalCallback() {
     </div>
   );
 }
+
+export default PayPalCallback;
