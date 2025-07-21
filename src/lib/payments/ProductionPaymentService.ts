@@ -148,9 +148,15 @@ export class ProductionPaymentService {
         requestBody = {
           action: 'create_payment',
           sourceId: paymentData.sourceId,
-          amount: paymentData.amount,
+          amount: paymentData.amount / 100, // Convert cents to dollars for Square
           currency: 'USD'
         };
+        
+        console.log('[SQUARE] Sending payment request:', {
+          sourceIdPrefix: paymentData.sourceId.substring(0, 30),
+          amountInCents: paymentData.amount,
+          amountInDollars: paymentData.amount / 100
+        });
       } else if (paymentData.gateway === 'cashapp') {
         // Cash App requires payment token just like Square
         if (!paymentData.sourceId) {
@@ -189,6 +195,19 @@ export class ProductionPaymentService {
       const responseData = await response.json();
 
       if (!response.ok) {
+        // Log the full error for debugging
+        console.error(`[${gateway.toUpperCase()}] Payment failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          responseData,
+          paymentData: {
+            gateway,
+            amount: paymentData.amount,
+            hasSourceId: !!paymentData.sourceId,
+            sourceIdPrefix: paymentData.sourceId?.substring(0, 20)
+          }
+        });
+        
         // Map gateway-specific errors
         const gatewayError = responseData.error || responseData.code || 'UNKNOWN_ERROR';
         const paymentError = mapGatewayError(gatewayError, gateway, responseData);
@@ -204,7 +223,7 @@ export class ProductionPaymentService {
         
         return {
           success: false,
-          error: paymentError.userMessage,
+          error: paymentError.userMessage || `Payment failed: ${responseData.error || 'Unknown error'}`,
           errorCode: paymentError.code,
           retryable: paymentError.retryable
         };
