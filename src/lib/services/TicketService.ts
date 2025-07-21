@@ -203,8 +203,21 @@ export class TicketService {
     }
   }
 
-  static async getTicketsByUser(userId: string): Promise<TicketWithRelations[]> {
+  static async getTicketsByUser(userEmail: string): Promise<TicketWithRelations[]> {
     try {
+      // First get all orders for this user
+      const { data: userOrders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('customer_email', userEmail)
+
+      if (ordersError) throw ordersError
+      if (!userOrders || userOrders.length === 0) return []
+
+      // Get the order IDs
+      const orderIds = userOrders.map(order => order.id)
+
+      // Now get all tickets for those orders
       const { data: tickets, error } = await supabase
         .from('tickets')
         .select(`
@@ -228,7 +241,7 @@ export class TicketService {
             created_at
           )
         `)
-        .eq('orders.customer_email', userId)
+        .in('order_id', orderIds)
         .order('created_at', { ascending: false })
 
       if (error) throw error

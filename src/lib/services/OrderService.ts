@@ -32,6 +32,7 @@ interface OrderInsert {
   order_status?: 'pending' | 'processing' | 'awaiting_cash_payment' | 'cash_confirmed' | 'completed' | 'cancelled' | 'refunded'
   payment_intent_id?: string | null
   payment_method?: string | null
+  user_id?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -116,6 +117,9 @@ export class OrderService {
           return sum + (item.price * item.quantity)
         }, 0)
 
+        // Get current user ID from auth
+        const { data: { user } } = await db.auth.getUser()
+        
         // Create order record
         const orderData: OrderInsert = {
           event_id: eventId,
@@ -127,6 +131,7 @@ export class OrderService {
           order_status: request.payment.status === 'awaiting_cash_payment' ? 'awaiting_cash_payment' : 'completed',
           payment_intent_id: request.payment.paymentIntentId || null,
           payment_method: request.payment.paymentMethod,
+          user_id: user?.id || null, // Add user_id to the order
         }
 
         const { data: order, error: orderError } = await db

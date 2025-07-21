@@ -157,7 +157,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
       const orderId = `order_${Date.now()}_${user?.id || 'guest'}`;
       
       const paymentData = {
-        amount: seatCheckoutMode ? seatTotal : total,
+        amount: Math.round((seatCheckoutMode ? seatTotal : total) * 100), // Convert to cents
         gateway: selectedGateway,
         orderId,
         customerEmail,
@@ -201,7 +201,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             paypalOrderId: result.data.paypalOrderId,
             orderId: orderId,
             customerEmail,
-            amount: seatCheckoutMode ? seatTotal : total,
+            amount: Math.round((seatCheckoutMode ? seatTotal : total) * 100), // Store in cents
             seatCheckoutMode,
             items: seatCheckoutMode ? seatDetails : items,
             sessionId,
@@ -226,7 +226,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             paymentId: result.data.paymentId,
             orderId: orderId,
             customerEmail,
-            amount: seatCheckoutMode ? seatTotal : total,
+            amount: Math.round((seatCheckoutMode ? seatTotal : total) * 100), // Store in cents
             seatCheckoutMode,
             items: seatCheckoutMode ? seatDetails : items,
             sessionId,

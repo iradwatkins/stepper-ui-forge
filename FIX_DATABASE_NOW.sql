@@ -14,6 +14,9 @@ ADD COLUMN IF NOT EXISTS customer_name TEXT;
 ALTER TABLE orders 
 ADD COLUMN IF NOT EXISTS customer_phone TEXT;
 
+ALTER TABLE orders 
+ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
+
 -- 2. Rename columns if needed
 DO $$
 BEGIN

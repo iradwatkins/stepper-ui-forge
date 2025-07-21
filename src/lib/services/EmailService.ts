@@ -132,7 +132,7 @@ export class EmailService {
             `).join('')}
             
             <div class="total">
-                <p>Order Total: $${orderTotal.toFixed(2)}</p>
+                <p>Order Total: $${(orderTotal / 100).toFixed(2)}</p>
                 <p>Order ID: ${orderId}</p>
             </div>
         </div>
@@ -169,7 +169,7 @@ ${tickets.map(ticket => `
 `).join('')}
 
 Order Summary:
-Total: $${orderTotal.toFixed(2)}
+Total: $${(orderTotal / 100).toFixed(2)}
 Order ID: ${orderId}
 
 Important: Please save this email and bring your QR codes to the event.
@@ -202,7 +202,7 @@ Thank you for your purchase!
       console.log(`To: ${customerEmail}`)
       console.log(`Subject: ${subject}`)
       console.log(`Order ID: ${orderId}`)
-      console.log(`Total: $${orderTotal.toFixed(2)}`)
+      console.log(`Total: $${(orderTotal / 100).toFixed(2)}`)
       
       // Simulate email sending
       await new Promise(resolve => setTimeout(resolve, 300))

@@ -171,13 +171,19 @@ export default function PaymentTestPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="font-semibold mb-2">If "order_status column not found" error:</h4>
+            <h4 className="font-semibold mb-2 text-red-600">🚨 If you see "row-level security policy" error:</h4>
             <ol className="list-decimal list-inside space-y-1 text-sm">
               <li>Go to <a href="https://supabase.com/dashboard/project/aszzhlgwfbijaotfddsh/sql/new" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Supabase SQL Editor</a></li>
-              <li>Copy and run the contents of <code className="bg-gray-100 px-1">FIX_DATABASE_NOW.sql</code></li>
-              <li>Wait 10 seconds for schema to refresh</li>
-              <li>Test checkout again</li>
+              <li>Copy and run ALL contents of <code className="bg-gray-100 px-1 font-bold">COMPLETE_FIX.sql</code></li>
+              <li>This fixes both database schema AND security policies</li>
+              <li>Wait 10 seconds, then test checkout again</li>
             </ol>
+          </div>
+          
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <p className="text-sm font-semibold text-yellow-800">Quick Copy Command:</p>
+            <code className="block mt-1 p-2 bg-white text-xs">cat COMPLETE_FIX.sql | pbcopy</code>
+            <p className="text-xs text-yellow-700 mt-1">This copies the fix to your clipboard</p>
           </div>
 
           <div>

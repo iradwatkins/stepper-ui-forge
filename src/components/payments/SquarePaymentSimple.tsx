@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CreditCard, Loader2 } from 'lucide-react';
 
 interface SquarePaymentSimpleProps {
-  amount: number;
+  amount: number; // Amount in cents (e.g., 5200 for $52.00)
   onPaymentToken: (token: string, paymentMethod: 'card' | 'cashapp') => void;
   onError: (error: string) => void;
   isProcessing?: boolean;
@@ -163,7 +163,7 @@ export function SquarePaymentSimple({
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Pay ${amount.toFixed(2)}
+                Pay ${(amount / 100).toFixed(2)}
               </>
             )}
           </Button>
