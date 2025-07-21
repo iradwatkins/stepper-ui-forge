@@ -38,7 +38,9 @@ ADD COLUMN IF NOT EXISTS ticket_type_id UUID REFERENCES ticket_types(id);
 -- Fix events table
 ALTER TABLE events 
 ADD COLUMN IF NOT EXISTS venue TEXT,
-ADD COLUMN IF NOT EXISTS location TEXT;
+ADD COLUMN IF NOT EXISTS location TEXT,
+ADD COLUMN IF NOT EXISTS organizer_id UUID REFERENCES auth.users(id),
+ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES auth.users(id);
 
 -- PART 2: Fix RLS Policies
 -- ========================
@@ -116,11 +118,37 @@ GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 -- ============================
 NOTIFY pgrst, 'reload schema';
 
--- PART 4.5: Ensure tickets table has proper foreign keys
--- ========================================================
+-- PART 4.5: Ensure tickets table has proper foreign keys and ticket_logs table exists
+-- ==================================================================================
 ALTER TABLE tickets 
 ADD COLUMN IF NOT EXISTS order_id UUID REFERENCES orders(id),
 ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES events(id);
+
+-- Create ticket_logs table if it doesn't exist
+CREATE TABLE IF NOT EXISTS ticket_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  level TEXT NOT NULL,
+  message TEXT NOT NULL,
+  context JSONB DEFAULT '{}',
+  duration_ms INTEGER,
+  error_code TEXT,
+  stack_trace TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS on ticket_logs
+ALTER TABLE ticket_logs ENABLE ROW LEVEL SECURITY;
+
+-- Allow authenticated users to create ticket logs
+CREATE POLICY IF NOT EXISTS "Auth users can create ticket logs" ON ticket_logs
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Allow users to view their own ticket logs
+CREATE POLICY IF NOT EXISTS "Users can view own ticket logs" ON ticket_logs
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- Grant permissions
+GRANT ALL ON ticket_logs TO authenticated;
 
 -- PART 5: Verify everything worked
 -- =================================

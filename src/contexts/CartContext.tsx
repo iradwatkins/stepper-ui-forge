@@ -261,12 +261,22 @@ export const CartProvider = ({ children }: CartProviderProps) => {
 
   // Add item to cart
   const addItem = (ticketType: TicketType, event: Event, quantity: number) => {
+    // Calculate current price (early bird if applicable)
+    let currentPrice = ticketType.price;
+    if (ticketType.early_bird_price && ticketType.early_bird_until) {
+      const now = new Date();
+      const earlyBirdEnd = new Date(ticketType.early_bird_until);
+      if (now <= earlyBirdEnd) {
+        currentPrice = ticketType.early_bird_price;
+      }
+    }
+    
     const cartItem: CartItem = {
       id: `${ticketType.id}-${Date.now()}`, // Unique ID for cart item
       ticketTypeId: ticketType.id,
       eventId: event.id,
       quantity: Math.min(quantity, ticketType.max_per_person),
-      price: ticketType.price,
+      price: currentPrice, // Use the calculated current price
       title: ticketType.name,
       description: ticketType.description || undefined,
       eventTitle: event.title,
