@@ -101,6 +101,7 @@ const QRScanner = lazy(() => import("./pages/QRScanner"));
 const DatabaseTest = lazy(() => import("./pages/DatabaseTest"));
 const CashAppPayImplementation = lazy(() => import("./pages/CashAppPayImplementation"));
 const PaymentSystemTest = lazy(() => import("./pages/PaymentSystemTest"));
+const CreateProductionEvents = lazy(() => import("./pages/CreateProductionEvents"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -154,6 +155,7 @@ const AppContent = () => {
         } />
         <Route path="/database-test" element={<DatabaseTest />} />
         <Route path="/square-test" element={<SquareTest />} />
+        <Route path="/create-production-events" element={<CreateProductionEvents />} />
         <Route path="/square-debug" element={<SquarePaymentDebug />} />
         <Route path="/create-event" element={
           <ProtectedRoute>
