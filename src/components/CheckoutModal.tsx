@@ -245,23 +245,48 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
         try {
           // Create order after successful payment
           console.log('Creating order for payment:', result);
-          // @ts-ignore - Service call with proper data
-          const order = await OrderService.createOrder({
-            customer_email: customerEmail,
-            customer_name: user?.user_metadata?.full_name || null,
-            total_amount: seatCheckoutMode ? seatTotal : total,
-            payment_intent_id: result.data?.transactionId || null,
-            payment_method: selectedGateway,
-            order_status: 'completed',
-            payment_status: 'completed',
-            event_id: eventId || items[0]?.eventId || null
-          });
+          
+          // Format data according to OrderService expectations
+          const orderRequest = {
+            customer: {
+              email: customerEmail,
+              name: user?.user_metadata?.full_name || undefined,
+              phone: undefined
+            },
+            payment: {
+              paymentIntentId: result.data?.transactionId || result.data?.paymentId || undefined,
+              paymentMethod: selectedGateway,
+              totalAmount: seatCheckoutMode ? seatTotal : total,
+              status: 'completed' as const
+            },
+            cartItems: seatCheckoutMode && seatDetails ? 
+              // Convert seat details to cart items format
+              seatDetails.map(seat => ({
+                id: `seat-${seat.id}`,
+                ticketTypeId: seat.id, // Using seat ID as ticket type
+                eventId: eventId!,
+                eventTitle: eventTitle || 'Event',
+                title: `Seat ${seat.seatNumber}`,
+                description: seat.category,
+                price: seat.price,
+                quantity: 1,
+                eventDate: eventDate || '',
+                eventTime: eventTime || '',
+                eventLocation: eventLocation || ''
+              })) : 
+              items
+          };
 
-          console.log('Order created:', order);
+          const orderResult = await OrderService.createOrder(orderRequest);
+
+          if (!orderResult.success) {
+            throw new Error(orderResult.error || 'Failed to create order');
+          }
+
+          console.log('Order created:', orderResult.order);
 
           // Generate tickets for the order
-          // @ts-ignore - Service call with proper data
-          const tickets = await TicketService.generateTicketsForOrder(order.id);
+          const tickets = await TicketService.generateTicketsForOrder(orderResult.order.id);
           console.log('Tickets generated:', tickets);
 
           if (!tickets || tickets.length === 0) {
@@ -272,7 +297,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           try {
             // @ts-ignore - Email data structure
             const emailData = {
-              customerName: order.customer_name || 'Valued Customer',
+              customerName: orderResult.order.customer_name || 'Valued Customer',
               customerEmail: customerEmail,
               eventTitle: tickets[0]?.ticket_types?.events?.title || eventTitle || 'Event',
               eventDate: tickets[0]?.ticket_types?.events?.date || new Date().toISOString(),
@@ -284,8 +309,8 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                 qrCode: ticket.qr_code || '',
                 holderName: ticket.holder_name || 'Ticket Holder'
               })),
-              orderTotal: order.total_amount,
-              orderId: order.id
+              orderTotal: orderResult.order.total_amount,
+              orderId: orderResult.order.id
             };
             await EmailService.sendTicketConfirmation(emailData);
             console.log('Email sent successfully');
@@ -304,9 +329,9 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
               const completionResult = await seatingService.completeSeatPurchase(
                 sessionId,
                 eventId,
-                order.id,
+                orderResult.order.id,
                 customerEmail,
-                order.customer_name || 'Ticket Holder',
+                orderResult.order.customer_name || 'Ticket Holder',
                 selectedGateway
               );
               console.log('Seat purchase completed:', completionResult);
