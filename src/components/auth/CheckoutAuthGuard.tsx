@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, LogIn } from "lucide-react";
-import { LoginDialog } from "./LoginDialog";
-import { RegisterDialog } from "./RegisterDialog";
+import { UnifiedAuthModal } from "./UnifiedAuthModal";
 import { useState } from "react";
 
 interface CheckoutAuthGuardProps {
@@ -12,16 +11,14 @@ interface CheckoutAuthGuardProps {
 }
 
 export function CheckoutAuthGuard({ itemCount, totalAmount, onAuthenticated }: CheckoutAuthGuardProps) {
-  const [showLogin, setShowLogin] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
 
   const handleAuthSuccess = () => {
     // Store checkout intent for post-login redirect
     localStorage.setItem('checkoutIntent', 'true');
     
-    // Close dialogs
-    setShowLogin(false);
-    setShowRegister(false);
+    // Close modal
+    setShowAuth(false);
     
     // Notify parent component
     if (onAuthenticated) {
@@ -52,19 +49,10 @@ export function CheckoutAuthGuard({ itemCount, totalAmount, onAuthenticated }: C
             <Button 
               className="w-full" 
               size="lg"
-              onClick={() => setShowLogin(true)}
+              onClick={() => setShowAuth(true)}
             >
               <LogIn className="w-4 h-4 mr-2" />
-              Sign In to Continue
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              size="lg"
-              onClick={() => setShowRegister(true)}
-            >
-              Create Account
+              Sign In or Register to Continue
             </Button>
           </div>
           
@@ -74,18 +62,14 @@ export function CheckoutAuthGuard({ itemCount, totalAmount, onAuthenticated }: C
         </CardContent>
       </Card>
 
-      <LoginDialog 
-        isOpen={showLogin} 
-        onClose={() => setShowLogin(false)}
+      <UnifiedAuthModal 
+        title="Complete Your Purchase"
+        description="Sign in or create an account to continue with checkout"
+        mode="modal"
         onSuccess={handleAuthSuccess}
         redirectPath="/checkout"
-      />
-      
-      <RegisterDialog 
-        isOpen={showRegister} 
-        onClose={() => setShowRegister(false)}
-        onSuccess={handleAuthSuccess}
-        redirectPath="/checkout"
+        isOpen={showAuth}
+        onOpenChange={setShowAuth}
       />
     </>
   );

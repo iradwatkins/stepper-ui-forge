@@ -9,7 +9,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingBag, X, CreditCard, LogIn } from 'lucide-react';
 import { CheckoutModal } from '@/components/CheckoutModal';
-import { LoginDialog } from '@/components/auth/LoginDialog';
+import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 import { SlideOutCashAppPay } from './SlideOutCashAppPay';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
@@ -250,10 +250,13 @@ export const CartDrawerWithPayment = ({ open, onOpenChange }: CartDrawerWithPaym
         onClose={() => setIsCheckoutOpen(false)}
       />
       
-      {/* Login Dialog */}
-      <LoginDialog
+      {/* Login Modal */}
+      <UnifiedAuthModal
+        title="Sign In to Complete Purchase"
+        description="Sign in to continue with your payment"
+        mode="modal"
         isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
+        onOpenChange={setShowLogin}
         onSuccess={handleLoginSuccess}
         redirectPath="/checkout"
       />

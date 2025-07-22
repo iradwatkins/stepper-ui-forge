@@ -9,7 +9,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingBag, X, CreditCard, LogIn } from 'lucide-react';
 import { CheckoutModal } from '@/components/CheckoutModal';
-import { LoginDialog } from '@/components/auth/LoginDialog';
+import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 import { toast } from 'sonner';
 
 interface CartDrawerProps {
@@ -164,10 +164,13 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
         onClose={() => setIsCheckoutOpen(false)}
       />
       
-      {/* Login Dialog */}
-      <LoginDialog
+      {/* Login Modal */}
+      <UnifiedAuthModal
+        title="Sign In to Complete Purchase"
+        description="Sign in to continue with your checkout"
+        mode="modal"
         isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
+        onOpenChange={setShowLogin}
         onSuccess={handleLoginSuccess}
         redirectPath="/checkout"
       />

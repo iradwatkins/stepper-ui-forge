@@ -8,7 +8,7 @@ import { PriceCalculator } from './PriceCalculator';
 import { TicketType } from '@/types/database';
 import { AlertCircle, ShoppingCart, LogIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { LoginDialog } from '@/components/auth/LoginDialog';
+import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 import { toast } from 'sonner';
 
 interface SelectedTicket {
@@ -263,10 +263,13 @@ export const TicketSelector = ({
         )}
       </CardContent>
       
-      {/* Login Dialog */}
-      <LoginDialog
+      {/* Login Modal */}
+      <UnifiedAuthModal
+        title="Sign In to Purchase Tickets"
+        description="Sign in to add tickets to your cart"
+        mode="modal"
         isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
+        onOpenChange={setShowLogin}
         onSuccess={handleLoginSuccess}
       />
     </Card>
