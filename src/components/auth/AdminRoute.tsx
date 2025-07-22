@@ -62,3 +62,5 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // Render children if user is admin
   return <>{children}</>;
 };
+
+export default AdminRoute;
