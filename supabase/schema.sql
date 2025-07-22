@@ -95,13 +95,19 @@ CREATE TABLE tickets (
 CREATE TABLE orders (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES profiles(id),
     customer_email TEXT NOT NULL,
     customer_name TEXT,
     customer_phone TEXT,
     total_amount DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2),
+    tax_amount DECIMAL(10,2) DEFAULT 0.00,
+    currency VARCHAR(3) DEFAULT 'USD' NOT NULL,
+    order_status VARCHAR(20) DEFAULT 'pending',
     payment_status payment_status DEFAULT 'pending',
     payment_intent_id TEXT,
     payment_method TEXT,
+    metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
