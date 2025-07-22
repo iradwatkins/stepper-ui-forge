@@ -16,11 +16,14 @@ interface MobileMenuProps {
 export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
   const location = useLocation();
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
 
   const handleThemeToggle = (isDay: boolean) => {
     setTheme(isDay ? "light" : "dark");
   };
+
+  // Use resolvedTheme to get the actual theme (system theme resolved)
+  const isLightMode = resolvedTheme === "light";
 
   const handleLinkClick = () => {
     onOpenChange(false);
@@ -108,7 +111,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Theme</span>
                 <DayNightSwitch
-                  checked={theme !== "dark"}
+                  checked={isLightMode}
                   onToggle={handleThemeToggle}
                   className="h-8 w-16"
                 />

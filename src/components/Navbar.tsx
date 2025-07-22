@@ -14,7 +14,7 @@ import PWAInstallButton from "@/components/PWAInstallButton";
 import MobileMenu from "@/components/MobileMenu";
 
 const Navbar = () => {
-  const { theme, setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const location = useLocation();
   const { user } = useAuth();
   const { totalItems, isCartOpen, setIsCartOpen } = useCart();
@@ -23,6 +23,9 @@ const Navbar = () => {
   const handleThemeToggle = (isDay: boolean) => {
     setTheme(isDay ? "light" : "dark");
   };
+
+  // Use resolvedTheme to get the actual theme (system theme resolved)
+  const isLightMode = resolvedTheme === "light";
 
   return (
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -146,7 +149,7 @@ const Navbar = () => {
             />
 
             <DayNightSwitch
-              checked={theme !== "dark"}
+              checked={isLightMode}
               onToggle={handleThemeToggle}
               className="h-9 w-20"
             />
