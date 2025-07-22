@@ -10,6 +10,7 @@
 // Production credentials - hardcoded as fallback
 const PRODUCTION_CREDENTIALS = {
   square: {
+    // Note: Square production app IDs must be exactly 29 characters and start with 'sq0idp-'
     appId: 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
     locationId: 'L0Q2YC1SPBGD8',
     environment: 'production' as const

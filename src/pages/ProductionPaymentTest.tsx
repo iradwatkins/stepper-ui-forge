@@ -4,12 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ModernCheckoutModal } from '@/components/payment/production/ModernCheckoutModal';
+import { SquareInitDebug } from '@/components/payment/production/SquareInitDebug';
 import { ShoppingCart, AlertTriangle, CreditCard, Smartphone, AlertCircle, Check } from 'lucide-react';
 import { PayPalLogo } from '@/components/payment/PaymentLogos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useEffect } from 'react';
 import { getPaymentConfig, validatePaymentConfig, debugPaymentConfig } from '@/config/production.payment.config';
+import { testSquareInit } from '@/utils/squareInitTest';
 
 export default function ProductionPaymentTest() {
   const { user } = useAuth();
@@ -102,6 +104,9 @@ export default function ProductionPaymentTest() {
         </CardContent>
       </Card>
 
+      {/* Square SDK Debug */}
+      <SquareInitDebug />
+
       {/* Environment Diagnostics */}
       <Card className="mb-6">
         <CardHeader>
@@ -143,7 +148,9 @@ export default function ProductionPaymentTest() {
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm">Square Configuration</h4>
                   <div className="text-xs font-mono bg-muted p-3 rounded">
-                    <div>App ID: {paymentConfig.square.appId.substring(0, 20)}...</div>
+                    <div>App ID: {paymentConfig.square.appId}</div>
+                    <div>App ID Length: {paymentConfig.square.appId.length} chars</div>
+                    <div>App ID Valid: {paymentConfig.square.appId.startsWith('sq0idp-') ? '✅ Yes' : '❌ No'}</div>
                     <div>Location: {paymentConfig.square.locationId}</div>
                     <div>Environment: {paymentConfig.square.environment}</div>
                     <div>Source: {paymentConfig.configSource.square}</div>
@@ -181,6 +188,65 @@ export default function ProductionPaymentTest() {
                     </AlertDescription>
                   </Alert>
                 )}
+                
+                <div className="mt-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        console.log('Testing Square initialization...');
+                        const config = getPaymentConfig();
+                        console.log('Config:', config.square);
+                        
+                        // Load SDK if not already loaded
+                        if (!window.Square) {
+                          const script = document.createElement('script');
+                          script.src = 'https://web.squarecdn.com/v1/square.js';
+                          await new Promise((resolve, reject) => {
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                          });
+                        }
+                        
+                        // Test initialization
+                        const payments = window.Square.payments({
+                          applicationId: config.square.appId,
+                          locationId: config.square.locationId
+                        });
+                        
+                        console.log('✅ Square initialized successfully!', payments);
+                        alert('Square initialized successfully!');
+                      } catch (error: any) {
+                        console.error('❌ Square initialization failed:', error);
+                        alert(`Square initialization failed: ${error.message}`);
+                      }
+                    }}
+                  >
+                    Test Square Initialization
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="ml-2"
+                    onClick={async () => {
+                      // Load SDK if not already loaded
+                      if (!window.Square) {
+                        const script = document.createElement('script');
+                        script.src = 'https://web.squarecdn.com/v1/square.js';
+                        await new Promise((resolve, reject) => {
+                          script.onload = resolve;
+                          script.onerror = reject;
+                          document.head.appendChild(script);
+                        });
+                      }
+                      testSquareInit();
+                    }}
+                  >
+                    Run Detailed Test
+                  </Button>
+                </div>
               </div>
             )}
           </div>

@@ -110,7 +110,13 @@ export const CashAppPayComponent: React.FC<CashAppPayComponentProps> = ({
         
       } catch (error: any) {
         console.error('[CashApp] Initialization error:', error);
-        const errorMessage = error.message || 'Failed to initialize Cash App Pay';
+        let errorMessage = error.message || 'Failed to initialize Cash App Pay';
+        
+        // Check for the common Square credentials error
+        if (errorMessage.includes('applicationId') && errorMessage.includes('format')) {
+          errorMessage = 'Cash App payment is not configured. Please contact support or see IMPORTANT_SQUARE_SETUP.md for setup instructions.';
+        }
+        
         setError(errorMessage);
         onError(errorMessage);
       }

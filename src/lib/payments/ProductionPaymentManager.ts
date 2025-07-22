@@ -55,10 +55,43 @@ export class ProductionPaymentManager {
       console.warn('[ProductionPaymentManager] Warning: App ID does not appear to be a production ID');
     }
 
-    this.squarePayments = window.Square.payments({
-      applicationId: appId,
-      locationId: locationId
-    });
+    try {
+      // Log the exact values being passed
+      console.log('[ProductionPaymentManager] Initializing Square with exact values:', {
+        applicationId: appId,
+        locationId: locationId,
+        appIdType: typeof appId,
+        locationIdType: typeof locationId
+      });
+
+      this.squarePayments = window.Square.payments({
+        applicationId: appId,
+        locationId: locationId
+      });
+    } catch (error: any) {
+      console.error('[ProductionPaymentManager] Square.payments() call failed:', error);
+      console.error('[ProductionPaymentManager] Failed with config:', {
+        applicationId: appId,
+        locationId: locationId
+      });
+      
+      // Check if it's the specific format error
+      if (error.message?.includes('applicationId') && error.message?.includes('format')) {
+        throw new Error(
+          `Square applicationId format error. This usually means:\n` +
+          `1. You're using example/demo credentials that need to be replaced\n` +
+          `2. The application ID is not a valid Square production ID\n\n` +
+          `To fix this:\n` +
+          `1. Go to https://developer.squareup.com/apps\n` +
+          `2. Copy your PRODUCTION Application ID (starts with 'sq0idp-')\n` +
+          `3. Update your .env file or src/config/production.payment.config.ts\n\n` +
+          `Current ID: ${appId}\n` +
+          `See IMPORTANT_SQUARE_SETUP.md for detailed instructions.`
+        );
+      }
+      
+      throw error;
+    }
 
     // Cache globally for reuse
     window.__squarePaymentsInstance = this.squarePayments;

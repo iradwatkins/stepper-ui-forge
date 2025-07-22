@@ -44,7 +44,13 @@ export const SquareCardPayment: React.FC<SquareCardPaymentProps> = ({
         console.log('[SquareCard] Production card form ready');
       } catch (error: any) {
         console.error('[SquareCard] Initialization error:', error);
-        const errorMessage = error.message || 'Failed to initialize payment form';
+        let errorMessage = error.message || 'Failed to initialize payment form';
+        
+        // Check for the common Square credentials error
+        if (errorMessage.includes('applicationId') && errorMessage.includes('format')) {
+          errorMessage = 'Square payment is not configured. Please contact support or see IMPORTANT_SQUARE_SETUP.md for setup instructions.';
+        }
+        
         setError(errorMessage);
         onError(errorMessage);
       }

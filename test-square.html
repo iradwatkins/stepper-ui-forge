@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Square SDK Test</title>
+    <script src="https://web.squarecdn.com/v1/square.js"></script>
+</head>
+<body>
+    <h1>Square SDK Test</h1>
+    <div id="status">Loading...</div>
+    <button id="test-btn" disabled>Test Initialization</button>
+    <pre id="output"></pre>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const outputEl = document.getElementById('output');
+        const testBtn = document.getElementById('test-btn');
+
+        function log(message) {
+            console.log(message);
+            outputEl.textContent += message + '\n';
+        }
+
+        // Wait for SDK to load
+        window.addEventListener('load', () => {
+            if (window.Square) {
+                statusEl.textContent = '✅ Square SDK loaded';
+                testBtn.disabled = false;
+                log('Square SDK loaded successfully');
+                log('Square object: ' + JSON.stringify(Object.keys(window.Square)));
+            } else {
+                statusEl.textContent = '❌ Square SDK not loaded';
+                log('Square SDK failed to load');
+            }
+        });
+
+        testBtn.addEventListener('click', async () => {
+            log('\n=== Testing Square Initialization ===');
+            
+            const applicationId = 'sq0idp-XG8irNWHf98C62-iqOwH6Q';
+            const locationId = 'L0Q2YC1SPBGD8';
+            
+            log('Application ID: ' + applicationId);
+            log('Length: ' + applicationId.length);
+            log('Location ID: ' + locationId);
+            
+            try {
+                log('\nAttempting initialization...');
+                const payments = window.Square.payments({
+                    applicationId: applicationId,
+                    locationId: locationId
+                });
+                
+                log('✅ SUCCESS! Payments object created');
+                log('Payments methods: ' + JSON.stringify(Object.keys(payments)));
+                
+                // Try to create a card
+                const card = await payments.card();
+                log('✅ Card form created successfully');
+                
+            } catch (error) {
+                log('❌ ERROR: ' + error.message);
+                log('Error name: ' + error.name);
+                log('Full error: ' + JSON.stringify(error, null, 2));
+            }
+        });
+    </script>
+</body>
+</html>

@@ -86,21 +86,57 @@ export async function initializeSquarePayments() {
   const config = getSquareConfig();
   const { appId, locationId } = config;
 
-  console.log('[squareSDKLoader] Initializing with:', {
-    appId: appId.substring(0, 15) + '...',
-    locationId: locationId,
-    source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'hardcoded fallback'
-  });
-
+  // Validate application ID format
   if (!appId || !locationId) {
     throw new Error('Square configuration missing: Please check your environment variables');
   }
 
-  // Initialize with proper object format
-  return window.Square.payments({
-    applicationId: appId,
-    locationId: locationId
+  // Validate production format
+  if (!appId.startsWith('sq0idp-')) {
+    console.error('[squareSDKLoader] Invalid application ID format:', {
+      appId: appId,
+      expectedFormat: 'sq0idp-XXXXXXXXXXXXXXXXXXXX',
+      isProduction: appId.startsWith('sq0idp-'),
+      isSandbox: appId.includes('sandbox') || appId.startsWith('sq0idb-')
+    });
+    throw new Error(`Invalid Square application ID format. Production IDs must start with 'sq0idp-'. Got: ${appId}`);
+  }
+
+  // Validate length
+  if (appId.length !== 29) {
+    console.error('[squareSDKLoader] Invalid application ID length:', {
+      appId: appId,
+      length: appId.length,
+      expectedLength: 29
+    });
+    throw new Error(`Invalid Square application ID length. Expected 29 characters, got ${appId.length}`);
+  }
+
+  console.log('[squareSDKLoader] Initializing with validated config:', {
+    appIdPrefix: appId.substring(0, 7),
+    appIdLength: appId.length,
+    locationId: locationId,
+    source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'hardcoded fallback'
   });
+
+  try {
+    // Initialize with proper object format
+    // Square SDK requires exact parameter names
+    const payments = window.Square.payments({
+      applicationId: appId,
+      locationId: locationId
+    });
+    
+    console.log('[squareSDKLoader] Square payments initialized successfully');
+    return payments;
+  } catch (error: any) {
+    console.error('[squareSDKLoader] Square initialization error:', error);
+    console.error('[squareSDKLoader] Failed config:', {
+      applicationId: appId,
+      locationId: locationId
+    });
+    throw new Error(`Square SDK initialization failed: ${error.message || 'Unknown error'}`);
+  }
 }
 
 /**
