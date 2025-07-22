@@ -101,3 +101,4 @@
 | Production events created | CreateProductionEvents.tsx | Created 4 real events with active early bird discounts | No |
 | Fix seller_event_assignments FK | 20250122_fix_seller_event_assignments_fkey.sql | Added proper foreign key constraint and PostgREST hint | Yes |
 | Fix TeamRoles checkboxes | TeamRoles.tsx | Fixed organizer_id → owner_id reference causing 400 errors | No |
+| Fix build error | cleanup-demo-data.ts | Created missing cleanup-demo-data utility file | No |
