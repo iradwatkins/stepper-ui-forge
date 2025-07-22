@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Search, Trash2, AlertTriangle, Database, Filter, Eye, Trash } from 'lucide-react'
 import { toast } from 'sonner'
-import { AdminRoute } from '@/components/auth/AdminRoute'
+import AdminRoute from '@/components/auth/AdminRoute'
 import { cleanupAllDemoData, verifyCleanup } from '@/lib/utils/cleanup-demo-data'
 
 interface DatabaseEvent {
