@@ -9,6 +9,7 @@ interface SquarePaymentSimpleProps {
   onPaymentToken: (token: string, paymentMethod: 'card' | 'cashapp') => void;
   onError: (error: string) => void;
   isProcessing?: boolean;
+  showHeader?: boolean; // Whether to show the card header section
 }
 
 declare global {
@@ -21,7 +22,8 @@ export function SquarePaymentSimple({
   amount, 
   onPaymentToken, 
   onError, 
-  isProcessing = false
+  isProcessing = false,
+  showHeader = true
 }: SquarePaymentSimpleProps) {
   const cardRef = useRef<any>(null);
   const hasInitialized = useRef(false);
@@ -118,57 +120,67 @@ export function SquarePaymentSimple({
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="w-5 h-5" />
-          Card Payment
-        </CardTitle>
-        <CardDescription>
-          Enter your card details securely below
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* This div MUST have the exact ID that Square is looking for */}
-          <div 
-            id="square-card-simple" 
-            className="min-h-[100px] border rounded-lg p-3 bg-background"
-          />
-          
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+  const content = (
+    <div className="space-y-4">
+      {/* This div MUST have the exact ID that Square is looking for */}
+      <div 
+        id="square-card-simple" 
+        className="min-h-[100px] border rounded-lg p-3 bg-background"
+      />
+      
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-          <Button 
-            onClick={handlePayment}
-            disabled={!isReady || isProcessing}
-            className="w-full"
-            size="lg"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : !isReady ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Pay ${(amount / 100).toFixed(2)}
-              </>
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <Button 
+        onClick={handlePayment}
+        disabled={!isReady || isProcessing}
+        className="w-full"
+        size="lg"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Processing...
+          </>
+        ) : !isReady ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading...
+          </>
+        ) : (
+          <>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Pay ${(amount / 100).toFixed(2)}
+          </>
+        )}
+      </Button>
+    </div>
   );
+
+  // Conditionally wrap with Card based on showHeader prop
+  if (showHeader) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            Card Payment
+          </CardTitle>
+          <CardDescription>
+            Enter your card details securely below
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {content}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Return just the content without Card wrapper
+  return content;
 }

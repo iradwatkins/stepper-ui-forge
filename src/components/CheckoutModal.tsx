@@ -679,12 +679,23 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
                {/* Square Payment Form */}
                {selectedGateway === 'square' && (
-                 <SquarePaymentSimple
-                   amount={seatCheckoutMode ? seatTotal : total}
-                   onPaymentToken={handleSquarePaymentToken}
-                   onError={handleSquarePaymentError}
-                   isProcessing={isProcessing}
-                 />
+                 <Card>
+                   <CardHeader>
+                     <CardTitle className="text-lg">Enter Card Details</CardTitle>
+                     <CardDescription>
+                       Your payment information is secured with 256-bit SSL encryption
+                     </CardDescription>
+                   </CardHeader>
+                   <CardContent>
+                     <SquarePaymentSimple
+                       amount={seatCheckoutMode ? seatTotal : total}
+                       onPaymentToken={handleSquarePaymentToken}
+                       onError={handleSquarePaymentError}
+                       isProcessing={isProcessing}
+                       showHeader={false}
+                     />
+                   </CardContent>
+                 </Card>
                )}
 
                {/* CashApp Payment Form */}
