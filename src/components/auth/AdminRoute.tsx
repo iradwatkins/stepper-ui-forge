@@ -7,7 +7,7 @@ interface AdminRouteProps {
   children: React.ReactNode;
 }
 
-const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
 
@@ -62,5 +62,3 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // Render children if user is admin
   return <>{children}</>;
 };
-
-export default AdminRoute;
