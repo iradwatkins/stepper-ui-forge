@@ -11,6 +11,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { FaviconManager } from "@/components/ui/FaviconManager";
 import { AdminRoute } from "@/components/auth/AdminRoute";
+import { ReferralTracker } from "@/components/tracking/ReferralTracker";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -98,6 +99,7 @@ const AppContent = () => {
   return (
     <div className="min-h-screen bg-background">
       <FaviconManager fallbackFavicon="/steppers-icon.svg" />
+      <ReferralTracker />
       {!isHomePage && <Navbar />}
       <Suspense fallback={<PageLoader />}>
         <Routes>

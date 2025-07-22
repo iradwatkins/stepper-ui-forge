@@ -15,7 +15,8 @@ export const ReferralTracker: React.FC = () => {
 
   useEffect(() => {
     const handleReferralCode = async () => {
-      const ref = searchParams.get('ref')
+      // Check for referral code in both 'ref' and 'code' parameters
+      const ref = searchParams.get('ref') || searchParams.get('code')
       
       if (!ref) {
         return
@@ -58,8 +59,8 @@ export const useReferralCode = () => {
   const [searchParams] = useSearchParams()
   
   const getCurrentReferralCode = (): string | null => {
-    // First check URL parameter
-    const ref = searchParams.get('ref')
+    // First check URL parameters (both 'ref' and 'code')
+    const ref = searchParams.get('ref') || searchParams.get('code')
     if (ref) {
       return ref
     }
