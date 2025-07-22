@@ -107,3 +107,4 @@
 | Revert AdminRoute pattern | AdminRoute.tsx, App.tsx, DatabaseAdmin.tsx | Reverted to named export for consistency | No |
 | Fix React not defined | AdminRoute.tsx, TeamRoles.tsx | Added missing React imports causing production failure | No |
 | Restore AdminRoute | AdminRoute.tsx | Restored to original with React import | No |
+| Revert supabase import | TeamRoles.tsx | Already using correct @/lib/supabase import path | Yes |
