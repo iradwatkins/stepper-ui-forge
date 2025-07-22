@@ -1,14 +1,15 @@
 // AdminRoute component for protecting admin-only pages
+import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsAdmin } from '@/lib/hooks/useAdminPermissions';
 import { AlertTriangle, Shield } from 'lucide-react';
 
 interface AdminRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+export const AdminRoute = ({ children }: AdminRouteProps) => {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
 

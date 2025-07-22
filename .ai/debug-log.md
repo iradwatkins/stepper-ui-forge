@@ -105,3 +105,4 @@
 | Fix AdminRoute export | AdminRoute.tsx, App.tsx | Changed to default export, updated all imports | Yes |
 | Fix localhost connection | vite.config.ts | Changed host from 'localhost' to true for proper binding | No |
 | Revert AdminRoute pattern | AdminRoute.tsx, App.tsx, DatabaseAdmin.tsx | Reverted to named export for consistency | No |
+| Fix React not defined | AdminRoute.tsx, TeamRoles.tsx | Added missing React imports causing production failure | No |
