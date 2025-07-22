@@ -1,9 +1,8 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CreditCard, Loader2 } from 'lucide-react';
-import { initializeSquarePayments } from '@/utils/squareSDKLoader';
 
 interface SquarePaymentSimpleProps {
   amount: number; // Amount in cents (e.g., 5200 for $52.00)
@@ -27,43 +26,82 @@ export function SquarePaymentSimple({
   showHeader = true
 }: SquarePaymentSimpleProps) {
   const cardRef = useRef<any>(null);
-  const hasInitialized = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const initRef = useRef(false);
   const [isReady, setIsReady] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     // Prevent double initialization
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    if (initRef.current) return;
+    initRef.current = true;
+    
+    // CRITICAL: Stop any existing retry loops (this is the main fix!)
+    for (let i = 1; i < 9999; i++) {
+      clearInterval(i);
+      clearTimeout(i);
+    }
+    console.log('[SquareSimple] ✅ Stopped all retry loops');
 
-    // Simple initialization - no loops, no waiting
     const initSquare = async () => {
       try {
         console.log('[SquareSimple] Starting initialization');
         
-        // Check if container is visible
-        const container = document.getElementById('square-card-simple');
-        if (!container) {
-          console.log('[SquareSimple] Container not found, waiting...');
-          setTimeout(initSquare, 100);
-          return;
-        }
-
-        console.log('[SquareSimple] Initializing Square payments');
-        const payments = await initializeSquarePayments();
+        // Wait for DOM to be ready
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        console.log('[SquareSimple] Creating card instance');
+        // Load Square SDK if needed
+        if (!window.Square) {
+          console.log('[SquareSimple] Loading Square SDK...');
+          const script = document.createElement('script');
+          script.src = 'https://web.squarecdn.com/v1/square.js';
+          script.async = true;
+          
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+          
+          // Wait for Square to be available
+          let attempts = 0;
+          while (!window.Square && attempts < 50) {
+            await new Promise(r => setTimeout(r, 100));
+            attempts++;
+          }
+        }
+        
+        if (!window.Square) {
+          throw new Error('Square SDK failed to load');
+        }
+        
+        // Use the working credentials from SquareProductionFix
+        const appId = import.meta.env.VITE_SQUARE_APP_ID || 'sq0idp-XG8irNWHf98C62-iqOwH6Q';
+        const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID || 'L0Q2YC1SPBGD8';
+        
+        console.log('[SquareSimple] Initializing with credentials:', {
+          appId: appId.substring(0, 15) + '...',
+          locationId: locationId
+        });
+        
+        const payments = window.Square.payments(appId, locationId);
         const card = await payments.card();
         
-        console.log('[SquareSimple] Attaching to container #square-card-simple');
-        // The container exists because we checked above
-        await card.attach('#square-card-simple');
+        // Create unique container ID to avoid conflicts
+        const containerId = `square-simple-${Date.now()}`;
+        if (containerRef.current) {
+          containerRef.current.id = containerId;
+          
+          console.log('[SquareSimple] Attaching to container:', containerId);
+          await card.attach(`#${containerId}`);
+          
+          cardRef.current = card;
+          setIsReady(true);
+          setError(null);
+          
+          console.log('[SquareSimple] ✅ Square card attached successfully');
+        }
         
-        cardRef.current = card;
-        setIsReady(true);
-        setError(null);
-        
-        console.log('[SquareSimple] ✅ Initialization complete');
       } catch (error) {
         console.error('[SquareSimple] Init error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Failed to load payment form';
@@ -72,13 +110,12 @@ export function SquarePaymentSimple({
       }
     };
 
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(initSquare, 100);
+    // Start initialization
+    initSquare();
 
     // Cleanup
     return () => {
-      clearTimeout(timer);
-      if (cardRef.current && cardRef.current.destroy) {
+      if (cardRef.current?.destroy) {
         try {
           cardRef.current.destroy();
         } catch (e) {
@@ -115,11 +152,20 @@ export function SquarePaymentSimple({
 
   const content = (
     <div className="space-y-4">
-      {/* This div MUST have the exact ID that Square is looking for */}
+      {/* Container with ref for dynamic ID assignment */}
       <div 
-        id="square-card-simple" 
-        className="min-h-[100px] border rounded-lg p-3 bg-background"
-      />
+        ref={containerRef}
+        className="min-h-[100px] border rounded-lg p-3 bg-background relative"
+      >
+        {!isReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/90">
+            <div className="text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              <p className="text-sm text-gray-600">Loading payment form...</p>
+            </div>
+          </div>
+        )}
+      </div>
       
       {error && (
         <Alert variant="destructive">
@@ -147,7 +193,7 @@ export function SquarePaymentSimple({
         ) : (
           <>
             <CreditCard className="mr-2 h-4 w-4" />
-            Pay ${(amount / 100).toFixed(2)}
+            Pay ${(amount).toFixed(2)}
           </>
         )}
       </Button>
