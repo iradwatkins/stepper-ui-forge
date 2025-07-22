@@ -4,17 +4,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ProductionCheckoutModal } from '@/components/payment/production/ProductionCheckoutModal';
-import { ShoppingCart, AlertTriangle, CreditCard, Smartphone, AlertCircle } from 'lucide-react';
+import { ShoppingCart, AlertTriangle, CreditCard, Smartphone, AlertCircle, Check } from 'lucide-react';
 import { PayPalLogo } from '@/components/payment/PaymentLogos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useEffect } from 'react';
+import { getPaymentConfig, validatePaymentConfig, debugPaymentConfig } from '@/config/production.payment.config';
 
 export default function ProductionPaymentTest() {
   const { user } = useAuth();
   const { addItem, clearCart } = useCart();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutType, setCheckoutType] = useState<'cart' | 'seats'>('cart');
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+
+  // Get payment configuration and validation
+  const paymentConfig = getPaymentConfig();
+  const validation = validatePaymentConfig();
 
   // Mock cart items
   const mockCartItems = [
@@ -93,6 +99,91 @@ export default function ProductionPaymentTest() {
               </Badge>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Environment Diagnostics */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Environment Configuration</span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setShowDiagnostics(!showDiagnostics);
+                if (!showDiagnostics) {
+                  debugPaymentConfig();
+                }
+              }}
+            >
+              {showDiagnostics ? 'Hide' : 'Show'} Diagnostics
+            </Button>
+          </CardTitle>
+          <CardDescription>
+            Configuration source: {paymentConfig.configSource.square === 'environment' ? 'Environment Variables' : 'Hardcoded Fallback'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <span className="text-sm font-medium">Configuration Valid</span>
+              {validation.isValid ? (
+                <Badge variant="default" className="gap-1">
+                  <Check className="h-3 w-3" />
+                  Valid
+                </Badge>
+              ) : (
+                <Badge variant="destructive">Invalid</Badge>
+              )}
+            </div>
+            
+            {showDiagnostics && (
+              <div className="space-y-3 mt-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Square Configuration</h4>
+                  <div className="text-xs font-mono bg-muted p-3 rounded">
+                    <div>App ID: {paymentConfig.square.appId.substring(0, 20)}...</div>
+                    <div>Location: {paymentConfig.square.locationId}</div>
+                    <div>Environment: {paymentConfig.square.environment}</div>
+                    <div>Source: {paymentConfig.configSource.square}</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">PayPal Configuration</h4>
+                  <div className="text-xs font-mono bg-muted p-3 rounded">
+                    <div>Client ID: {paymentConfig.paypal.clientId.substring(0, 20)}...</div>
+                    <div>Environment: {paymentConfig.paypal.environment}</div>
+                    <div>Source: {paymentConfig.configSource.paypal}</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Environment Variables</h4>
+                  <div className="text-xs font-mono bg-muted p-3 rounded">
+                    <div>VITE_SQUARE_APP_ID: {import.meta.env.VITE_SQUARE_APP_ID || 'NOT SET'}</div>
+                    <div>VITE_SQUARE_LOCATION_ID: {import.meta.env.VITE_SQUARE_LOCATION_ID || 'NOT SET'}</div>
+                    <div>VITE_PAYPAL_CLIENT_ID: {import.meta.env.VITE_PAYPAL_CLIENT_ID || 'NOT SET'}</div>
+                  </div>
+                </div>
+                
+                {validation.errors.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Configuration Errors</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc list-inside">
+                        {validation.errors.map((error, index) => (
+                          <li key={index}>{error}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

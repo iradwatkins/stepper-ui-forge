@@ -2,6 +2,8 @@
 // PRODUCTION PAYMENT MANAGER - NO TEST MODE
 // ==========================================
 
+import { getSquareConfig, debugPaymentConfig } from '@/config/production.payment.config';
+
 declare global {
   interface Window {
     Square: any;
@@ -33,9 +35,16 @@ export class ProductionPaymentManager {
       await this.loadSquareSDK();
     }
 
-    // PRODUCTION CREDENTIALS ONLY
-    const appId = import.meta.env.VITE_SQUARE_APP_ID;
-    const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+    // Get configuration with fallback values
+    const config = getSquareConfig();
+    const { appId, locationId, environment } = config;
+
+    console.log('[ProductionPaymentManager] Using configuration:', {
+      appId: appId.substring(0, 15) + '...',
+      locationId: locationId,
+      environment: environment,
+      source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'hardcoded fallback'
+    });
 
     if (!appId || !locationId) {
       throw new Error('Square production credentials not configured');
@@ -43,7 +52,7 @@ export class ProductionPaymentManager {
 
     // Verify we're using production credentials
     if (!appId.startsWith('sq0idp-')) {
-      throw new Error('Invalid production app ID. Production IDs must start with sq0idp-');
+      console.warn('[ProductionPaymentManager] Warning: App ID does not appear to be a production ID');
     }
 
     this.squarePayments = window.Square.payments({
@@ -55,9 +64,12 @@ export class ProductionPaymentManager {
     window.__squarePaymentsInstance = this.squarePayments;
 
     this.isInitialized = true;
-    console.log('[PaymentManager] Square initialized in PRODUCTION mode');
-    console.log('[PaymentManager] App ID:', appId.substring(0, 15) + '...');
-    console.log('[PaymentManager] Location:', locationId);
+    console.log('[ProductionPaymentManager] Square initialized in PRODUCTION mode');
+    
+    // Debug full configuration in development
+    if (import.meta.env?.DEV) {
+      debugPaymentConfig();
+    }
     
     return this.squarePayments;
   }

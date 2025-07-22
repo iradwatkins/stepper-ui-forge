@@ -1,3 +1,5 @@
+import { getSquareConfig } from '@/config/production.payment.config';
+
 interface PaymentManagerOptions {
   referenceId?: string;
   amount?: number;
@@ -38,15 +40,15 @@ class PaymentManager {
       await this.loadSquareSDK();
     }
 
-    // Debug: Log environment variables in production
-    const appId = import.meta.env.VITE_SQUARE_APP_ID;
-    const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
-    const environment = import.meta.env.VITE_SQUARE_ENVIRONMENT;
+    // Get configuration with fallback values
+    const config = getSquareConfig();
+    const { appId, locationId, environment } = config;
     
     console.log('🔍 Square Environment Debug:', {
       appId: appId ? `${appId.substring(0, 10)}...` : 'MISSING',
       locationId: locationId ? `${locationId.substring(0, 10)}...` : 'MISSING',
       environment: environment || 'MISSING',
+      source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'hardcoded fallback',
       mode: import.meta.env.MODE,
       isDev: import.meta.env.DEV,
       isProd: import.meta.env.PROD

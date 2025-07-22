@@ -3,6 +3,8 @@
  * This prevents conflicts between sandbox and production SDK versions
  */
 
+import { getSquareConfig } from '@/config/production.payment.config';
+
 declare global {
   interface Window {
     Square: any;
@@ -80,8 +82,15 @@ export async function initializeSquarePayments() {
   // Ensure SDK is loaded
   await loadSquareSDK();
 
-  const appId = import.meta.env.VITE_SQUARE_APP_ID;
-  const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+  // Get configuration with fallback values
+  const config = getSquareConfig();
+  const { appId, locationId } = config;
+
+  console.log('[squareSDKLoader] Initializing with:', {
+    appId: appId.substring(0, 15) + '...',
+    locationId: locationId,
+    source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'hardcoded fallback'
+  });
 
   if (!appId || !locationId) {
     throw new Error('Square configuration missing: Please check your environment variables');
@@ -108,12 +117,6 @@ export function isSquareSDKReady(): boolean {
  * - Production: starts with 'sq0idp-'
  */
 export function getSquareEnvironment(): 'sandbox' | 'production' {
-  const appId = import.meta.env.VITE_SQUARE_APP_ID || '';
-  // Check environment variable first, then fall back to app ID detection
-  const envConfig = import.meta.env.VITE_SQUARE_ENVIRONMENT;
-  if (envConfig === 'production' || envConfig === 'sandbox') {
-    return envConfig;
-  }
-  // Detect from app ID format
-  return appId.startsWith('sandbox-') ? 'sandbox' : 'production';
+  const config = getSquareConfig();
+  return config.environment;
 }
