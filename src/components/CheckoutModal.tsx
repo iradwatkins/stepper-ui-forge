@@ -4,10 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AlertCircle, CreditCard, Loader2, ShoppingCart } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { AlertCircle, CreditCard, Loader2, ShoppingCart, Check, Shield, Zap, Clock } from "lucide-react";
 import { PayPalLogo, CashAppLogo, CreditCardIcon, VisaLogo, MastercardLogo, AmexLogo } from "@/components/payment/PaymentLogos";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,8 +51,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedGateway, setSelectedGateway] = useState<string>('paypal');
-  const [customerEmail, setCustomerEmail] = useState(user?.email || '');
+  const [selectedGateway, setSelectedGateway] = useState<string>('square');
   const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string; available: boolean }[]>([]);
   const [seatCheckoutMode, setSeatCheckoutMode] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -98,7 +95,6 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
       };
       
       loadPaymentMethods();
-      setCustomerEmail(user?.email || '');
       
       // Determine checkout mode
       const isSeatingCheckout = selectedSeats && selectedSeats.length > 0 && eventId;
@@ -138,8 +134,8 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
       return;
     }
 
-    if (!customerEmail) {
-      setError("Please enter your email address");
+    if (!user?.email) {
+      setError("Please sign in to complete your purchase");
       return;
     }
 
@@ -160,7 +156,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
         amount: Math.round((seatCheckoutMode ? seatTotal : total) * 100), // Convert to cents
         gateway: selectedGateway,
         orderId,
-        customerEmail,
+        customerEmail: user?.email || '',
         // Add Square payment token for Square payments
         ...(selectedGateway === 'square' && squarePaymentToken && {
           sourceId: squarePaymentToken
@@ -200,7 +196,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           sessionStorage.setItem('pendingPayPalOrder', JSON.stringify({
             paypalOrderId: result.data.paypalOrderId,
             orderId: orderId,
-            customerEmail,
+            customerEmail: user?.email || '',
             amount: Math.round((seatCheckoutMode ? seatTotal : total) * 100), // Store in cents
             seatCheckoutMode,
             items: seatCheckoutMode ? seatDetails : items,
@@ -225,7 +221,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           sessionStorage.setItem('pendingCashAppOrder', JSON.stringify({
             paymentId: result.data.paymentId,
             orderId: orderId,
-            customerEmail,
+            customerEmail: user?.email || '',
             amount: Math.round((seatCheckoutMode ? seatTotal : total) * 100), // Store in cents
             seatCheckoutMode,
             items: seatCheckoutMode ? seatDetails : items,
@@ -249,7 +245,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           // Format data according to OrderService expectations
           const orderRequest = {
             customer: {
-              email: customerEmail,
+              email: user?.email || '',
               name: user?.user_metadata?.full_name || undefined,
               phone: undefined
             },
@@ -272,7 +268,8 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                 quantity: 1,
                 eventDate: eventDate || '',
                 eventTime: eventTime || '',
-                eventLocation: eventLocation || ''
+                eventLocation: eventLocation || '',
+                maxPerPerson: 1
               })) : 
               items
           };
@@ -298,14 +295,14 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             // @ts-ignore - Email data structure
             const emailData = {
               customerName: orderResult.order.customer_name || 'Valued Customer',
-              customerEmail: customerEmail,
-              eventTitle: tickets[0]?.ticket_types?.events?.title || eventTitle || 'Event',
-              eventDate: tickets[0]?.ticket_types?.events?.date || new Date().toISOString(),
-              eventTime: new Date(tickets[0]?.ticket_types?.events?.date || new Date()).toLocaleTimeString(),
-              eventLocation: tickets[0]?.ticket_types?.events?.venue || tickets[0]?.ticket_types?.events?.location || eventLocation || 'TBD',
+              customerEmail: user?.email || '',
+              eventTitle: eventTitle || 'Event',
+              eventDate: eventDate || new Date().toISOString(),
+              eventTime: new Date(eventDate || new Date()).toLocaleTimeString(),
+              eventLocation: eventLocation || 'TBD',
               tickets: tickets.map(ticket => ({
                 id: ticket.id,
-                ticketType: ticket.ticket_types?.name || 'General',
+                ticketType: 'General',
                 qrCode: ticket.qr_code || '',
                 holderName: ticket.holder_name || 'Ticket Holder'
               })),
@@ -330,7 +327,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                 sessionId,
                 eventId,
                 orderResult.order.id,
-                customerEmail,
+                user?.email || '',
                 orderResult.order.customer_name || 'Ticket Holder',
                 selectedGateway
               );
@@ -398,13 +395,15 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5" />
-            Checkout
+        <DialogHeader className="border-b pb-4">
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+            </div>
+            Secure Checkout
           </DialogTitle>
-          <DialogDescription>
-            Review your tickets and complete your purchase
+          <DialogDescription className="text-sm mt-2">
+            Complete your purchase in just a few steps
           </DialogDescription>
         </DialogHeader>
 
@@ -421,10 +420,10 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
         ) : (
         <div className="space-y-6">
           {/* Order Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Order Summary</CardTitle>
-              <CardDescription>
+          <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-6 rounded-xl border border-primary/20">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Order Summary</h3>
+              <Badge variant="secondary" className="text-xs">
                 {seatCheckoutMode ? (
                   <>
                     {seatDetails?.length || 0} seat{(seatDetails?.length || 0) !== 1 ? 's' : ''} selected
@@ -435,22 +434,25 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                 ) : (
                   <>{items.length} item{items.length !== 1 ? 's' : ''} in your cart</>
                 )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </Badge>
+            </div>
+            <div className="space-y-4">
               {/* Seat-based Checkout */}
               {seatCheckoutMode && seatDetails ? (
                 <div className="space-y-4">
                   {/* Event Details */}
                   {eventTitle && (
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-blue-900">{eventTitle}</h4>
-                      <div className="text-sm text-blue-800 mt-1">
+                    <div className="bg-background/80 backdrop-blur-sm p-4 rounded-lg border">
+                      <h4 className="font-semibold">{eventTitle}</h4>
+                      <div className="text-sm text-muted-foreground mt-1 space-y-1">
                         {eventDate && eventTime && (
-                          <p>{eventDate} at {eventTime}</p>
+                          <p className="flex items-center gap-2">
+                            <Clock className="w-3 h-3" />
+                            {eventDate} at {eventTime}
+                          </p>
                         )}
                         {eventLocation && (
-                          <p className="text-xs mt-1">{eventLocation}</p>
+                          <p className="text-xs mt-1 text-muted-foreground">{eventLocation}</p>
                         )}
                       </div>
                     </div>
@@ -460,11 +462,11 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                   <div className="space-y-2">
                     <h5 className="font-medium text-sm text-gray-700">Selected Seats:</h5>
                     {seatDetails.map((seat) => (
-                      <div key={seat.id} className="flex justify-between items-center p-3 border rounded-lg bg-gray-50">
+                      <div key={seat.id} className="flex justify-between items-center p-3 border rounded-lg bg-background/50 hover:bg-background/80 transition-colors">
                         <div className="flex items-center gap-3">
                           <div 
-                            className="w-6 h-5 rounded-sm border border-gray-300 flex items-center justify-center"
-                            style={{ backgroundColor: seat.categoryColor }}
+                            className="w-8 h-7 rounded-md border-2 border-opacity-20 flex items-center justify-center shadow-sm"
+                            style={{ backgroundColor: seat.categoryColor, borderColor: seat.categoryColor }}
                           >
                             <span className="text-white text-xs font-bold">
                               {seat.seatNumber}
@@ -513,24 +515,26 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                     ))}
                   </div>
                   
-                  <Separator />
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Subtotal:</span>
-                      <span>${seatSubtotal.toFixed(2)}</span>
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>${seatSubtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Processing Fee</span>
+                        <span>${Math.max(seatSubtotal * 0.03, 1.50).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Service Fee</span>
+                        <span>${(seatDetails.length * 2).toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>Processing Fee (3%):</span>
-                      <span>${Math.max(seatSubtotal * 0.03, 1.50).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>Service Fee (${seatDetails.length} seats):</span>
-                      <span>${(seatDetails.length * 2).toFixed(2)}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-semibold">
-                      <span>Total:</span>
-                      <span>${seatTotal.toFixed(2)}</span>
+                    <div className="border-t pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">Total</span>
+                        <span className="text-2xl font-bold text-primary">${seatTotal.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -541,22 +545,23 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                     <p className="text-center text-muted-foreground py-8">Your cart is empty</p>
                   ) : (
                     items.map((item) => (
-                      <div key={item.id} className="flex justify-between items-start p-3 border rounded-lg">
+                      <div key={item.id} className="flex justify-between items-start p-4 border rounded-lg bg-background/50 hover:bg-background/80 transition-colors">
                         <div className="flex-1">
                           <h4 className="font-medium">{item.title}</h4>
                           <p className="text-sm text-muted-foreground">{item.eventTitle}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <Clock className="w-3 h-3" />
                             {item.eventDate} at {item.eventTime}
-                          </p>
+                          </div>
                           {item.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
+                            <p className="text-xs text-muted-foreground mt-2">{item.description}</p>
                           )}
                         </div>
-                        <div className="text-right">
-                          <Badge variant="secondary" className="mb-1">
+                        <div className="text-right space-y-1">
+                          <Badge variant="secondary" className="text-xs">
                             Qty: {item.quantity}
                           </Badge>
-                          <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                          <p className="font-semibold text-lg">${(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                       </div>
                     ))
@@ -564,11 +569,10 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
         
                   {items.length > 0 && (
                     <>
-                      <Separator />
-                      <div className="space-y-2">
+                      <div className="border-t pt-4 space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Subtotal:</span>
-                          <span>${subtotal.toFixed(2)}</span>
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="font-medium">${subtotal.toFixed(2)}</span>
                         </div>
                       </div>
                     </>
@@ -579,139 +583,142 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
               {/* Continue with regular cart total display */}
               {!seatCheckoutMode && items.length > 0 && (
                 <>
-                  <Separator />
-                  <div className="space-y-2">
+                  <div className="border-t pt-3 space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span>Processing Fee:</span>
+                      <span className="text-muted-foreground">Processing Fee</span>
                       <span>${fees.toFixed(2)}</span>
                     </div>
-                    <Separator />
-                    <div className="flex justify-between font-semibold">
-                      <span>Total:</span>
-                      <span>${total.toFixed(2)}</span>
+                    <div className="border-t pt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">Total</span>
+                        <span className="text-2xl font-bold text-primary">${total.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {(items.length > 0 || seatCheckoutMode) && (
             <>
-              {/* Customer Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Contact Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="your.email@example.com"
-                      required
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Trust Badges */}
+              <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground mb-4">
+                <div className="flex items-center gap-1">
+                  <Shield className="w-4 h-4 text-green-600" />
+                  <span>Secure Checkout</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Zap className="w-4 h-4 text-blue-600" />
+                  <span>Instant Confirmation</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Check className="w-4 h-4 text-primary" />
+                  <span>100% Safe</span>
+                </div>
+              </div>
 
               {/* Payment Method Selection */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    Payment Method
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-lg mb-1">Select Payment Method</h3>
+                  <p className="text-sm text-muted-foreground">Choose your preferred payment option</p>
+                </div>
+                <RadioGroup value={selectedGateway} onValueChange={setSelectedGateway} className="grid gap-3">
                     {paymentMethods.map((method) => (
-                      <div
+                      <label
                         key={method.id}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        htmlFor={method.id}
+                        className={`relative flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
                           selectedGateway === method.id
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50'
+                            ? 'border-primary bg-primary/5 shadow-sm'
+                            : 'border-muted hover:border-primary/30 hover:bg-accent/50'
                         }`}
-                        onClick={() => setSelectedGateway(method.id)}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {method.id === 'square' && (
-                              <div className="flex items-center gap-2">
-                                <CreditCardIcon className="h-6 w-6 text-primary" />
-                                <div className="flex gap-1">
-                                  <VisaLogo className="h-3" />
-                                  <MastercardLogo className="h-3" />
-                                  <AmexLogo className="h-3" />
-                                </div>
-                              </div>
-                            )}
-                            {method.id === 'cashapp' && <CashAppLogo className="h-8" />}
-                            {method.id === 'paypal' && <PayPalLogo className="h-6" />}
-                            <div>
-                              <h4 className="font-medium">
-                                {method.id === 'square' && 'Credit or Debit Card'}
-                                {method.id === 'cashapp' && 'Cash App'}
-                                {method.id === 'paypal' && 'PayPal'}
-                              </h4>
-                              <p className="text-sm text-muted-foreground">
-                                {method.id === 'paypal' && 'Pay with PayPal account'}
-                                {method.id === 'square' && 'Secure payment via Square'}
-                                {method.id === 'cashapp' && 'Instant payment with Cash App'}
-                              </p>
+                        <RadioGroupItem value={method.id} id={method.id} className="sr-only" />
+                        <div className="flex-1 flex items-center gap-4">
+                          {method.id === 'square' && (
+                            <div className="p-3 bg-background rounded-lg border">
+                              <CreditCardIcon className="h-6 w-6 text-primary" />
                             </div>
+                          )}
+                          {method.id === 'cashapp' && (
+                            <div className="p-2 bg-background rounded-lg border">
+                              <CashAppLogo className="h-8" />
+                            </div>
+                          )}
+                          {method.id === 'paypal' && (
+                            <div className="p-3 bg-background rounded-lg border">
+                              <PayPalLogo className="h-6" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <h4 className="font-medium flex items-center gap-2">
+                              {method.id === 'square' && 'Credit or Debit Card'}
+                              {method.id === 'cashapp' && 'Cash App Pay'}
+                              {method.id === 'paypal' && 'PayPal'}
+                              {method.id === 'square' && (
+                                <div className="flex gap-1 ml-auto">
+                                  <VisaLogo className="h-4" />
+                                  <MastercardLogo className="h-4" />
+                                  <AmexLogo className="h-4" />
+                                </div>
+                              )}
+                            </h4>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {method.id === 'paypal' && 'Fast and secure with your PayPal account'}
+                              {method.id === 'square' && 'Encrypted and secure card payments'}
+                              {method.id === 'cashapp' && 'Quick payment with Cash App'}
+                            </p>
                           </div>
-                          <div className={`w-4 h-4 rounded-full border-2 ${
-                            selectedGateway === method.id
-                              ? 'border-primary bg-primary'
-                              : 'border-muted-foreground'
-                          }`} />
                         </div>
-                      </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          selectedGateway === method.id
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground bg-background'
+                        }`}>
+                          {selectedGateway === method.id && (
+                            <Check className="w-3 h-3 text-primary-foreground" />
+                          )}
+                        </div>
+                      </label>
                     ))}
+                </RadioGroup>
+              </div>
+
+              {/* Square Payment Form */}
+              {selectedGateway === 'square' && (
+                <div className="bg-accent/30 p-6 rounded-xl border">
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg">Card Payment</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Enter your card details securely below
+                    </p>
                   </div>
-                 </CardContent>
-               </Card>
+                    <SquarePaymentSimple
+                      amount={seatCheckoutMode ? seatTotal : total}
+                      onPaymentToken={handleSquarePaymentToken}
+                      onError={handleSquarePaymentError}
+                      isProcessing={isProcessing}
+                      showHeader={false}
+                    />
+                </div>
+              )}
 
-               {/* Square Payment Form */}
-               {selectedGateway === 'square' && (
-                 <Card>
-                   <CardHeader>
-                     <CardTitle className="text-lg">Enter Card Details</CardTitle>
-                     <CardDescription>
-                       Your payment information is secured with 256-bit SSL encryption
-                     </CardDescription>
-                   </CardHeader>
-                   <CardContent>
-                     <SquarePaymentSimple
-                       amount={seatCheckoutMode ? seatTotal : total}
-                       onPaymentToken={handleSquarePaymentToken}
-                       onError={handleSquarePaymentError}
-                       isProcessing={isProcessing}
-                       showHeader={false}
-                     />
-                   </CardContent>
-                 </Card>
-               )}
+              {/* CashApp Payment Form */}
+              {selectedGateway === 'cashapp' && (
+                <CashAppPay
+                  amount={seatCheckoutMode ? seatTotal : total}
+                  orderId={`order_${Date.now()}`}
+                  customerEmail={user?.email || ''}
+                  onSuccess={handleCashAppSuccess}
+                  onError={handleCashAppError}
+                />
+              )}
+            </>
+          )}
 
-               {/* CashApp Payment Form */}
-               {selectedGateway === 'cashapp' && (
-                 <CashAppPay
-                   amount={seatCheckoutMode ? seatTotal : total}
-                   orderId={`order_${Date.now()}`}
-                   customerEmail={customerEmail}
-                   onSuccess={handleCashAppSuccess}
-                   onError={handleCashAppError}
-                 />
-               )}
-             </>
-           )}
-
-           {/* Error Display */}
+          {/* Error Display */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -721,7 +728,12 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+            <Button 
+              variant="ghost" 
+              onClick={onClose} 
+              disabled={isProcessing}
+              className="min-w-[100px]"
+            >
               Cancel
             </Button>
              {(items.length > 0 || seatCheckoutMode) && selectedGateway !== 'cashapp' && (
@@ -729,9 +741,11 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                  onClick={handleCheckout} 
                  disabled={
                    isProcessing || 
-                   !customerEmail || 
+                   !user?.email || 
                    (selectedGateway === 'square' && !squarePaymentToken)
                  }
+                 size="lg"
+                 className="min-w-[200px]"
                >
                  {isProcessing ? (
                    <>
