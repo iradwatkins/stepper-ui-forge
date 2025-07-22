@@ -72,7 +72,10 @@ export function SquareCardFormFix({
 
         // Step 4: Initialize payments
         console.log('[Square Card Fix] Initializing payments...');
-        const payments = window.Square.payments(appId, locationId);
+        const payments = window.Square.payments({
+          applicationId: appId,
+          locationId: locationId
+        });
         
         // Step 5: Create card instance
         console.log('[Square Card Fix] Creating card instance...');

@@ -88,6 +88,7 @@ const ProductionPaymentTest = lazy(() => import("./pages/ProductionPaymentTest")
 const SquareOAuthCallback = lazy(() => import("./pages/SquareOAuthCallback"));
 const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
+const TestSquareInit = lazy(() => import("./pages/TestSquareInit"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -155,6 +156,7 @@ const AppContent = () => {
         <Route path="/auth/square/callback" element={<SquareOAuthCallback />} />
         <Route path="/diagnostics" element={<DiagnosticsPage />} />
         <Route path="/production-payment-test" element={<ProductionPaymentTest />} />
+        <Route path="/test-square-init" element={<TestSquareInit />} />
         
         <Route path="/dashboard" element={
           <ProtectedRoute>

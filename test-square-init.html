@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Square Init</title>
+  <script type="module">
+    // Import the config functions
+    import { getSquareConfig, debugPaymentConfig } from './src/config/production.payment.config.ts';
+    import { initializeSquareWithFallback } from './src/lib/payments/square-init-fix.ts';
+    
+    console.log('Testing Square Configuration...');
+    
+    // Test getSquareConfig
+    try {
+      const config = getSquareConfig();
+      console.log('getSquareConfig result:', config);
+      console.log('appId type:', typeof config.appId);
+      console.log('appId value:', config.appId);
+      console.log('appId === undefined:', config.appId === undefined);
+      console.log('appId === "undefined":', config.appId === 'undefined');
+      
+      // Test debug function
+      debugPaymentConfig();
+      
+      // Test environment variables directly
+      console.log('Direct env vars:', {
+        VITE_SQUARE_APP_ID: import.meta.env.VITE_SQUARE_APP_ID,
+        VITE_SQUARE_APP_ID_type: typeof import.meta.env.VITE_SQUARE_APP_ID,
+        VITE_SQUARE_LOCATION_ID: import.meta.env.VITE_SQUARE_LOCATION_ID,
+        allKeys: Object.keys(import.meta.env)
+      });
+      
+    } catch (error) {
+      console.error('Error in test:', error);
+    }
+  </script>
+</head>
+<body>
+  <h1>Check Console for Square Init Test Results</h1>
+</body>
+</html>

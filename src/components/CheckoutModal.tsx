@@ -19,6 +19,10 @@ import { seatingService } from "@/lib/services/SeatingService";
 import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
 import { SquarePaymentSimple } from "@/components/payments/SquarePaymentSimple";
 import { CashAppPay } from "@/components/payment/CashAppPay";
+import { SquareEnvDebug } from "@/components/payment/SquareEnvDebug";
+import { EmergencySquareCard } from "@/components/payment/EmergencySquareCard";
+import { EmergencyCashApp } from "@/components/payment/EmergencyCashApp";
+import { SquareDiagnostic } from "@/components/payment/SquareDiagnostic";
 import { toast } from "sonner";
 
 interface SeatDetails {
@@ -620,6 +624,9 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                 </CardContent>
               </Card>
 
+              {/* Emergency Diagnostic - TEMPORARY */}
+              {import.meta.env.DEV && <SquareDiagnostic />}
+              
               {/* Modern Payment Method Selection */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-4">
@@ -658,29 +665,28 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                  </CardContent>
                </Card>
 
-               {/* Modern Square Payment Form */}
+               {/* EMERGENCY Square Payment Form - Using hardcoded credentials */}
                {selectedGateway === 'square' && (
                  <div className="space-y-4">
                    <div>
                      <label className="block text-sm font-medium text-gray-700 mb-2">Card Information</label>
                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 hover:border-gray-400 focus-within:border-green-500 transition-colors">
-                       <SquarePaymentSimple
+                       <EmergencySquareCard
                          amount={seatCheckoutMode ? seatTotal : total}
-                         onPaymentToken={handleSquarePaymentToken}
+                         onSuccess={handleSquarePaymentToken}
                          onError={handleSquarePaymentError}
                          isProcessing={isProcessing}
-                         showHeader={false}
                        />
                      </div>
                    </div>
                  </div>
                )}
 
-               {/* Modern CashApp Payment Form */}
+               {/* EMERGENCY CashApp Payment Form - Using hardcoded credentials */}
                {selectedGateway === 'cashapp' && (
                  <div className="space-y-4">
                    <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 min-h-[80px]">
-                     <CashAppPay
+                     <EmergencyCashApp
                        amount={seatCheckoutMode ? seatTotal : total}
                        orderId={`order_${Date.now()}`}
                        customerEmail={customerEmail}

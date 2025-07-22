@@ -1,73 +1,67 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { FixedPaymentManager } from '@/lib/square/fixedPaymentManager';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
-import { paymentManager } from '@/lib/services/paymentManager';
 
-interface CashAppPayProps {
-  amount: number;
+interface EmergencyCashAppProps {
+  amount: number; // Amount in dollars
   orderId: string;
   customerEmail: string;
   onSuccess: (result: any) => void;
   onError: (error: string) => void;
 }
 
-
-export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError }: CashAppPayProps) {
+export function EmergencyCashApp({ amount, orderId, customerEmail, onSuccess, onError }: EmergencyCashAppProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const instanceRef = useRef<any>(null);
 
   useEffect(() => {
-    let instance: any = null;
+    let mounted = true;
 
-    const waitForContainer = async (maxAttempts = 10): Promise<void> => {
-      for (let i = 0; i < maxAttempts; i++) {
-        if (containerRef.current && document.contains(containerRef.current)) {
-          return;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      throw new Error('Container not found after maximum attempts');
-    };
-
-    const initializeCashAppPay = async () => {
+    const initializeCashApp = async () => {
       try {
+        console.log('[EmergencyCashApp] Starting initialization...');
         setIsLoading(true);
         setError(null);
 
-        // Wait for container to be in DOM
-        await waitForContainer();
-
-        // Clear container
-        if (containerRef.current) {
-          containerRef.current.innerHTML = '';
+        // Wait for container
+        let attempts = 0;
+        while (!containerRef.current && attempts < 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
         }
 
-        // Create Cash App Pay instance using payment manager
-        try {
-          const result = await paymentManager.createCashAppPay(
-            '#cash-app-pay-container',
-            { 
-              referenceId: orderId,
-              amount: amount // Pass amount in dollars (Square expects dollars, not cents)
-            }
-          );
-          
-          if (!result || !result.cashAppPay) {
-            throw new Error('Failed to create Cash App Pay instance');
-          }
-        
-        instance = result.cashAppPay;
+        if (!containerRef.current) {
+          throw new Error('Container not found');
+        }
 
-        // Add event listeners
-        instance.addEventListener('ontokenization', async (event: any) => {
+        // Clear container
+        containerRef.current.innerHTML = '';
+
+        // Initialize using fixed manager
+        const manager = FixedPaymentManager.getInstance();
+        const cashAppPay = await manager.createCashAppPay(amount, orderId);
+        
+        if (!mounted) return;
+
+        // Attach to container
+        await cashAppPay.attach(containerRef.current);
+        instanceRef.current = cashAppPay;
+
+        // Add event listener
+        cashAppPay.addEventListener('ontokenization', async (event: any) => {
           const { tokenResult } = event.detail;
           
           if (tokenResult.status === 'OK') {
             try {
+              console.log('[EmergencyCashApp] Token received:', tokenResult.token);
+              
+              // Convert amount to cents for API
               const result = await productionPaymentService.processPayment({
-                amount,
+                amount: Math.round(amount * 100), // Convert to cents
                 gateway: 'cashapp',
                 orderId,
                 customerEmail,
@@ -88,36 +82,29 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
         });
 
         setIsLoading(false);
-        } catch (innerErr) {
-          throw innerErr;
-        }
+        console.log('[EmergencyCashApp] Initialized successfully');
 
       } catch (err) {
-        console.error('Cash App Pay error:', err);
-        let errorMessage = 'Failed to initialize Cash App Pay';
+        if (!mounted) return;
         
-        if (err instanceof Error) {
-          if (err.message.includes('applicationId')) {
-            errorMessage = 'Payment configuration error. Please try again later.';
-            console.error('Square applicationId error detected:', err.message);
-          } else {
-            errorMessage = err.message;
-          }
-        }
-        
+        console.error('[EmergencyCashApp] Init error:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to initialize Cash App Pay';
         setError(errorMessage);
         onError(errorMessage);
         setIsLoading(false);
       }
     };
 
-    // Initialize Cash App Pay
-    initializeCashAppPay();
+    initializeCashApp();
 
-    // Cleanup
     return () => {
-      if (instance) {
-        paymentManager.destroyCashAppPay(instance).catch(console.error);
+      mounted = false;
+      if (instanceRef.current?.destroy) {
+        try {
+          instanceRef.current.destroy();
+        } catch (e) {
+          console.error('[EmergencyCashApp] Cleanup error:', e);
+        }
       }
     };
   }, [amount, orderId, customerEmail, onSuccess, onError]);
@@ -140,7 +127,7 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
       )}
       
       {/* Cash App Pay button will be rendered here */}
-      <div ref={containerRef} id="cash-app-pay-container" className="cash-app-pay-container" />
+      <div ref={containerRef} className="emergency-cash-app-container min-h-[60px]" />
       
       {!isLoading && (
         <div className="text-xs text-muted-foreground text-center">

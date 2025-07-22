@@ -1,4 +1,5 @@
 import { getSquareConfig } from '@/config/production.payment.config';
+import { initializeSquareWithFallback } from '@/lib/payments/square-init-fix';
 
 interface PaymentManagerOptions {
   referenceId?: string;
@@ -40,29 +41,21 @@ class PaymentManager {
       await this.loadSquareSDK();
     }
 
-    // Get configuration from centralized config with fallback values
-    const config = getSquareConfig();
-    const { appId, locationId, environment } = config;
-    
-    console.log('🔍 Square Environment Debug:', {
-      appId: appId || 'UNDEFINED',
-      locationId: locationId || 'UNDEFINED',
-      environment: environment,
-      source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'production fallback'
-    });
-
-    // Validate required credentials
-    if (!appId || !locationId) {
-      throw new Error(`Square configuration missing: appId=${appId}, locationId=${locationId}`);
+    try {
+      // Use the robust initialization with multiple fallback layers
+      const { payments, config } = await initializeSquareWithFallback();
+      
+      this.squarePayments = payments;
+      
+      console.log('✅ Square payments initialized successfully with config:', {
+        appId: config.appId.substring(0, 20) + '...',
+        locationId: config.locationId,
+        environment: config.environment
+      });
+    } catch (error) {
+      console.error('❌ Failed to initialize Square payments:', error);
+      throw error;
     }
-
-    // Initialize Square payments once
-    this.squarePayments = (window as any).Square.payments({
-      applicationId: appId,
-      locationId: locationId
-    });
-
-    console.log('Square payments initialized globally');
   }
 
   private async loadSquareSDK(): Promise<void> {

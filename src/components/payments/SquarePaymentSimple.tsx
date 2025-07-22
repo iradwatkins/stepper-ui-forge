@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CreditCard, Loader2 } from 'lucide-react';
+import { initializeSquareWithFallback } from '@/lib/payments/square-init-fix';
 
 interface SquarePaymentSimpleProps {
   amount: number; // Amount in cents (e.g., 5200 for $52.00)
@@ -75,19 +76,15 @@ export function SquarePaymentSimple({
           throw new Error('Square SDK failed to load');
         }
         
-        // Use the working credentials from SquareProductionFix
-        const appId = import.meta.env.VITE_SQUARE_APP_ID || 'sq0idp-XG8irNWHf98C62-iqOwH6Q';
-        const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID || 'L0Q2YC1SPBGD8';
+        // Use robust initialization with fallback
+        const { payments, config } = await initializeSquareWithFallback();
         
-        console.log('[SquareSimple] Initializing with credentials:', {
-          appId: appId.substring(0, 15) + '...',
-          locationId: locationId
+        console.log('[SquareSimple] Initialized with config:', {
+          appId: config.appId.substring(0, 15) + '...',
+          locationId: config.locationId,
+          environment: config.environment
         });
         
-        const payments = window.Square.payments({
-          applicationId: appId,
-          locationId: locationId
-        });
         const card = await payments.card();
         
         // Create unique container ID to avoid conflicts

@@ -32,6 +32,15 @@ export function getSquareConfig() {
   const envAppId = import.meta.env?.VITE_SQUARE_APP_ID;
   const envLocationId = import.meta.env?.VITE_SQUARE_LOCATION_ID;
   const envEnvironment = import.meta.env?.VITE_SQUARE_ENVIRONMENT;
+  
+  // Debug environment variable loading
+  console.log('🎯 Environment Variable Debug:', {
+    VITE_SQUARE_APP_ID: envAppId || 'NOT SET',
+    VITE_SQUARE_APP_ID_type: typeof envAppId,
+    VITE_SQUARE_LOCATION_ID: envLocationId || 'NOT SET',
+    importMetaEnv: !!import.meta.env,
+    allEnvKeys: import.meta.env ? Object.keys(import.meta.env) : []
+  });
 
   // Check if environment variables are properly configured (not placeholder values)
   const isEnvConfigured = envAppId && 
@@ -50,6 +59,17 @@ export function getSquareConfig() {
   const environment = (envEnvironment && envEnvironment !== 'false' && envEnvironment !== 'undefined')
     ? envEnvironment as 'production' | 'sandbox'
     : PRODUCTION_CREDENTIALS.square.environment;
+  
+  // Final validation to ensure we have valid values
+  if (!appId || typeof appId !== 'string') {
+    console.error('❌ Square appId is invalid:', { appId, type: typeof appId, isEnvConfigured });
+    // Force use of fallback if appId is invalid
+    return {
+      appId: PRODUCTION_CREDENTIALS.square.appId,
+      locationId: PRODUCTION_CREDENTIALS.square.locationId,
+      environment: PRODUCTION_CREDENTIALS.square.environment
+    };
+  }
 
   // Debug logging
   if (import.meta.env?.DEV) {
@@ -75,8 +95,8 @@ export function getSquareConfig() {
   }
 
   return {
-    appId,
-    locationId,
+    appId: appId || PRODUCTION_CREDENTIALS.square.appId, // Extra safety fallback
+    locationId: locationId || PRODUCTION_CREDENTIALS.square.locationId,
     environment
   };
 }
