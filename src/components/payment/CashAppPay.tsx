@@ -3,7 +3,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
 import { paymentManager } from '@/lib/services/paymentManager';
-import { waitForCashAppContainer } from '@/utils/containerUtils';
 
 interface CashAppPayProps {
   amount: number;
@@ -22,15 +21,23 @@ export function CashAppPay({ amount, orderId, customerEmail, onSuccess, onError 
   useEffect(() => {
     let instance: any = null;
 
-    // Using proper container utils instead of custom implementation
+    const waitForContainer = async (maxAttempts = 10): Promise<void> => {
+      for (let i = 0; i < maxAttempts; i++) {
+        if (containerRef.current && document.contains(containerRef.current)) {
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      throw new Error('Container not found after maximum attempts');
+    };
 
     const initializeCashAppPay = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Wait for container to be in DOM using proper container utils
-        await waitForCashAppContainer(containerRef);
+        // Wait for container to be in DOM
+        await waitForContainer();
 
         // Clear container
         if (containerRef.current) {

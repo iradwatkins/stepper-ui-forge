@@ -5,9 +5,9 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:8080',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  // Add your production domains here
-  // 'https://yourdomain.com',
-  // 'https://www.yourdomain.com'
+  // Production domains
+  'https://stepperslife.com',
+  'https://www.stepperslife.com'
 ];
 
 export function getCorsHeaders(origin: string | null): HeadersInit {
