@@ -18,6 +18,8 @@ CREATE TABLE profiles (
     phone TEXT,
     location TEXT,
     organization TEXT,
+    is_admin BOOLEAN DEFAULT FALSE,
+    admin_level INTEGER DEFAULT 0,
     social_links JSONB DEFAULT '{}',
     notification_preferences JSONB DEFAULT '{
         "emailMarketing": true,
@@ -483,6 +485,10 @@ CREATE TABLE IF NOT EXISTS commission_earnings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Indexes for admin permissions
+CREATE INDEX IF NOT EXISTS idx_profiles_is_admin ON profiles(is_admin);
+CREATE INDEX IF NOT EXISTS idx_profiles_admin_level ON profiles(admin_level);
+
 -- Indexes for follower system
 CREATE INDEX IF NOT EXISTS idx_user_follows_follower_id ON user_follows(follower_id);
 CREATE INDEX IF NOT EXISTS idx_user_follows_organizer_id ON user_follows(organizer_id);
@@ -676,6 +682,84 @@ BEGIN
     LIMIT 1;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Profile creation trigger function for new user registration
+-- Handles both email/password and OAuth registration (Google, etc.)
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Create profile with proper Google OAuth data handling and admin setup
+    INSERT INTO profiles (
+        id,
+        email,
+        full_name,
+        avatar_url,
+        is_admin,
+        admin_level,
+        notification_preferences,
+        privacy_settings,
+        created_at,
+        updated_at
+    ) VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(
+            NEW.raw_user_meta_data->>'full_name', 
+            NEW.raw_user_meta_data->>'name',
+            NEW.email
+        ),
+        NEW.raw_user_meta_data->>'avatar_url',
+        CASE WHEN NEW.email = 'iradwatkins@gmail.com' THEN true ELSE false END,
+        CASE WHEN NEW.email = 'iradwatkins@gmail.com' THEN 3 ELSE 0 END,
+        '{"emailMarketing": true, "emailUpdates": true, "emailTickets": true, "pushNotifications": true, "smsNotifications": false}',
+        '{"profileVisible": true, "showEmail": false, "showPhone": false, "showEvents": true}',
+        NOW(),
+        NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
+        avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
+        updated_at = NOW();
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger for automatic profile creation on user registration
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- User update trigger function for OAuth profile updates
+CREATE OR REPLACE FUNCTION handle_user_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Update profile when user metadata changes (e.g., Google OAuth updates)
+    UPDATE profiles SET
+        email = NEW.email,
+        full_name = COALESCE(
+            NEW.raw_user_meta_data->>'full_name', 
+            NEW.raw_user_meta_data->>'name',
+            profiles.full_name
+        ),
+        avatar_url = COALESCE(
+            NEW.raw_user_meta_data->>'avatar_url',
+            profiles.avatar_url
+        ),
+        updated_at = NOW()
+    WHERE id = NEW.id;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger for user updates (OAuth profile changes)
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
+CREATE TRIGGER on_auth_user_updated
+    AFTER UPDATE ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION handle_user_update();
 
 -- Comments for documentation
 COMMENT ON TABLE admin_permissions IS 'Granular admin permissions for platform administration';
