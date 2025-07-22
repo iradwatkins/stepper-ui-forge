@@ -1,3 +1,4 @@
+// AdminRoute component for protecting admin-only pages
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsAdmin } from '@/lib/hooks/useAdminPermissions';
