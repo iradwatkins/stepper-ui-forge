@@ -38,11 +38,23 @@ class PaymentManager {
       await this.loadSquareSDK();
     }
 
+    // Get environment variables with debugging
+    const appId = import.meta.env.VITE_SQUARE_APP_ID;
+    const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+    
+    console.log('🔍 Square Environment Debug:', {
+      appId: appId || 'UNDEFINED',
+      locationId: locationId || 'UNDEFINED',
+      allEnvVars: import.meta.env
+    });
+
+    // Validate required credentials
+    if (!appId || !locationId) {
+      throw new Error(`Square configuration missing: appId=${appId}, locationId=${locationId}`);
+    }
+
     // Initialize Square payments once
-    this.squarePayments = (window as any).Square.payments(
-      import.meta.env.VITE_SQUARE_APP_ID,
-      import.meta.env.VITE_SQUARE_LOCATION_ID
-    );
+    this.squarePayments = (window as any).Square.payments(appId, locationId);
 
     console.log('Square payments initialized globally');
   }
