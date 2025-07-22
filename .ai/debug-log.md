@@ -103,3 +103,4 @@
 | Fix TeamRoles checkboxes | TeamRoles.tsx | Fixed organizer_id → owner_id reference causing 400 errors | No |
 | Fix build error | cleanup-demo-data.ts | Created missing cleanup-demo-data utility file | No |
 | Fix AdminRoute export | AdminRoute.tsx, App.tsx | Changed to default export, updated all imports | No |
+| Fix localhost connection | vite.config.ts | Changed host from 'localhost' to true for proper binding | No |
