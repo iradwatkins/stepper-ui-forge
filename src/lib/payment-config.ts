@@ -22,11 +22,12 @@ export interface PaymentConfig {
 
 // Get payment configuration from environment variables
 export const getPaymentConfig = (): PaymentConfig => {
-  // Get credentials from Vite environment variables
+  // Get PUBLIC credentials from Vite environment variables
+  // NEVER expose server-side secrets to the client!
   const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || '';
   const squareAppId = import.meta.env.VITE_SQUARE_APP_ID || '';
   const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID || '';
-  const squareAccessToken = import.meta.env.VITE_SQUARE_ACCESS_TOKEN || '';
+  
   // Get environment settings from Vite environment variables
   const paypalEnv = import.meta.env.VITE_PAYPAL_ENVIRONMENT || 'sandbox';
   const squareEnv = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
@@ -35,12 +36,13 @@ export const getPaymentConfig = (): PaymentConfig => {
   const config: PaymentConfig = {
     paypal: {
       clientId: paypalClientId,
-      clientSecret: import.meta.env.VITE_PAYPAL_CLIENT_SECRET || '',
+      // clientSecret should NEVER be exposed to client - handle server-side only
       environment: paypalEnv as 'sandbox' | 'production',
     },
     square: {
       applicationId: squareAppId,
-      accessToken: squareAccessToken,
+      // accessToken should NEVER be exposed to client - handle server-side only
+      accessToken: '', // This will be handled by edge functions
       environment: squareEnv as 'sandbox' | 'production',
       locationId: squareLocationId,
     },
@@ -51,24 +53,14 @@ export const getPaymentConfig = (): PaymentConfig => {
     webhookUrl: import.meta.env.VITE_PAYMENT_WEBHOOK_URL || '',
   };
 
-  console.log('🔐 Payment Config Loaded:', {
-    paypal_env: config.paypal.environment,
-    square_env: config.square.environment,
-    cashapp_env: config.cashapp.environment,
-    square_app_id: config.square.applicationId ? config.square.applicationId.substring(0, 15) + '...' : 'NOT SET',
-    cashapp_uses_square: true,
-  });
-
-  // ENHANCED DEBUGGING: Log raw environment variables
-  console.log('🔍 VITE ENV VARIABLES:', {
-    VITE_SQUARE_ENVIRONMENT: import.meta.env.VITE_SQUARE_ENVIRONMENT,
-    VITE_SQUARE_APP_ID: import.meta.env.VITE_SQUARE_APP_ID,
-    VITE_SQUARE_LOCATION_ID: import.meta.env.VITE_SQUARE_LOCATION_ID,
-    // Cash App uses Square environment
-    VITE_MODE: import.meta.env.MODE,
-    VITE_DEV: import.meta.env.DEV,
-    VITE_PROD: import.meta.env.PROD
-  });
+  // Only log non-sensitive configuration status in development
+  if (import.meta.env.DEV) {
+    console.log('🔐 Payment Config Status:', {
+      paypal_configured: !!paypalClientId,
+      square_configured: !!squareAppId && !!squareLocationId,
+      environment: import.meta.env.MODE,
+    });
+  }
 
   return config;
 };
@@ -83,16 +75,14 @@ export const validatePaymentConfig = (): { isValid: boolean; missing: string[] }
     missing.push('VITE_PAYPAL_CLIENT_ID');
   }
 
-  // Check Square
+  // Check Square (only client-side credentials)
   if (!config.square.applicationId) {
     missing.push('VITE_SQUARE_APP_ID');
-  }
-  if (!config.square.accessToken) {
-    missing.push('VITE_SQUARE_ACCESS_TOKEN');
   }
   if (!config.square.locationId) {
     missing.push('VITE_SQUARE_LOCATION_ID');
   }
+  // Note: accessToken is server-side only and should not be validated on client
 
   // Cash App uses Square Application ID directly - no separate validation needed
 

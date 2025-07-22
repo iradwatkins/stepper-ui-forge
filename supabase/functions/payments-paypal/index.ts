@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { getCorsHeaders, corsResponse } from "../_shared/cors.ts"
 
 // PayPal API configuration
 const PAYPAL_CLIENT_ID = Deno.env.get('PAYPAL_CLIENT_ID');
@@ -9,13 +10,6 @@ const PAYPAL_ENVIRONMENT = Deno.env.get('PAYPAL_ENVIRONMENT') || 'sandbox';
 const PAYPAL_BASE_URL = PAYPAL_ENVIRONMENT === 'production' 
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
 
 // Get PayPal access token
 async function getPayPalAccessToken(): Promise<string> {
@@ -148,9 +142,12 @@ async function verifyPayPalWebhook(headers: Headers, body: string): Promise<bool
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return corsResponse(origin);
   }
 
   try {

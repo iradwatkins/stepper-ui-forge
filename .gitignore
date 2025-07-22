@@ -23,11 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables (keep .env.production for reference)
+# Environment variables - NEVER commit these!
 .env
 .env.local
 .env.development
 .env.development.local
 .env.test
 .env.test.local
+.env.production
+.env.production.local
+.env.sandbox
+.env.staging
 

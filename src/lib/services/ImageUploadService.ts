@@ -1,4 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  validateFileUpload, 
+  sanitizeFilename, 
+  generateSecureFilename,
+  ALLOWED_IMAGE_TYPES,
+  FILE_SIZE_LIMITS 
+} from '@/lib/utils/fileValidation';
 
 export interface UploadResult {
   success: boolean;
@@ -33,8 +40,14 @@ export class ImageUploadService {
    */
   async uploadImage(file: File, options: UploadOptions): Promise<UploadResult> {
     try {
-      // Validate file
-      const validation = this.validateFile(file, options);
+      // Validate file using secure validation
+      const validation = await validateFileUpload(file, {
+        allowedTypes: options.allowedTypes || ALLOWED_IMAGE_TYPES,
+        maxSize: options.maxSizeBytes || FILE_SIZE_LIMITS.image,
+        maxWidth: 4000, // Reasonable max dimensions
+        maxHeight: 4000
+      });
+      
       if (!validation.valid) {
         return { success: false, error: validation.error };
       }
@@ -148,49 +161,22 @@ export class ImageUploadService {
   /**
    * Validate file before upload
    */
-  private validateFile(file: File, options: UploadOptions): { valid: boolean; error?: string } {
-    // Check file size
-    const maxSize = options.maxSizeBytes || 10 * 1024 * 1024; // Default 10MB
-    if (file.size > maxSize) {
-      return {
-        valid: false,
-        error: `File size exceeds ${Math.round(maxSize / 1024 / 1024)}MB limit`
-      };
-    }
-
-    // Check file type
-    const allowedTypes = options.allowedTypes || [
-      'image/jpeg',
-      'image/png',
-      'image/svg+xml',
-      'image/webp'
-    ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      return {
-        valid: false,
-        error: `File type ${file.type} not allowed. Supported types: ${allowedTypes.join(', ')}`
-      };
-    }
-
-    return { valid: true };
-  }
 
   /**
-   * Generate consistent file path
+   * Generate consistent and secure file path
    */
   private generateFilePath(file: File, options: UploadOptions): string {
-    const timestamp = Date.now();
-    const extension = this.getFileExtension(file.name);
-    const filename = options.filename || `image-${timestamp}`;
+    const userId = options.userId || 'anonymous';
+    const secureFilename = generateSecureFilename(file.name, userId);
     
     if (options.folder) {
-      return `${options.folder}/${filename}${extension}`;
+      // Sanitize folder path as well
+      const sanitizedFolder = options.folder.replace(/\.{2,}/g, '_');
+      return `${sanitizedFolder}/${secureFilename}`;
     }
 
     // Fallback path structure
-    const userId = options.userId || 'anonymous';
-    return `${userId}/${filename}${extension}`;
+    return `${userId}/${secureFilename}`;
   }
 
   /**

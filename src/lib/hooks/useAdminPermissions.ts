@@ -51,30 +51,7 @@ export const useAdminPermissions = (): AdminPermissions => {
       try {
         setPermissions(prev => ({ ...prev, loading: true, error: null }));
 
-        // Special fallback for designated admin email
-        if (user.email === import.meta.env.VITE_ADMIN_EMAIL) {
-          console.log('🔐 useAdminPermissions: Designated admin email detected:', user.email);
-          console.log('🔐 useAdminPermissions: Granting admin access automatically');
-          
-          // For the designated admin, bypass database checks and grant full access
-          const adminPermissions = {
-            isAdmin: true,
-            canManageUsers: true,
-            canManageEvents: true,
-            canViewAnalytics: true,
-            canManageSystem: true,
-            canManageBilling: true,
-            adminLevel: 3,
-            loading: false,
-            error: null
-          };
-          
-          console.log('🔐 useAdminPermissions: Setting admin permissions:', adminPermissions);
-          setPermissions(adminPermissions);
-          return;
-        }
-
-        // For non-admin users, try to check database permissions
+        // Always check database permissions - no hardcoded backdoors
         let adminData = {
           is_admin: false,
           admin_level: 0,

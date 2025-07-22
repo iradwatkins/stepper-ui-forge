@@ -115,7 +115,6 @@ export class TeamService {
         .select(`
           *,
           user_profile:profiles!team_members_user_id_fkey (
-            email,
             full_name,
             avatar_url
           )
@@ -311,7 +310,6 @@ export class TeamService {
         .select(`
           *,
           user_profile:profiles!team_members_user_id_fkey (
-            email,
             full_name,
             avatar_url
           )
@@ -404,7 +402,6 @@ export class TeamService {
         .select(`
           *,
           user_profile:profiles!team_members_user_id_fkey (
-            email,
             full_name,
             avatar_url
           )
