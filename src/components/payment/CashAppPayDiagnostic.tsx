@@ -92,10 +92,7 @@ export function CashAppPayDiagnostic() {
 
       // Step 3: Square Payments Initialization
       updateStep(2, { status: 'checking' });
-      const payments = window.Square.payments({
-        applicationId: appId,
-        locationId: locationId
-      });
+      const payments = window.Square.payments(appId, locationId);
       
       if (!payments) {
         throw new Error('Failed to initialize Square payments');

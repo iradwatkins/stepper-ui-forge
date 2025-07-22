@@ -86,10 +86,7 @@ export function SquarePaymentStable({
       }
       
       console.log('[SquareStable] Creating payments instance...');
-      const payments = window.Square.payments({
-        applicationId: appId,
-        locationId: locationId
-      });
+      const payments = window.Square.payments(appId, locationId);
       
       console.log('[SquareStable] Creating card instance...');
       const cardInstance = await payments.card();

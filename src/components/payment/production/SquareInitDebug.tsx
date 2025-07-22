@@ -61,10 +61,7 @@ export function SquareInitDebug() {
       });
 
       // Try initialization
-      const payments = window.Square.payments({
-        applicationId: applicationId,
-        locationId: locationId
-      });
+      const payments = window.Square.payments(applicationId, locationId);
 
       console.log('Success! Payments object:', payments);
       setStatus('✅ Initialized successfully');

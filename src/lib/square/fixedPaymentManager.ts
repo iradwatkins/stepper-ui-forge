@@ -50,11 +50,8 @@ export class FixedPaymentManager {
         format: applicationId.substring(0, 7)
       });
       
-      // Initialize Square payments with proper object format
-      this.squarePayments = window.Square.payments({
-        applicationId: applicationId,
-        locationId: locationId
-      });
+      // Initialize Square payments with direct parameters
+      this.squarePayments = window.Square.payments(applicationId, locationId);
       this.isInitialized = true;
       
       console.log('[Square] Initialized successfully');

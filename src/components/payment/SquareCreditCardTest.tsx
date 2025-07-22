@@ -73,10 +73,7 @@ export function SquareCreditCardTest() {
 
       // Step 3: Initialize Square payments
       addLog('Initializing Square payments object...');
-      const payments = window.Square.payments({
-        applicationId: appId,
-        locationId: locationId
-      });
+      const payments = window.Square.payments(appId, locationId);
       addLog('Square payments object created');
 
       // Step 4: Create card payment method

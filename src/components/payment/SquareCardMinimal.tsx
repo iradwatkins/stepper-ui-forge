@@ -56,10 +56,7 @@ export function SquareCardMinimal() {
         console.log('[Minimal] Square SDK loaded');
 
         // Initialize payments
-        const payments = window.Square.payments({
-          applicationId: appId,
-          locationId: locationId
-        });
+        const payments = window.Square.payments(appId, locationId);
         console.log('[Minimal] Payments initialized');
 
         // Create card

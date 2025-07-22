@@ -49,10 +49,7 @@ export async function getSquarePayments() {
     });
     
     // Initialize payments
-    globalPaymentsInstance = window.Square.payments({
-      applicationId,
-      locationId
-    });
+    globalPaymentsInstance = window.Square.payments(applicationId, locationId);
     
     // Also store on window for debugging
     window.__emergencySquarePayments = globalPaymentsInstance;

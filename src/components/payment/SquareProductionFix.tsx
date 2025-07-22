@@ -71,10 +71,7 @@ export function SquareProductionFix({
         const appId = import.meta.env.VITE_SQUARE_APP_ID || 'sq0idp-XG8irNWHf98C62-iqOwH6Q';
         const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID || 'L0Q2YC1SPBGD8';
         
-        const payments = window.Square.payments({
-          applicationId: appId,
-          locationId: locationId
-        });
+        const payments = window.Square.payments(appId, locationId);
         const cardInstance = await payments.card();
         
         // Create a unique container ID

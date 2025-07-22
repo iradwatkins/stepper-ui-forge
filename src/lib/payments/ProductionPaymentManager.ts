@@ -64,10 +64,7 @@ export class ProductionPaymentManager {
         locationIdType: typeof locationId
       });
 
-      this.squarePayments = window.Square.payments({
-        applicationId: appId,
-        locationId: locationId
-      });
+      this.squarePayments = window.Square.payments(appId, locationId);
     } catch (error: any) {
       console.error('[ProductionPaymentManager] Square.payments() call failed:', error);
       console.error('[ProductionPaymentManager] Failed with config:', {

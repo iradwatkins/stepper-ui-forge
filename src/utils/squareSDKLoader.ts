@@ -135,12 +135,8 @@ export async function initializeSquarePayments() {
   });
 
   try {
-    // Initialize with proper object format
-    // Square SDK requires exact parameter names
-    const payments = window.Square.payments({
-      applicationId: appId,
-      locationId: locationId
-    });
+    // Initialize with direct parameters (working format from commit 36191e3)
+    const payments = window.Square.payments(appId, locationId);
     
     console.log('[squareSDKLoader] Square payments initialized successfully');
     return payments;

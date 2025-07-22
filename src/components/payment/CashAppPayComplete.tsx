@@ -71,10 +71,7 @@ export function CashAppPayComplete({
       }
 
       // Initialize Square payments
-      const payments = window.Square.payments({
-        applicationId: applicationId,
-        locationId: locationId
-      });
+      const payments = window.Square.payments(applicationId, locationId);
 
       // Create payment request
       const paymentRequest = payments.paymentRequest({

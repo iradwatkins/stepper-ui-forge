@@ -144,10 +144,7 @@ export function SquareDiagnostics() {
     // 4. Initialize Square payments
     try {
       const initStartTime = Date.now();
-      const payments = window.Square.payments({
-        applicationId: squareAppId,
-        locationId: squareLocationId
-      });
+      const payments = window.Square.payments(squareAppId, squareLocationId);
       
       // Try to create a card payment method as a test
       const card = await payments.card();

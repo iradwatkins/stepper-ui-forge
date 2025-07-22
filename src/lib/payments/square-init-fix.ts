@@ -39,10 +39,7 @@ export async function initializeSquareWithFallback() {
     });
 
     // Initialize Square payments
-    const payments = (window as any).Square.payments({
-      applicationId: config.appId,
-      locationId: config.locationId
-    });
+    const payments = (window as any).Square.payments(config.appId, config.locationId);
 
     return { payments, config };
   } catch (error) {
@@ -51,10 +48,7 @@ export async function initializeSquareWithFallback() {
     // Last resort - try with hardcoded values directly
     try {
       console.log('🔄 Attempting fallback initialization with hardcoded values');
-      const payments = (window as any).Square.payments({
-        applicationId: 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
-        locationId: 'L0Q2YC1SPBGD8'
-      });
+      const payments = (window as any).Square.payments('sq0idp-XG8irNWHf98C62-iqOwH6Q', 'L0Q2YC1SPBGD8');
       
       return {
         payments,
