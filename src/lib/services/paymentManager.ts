@@ -57,7 +57,10 @@ class PaymentManager {
     }
 
     // Initialize Square payments once
-    this.squarePayments = (window as any).Square.payments(appId, locationId);
+    this.squarePayments = (window as any).Square.payments({
+      applicationId: appId,
+      locationId: locationId
+    });
 
     console.log('Square payments initialized globally');
   }

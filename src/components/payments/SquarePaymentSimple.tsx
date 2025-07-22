@@ -84,7 +84,10 @@ export function SquarePaymentSimple({
           locationId: locationId
         });
         
-        const payments = window.Square.payments(appId, locationId);
+        const payments = window.Square.payments({
+          applicationId: appId,
+          locationId: locationId
+        });
         const card = await payments.card();
         
         // Create unique container ID to avoid conflicts

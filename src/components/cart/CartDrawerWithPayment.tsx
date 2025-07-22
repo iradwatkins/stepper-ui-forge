@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,11 +29,11 @@ export const CartDrawerWithPayment = ({ open, onOpenChange }: CartDrawerWithPaym
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'checkout' | 'cashapp'>('checkout');
 
   // Initialize payment manager when component mounts
-  useState(() => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       paymentManager.initializeSquarePayments().catch(console.error);
     }
-  });
+  }, []);
 
   const handleCheckout = () => {
     if (!user) {
