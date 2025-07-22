@@ -1,13 +1,13 @@
 export const PAYMENT_CONFIG = {
   square: {
     production: {
-      appId: process.env.VITE_SQUARE_APP_ID || '',
-      locationId: process.env.VITE_SQUARE_LOCATION_ID || '',
+      appId: import.meta.env.VITE_SQUARE_APP_ID || '',
+      locationId: import.meta.env.VITE_SQUARE_LOCATION_ID || '',
       environment: 'production' as const
     },
     sandbox: {
-      appId: process.env.VITE_SQUARE_SANDBOX_APP_ID || '',
-      locationId: process.env.VITE_SQUARE_SANDBOX_LOCATION_ID || '',
+      appId: import.meta.env.VITE_SQUARE_SANDBOX_APP_ID || '',
+      locationId: import.meta.env.VITE_SQUARE_SANDBOX_LOCATION_ID || '',
       environment: 'sandbox' as const
     }
   },
