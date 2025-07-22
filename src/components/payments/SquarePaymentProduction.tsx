@@ -60,7 +60,10 @@ export function SquarePaymentProduction({
           environment: import.meta.env.VITE_SQUARE_ENVIRONMENT
         });
 
-        const payments = window.Square.payments(appId, locationId);
+        const payments = window.Square.payments({
+          applicationId: appId,
+          locationId: locationId
+        });
         const card = await payments.card();
         
         await card.attach('#square-card-production');

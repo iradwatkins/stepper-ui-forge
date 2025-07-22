@@ -1,5 +1,5 @@
 interface SquareSDK {
-  payments: (appId: string, locationId: string) => SquarePayments;
+  payments: (config: { applicationId: string; locationId: string }) => SquarePayments;
 }
 
 interface SquarePayments {
@@ -81,7 +81,10 @@ class SquareSingleton {
       await this.waitForSquareSDK();
 
       // Initialize payments instance
-      this.payments = window.Square.payments(config.appId, config.locationId);
+      this.payments = window.Square.payments({
+        applicationId: config.appId,
+        locationId: config.locationId
+      });
       
       console.log('Square SDK initialized successfully');
     } catch (error) {

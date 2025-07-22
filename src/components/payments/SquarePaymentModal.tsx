@@ -47,10 +47,10 @@ export function SquarePaymentModal({
           throw new Error('Square.js not loaded');
         }
 
-        const payments = window.Square.payments(
-          import.meta.env.VITE_SQUARE_APP_ID,
-          import.meta.env.VITE_SQUARE_LOCATION_ID
-        );
+        const payments = window.Square.payments({
+          applicationId: import.meta.env.VITE_SQUARE_APP_ID,
+          locationId: import.meta.env.VITE_SQUARE_LOCATION_ID
+        });
         
         const card = await payments.card();
         

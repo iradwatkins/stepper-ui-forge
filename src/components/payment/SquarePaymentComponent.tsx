@@ -196,7 +196,10 @@ export function SquarePaymentComponent({
       console.log('🔄 Initializing Square payments object...');
       let payments;
       try {
-        payments = window.Square.payments(squareApplicationId, squareLocationId);
+        payments = window.Square.payments({
+          applicationId: squareApplicationId,
+          locationId: squareLocationId
+        });
         console.log('✅ Square payments object created');
       } catch (initError) {
         console.error('❌ Failed to create Square payments object:', initError);

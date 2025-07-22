@@ -56,8 +56,11 @@ class PaymentManager {
       throw new Error(`Square configuration missing: appId=${!!appId}, locationId=${!!locationId}`);
     }
 
-    // Initialize Square payments once
-    this.squarePayments = (window as any).Square.payments(appId, locationId);
+    // Initialize Square payments once - Square expects an object with applicationId and locationId
+    this.squarePayments = (window as any).Square.payments({
+      applicationId: appId,
+      locationId: locationId
+    });
 
     console.log('Square payments initialized globally');
   }

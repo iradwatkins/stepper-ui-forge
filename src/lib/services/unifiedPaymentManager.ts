@@ -59,10 +59,10 @@ class UnifiedPaymentManager {
     }
 
     // Initialize Square payments ONCE
-    this.squarePayments = (window as any).Square.payments(
-      squareAppId,
-      squareLocationId
-    );
+    this.squarePayments = (window as any).Square.payments({
+      applicationId: squareAppId,
+      locationId: squareLocationId
+    });
 
     console.log('✅ Square payments initialized successfully');
     console.log('ℹ️ Using Square App ID for both card payments and Cash App Pay');

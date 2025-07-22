@@ -57,7 +57,10 @@ export function SquarePaymentSimple({
         const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
 
         console.log('[SquareSimple] Creating payments instance');
-        const payments = window.Square.payments(appId, locationId);
+        const payments = window.Square.payments({
+          applicationId: appId,
+          locationId: locationId
+        });
         
         console.log('[SquareSimple] Creating card instance');
         const card = await payments.card();

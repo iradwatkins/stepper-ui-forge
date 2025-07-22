@@ -60,7 +60,10 @@ export function CashAppPaySquareOnly({
 
         // Initialize Square payments ONCE
         if (!paymentsRef.current) {
-          paymentsRef.current = window.Square.payments(appId, locationId);
+          paymentsRef.current = window.Square.payments({
+            applicationId: appId,
+            locationId: locationId
+          });
           console.log('✅ Square payments initialized');
         }
 

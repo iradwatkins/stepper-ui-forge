@@ -173,7 +173,10 @@ export async function initializeSquarePayments(): Promise<any> {
   }
   
   console.log('✅ Square Payments initialized with Vite environment variables');
-  return Square.payments(squareApplicationId, squareLocationId);
+  return Square.payments({
+    applicationId: squareApplicationId,
+    locationId: squareLocationId
+  });
 }
 
 /**
