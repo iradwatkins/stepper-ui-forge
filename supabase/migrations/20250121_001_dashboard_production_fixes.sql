@@ -16,25 +16,7 @@ CREATE TABLE IF NOT EXISTS venue_layouts (
 -- Create index for user queries
 CREATE INDEX IF NOT EXISTS idx_venue_layouts_user_id ON venue_layouts(user_id);
 
--- 2. Create seller_payouts table for payout tracking
-CREATE TABLE IF NOT EXISTS seller_payouts (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  amount INTEGER NOT NULL, -- Amount in cents
-  currency TEXT DEFAULT 'USD',
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
-  payout_method TEXT, -- 'bank_transfer', 'paypal', 'check', etc.
-  payout_details JSONB, -- Store account details securely
-  reference_number TEXT,
-  processed_at TIMESTAMP WITH TIME ZONE,
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create indexes
-CREATE INDEX IF NOT EXISTS idx_seller_payouts_user_id ON seller_payouts(user_id);
-CREATE INDEX IF NOT EXISTS idx_seller_payouts_status ON seller_payouts(status);
+-- 2. Seller payouts table already exists from migration 011, skip creation
 
 -- 3. Create commission_transactions for detailed tracking
 CREATE TABLE IF NOT EXISTS commission_transactions (
@@ -92,7 +74,7 @@ CREATE INDEX IF NOT EXISTS idx_live_analytics_sessions_active ON live_analytics_
 
 -- 6. Enable RLS on all new tables
 ALTER TABLE venue_layouts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE seller_payouts ENABLE ROW LEVEL SECURITY;
+-- seller_payouts RLS already enabled in migration 011
 ALTER TABLE commission_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audience_insights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_analytics_sessions ENABLE ROW LEVEL SECURITY;
@@ -103,18 +85,7 @@ ALTER TABLE live_analytics_sessions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own venue layouts" ON venue_layouts
   FOR ALL USING (auth.uid() = user_id);
 
--- Seller payouts policies
-CREATE POLICY "Users can view own payouts" ON seller_payouts
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Admins can manage all payouts" ON seller_payouts
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM profiles 
-      WHERE profiles.id = auth.uid() 
-      AND profiles.is_admin = true
-    )
-  );
+-- Seller payouts policies (skip if already exists from migration 011)
 
 -- Commission transactions policies
 CREATE POLICY "Users can view own commissions" ON commission_transactions

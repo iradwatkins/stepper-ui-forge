@@ -102,7 +102,7 @@ export default function TeamRoles() {
       const { data, error } = await supabase
         .from('events')
         .select('id, title, date')
-        .eq('organizer_id', user.id)
+        .eq('owner_id', user.id)
         .order('date', { ascending: false })
         .limit(20)
       

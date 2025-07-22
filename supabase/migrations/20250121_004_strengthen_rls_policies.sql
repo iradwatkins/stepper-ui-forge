@@ -21,27 +21,27 @@ DROP POLICY IF EXISTS "Anyone can view published events" ON public.events;
 CREATE POLICY "Anyone can view published events"
 ON public.events
 FOR SELECT
-USING (status = 'published' OR organizer_id = auth.uid());
+USING (status = 'published' OR owner_id = auth.uid());
 
 DROP POLICY IF EXISTS "Users can create events" ON public.events;
 CREATE POLICY "Authenticated users can create events"
 ON public.events
 FOR INSERT
-WITH CHECK (auth.uid() IS NOT NULL AND organizer_id = auth.uid());
+WITH CHECK (auth.uid() IS NOT NULL AND owner_id = auth.uid());
 
 -- 3. Strengthen tickets table policies
 DROP POLICY IF EXISTS "Users can create tickets" ON public.tickets;
 CREATE POLICY "Authenticated users can create tickets"
 ON public.tickets
 FOR INSERT
-WITH CHECK (auth.uid() IS NOT NULL AND user_id = auth.uid());
+WITH CHECK (auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "Users can view their tickets" ON public.tickets;
 CREATE POLICY "Users can view own tickets"
 ON public.tickets
 FOR SELECT
-USING (user_id = auth.uid() OR EXISTS (
-  SELECT 1 FROM events WHERE events.id = tickets.event_id AND events.organizer_id = auth.uid()
+USING (holder_email = auth.email() OR EXISTS (
+  SELECT 1 FROM events WHERE events.id = tickets.event_id AND events.owner_id = auth.uid()
 ));
 
 -- 4. Strengthen team_members policies
@@ -51,7 +51,7 @@ ON public.team_members
 FOR SELECT
 USING (
   -- Event organizers can see all team members
-  EXISTS (SELECT 1 FROM events WHERE events.id = team_members.event_id AND events.organizer_id = auth.uid())
+  EXISTS (SELECT 1 FROM events WHERE events.id = team_members.event_id AND events.owner_id = auth.uid())
   OR
   -- Team members can see other team members
   EXISTS (SELECT 1 FROM team_members tm WHERE tm.event_id = team_members.event_id AND tm.user_id = auth.uid())
@@ -66,26 +66,9 @@ DROP POLICY IF EXISTS "Users can create orders" ON public.orders;
 CREATE POLICY "Authenticated users can create orders"
 ON public.orders
 FOR INSERT
-WITH CHECK (auth.uid() IS NOT NULL AND user_id = auth.uid());
+WITH CHECK (auth.uid() IS NOT NULL);
 
--- Payouts table
-ALTER TABLE public.payouts ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can view their payouts" ON public.payouts;
-CREATE POLICY "Users can view own payouts"
-ON public.payouts
-FOR SELECT
-USING (seller_id = auth.uid());
-
--- Banking information table
-ALTER TABLE public.banking_information ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can manage their banking info" ON public.banking_information;
-CREATE POLICY "Users can manage own banking info"
-ON public.banking_information
-FOR ALL
-USING (user_id = auth.uid())
-WITH CHECK (user_id = auth.uid());
+-- Payouts and banking tables handled in other migrations
 
 -- 6. Add authentication requirement for all write operations on user_follows
 DROP POLICY IF EXISTS "Users can follow organizers" ON public.user_follows;
@@ -156,7 +139,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 10. Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_events_status_organizer ON events(status, organizer_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_events_status_owner ON events(status, owner_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_holder_email ON tickets(holder_email);
 CREATE INDEX IF NOT EXISTS idx_team_members_event_user ON team_members(event_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_security_audit_created ON security_audit_log(created_at DESC);

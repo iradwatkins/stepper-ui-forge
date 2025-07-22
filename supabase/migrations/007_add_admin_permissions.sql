@@ -1,10 +1,16 @@
 -- Migration: Add Admin Permissions System
 -- This migration adds proper admin role management to the profiles table
 
--- Add admin permission field to profiles table
-ALTER TABLE profiles 
-ADD COLUMN is_admin BOOLEAN DEFAULT FALSE,
-ADD COLUMN admin_level INTEGER DEFAULT 0; -- 0=regular, 1=moderator, 2=admin, 3=super_admin
+-- Add admin permission fields to profiles table if they don't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'is_admin') THEN
+        ALTER TABLE profiles ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'admin_level') THEN
+        ALTER TABLE profiles ADD COLUMN admin_level INTEGER DEFAULT 0; -- 0=regular, 1=moderator, 2=admin, 3=super_admin
+    END IF;
+END $$;
 
 -- Create admin_permissions table for granular admin permissions
 CREATE TABLE admin_permissions (
