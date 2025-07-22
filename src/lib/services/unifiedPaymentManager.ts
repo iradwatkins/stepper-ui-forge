@@ -3,6 +3,8 @@
  * Handles both Credit Card and Cash App Pay through a single Square instance
  */
 
+import { getSquareConfig } from '@/config/production.payment.config';
+
 interface PaymentInstance {
   type: 'card' | 'cashapp';
   instance: any;
@@ -50,12 +52,12 @@ class UnifiedPaymentManager {
       await this.loadSquareSDK();
     }
 
-    // Get credentials from environment
-    const squareAppId = import.meta.env.VITE_SQUARE_APP_ID;
-    const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+    // Get credentials from centralized config with fallback values
+    const config = getSquareConfig();
+    const { appId: squareAppId, locationId: squareLocationId } = config;
 
     if (!squareAppId || !squareLocationId) {
-      throw new Error('Square credentials not configured. Please set VITE_SQUARE_APP_ID and VITE_SQUARE_LOCATION_ID');
+      throw new Error('Square credentials not configured. Please check your configuration');
     }
 
     // Initialize Square payments ONCE

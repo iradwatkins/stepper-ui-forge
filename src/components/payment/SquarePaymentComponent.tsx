@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Loader2, AlertCircle, Shield, RefreshCw } from 'lucide-react';
 import { CashAppLogo } from '@/components/payment/PaymentLogos';
+import { getSquareConfig } from '@/config/production.payment.config';
 
 declare global {
   interface Window {
@@ -138,15 +139,17 @@ export function SquarePaymentComponent({
       setIsLoading(true);
       setError(null);
 
-      // Get environment variables from Vite
-      const squareApplicationId = import.meta.env.VITE_SQUARE_APP_ID;
-      const squareEnvironment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
-      const squareLocationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
-      const cashAppClientId = import.meta.env.VITE_CASHAPP_CLIENT_ID;
-      const cashAppEnvironment = import.meta.env.VITE_CASHAPP_ENVIRONMENT || 'sandbox';
+      // Get configuration from centralized config with fallback values
+      const config = getSquareConfig();
+      const squareApplicationId = config.appId;
+      const squareEnvironment = config.environment;
+      const squareLocationId = config.locationId;
+      const cashAppClientId = config.appId; // Cash App uses same ID as Square
+      const cashAppEnvironment = config.environment;
 
-      console.log('🔧 Initializing Square with Vite Environment Variables:');
-      console.log('VITE_SQUARE_APP_ID:', squareApplicationId);
+      console.log('🔧 Initializing Square with configuration:');
+      console.log('Square App ID:', squareApplicationId);
+      console.log('Config source:', import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'production fallback');
       console.log('VITE_SQUARE_ENVIRONMENT:', squareEnvironment);
       console.log('VITE_SQUARE_LOCATION_ID:', squareLocationId);
       console.log('VITE_CASHAPP_CLIENT_ID:', cashAppClientId);

@@ -1,3 +1,5 @@
+import { getSquareConfig } from '@/config/production.payment.config';
+
 interface PaymentManagerOptions {
   referenceId?: string;
   amount?: number;
@@ -38,14 +40,15 @@ class PaymentManager {
       await this.loadSquareSDK();
     }
 
-    // Get environment variables with debugging
-    const appId = import.meta.env.VITE_SQUARE_APP_ID;
-    const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+    // Get configuration from centralized config with fallback values
+    const config = getSquareConfig();
+    const { appId, locationId, environment } = config;
     
     console.log('🔍 Square Environment Debug:', {
       appId: appId || 'UNDEFINED',
       locationId: locationId || 'UNDEFINED',
-      allEnvVars: import.meta.env
+      environment: environment,
+      source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'production fallback'
     });
 
     // Validate required credentials
