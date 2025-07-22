@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, CreditCard, Loader2, ShoppingCart } from "lucide-react";
+import { AlertCircle, CreditCard, Loader2, ShoppingCart, Shield, Lock, CheckCircle, X } from "lucide-react";
 import { PayPalLogo, CashAppLogo, CreditCardIcon, VisaLogo, MastercardLogo, AmexLogo } from "@/components/payment/PaymentLogos";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -397,16 +397,17 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5" />
-            Checkout
-          </DialogTitle>
-          <DialogDescription>
-            Review your tickets and complete your purchase
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto bg-gray-50 border-0 p-0">
+        {/* Modern Header */}
+        <div className="bg-white p-6 border-b">
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Complete Your Purchase</h1>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+              <Shield className="w-4 h-4 text-green-500" />
+              Secure Checkout
+            </div>
+          </div>
+        </div>
 
         {/* Show auth guard if user is not authenticated */}
         {!user ? (
@@ -419,17 +420,17 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             }}
           />
         ) : (
-        <div className="space-y-6">
-          {/* Order Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Order Summary</CardTitle>
-              <CardDescription>
+        <div className="p-6 space-y-6">
+          {/* Modern Order Summary */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base font-semibold text-gray-900">Order Summary</CardTitle>
+              <CardDescription className="text-sm text-gray-600">
                 {seatCheckoutMode ? (
                   <>
                     {seatDetails?.length || 0} seat{(seatDetails?.length || 0) !== 1 ? 's' : ''} selected
                     {eventTitle && (
-                      <span className="ml-2 text-xs">for {eventTitle}</span>
+                      <span className="ml-2">for {eventTitle}</span>
                     )}
                   </>
                 ) : (
@@ -598,14 +599,14 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
           {(items.length > 0 || seatCheckoutMode) && (
             <>
-              {/* Customer Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Contact Information</CardTitle>
+              {/* Modern Contact Information */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base font-semibold text-gray-900">Contact Information</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
                     <Input
                       id="email"
                       type="email"
@@ -613,150 +614,134 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                       onChange={(e) => setCustomerEmail(e.target.value)}
                       placeholder="your.email@example.com"
                       required
+                      className="border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg h-11"
                     />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Payment Method Selection */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    Payment Method
-                  </CardTitle>
+              {/* Modern Payment Method Selection */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base font-semibold text-gray-900">Select Payment Method</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-3">
+                  <div className="grid grid-cols-3 gap-3 mb-6 sm:grid-cols-3 xs:grid-cols-1">
                     {paymentMethods.map((method) => (
-                      <div
+                      <button
                         key={method.id}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        className={`relative bg-white border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 min-h-[80px] flex flex-col items-center justify-center gap-2 hover:border-gray-300 hover:shadow-sm ${
                           selectedGateway === method.id
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50'
+                            ? 'border-green-500 bg-green-50 shadow-md'
+                            : 'border-gray-200'
                         }`}
                         onClick={() => setSelectedGateway(method.id)}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {method.id === 'square' && (
-                              <div className="flex items-center gap-2">
-                                <CreditCardIcon className="h-6 w-6 text-primary" />
-                                <div className="flex gap-1">
-                                  <VisaLogo className="h-3" />
-                                  <MastercardLogo className="h-3" />
-                                  <AmexLogo className="h-3" />
-                                </div>
-                              </div>
-                            )}
-                            {method.id === 'cashapp' && <CashAppLogo className="h-8" />}
-                            {method.id === 'paypal' && <PayPalLogo className="h-6" />}
-                            <div>
-                              <h4 className="font-medium">
-                                {method.id === 'square' && 'Credit or Debit Card'}
-                                {method.id === 'cashapp' && 'Cash App'}
-                                {method.id === 'paypal' && 'PayPal'}
-                              </h4>
-                              <p className="text-sm text-muted-foreground">
-                                {method.id === 'paypal' && 'Pay with PayPal account'}
-                                {method.id === 'square' && 'Secure payment via Square'}
-                                {method.id === 'cashapp' && 'Instant payment with Cash App'}
-                              </p>
-                            </div>
+                        {selectedGateway === method.id && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-3 h-3 text-white" />
                           </div>
-                          <div className={`w-4 h-4 rounded-full border-2 ${
-                            selectedGateway === method.id
-                              ? 'border-primary bg-primary'
-                              : 'border-muted-foreground'
-                          }`} />
+                        )}
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          {method.id === 'square' && <CreditCardIcon className="h-8 w-8 text-gray-700" />}
+                          {method.id === 'cashapp' && <CashAppLogo className="h-8" />}
+                          {method.id === 'paypal' && <PayPalLogo className="h-6" />}
                         </div>
-                      </div>
+                        <span className="text-sm font-medium text-gray-700">
+                          {method.id === 'square' && 'Card'}
+                          {method.id === 'cashapp' && 'Cash App'}
+                          {method.id === 'paypal' && 'PayPal'}
+                        </span>
+                      </button>
                     ))}
                   </div>
                  </CardContent>
                </Card>
 
-               {/* Square Payment Form */}
+               {/* Modern Square Payment Form */}
                {selectedGateway === 'square' && (
-                 <Card>
-                   <CardHeader>
-                     <CardTitle className="text-lg">Enter Card Details</CardTitle>
-                     <CardDescription>
-                       Your payment information is secured with 256-bit SSL encryption
-                     </CardDescription>
-                   </CardHeader>
-                   <CardContent>
-                     <SquarePaymentSimple
-                       amount={seatCheckoutMode ? seatTotal : total}
-                       onPaymentToken={handleSquarePaymentToken}
-                       onError={handleSquarePaymentError}
-                       isProcessing={isProcessing}
-                       showHeader={false}
-                     />
-                   </CardContent>
-                 </Card>
+                 <div className="space-y-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Card Information</label>
+                     <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 hover:border-gray-400 focus-within:border-green-500 transition-colors">
+                       <SquarePaymentSimple
+                         amount={seatCheckoutMode ? seatTotal : total}
+                         onPaymentToken={handleSquarePaymentToken}
+                         onError={handleSquarePaymentError}
+                         isProcessing={isProcessing}
+                         showHeader={false}
+                       />
+                     </div>
+                   </div>
+                 </div>
                )}
 
-               {/* CashApp Payment Form */}
+               {/* Modern CashApp Payment Form */}
                {selectedGateway === 'cashapp' && (
-                 <CashAppPay
-                   amount={seatCheckoutMode ? seatTotal : total}
-                   orderId={`order_${Date.now()}`}
-                   customerEmail={customerEmail}
-                   onSuccess={handleCashAppSuccess}
-                   onError={handleCashAppError}
-                 />
+                 <div className="space-y-4">
+                   <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 min-h-[80px]">
+                     <CashAppPay
+                       amount={seatCheckoutMode ? seatTotal : total}
+                       orderId={`order_${Date.now()}`}
+                       customerEmail={customerEmail}
+                       onSuccess={handleCashAppSuccess}
+                       onError={handleCashAppError}
+                     />
+                   </div>
+                   <p className="text-center text-sm text-gray-600">
+                     Click the Cash App button above to complete payment
+                   </p>
+                 </div>
                )}
              </>
            )}
 
            {/* Error Display */}
           {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <span className="text-red-800 text-sm">{error}</span>
+            </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={onClose} disabled={isProcessing}>
-              Cancel
+          {/* Modern Submit Button */}
+          {(items.length > 0 || seatCheckoutMode) && selectedGateway !== 'cashapp' && (
+            <Button 
+              onClick={handleCheckout} 
+              disabled={
+                isProcessing || 
+                !customerEmail || 
+                (selectedGateway === 'square' && !squarePaymentToken)
+              }
+              className="w-full h-12 bg-green-500 hover:bg-green-600 text-white font-semibold text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {selectedGateway === 'square' && !squarePaymentToken ? (
+                    'Complete Payment Form'
+                  ) : (
+                    `Pay $${seatCheckoutMode ? seatTotal.toFixed(2) : total.toFixed(2)}`
+                  )}
+                </>
+              )}
             </Button>
-             {(items.length > 0 || seatCheckoutMode) && selectedGateway !== 'cashapp' && (
-               <Button 
-                 onClick={handleCheckout} 
-                 disabled={
-                   isProcessing || 
-                   !customerEmail || 
-                   (selectedGateway === 'square' && !squarePaymentToken)
-                 }
-               >
-                 {isProcessing ? (
-                   <>
-                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                     Processing...
-                   </>
-                 ) : (
-                   <>
-                     <CreditCard className="w-4 h-4 mr-2" />
-                     {selectedGateway === 'square' && !squarePaymentToken ? (
-                       'Complete Payment Form'
-                     ) : (
-                       `Complete Purchase - $${
-                         seatCheckoutMode ? seatTotal.toFixed(2) : total.toFixed(2)
-                       }`
-                     )}
-                     {seatCheckoutMode && seatDetails && (
-                       <span className="ml-2 text-xs opacity-80">
-                         ({seatDetails.length} seat{seatDetails.length !== 1 ? 's' : ''})
-                       </span>
-                     )}
-                   </>
-                 )}
-               </Button>
-             )}
+          )}
+
+          {/* Trust Badges */}
+          <div className="flex items-center justify-center gap-6 pt-6 border-t border-gray-200">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Shield className="w-5 h-5 text-gray-500" />
+              <span>256-bit SSL</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Lock className="w-5 h-5 text-gray-500" />
+              <span>PCI Compliant</span>
+            </div>
           </div>
         </div>
         )}
