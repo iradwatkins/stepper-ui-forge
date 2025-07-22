@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { ProductionCheckoutModal } from '@/components/payment/production/ProductionCheckoutModal';
+import { ModernCheckoutModal } from '@/components/payment/production/ModernCheckoutModal';
 import { ShoppingCart, AlertTriangle, CreditCard, Smartphone, AlertCircle, Check } from 'lucide-react';
 import { PayPalLogo } from '@/components/payment/PaymentLogos';
 import { useAuth } from '@/contexts/AuthContext';
@@ -304,8 +304,8 @@ export default function ProductionPaymentTest() {
         </CardContent>
       </Card>
 
-      {/* Production Checkout Modal */}
-      <ProductionCheckoutModal
+      {/* Modern Checkout Modal */}
+      <ModernCheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         eventId="test-event-123"
