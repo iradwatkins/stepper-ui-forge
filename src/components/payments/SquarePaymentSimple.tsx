@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CreditCard, Loader2 } from 'lucide-react';
+import { initializeSquarePayments } from '@/utils/squareSDKLoader';
 
 interface SquarePaymentSimpleProps {
   amount: number; // Amount in cents (e.g., 5200 for $52.00)
@@ -40,11 +41,6 @@ export function SquarePaymentSimple({
       try {
         console.log('[SquareSimple] Starting initialization');
         
-        // Check if Square is loaded
-        if (!window.Square) {
-          throw new Error('Square.js not loaded. Please check your internet connection.');
-        }
-
         // Check if container is visible
         const container = document.getElementById('square-card-simple');
         if (!container) {
@@ -53,14 +49,8 @@ export function SquarePaymentSimple({
           return;
         }
 
-        const appId = import.meta.env.VITE_SQUARE_APP_ID;
-        const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
-
-        console.log('[SquareSimple] Creating payments instance');
-        const payments = window.Square.payments({
-          applicationId: appId,
-          locationId: locationId
-        });
+        console.log('[SquareSimple] Initializing Square payments');
+        const payments = await initializeSquarePayments();
         
         console.log('[SquareSimple] Creating card instance');
         const card = await payments.card();

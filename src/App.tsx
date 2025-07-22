@@ -84,6 +84,7 @@ const SellerPayouts = lazy(() => import("./pages/SellerPayouts"));
 const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
 const PayPalCallback = lazy(() => import("./pages/PayPalCallback"));
 const DiagnosticsPage = lazy(() => import("./pages/DiagnosticsPage"));
+const ProductionPaymentTest = lazy(() => import("./pages/ProductionPaymentTest"));
 const SquareOAuthCallback = lazy(() => import("./pages/SquareOAuthCallback"));
 const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
@@ -153,6 +154,7 @@ const AppContent = () => {
         <Route path="/auth/callback" element={<SquareOAuthCallback />} />
         <Route path="/auth/square/callback" element={<SquareOAuthCallback />} />
         <Route path="/diagnostics" element={<DiagnosticsPage />} />
+        <Route path="/production-payment-test" element={<ProductionPaymentTest />} />
         
         <Route path="/dashboard" element={
           <ProtectedRoute>

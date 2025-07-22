@@ -66,28 +66,9 @@ class PaymentManager {
   }
 
   private async loadSquareSDK(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // Check if already loaded
-      if ((window as any).Square) {
-        resolve();
-        return;
-      }
-
-      // Check if script already exists
-      const existingScript = document.querySelector('script[src*="square.js"]');
-      if (existingScript) {
-        existingScript.addEventListener('load', () => resolve());
-        existingScript.addEventListener('error', () => reject(new Error('Failed to load Square SDK')));
-        return;
-      }
-
-      // Load Square SDK
-      const script = document.createElement('script');
-      script.src = 'https://web.squarecdn.com/v1/square.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load Square SDK'));
-      document.head.appendChild(script);
-    });
+    // Use centralized Square SDK loader to ensure consistency
+    const { loadSquareSDK } = await import('@/utils/squareSDKLoader');
+    return loadSquareSDK();
   }
 
   async createCashAppPay(containerId: string, options: PaymentManagerOptions = {}): Promise<any> {

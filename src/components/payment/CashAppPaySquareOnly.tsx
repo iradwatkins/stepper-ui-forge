@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Smartphone, CheckCircle2, XCircle } from 'lucide-react';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
+import { loadSquareSDK, initializeSquarePayments } from '@/utils/squareSDKLoader';
 
 declare global {
   interface Window {
@@ -39,31 +40,11 @@ export function CashAppPaySquareOnly({
     
     const initializeSquareCashApp = async () => {
       try {
-        // Get Square credentials
-        const appId = import.meta.env.VITE_SQUARE_APP_ID;
-        const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
-        const environment = import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox';
+        console.log('🔧 Initializing Cash App Pay with Square SDK');
 
-        if (!appId || !locationId) {
-          throw new Error('Square credentials not configured');
-        }
-
-        console.log('🔧 Initializing Cash App Pay with Square SDK only');
-        console.log('App ID:', appId.substring(0, 15) + '...');
-        console.log('Location:', locationId);
-        console.log('Environment:', environment);
-
-        // Load Square SDK if not already loaded
-        if (!window.Square) {
-          await loadSquareSDK(environment);
-        }
-
-        // Initialize Square payments ONCE
+        // Load Square SDK and initialize payments using centralized loader
         if (!paymentsRef.current) {
-          paymentsRef.current = window.Square.payments({
-            applicationId: appId,
-            locationId: locationId
-          });
+          paymentsRef.current = await initializeSquarePayments();
           console.log('✅ Square payments initialized');
         }
 
@@ -125,37 +106,6 @@ export function CashAppPaySquareOnly({
     };
   }, []); // Empty dependency array - run only once
 
-  const loadSquareSDK = (environment: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const sdkUrl = environment === 'production'
-        ? 'https://web.squarecdn.com/v1/square.js'
-        : 'https://sandbox.web.squarecdn.com/v1/square.js';
-
-      // Check if already loaded
-      const existing = document.querySelector(`script[src="${sdkUrl}"]`);
-      if (existing && window.Square) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = sdkUrl;
-      script.async = true;
-      script.defer = true;
-
-      script.onload = () => {
-        if (window.Square) {
-          console.log('✅ Square SDK loaded');
-          resolve();
-        } else {
-          reject(new Error('Square SDK failed to initialize'));
-        }
-      };
-
-      script.onerror = () => reject(new Error('Failed to load Square SDK'));
-      document.head.appendChild(script);
-    });
-  };
 
   const waitForContainer = (): Promise<void> => {
     return new Promise((resolve) => {
