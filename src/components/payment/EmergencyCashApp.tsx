@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { FixedPaymentManager } from '@/lib/square/fixedPaymentManager';
+import { createSquareCashAppPay } from '@/lib/square/emergencyPaymentManager';
 import { productionPaymentService } from '@/lib/payments/ProductionPaymentService';
 
 interface EmergencyCashAppProps {
@@ -41,9 +41,8 @@ export function EmergencyCashApp({ amount, orderId, customerEmail, onSuccess, on
         // Clear container
         containerRef.current.innerHTML = '';
 
-        // Initialize using fixed manager
-        const manager = FixedPaymentManager.getInstance();
-        const cashAppPay = await manager.createCashAppPay(amount, orderId);
+        // Initialize using emergency manager
+        const cashAppPay = await createSquareCashAppPay(amount, orderId);
         
         if (!mounted) return;
 

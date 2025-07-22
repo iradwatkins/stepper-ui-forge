@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -86,6 +86,7 @@ export const ImageGalleryModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-full max-h-full h-screen w-screen p-0 bg-black/95">
+        <DialogTitle className="sr-only">Image Gallery - {currentIndex + 1} of {images.length}</DialogTitle>
         {/* Close Button */}
         <Button
           variant="ghost"

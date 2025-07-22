@@ -402,6 +402,9 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto bg-gray-50 border-0 p-0">
+        {/* Accessibility: DialogTitle is required but visually hidden */}
+        <DialogTitle className="sr-only">Complete Your Purchase - Secure Checkout</DialogTitle>
+        
         {/* Modern Header */}
         <div className="bg-white p-6 border-b">
           <div className="text-center">

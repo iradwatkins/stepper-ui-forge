@@ -177,6 +177,7 @@ export function SimpleCheckout({ isOpen, onClose }: SimpleCheckoutProps) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-md">
+          <DialogTitle className="sr-only">Authentication Required</DialogTitle>
           <CheckoutAuthGuard
             itemCount={items.length}
             totalAmount={total}
@@ -191,6 +192,7 @@ export function SimpleCheckout({ isOpen, onClose }: SimpleCheckoutProps) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-md">
+          <DialogTitle className="sr-only">Your cart is empty</DialogTitle>
           <div className="text-center py-8">
             <ShoppingCart className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Your cart is empty</h3>

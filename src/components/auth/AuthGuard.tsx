@@ -31,7 +31,7 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({ action, icon, title, descript
           {icon}
         </div>
       </div>
-      <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
+      <h3 className="text-lg font-semibold">{title}</h3>
       <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent>
@@ -127,6 +127,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
         </div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
+        <DialogTitle className="sr-only">{config.title}</DialogTitle>
         <LoginPrompt
           action={action}
           icon={config.icon}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FixedPaymentManager } from '@/lib/square/fixedPaymentManager';
+import { createSquareCard } from '@/lib/square/emergencyPaymentManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,8 +25,7 @@ export function EmergencySquareCard({ amount, onSuccess, onError, isProcessing =
       try {
         console.log('[EmergencyCard] Starting initialization...');
         
-        const manager = FixedPaymentManager.getInstance();
-        const card = await manager.createCard();
+        const card = await createSquareCard();
         
         if (!mounted) return;
         
