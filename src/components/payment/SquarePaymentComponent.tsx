@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Loader2, AlertCircle, Shield, RefreshCw } from 'lucide-react';
 import { CashAppLogo } from '@/components/payment/PaymentLogos';
+import { waitForSquareContainer } from '@/utils/containerUtils';
 
 declare global {
   interface Window {
@@ -54,21 +55,12 @@ export function SquarePaymentComponent({
   useEffect(() => {
     let mounted = true;
     
-    const waitForContainer = async (maxAttempts = 10): Promise<void> => {
-      for (let i = 0; i < maxAttempts; i++) {
-        const container = document.getElementById('square-card-container');
-        if (container && document.contains(container) && cardContainerRef.current) {
-          return;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      throw new Error('Payment form container not found after maximum attempts');
-    };
+    // Using proper container utils instead of custom implementation
     
     const init = async () => {
       try {
-        // Wait for container to be ready in DOM (same pattern as CashApp fix)
-        await waitForContainer();
+        // Wait for container to be ready in DOM using proper container utils
+        await waitForSquareContainer(cardContainerRef);
         console.log('✅ Square container found, initializing payments');
       } catch (error) {
         console.error('❌ Container detection failed:', error);
