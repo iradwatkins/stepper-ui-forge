@@ -1,5 +1,3 @@
-import { getSquareConfig } from '@/config/production.payment.config';
-
 interface PaymentManagerOptions {
   referenceId?: string;
   amount?: number;
@@ -40,37 +38,38 @@ class PaymentManager {
       await this.loadSquareSDK();
     }
 
-    // Get configuration with fallback values
-    const config = getSquareConfig();
-    const { appId, locationId, environment } = config;
-    
-    console.log('🔍 Square Environment Debug:', {
-      appId: appId ? `${appId.substring(0, 10)}...` : 'MISSING',
-      locationId: locationId ? `${locationId.substring(0, 10)}...` : 'MISSING',
-      environment: environment || 'MISSING',
-      source: import.meta.env.VITE_SQUARE_APP_ID ? 'environment' : 'hardcoded fallback',
-      mode: import.meta.env.MODE,
-      isDev: import.meta.env.DEV,
-      isProd: import.meta.env.PROD
-    });
-
-    if (!appId || !locationId) {
-      throw new Error(`Square configuration missing: appId=${!!appId}, locationId=${!!locationId}`);
-    }
-
-    // Initialize Square payments once - Square expects an object with applicationId and locationId
-    this.squarePayments = (window as any).Square.payments({
-      applicationId: appId,
-      locationId: locationId
-    });
+    // Initialize Square payments once
+    this.squarePayments = (window as any).Square.payments(
+      import.meta.env.VITE_SQUARE_APP_ID,
+      import.meta.env.VITE_SQUARE_LOCATION_ID
+    );
 
     console.log('Square payments initialized globally');
   }
 
   private async loadSquareSDK(): Promise<void> {
-    // Use centralized Square SDK loader to ensure consistency
-    const { loadSquareSDK } = await import('@/utils/squareSDKLoader');
-    return loadSquareSDK();
+    return new Promise((resolve, reject) => {
+      // Check if already loaded
+      if ((window as any).Square) {
+        resolve();
+        return;
+      }
+
+      // Check if script already exists
+      const existingScript = document.querySelector('script[src*="square.js"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve());
+        existingScript.addEventListener('error', () => reject(new Error('Failed to load Square SDK')));
+        return;
+      }
+
+      // Load Square SDK
+      const script = document.createElement('script');
+      script.src = 'https://web.squarecdn.com/v1/square.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load Square SDK'));
+      document.head.appendChild(script);
+    });
   }
 
   async createCashAppPay(containerId: string, options: PaymentManagerOptions = {}): Promise<any> {
