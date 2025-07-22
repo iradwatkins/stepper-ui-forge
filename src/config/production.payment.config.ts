@@ -7,21 +7,21 @@
  * This ensures the payment system works even if environment variables fail to load
  */
 
-// Production credentials - hardcoded as fallback
-const PRODUCTION_CREDENTIALS = {
+// Development sandbox credentials - hardcoded as safe fallback for development
+const SANDBOX_CREDENTIALS = {
   square: {
-    // Note: Square production app IDs must be exactly 29 characters and start with 'sq0idp-'
-    appId: 'sq0idp-XG8irNWHf98C62-iqOwH6Q',
-    locationId: 'L0Q2YC1SPBGD8',
-    environment: 'production' as const
+    // Note: Square sandbox app IDs must start with 'sandbox-sq0idb-'
+    appId: 'sandbox-sq0idb-PLACEHOLDER',
+    locationId: 'PLACEHOLDER_LOCATION',
+    environment: 'sandbox' as const
   },
   paypal: {
     clientId: 'AWcmEjsKDeNUzvVQJyvc3lq5n4NXsh7-sHPgGT4ZiPFo8X6csYZcElZg2wsu_xsZE22DUoXOtF3MolVK',
-    environment: 'production' as const
+    environment: 'production' as const // PayPal can still use production for real transactions
   },
   cashapp: {
     // Cash App uses Square credentials
-    environment: 'production' as const
+    environment: 'sandbox' as const
   }
 };
 
@@ -34,37 +34,45 @@ export function getSquareConfig() {
   const envLocationId = import.meta.env?.VITE_SQUARE_LOCATION_ID;
   const envEnvironment = import.meta.env?.VITE_SQUARE_ENVIRONMENT;
 
-  // Use env vars if available and valid, otherwise use hardcoded values
-  const appId = (envAppId && envAppId !== 'false' && envAppId !== 'undefined') 
-    ? envAppId 
-    : PRODUCTION_CREDENTIALS.square.appId;
-    
-  const locationId = (envLocationId && envLocationId !== 'false' && envLocationId !== 'undefined') 
-    ? envLocationId 
-    : PRODUCTION_CREDENTIALS.square.locationId;
-    
+  // Check if environment variables are properly configured (not placeholder values)
+  const isEnvConfigured = envAppId && 
+    envAppId !== 'false' && 
+    envAppId !== 'undefined' && 
+    envAppId !== 'YOUR_SANDBOX_APP_ID' && 
+    envAppId !== 'sandbox-sq0idb-YOUR_SANDBOX_APP_ID' &&
+    envLocationId &&
+    envLocationId !== 'false' &&
+    envLocationId !== 'undefined' &&
+    envLocationId !== 'YOUR_SANDBOX_LOCATION_ID';
+
+  // Use env vars if properly configured, otherwise use sandbox fallback
+  const appId = isEnvConfigured ? envAppId! : SANDBOX_CREDENTIALS.square.appId;
+  const locationId = isEnvConfigured ? envLocationId! : SANDBOX_CREDENTIALS.square.locationId;
   const environment = (envEnvironment && envEnvironment !== 'false' && envEnvironment !== 'undefined')
     ? envEnvironment as 'production' | 'sandbox'
-    : PRODUCTION_CREDENTIALS.square.environment;
+    : SANDBOX_CREDENTIALS.square.environment;
 
   // Debug logging
   if (import.meta.env?.DEV) {
     console.log('🔐 Square Config:', {
-      source: envAppId ? 'environment' : 'hardcoded',
-      appId: appId.substring(0, 15) + '...',
+      source: isEnvConfigured ? 'environment' : 'sandbox fallback',
+      appId: appId.substring(0, 20) + '...',
       locationId: locationId,
       environment: environment,
       envVarsFound: {
         appId: !!envAppId,
         locationId: !!envLocationId,
         environment: !!envEnvironment
-      }
+      },
+      isConfigured: isEnvConfigured
     });
   }
 
-  // Validate production credentials
-  if (!appId.startsWith('sq0idp-')) {
+  // Validate credentials based on environment
+  if (environment === 'production' && !appId.startsWith('sq0idp-')) {
     console.warn('⚠️ Square App ID does not appear to be a production ID');
+  } else if (environment === 'sandbox' && !appId.startsWith('sandbox-sq0idb-')) {
+    console.warn('⚠️ Square App ID does not appear to be a sandbox ID');
   }
 
   return {
@@ -83,11 +91,11 @@ export function getPayPalConfig() {
 
   const clientId = (envClientId && envClientId !== 'false' && envClientId !== 'undefined')
     ? envClientId
-    : PRODUCTION_CREDENTIALS.paypal.clientId;
+    : SANDBOX_CREDENTIALS.paypal.clientId;
     
   const environment = (envEnvironment && envEnvironment !== 'false' && envEnvironment !== 'undefined')
     ? envEnvironment as 'production' | 'sandbox'
-    : PRODUCTION_CREDENTIALS.paypal.environment;
+    : SANDBOX_CREDENTIALS.paypal.environment;
 
   return {
     clientId,
@@ -106,15 +114,16 @@ export function getPaymentConfig() {
     square,
     paypal,
     cashapp: {
-      ...PRODUCTION_CREDENTIALS.cashapp,
+      ...SANDBOX_CREDENTIALS.cashapp,
       // Cash App uses Square credentials
       appId: square.appId,
-      locationId: square.locationId
+      locationId: square.locationId,
+      environment: square.environment
     },
     isProduction: square.environment === 'production',
     configSource: {
-      square: import.meta.env?.VITE_SQUARE_APP_ID ? 'environment' : 'hardcoded',
-      paypal: import.meta.env?.VITE_PAYPAL_CLIENT_ID ? 'environment' : 'hardcoded'
+      square: import.meta.env?.VITE_SQUARE_APP_ID ? 'environment' : 'sandbox fallback',
+      paypal: import.meta.env?.VITE_PAYPAL_CLIENT_ID ? 'environment' : 'sandbox fallback'
     }
   };
 }
@@ -175,5 +184,5 @@ export function debugPaymentConfig() {
 }
 
 // Export for easy access
-export const PRODUCTION_SQUARE_CONFIG = PRODUCTION_CREDENTIALS.square;
-export const PRODUCTION_PAYPAL_CONFIG = PRODUCTION_CREDENTIALS.paypal;
+export const SANDBOX_SQUARE_CONFIG = SANDBOX_CREDENTIALS.square;
+export const SANDBOX_PAYPAL_CONFIG = SANDBOX_CREDENTIALS.paypal;

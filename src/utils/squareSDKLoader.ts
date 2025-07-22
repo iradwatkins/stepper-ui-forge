@@ -86,30 +86,45 @@ export async function initializeSquarePayments() {
   const config = getSquareConfig();
   const { appId, locationId } = config;
 
-  // Validate application ID format
+  // Validate configuration exists
   if (!appId || !locationId) {
     throw new Error('Square configuration missing: Please check your environment variables');
   }
 
-  // Validate production format
-  if (!appId.startsWith('sq0idp-')) {
-    console.error('[squareSDKLoader] Invalid application ID format:', {
+  // Validate application ID format based on environment
+  const isProduction = appId.startsWith('sq0idp-');
+  const isSandbox = appId.startsWith('sandbox-sq0idb-');
+  const isPlaceholder = appId.includes('PLACEHOLDER') || appId.includes('YOUR_');
+
+  if (isPlaceholder) {
+    console.error('[squareSDKLoader] Placeholder credentials detected:', {
       appId: appId,
-      expectedFormat: 'sq0idp-XXXXXXXXXXXXXXXXXXXX',
-      isProduction: appId.startsWith('sq0idp-'),
-      isSandbox: appId.includes('sandbox') || appId.startsWith('sq0idb-')
+      locationId: locationId
     });
-    throw new Error(`Invalid Square application ID format. Production IDs must start with 'sq0idp-'. Got: ${appId}`);
+    throw new Error('Square credentials not configured. Please set up your Square sandbox or production credentials.');
   }
 
-  // Validate length
-  if (appId.length !== 29) {
+  if (!isProduction && !isSandbox) {
+    console.error('[squareSDKLoader] Invalid application ID format:', {
+      appId: appId,
+      expectedProduction: 'sq0idp-XXXXXXXXXXXXXXXXXXXX',
+      expectedSandbox: 'sandbox-sq0idb-XXXXXXXXXXXXXXXXXXXX',
+      isProduction: isProduction,
+      isSandbox: isSandbox
+    });
+    throw new Error(`Invalid Square application ID format. Expected 'sq0idp-' (production) or 'sandbox-sq0idb-' (sandbox). Got: ${appId}`);
+  }
+
+  // Validate length based on type
+  const expectedLength = isSandbox ? 44 : 29; // Sandbox IDs are longer due to prefix
+  if (appId.length !== expectedLength) {
     console.error('[squareSDKLoader] Invalid application ID length:', {
       appId: appId,
       length: appId.length,
-      expectedLength: 29
+      expectedLength: expectedLength,
+      environment: isSandbox ? 'sandbox' : 'production'
     });
-    throw new Error(`Invalid Square application ID length. Expected 29 characters, got ${appId.length}`);
+    throw new Error(`Invalid Square application ID length. Expected ${expectedLength} characters for ${isSandbox ? 'sandbox' : 'production'}, got ${appId.length}`);
   }
 
   console.log('[squareSDKLoader] Initializing with validated config:', {
