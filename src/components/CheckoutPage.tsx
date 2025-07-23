@@ -1,17 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   CreditCard, 
   User, 
-  Mail, 
-  Phone, 
-  MapPin, 
   Calendar, 
   Clock, 
   Ticket,
@@ -47,20 +42,20 @@ export function CheckoutPage({ onBack, onComplete }: CheckoutPageProps) {
   const { items, total, subtotal, fees, clearCart } = useCart();
   const { user } = useAuth();
   
-  // Form state
-  const [customerInfo, setCustomerInfo] = useState({
+  // Use authenticated user's info
+  const customerInfo = {
     email: user?.email || '',
     fullName: user?.user_metadata?.full_name || '',
     phone: ''
-  });
+  };
   
   // Payment state
   const [selectedPayment, setSelectedPayment] = useState<string>('square');
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [squarePaymentToken, setSquarePaymentToken] = useState<string | null>(null);
   
-  // UI state
-  const [currentStep, setCurrentStep] = useState<'info' | 'payment' | 'review'>('info');
+  // UI state - Skip info step for authenticated users
+  const [currentStep, setCurrentStep] = useState<'info' | 'payment' | 'review'>('payment');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -105,14 +100,6 @@ export function CheckoutPage({ onBack, onComplete }: CheckoutPageProps) {
   const validateStep = (step: string): boolean => {
     const errors: Record<string, string> = {};
     
-    if (step === 'info') {
-      if (!customerInfo.email) errors.email = 'Email is required';
-      if (!customerInfo.fullName) errors.fullName = 'Full name is required';
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email)) {
-        errors.email = 'Please enter a valid email';
-      }
-    }
-    
     if (step === 'payment') {
       if (selectedPayment === 'square' && !squarePaymentToken) {
         errors.payment = 'Please complete payment information';
@@ -124,16 +111,13 @@ export function CheckoutPage({ onBack, onComplete }: CheckoutPageProps) {
   };
 
   const handleStepForward = () => {
-    if (currentStep === 'info' && validateStep('info')) {
-      setCurrentStep('payment');
-    } else if (currentStep === 'payment' && validateStep('payment')) {
+    if (currentStep === 'payment' && validateStep('payment')) {
       setCurrentStep('review');
     }
   };
 
   const handleStepBack = () => {
     if (currentStep === 'review') setCurrentStep('payment');
-    else if (currentStep === 'payment') setCurrentStep('info');
     else onBack();
   };
 
@@ -255,13 +239,11 @@ export function CheckoutPage({ onBack, onComplete }: CheckoutPageProps) {
       <div className="mb-8">
         <div className="flex items-center space-x-4">
           {[
-            { key: 'info', label: 'Information', icon: User },
             { key: 'payment', label: 'Payment', icon: CreditCard },
             { key: 'review', label: 'Review', icon: CheckCircle }
           ].map((step, index) => {
             const isActive = currentStep === step.key;
             const isCompleted = 
-              (step.key === 'info' && ['payment', 'review'].includes(currentStep)) ||
               (step.key === 'payment' && currentStep === 'review');
             
             return (
@@ -285,7 +267,7 @@ export function CheckoutPage({ onBack, onComplete }: CheckoutPageProps) {
                 }`}>
                   {step.label}
                 </span>
-                {index < 2 && (
+                {index < 1 && (
                   <div className={`w-12 h-0.5 mx-4 ${
                     isCompleted ? 'bg-green-500' : 'bg-muted-foreground/20'
                   }`} />
@@ -299,73 +281,6 @@ export function CheckoutPage({ onBack, onComplete }: CheckoutPageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Customer Information Step */}
-          {currentStep === 'info' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Contact Information
-                </CardTitle>
-                <CardDescription>
-                  We'll use this information for your tickets and receipt
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address *</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="your.email@example.com"
-                        className="pl-10"
-                        value={customerInfo.email}
-                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
-                      />
-                    </div>
-                    {validationErrors.email && (
-                      <p className="text-sm text-destructive">{validationErrors.email}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name *</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="fullName"
-                        placeholder="John Smith"
-                        className="pl-10"
-                        value={customerInfo.fullName}
-                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, fullName: e.target.value }))}
-                      />
-                    </div>
-                    {validationErrors.fullName && (
-                      <p className="text-sm text-destructive">{validationErrors.fullName}</p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number (Optional)</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
-                      className="pl-10"
-                      value={customerInfo.phone}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Payment Method Step */}
           {currentStep === 'payment' && (
@@ -470,17 +385,6 @@ export function CheckoutPage({ onBack, onComplete }: CheckoutPageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Customer Info Review */}
-                <div>
-                  <h4 className="font-medium mb-2">Contact Information</h4>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p>{customerInfo.fullName}</p>
-                    <p>{customerInfo.email}</p>
-                    {customerInfo.phone && <p>{customerInfo.phone}</p>}
-                  </div>
-                </div>
-
-                <Separator />
 
                 {/* Payment Method Review */}
                 <div>

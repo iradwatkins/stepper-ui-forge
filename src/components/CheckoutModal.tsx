@@ -5,8 +5,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { AlertCircle, CreditCard, Loader2, ShoppingCart, Shield, Lock, CheckCircle, X } from "lucide-react";
 import { PayPalLogo, CashAppLogo, CreditCardIcon, VisaLogo, MastercardLogo, AmexLogo } from "@/components/payment/PaymentLogos";
 import { useCart } from "@/contexts/CartContext";
@@ -58,7 +56,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<string>('paypal');
-  const [customerEmail, setCustomerEmail] = useState(user?.email || '');
+  const customerEmail = user?.email || '';
   const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string; available: boolean }[]>([]);
   const [seatCheckoutMode, setSeatCheckoutMode] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -102,7 +100,6 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
       };
       
       loadPaymentMethods();
-      setCustomerEmail(user?.email || '');
       
       // Determine checkout mode
       const isSeatingCheckout = selectedSeats && selectedSeats.length > 0 && eventId;
@@ -606,26 +603,6 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
           {(items.length > 0 || seatCheckoutMode) && (
             <>
-              {/* Modern Contact Information */}
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-base font-semibold text-gray-900">Contact Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="your.email@example.com"
-                      required
-                      className="border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg h-11"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
 
               {/* Emergency Diagnostic - TEMPORARY */}
               {import.meta.env.DEV && <SquareDiagnostic />}
