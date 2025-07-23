@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function CommunitySection() {
+  const { user } = useAuth();
+  
   return (
     <div className="bg-primary/10 py-16">
       <div className="container mx-auto px-4">
@@ -12,14 +15,16 @@ export function CommunitySection() {
             and stay updated on the latest stepping events and trends.
           </p>
           
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button asChild size="lg" className="bg-primary hover:bg-blue-600">
-              <Link to="/account">Create Account</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link to="/account">Sign In</Link>
-            </Button>
-          </div>
+          {!user && (
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Button asChild size="lg" className="bg-primary hover:bg-blue-600">
+                <Link to="/account">Create Account</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link to="/account">Sign In</Link>
+              </Button>
+            </div>
+          )}
           
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <div className="bg-background rounded-lg p-4 shadow-sm w-full sm:w-auto">

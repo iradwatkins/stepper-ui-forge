@@ -53,7 +53,6 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<string>('paypal');
-  const customerEmail = user?.email || '';
   const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string; available: boolean }[]>([]);
   const [seatCheckoutMode, setSeatCheckoutMode] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -62,6 +61,29 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   const [squarePaymentToken, setSquarePaymentToken] = useState<string | null>(null);
   const [squarePaymentMethod, setSquarePaymentMethod] = useState<'card' | 'cashapp' | null>(null);
   const squareCardRef = useRef<EmergencySquareCardRef>(null);
+  
+  // Customer Information State
+  const [customerEmail, setCustomerEmail] = useState(user?.email || '');
+  const [customerName, setCustomerName] = useState(user?.user_metadata?.full_name || '');
+  const [billingAddress1, setBillingAddress1] = useState('');
+  const [billingAddress2, setBillingAddress2] = useState('');
+  const [billingCity, setBillingCity] = useState('');
+  const [billingState, setBillingState] = useState('');
+  const [billingPostalCode, setBillingPostalCode] = useState('');
+  const [billingCountry, setBillingCountry] = useState('US');
+  const [phoneNumber, setPhoneNumber] = useState('');
+
+  // Helper function to check if billing form is valid
+  const isFormValid = () => {
+    return !!(
+      customerEmail &&
+      customerName.trim() &&
+      billingAddress1.trim() &&
+      billingCity.trim() &&
+      billingState.trim() &&
+      billingPostalCode.trim()
+    );
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -137,8 +159,34 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
       return;
     }
 
+    // Validate required billing fields
     if (!customerEmail) {
       setError("Please enter your email address");
+      return;
+    }
+    
+    if (!customerName.trim()) {
+      setError("Please enter your full name");
+      return;
+    }
+    
+    if (!billingAddress1.trim()) {
+      setError("Please enter your billing address");
+      return;
+    }
+    
+    if (!billingCity.trim()) {
+      setError("Please enter your city");
+      return;
+    }
+    
+    if (!billingState.trim()) {
+      setError("Please enter your state");
+      return;
+    }
+    
+    if (!billingPostalCode.trim()) {
+      setError("Please enter your ZIP code");
       return;
     }
 
@@ -180,6 +228,16 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
         gateway: selectedGateway,
         orderId,
         customerEmail,
+        customerName,
+        billingAddress: {
+          addressLine1: billingAddress1,
+          addressLine2: billingAddress2,
+          locality: billingCity,
+          administrativeDistrictLevel1: billingState,
+          postalCode: billingPostalCode,
+          country: billingCountry
+        },
+        phoneNumber,
         // Add Square payment token for Square payments
         ...(selectedGateway === 'square' && squarePaymentToken && {
           sourceId: squarePaymentToken
@@ -429,6 +487,15 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
         orderId,
         customerEmail,
         customerName,
+        billingAddress: {
+          addressLine1: billingAddress1,
+          addressLine2: billingAddress2,
+          locality: billingCity,
+          administrativeDistrictLevel1: billingState,
+          postalCode: billingPostalCode,
+          country: billingCountry
+        },
+        phoneNumber,
         amount: seatCheckoutMode ? seatTotal : total,
         currency: "USD",
         paymentMethod: 'square',
@@ -694,6 +761,137 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
               {/* Emergency Diagnostic - TEMPORARY */}
               {import.meta.env.DEV && <SquareDiagnostic />}
               
+              {/* Customer Information */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base font-semibold text-gray-900">Billing Information</CardTitle>
+                  <CardDescription>Please provide your billing details for payment processing</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="customerName" className="block text-sm font-medium text-gray-700 mb-1">
+                          Full Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="customerName"
+                          type="text"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="John Doe"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                          Email <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="customerEmail"
+                          type="email"
+                          value={customerEmail}
+                          onChange={(e) => setCustomerEmail(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="john@example.com"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="billingAddress1" className="block text-sm font-medium text-gray-700 mb-1">
+                        Billing Address <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="billingAddress1"
+                        type="text"
+                        value={billingAddress1}
+                        onChange={(e) => setBillingAddress1(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="123 Main St"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="billingAddress2" className="block text-sm font-medium text-gray-700 mb-1">
+                        Apartment, Suite, etc. (Optional)
+                      </label>
+                      <input
+                        id="billingAddress2"
+                        type="text"
+                        value={billingAddress2}
+                        onChange={(e) => setBillingAddress2(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Apt 4B"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label htmlFor="billingCity" className="block text-sm font-medium text-gray-700 mb-1">
+                          City <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="billingCity"
+                          type="text"
+                          value={billingCity}
+                          onChange={(e) => setBillingCity(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="New York"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="billingState" className="block text-sm font-medium text-gray-700 mb-1">
+                          State <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="billingState"
+                          type="text"
+                          value={billingState}
+                          onChange={(e) => setBillingState(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="NY"
+                          maxLength={2}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="billingPostalCode" className="block text-sm font-medium text-gray-700 mb-1">
+                          ZIP Code <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="billingPostalCode"
+                          type="text"
+                          value={billingPostalCode}
+                          onChange={(e) => setBillingPostalCode(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="10001"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone Number (Optional)
+                      </label>
+                      <input
+                        id="phoneNumber"
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
               {/* Modern Payment Method Selection */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-4">
@@ -744,6 +942,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                          onSuccess={handleSquareCheckout}
                          onError={handleSquarePaymentError}
                          isProcessing={isProcessing}
+                         disabled={!isFormValid()}
                        />
                      </div>
                    </div>
@@ -784,7 +983,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
               onClick={handleCheckout} 
               disabled={
                 isProcessing || 
-                !customerEmail
+                !isFormValid()
               }
               className="w-full h-12 bg-green-500 hover:bg-green-600 text-white font-semibold text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
             >

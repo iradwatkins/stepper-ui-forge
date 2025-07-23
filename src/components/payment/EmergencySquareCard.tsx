@@ -14,10 +14,11 @@ interface EmergencySquareCardProps {
   onSuccess: (token: string) => void;
   onError: (error: string) => void;
   isProcessing?: boolean;
+  disabled?: boolean;
 }
 
 export const EmergencySquareCard = forwardRef<EmergencySquareCardRef, EmergencySquareCardProps>(
-  ({ amount, onSuccess, onError, isProcessing = false }, ref) => {
+  ({ amount, onSuccess, onError, isProcessing = false, disabled = false }, ref) => {
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const cardRef = useRef<any>(null);
@@ -133,7 +134,7 @@ export const EmergencySquareCard = forwardRef<EmergencySquareCardRef, EmergencyS
       
       <Button
         onClick={handlePayment}
-        disabled={!isReady || isProcessing}
+        disabled={!isReady || isProcessing || disabled}
         className="w-full h-12 bg-green-500 hover:bg-green-600 text-white font-semibold text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
       >
         {isProcessing ? (
