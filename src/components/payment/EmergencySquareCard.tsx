@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { createSquareCard } from '@/lib/square/emergencyPaymentManager';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, AlertCircle, CreditCard } from 'lucide-react';
 
 export interface EmergencySquareCardRef {
   tokenize: () => Promise<void>;
@@ -122,6 +123,24 @@ export const EmergencySquareCard = forwardRef<EmergencySquareCardRef, EmergencyS
           </div>
         )}
       </div>
+      
+      <Button
+        onClick={handlePayment}
+        disabled={!isReady || isProcessing}
+        className="w-full h-12 bg-green-500 hover:bg-green-600 text-white font-semibold text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <CreditCard className="w-4 h-4 mr-2" />
+            Pay ${amount.toFixed(2)}
+          </>
+        )}
+      </Button>
       
       {error && (
         <Alert variant="destructive">

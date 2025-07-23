@@ -146,8 +146,8 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
     setError(null);
 
     try {
-      // For Square payments, tokenize the card first
-      if (selectedGateway === 'square') {
+      // For Square payments, check if we need to tokenize the card
+      if (selectedGateway === 'square' && !squarePaymentToken) {
         if (!squareCardRef.current?.isReady) {
           setError("Payment form is not ready. Please wait and try again.");
           setIsProcessing(false);
@@ -410,6 +410,17 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
     setError(error);
     setSquarePaymentToken(null);
     setSquarePaymentMethod(null);
+  };
+
+  const handleSquareCheckout = async (token: string, paymentMethod: 'card' | 'cashapp') => {
+    // Set the token and payment method
+    handleSquarePaymentToken(token, paymentMethod);
+    
+    // Wait for state update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Process the checkout
+    await handleCheckout();
   };
 
   const handleCashAppSuccess = (result: any) => {
@@ -682,7 +693,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                        <EmergencySquareCard
                          ref={squareCardRef}
                          amount={seatCheckoutMode ? seatTotal : total}
-                         onSuccess={handleSquarePaymentToken}
+                         onSuccess={handleSquareCheckout}
                          onError={handleSquarePaymentError}
                          isProcessing={isProcessing}
                        />
@@ -719,14 +730,13 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             </div>
           )}
 
-          {/* Modern Submit Button */}
-          {(items.length > 0 || seatCheckoutMode) && selectedGateway !== 'cashapp' && (
+          {/* Modern Submit Button - Hide for Square and CashApp since they have their own buttons */}
+          {(items.length > 0 || seatCheckoutMode) && selectedGateway !== 'cashapp' && selectedGateway !== 'square' && (
             <Button 
               onClick={handleCheckout} 
               disabled={
                 isProcessing || 
-                !customerEmail || 
-                (selectedGateway === 'square' && !squareCardRef.current?.isReady)
+                !customerEmail
               }
               className="w-full h-12 bg-green-500 hover:bg-green-600 text-white font-semibold text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
             >
