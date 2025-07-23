@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CalendarIcon, MapPinIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CalendarIcon, MapPinIcon, AlertCircle } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
 import { EventWithStats, ImageMetadata } from "@/types/database";
@@ -194,6 +195,16 @@ const EventDetail = () => {
       toast({
         title: "Error",
         description: "Event not found",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if event has already passed
+    if (isEventPast(event.date, event.time)) {
+      toast({
+        title: "Event Has Ended",
+        description: "Tickets are no longer available for past events.",
         variant: "destructive"
       });
       return;
@@ -597,39 +608,59 @@ const EventDetail = () => {
                 </div>
               ) : event.event_type === 'premium' && seatingCharts.length > 0 ? (
                 <div className="border-t border-gray-200 pt-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xl font-bold text-gray-900">Table Seating Selection</h3>
-                      <Badge className="bg-purple-100 text-purple-800">Premium Event</Badge>
+                  {isEventPast(event.date, event.time) ? (
+                    <Alert className="bg-gray-50 border-gray-300">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>This event has ended.</strong> Tickets are no longer available for purchase.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-bold text-gray-900">Table Seating Selection</h3>
+                        <Badge className="bg-purple-100 text-purple-800">Premium Event</Badge>
+                      </div>
+                      
+                      <div className="text-center space-y-4">
+                        <p className="text-gray-600">
+                          This event features reserved table seating. Choose your preferred seats from our interactive table chart.
+                        </p>
+                        <Button 
+                          onClick={() => setShowSeating(true)}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300"
+                        >
+                          Choose Your Table Seats
+                        </Button>
+                      </div>
                     </div>
-                    
-                    <div className="text-center space-y-4">
-                      <p className="text-gray-600">
-                        This event features reserved table seating. Choose your preferred seats from our interactive table chart.
-                      </p>
-                      <Button 
-                        onClick={() => setShowSeating(true)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300"
-                      >
-                        Choose Your Table Seats
-                      </Button>
-                    </div>
-                  </div>
+                  )}
                 </div>
               ) : event.event_type === 'ticketed' ? (
                 <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-xl font-bold mb-4 text-gray-900">Select Tickets</h3>
-                  {!ticketsLoading ? (
-                    <TicketSelector
-                      eventId={event.id}
-                      ticketTypes={ticketTypes}
-                      onAddToCart={handleAddToCart}
-                      isLoading={ticketsLoading}
-                    />
+                  {isEventPast(event.date, event.time) ? (
+                    <Alert className="bg-gray-50 border-gray-300">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>This event has ended.</strong> Tickets are no longer available for purchase.
+                      </AlertDescription>
+                    </Alert>
                   ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-600">Loading tickets...</p>
-                    </div>
+                    <>
+                      <h3 className="text-xl font-bold mb-4 text-gray-900">Select Tickets</h3>
+                      {!ticketsLoading ? (
+                        <TicketSelector
+                          eventId={event.id}
+                          ticketTypes={ticketTypes}
+                          onAddToCart={handleAddToCart}
+                          isLoading={ticketsLoading}
+                        />
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-gray-600">Loading tickets...</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (

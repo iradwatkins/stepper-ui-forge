@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { EventLike, EventLikeInsert } from '@/types/database'
 
 export class EventLikesService {
@@ -99,6 +99,37 @@ export class EventLikesService {
     }
 
     return data?.map(item => item.event).filter(Boolean) || []
+  }
+
+  /**
+   * Get events liked by a user, separated by upcoming and past
+   */
+  static async getUserLikedEventsCategorized(userId: string): Promise<{
+    upcoming: any[]
+    past: any[]
+  }> {
+    const allEvents = await this.getUserLikedEvents(userId)
+    const now = new Date()
+    
+    const upcoming: any[] = []
+    const past: any[] = []
+    
+    allEvents.forEach(event => {
+      const eventDate = new Date(event.date)
+      if (eventDate >= now) {
+        upcoming.push(event)
+      } else {
+        past.push(event)
+      }
+    })
+    
+    // Sort upcoming events by date ascending (nearest first)
+    upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    
+    // Sort past events by date descending (most recent first)
+    past.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    
+    return { upcoming, past }
   }
 
   /**
