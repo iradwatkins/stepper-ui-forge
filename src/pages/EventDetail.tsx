@@ -14,7 +14,6 @@ import { SeatData, PriceCategory } from "@/types/seating";
 import { TicketType } from "@/types/database";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
-import { CheckoutModal } from "@/components/CheckoutModal";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
 import { seatingService, AvailableSeat } from "@/lib/services/SeatingService";
 import { convertWizardToInteractive } from "@/lib/utils/seatingDataConverter";
@@ -43,10 +42,9 @@ interface EventImages {
 const EventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addItem, openCheckoutWithProps } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [galleryStartIndex, setGalleryStartIndex] = useState(0);
   const [event, setEvent] = useState<EventWithStats | null>(null);
@@ -261,9 +259,14 @@ const EventDetail = () => {
       return;
     }
     
-    // For now, just open the checkout modal
-    // TODO: Integrate seat purchases with checkout flow
-    setIsCheckoutOpen(true);
+    // Open checkout modal with event details
+    openCheckoutWithProps({
+      eventId: event?.id,
+      eventTitle: event?.title,
+      eventDate: event?.date,
+      eventTime: event?.time,
+      eventLocation: event?.venue_name
+    });
   };
 
   const handleInteractivePurchase = async () => {
@@ -312,7 +315,15 @@ const EventDetail = () => {
         description: `${selectedSeatIds.length} seats reserved for 15 minutes. Please complete your purchase.`,
       });
       
-      setIsCheckoutOpen(true);
+      openCheckoutWithProps({
+        eventId: event?.id,
+        selectedSeats: selectedSeatIds,
+        seatDetails: getSelectedSeatDetails(),
+        eventTitle: event?.title,
+        eventDate: event?.date,
+        eventTime: event?.time,
+        eventLocation: event?.venue_name
+      });
     } catch (error) {
       console.error('Error holding seats:', error);
       toast({
@@ -352,7 +363,13 @@ const EventDetail = () => {
 
     // For simple events, proceed directly to checkout
     // The checkout process will handle free event registrations
-    setIsCheckoutOpen(true);
+    openCheckoutWithProps({
+      eventId: event?.id,
+      eventTitle: event?.title,
+      eventDate: event?.date,
+      eventTime: event?.time,
+      eventLocation: event?.venue_name
+    });
   };
 
   // Helper function to get event images
@@ -657,18 +674,6 @@ const EventDetail = () => {
 
         </div>
       </main>
-
-      <CheckoutModal 
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        eventId={event?.id}
-        selectedSeats={selectedSeatIds}
-        seatDetails={getSelectedSeatDetails()}
-        eventTitle={event?.title}
-        eventDate={event?.date}
-        eventTime={event?.time}
-        eventLocation={event?.venue_name}
-      />
 
       <ImageGalleryModal
         isOpen={isGalleryOpen}

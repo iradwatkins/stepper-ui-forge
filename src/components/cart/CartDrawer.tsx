@@ -8,7 +8,6 @@ import { CartItem as CartItemComponent } from './CartItem';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingBag, X, CreditCard, LogIn } from 'lucide-react';
-import { CheckoutModal } from '@/components/CheckoutModal';
 import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 import { toast } from 'sonner';
 
@@ -18,9 +17,8 @@ interface CartDrawerProps {
 }
 
 export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
-  const { items, totalItems, subtotal, fees, total, clearCart } = useCart();
+  const { items, totalItems, subtotal, fees, total, clearCart, openCheckoutWithProps } = useCart();
   const { user } = useAuth();
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
 
   const handleCheckout = () => {
@@ -30,7 +28,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
       toast.info('Please sign in to complete your purchase');
     } else {
       onOpenChange(false); // Close drawer
-      setIsCheckoutOpen(true); // Open checkout modal
+      openCheckoutWithProps({}); // Open global checkout modal
     }
   };
 
@@ -40,7 +38,7 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
     localStorage.setItem('checkoutIntent', 'true');
     // Close cart drawer and open checkout
     onOpenChange(false);
-    setIsCheckoutOpen(true);
+    openCheckoutWithProps({});
   };
 
   const handleClearCart = () => {
@@ -158,12 +156,6 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* Checkout Modal */}
-      <CheckoutModal 
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-      />
-      
       {/* Login Modal */}
       <UnifiedAuthModal
         title="Sign In to Complete Purchase"

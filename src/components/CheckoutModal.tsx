@@ -15,9 +15,6 @@ import { TicketService } from "@/lib/services/TicketService";
 import { EmailService } from "@/lib/services/EmailService";
 import { seatingService } from "@/lib/services/SeatingService";
 import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
-import { SquarePaymentSimple } from "@/components/payments/SquarePaymentSimple";
-import { CashAppPay } from "@/components/payment/CashAppPay";
-import { SquareEnvDebug } from "@/components/payment/SquareEnvDebug";
 import { EmergencySquareCard } from "@/components/payment/EmergencySquareCard";
 import { EmergencyCashApp } from "@/components/payment/EmergencyCashApp";
 import { SquareDiagnostic } from "@/components/payment/SquareDiagnostic";
@@ -51,7 +48,7 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDetails, eventTitle, eventDate, eventTime, eventLocation }: CheckoutModalProps) {
-  const { items, total, subtotal, fees, clearCart } = useCart();
+  const { items, total, subtotal, fees, clearCart, showThankYou } = useCart();
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -347,6 +344,16 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
             // Clear cart for regular purchases
             clearCart();
           }
+          
+          // Show thank you modal with order details
+          showThankYou({
+            orderId: orderResult.order.id,
+            customerEmail: customerEmail,
+            totalAmount: orderResult.order.total_amount,
+            ticketCount: tickets.length,
+            eventTitle: tickets[0]?.ticket_types?.events?.title || eventTitle,
+            eventDate: tickets[0]?.ticket_types?.events?.date || eventDate
+          });
           
           onClose();
         } catch (orderError) {

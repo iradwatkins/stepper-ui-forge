@@ -8,7 +8,6 @@ import { CartItem as CartItemComponent } from './CartItem';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingBag, X, CreditCard, LogIn } from 'lucide-react';
-import { CheckoutModal } from '@/components/CheckoutModal';
 import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 import { SlideOutCashAppPay } from './SlideOutCashAppPay';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +20,8 @@ interface CartDrawerWithPaymentProps {
 }
 
 export const CartDrawerWithPayment = ({ open, onOpenChange }: CartDrawerWithPaymentProps) => {
-  const { items, totalItems, subtotal, fees, total, clearCart } = useCart();
+  const { items, totalItems, subtotal, fees, total, clearCart, openCheckoutWithProps } = useCart();
   const { user } = useAuth();
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showInCartPayment, setShowInCartPayment] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'checkout' | 'cashapp'>('checkout');
@@ -44,7 +42,7 @@ export const CartDrawerWithPayment = ({ open, onOpenChange }: CartDrawerWithPaym
         setShowInCartPayment(true);
       } else {
         onOpenChange(false);
-        setIsCheckoutOpen(true);
+        openCheckoutWithProps({});
       }
     }
   };
@@ -57,7 +55,7 @@ export const CartDrawerWithPayment = ({ open, onOpenChange }: CartDrawerWithPaym
       setShowInCartPayment(true);
     } else {
       onOpenChange(false);
-      setIsCheckoutOpen(true);
+      openCheckoutWithProps({});
     }
   };
 
@@ -244,12 +242,6 @@ export const CartDrawerWithPayment = ({ open, onOpenChange }: CartDrawerWithPaym
         </SheetContent>
       </Sheet>
 
-      {/* Checkout Modal */}
-      <CheckoutModal 
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-      />
-      
       {/* Login Modal */}
       <UnifiedAuthModal
         title="Sign In to Complete Purchase"

@@ -20,6 +20,27 @@ export interface CartItem {
   maxPerPerson: number
 }
 
+// Checkout modal props interface
+export interface CheckoutModalProps {
+  eventId?: string
+  selectedSeats?: string[]
+  seatDetails?: any[]
+  eventTitle?: string
+  eventDate?: string
+  eventTime?: string
+  eventLocation?: string
+}
+
+// Thank you modal props interface
+export interface ThankYouModalProps {
+  orderId: string
+  customerEmail: string
+  totalAmount: number
+  ticketCount: number
+  eventTitle?: string
+  eventDate?: string
+}
+
 // Cart state interface
 export interface CartState {
   items: CartItem[]
@@ -29,27 +50,41 @@ export interface CartState {
   total: number
   isLoading: boolean
   isCartOpen: boolean
+  isCheckoutOpen: boolean
+  checkoutProps: CheckoutModalProps
+  isThankYouOpen: boolean
+  thankYouProps: Partial<ThankYouModalProps>
 }
 
 // Cart actions for useReducer
 export type CartAction =
-  | { type: 'ADD_ITEM'; payload: CartItem }
+  | { type: 'ADD_ITEM'; payload: { item: CartItem; openCart?: boolean } }
   | { type: 'REMOVE_ITEM'; payload: { id: string } }
   | { type: 'UPDATE_QUANTITY'; payload: { id: string; quantity: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'HYDRATE_CART'; payload: CartItem[] }
   | { type: 'SET_CART_OPEN'; payload: boolean }
+  | { type: 'SET_CHECKOUT_OPEN'; payload: boolean }
+  | { type: 'SET_CHECKOUT_PROPS'; payload: CheckoutModalProps }
+  | { type: 'SET_THANKYOU_OPEN'; payload: boolean }
+  | { type: 'SET_THANKYOU_PROPS'; payload: Partial<ThankYouModalProps> }
 
 // Cart context interface
 interface CartContextType extends CartState {
-  addItem: (ticketType: TicketType, event: Event, quantity: number) => void
+  addItem: (ticketType: TicketType, event: Event, quantity: number, openCart?: boolean) => void
   removeItem: (itemId: string) => void
   updateQuantity: (itemId: string, quantity: number) => void
   clearCart: () => void
   getItemQuantity: (ticketTypeId: string) => number
   isInCart: (ticketTypeId: string) => boolean
   setIsCartOpen: (open: boolean) => void
+  setIsCheckoutOpen: (open: boolean) => void
+  setCheckoutProps: (props: CheckoutModalProps) => void
+  openCheckoutWithProps: (props: CheckoutModalProps) => void
+  setIsThankYouOpen: (open: boolean) => void
+  setThankYouProps: (props: Partial<ThankYouModalProps>) => void
+  showThankYou: (props: Partial<ThankYouModalProps>) => void
 }
 
 // Fee calculation configuration (3% processing fee as per existing checkout)
@@ -82,23 +117,24 @@ const getCurrentPrice = (item: CartItem): number => {
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case 'ADD_ITEM': {
+      const { item, openCart = true } = action.payload;
       const existingItemIndex = state.items.findIndex(
-        item => item.ticketTypeId === action.payload.ticketTypeId && 
-                 item.eventId === action.payload.eventId
+        existingItem => existingItem.ticketTypeId === item.ticketTypeId && 
+                 existingItem.eventId === item.eventId
       )
       
       let newItems: CartItem[]
       
       if (existingItemIndex >= 0) {
         // Update existing item quantity
-        newItems = state.items.map((item, index) => 
+        newItems = state.items.map((existingItem, index) => 
           index === existingItemIndex 
-            ? { ...item, quantity: Math.min(item.quantity + action.payload.quantity, item.maxPerPerson) }
-            : item
+            ? { ...existingItem, quantity: Math.min(existingItem.quantity + item.quantity, existingItem.maxPerPerson) }
+            : existingItem
         )
       } else {
         // Add new item
-        newItems = [...state.items, action.payload]
+        newItems = [...state.items, item]
       }
       
       const totals = calculateTotals(newItems)
@@ -107,7 +143,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         ...state,
         items: newItems,
         ...totals,
-        isCartOpen: true // Open cart when item is added
+        isCartOpen: openCart ? true : state.isCartOpen // Only open cart if requested
       }
     }
     
@@ -172,6 +208,34 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       }
     }
     
+    case 'SET_CHECKOUT_OPEN': {
+      return {
+        ...state,
+        isCheckoutOpen: action.payload
+      }
+    }
+    
+    case 'SET_CHECKOUT_PROPS': {
+      return {
+        ...state,
+        checkoutProps: action.payload
+      }
+    }
+    
+    case 'SET_THANKYOU_OPEN': {
+      return {
+        ...state,
+        isThankYouOpen: action.payload
+      }
+    }
+    
+    case 'SET_THANKYOU_PROPS': {
+      return {
+        ...state,
+        thankYouProps: action.payload
+      }
+    }
+    
     default:
       return state
   }
@@ -185,7 +249,11 @@ const initialState: CartState = {
   fees: 0,
   total: 0,
   isLoading: true,
-  isCartOpen: false
+  isCartOpen: false,
+  isCheckoutOpen: false,
+  checkoutProps: {},
+  isThankYouOpen: false,
+  thankYouProps: {}
 }
 
 // Create context
@@ -260,7 +328,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
   }, [state.items, state.isLoading, user])
 
   // Add item to cart
-  const addItem = (ticketType: TicketType, event: Event, quantity: number) => {
+  const addItem = (ticketType: TicketType, event: Event, quantity: number, openCart: boolean = true) => {
     // Calculate current price (early bird if applicable)
     let currentPrice = ticketType.price;
     if (ticketType.early_bird_price && ticketType.early_bird_until) {
@@ -287,7 +355,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       maxPerPerson: ticketType.max_per_person
     }
     
-    dispatch({ type: 'ADD_ITEM', payload: cartItem })
+    dispatch({ type: 'ADD_ITEM', payload: { item: cartItem, openCart } })
   }
 
   // Remove item from cart
@@ -326,6 +394,40 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     dispatch({ type: 'SET_CART_OPEN', payload: open })
   }
 
+  // Set checkout open state
+  const setIsCheckoutOpen = (open: boolean) => {
+    dispatch({ type: 'SET_CHECKOUT_OPEN', payload: open })
+  }
+
+  // Set checkout props
+  const setCheckoutProps = (props: CheckoutModalProps) => {
+    dispatch({ type: 'SET_CHECKOUT_PROPS', payload: props })
+  }
+
+  // Open checkout with specific props
+  const openCheckoutWithProps = (props: CheckoutModalProps) => {
+    dispatch({ type: 'SET_CHECKOUT_PROPS', payload: props })
+    dispatch({ type: 'SET_CHECKOUT_OPEN', payload: true })
+  }
+
+  // Set thank you open state
+  const setIsThankYouOpen = (open: boolean) => {
+    dispatch({ type: 'SET_THANKYOU_OPEN', payload: open })
+  }
+
+  // Set thank you props
+  const setThankYouProps = (props: Partial<ThankYouModalProps>) => {
+    dispatch({ type: 'SET_THANKYOU_PROPS', payload: props })
+  }
+
+  // Show thank you modal with props
+  const showThankYou = (props: Partial<ThankYouModalProps>) => {
+    dispatch({ type: 'SET_THANKYOU_PROPS', payload: props })
+    dispatch({ type: 'SET_THANKYOU_OPEN', payload: true })
+    // Close checkout modal when showing thank you
+    dispatch({ type: 'SET_CHECKOUT_OPEN', payload: false })
+  }
+
   const value: CartContextType = {
     ...state,
     addItem,
@@ -334,7 +436,13 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     clearCart,
     getItemQuantity,
     isInCart,
-    setIsCartOpen
+    setIsCartOpen,
+    setIsCheckoutOpen,
+    setCheckoutProps,
+    openCheckoutWithProps,
+    setIsThankYouOpen,
+    setThankYouProps,
+    showThankYou
   }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
