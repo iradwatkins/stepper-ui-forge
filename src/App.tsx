@@ -125,11 +125,13 @@ const AppContent = () => {
       />
       
       {/* Global Thank You Modal */}
-      <ThankYouModal
-        isOpen={isThankYouOpen}
-        onClose={() => setIsThankYouOpen(false)}
-        orderDetails={thankYouProps as any}
-      />
+      {isThankYouOpen && thankYouProps.orderId && (
+        <ThankYouModal
+          isOpen={isThankYouOpen}
+          onClose={() => setIsThankYouOpen(false)}
+          orderDetails={thankYouProps as any}
+        />
+      )}
       
       <Suspense fallback={<PageLoader />}>
         <Routes>

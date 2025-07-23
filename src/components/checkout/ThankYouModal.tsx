@@ -50,7 +50,7 @@ export function ThankYouModal({ isOpen, onClose, orderDetails }: ThankYouModalPr
     handleClose();
   };
 
-  if (!orderDetails) return null;
+  if (!orderDetails || !orderDetails.orderId) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -72,7 +72,7 @@ export function ThankYouModal({ isOpen, onClose, orderDetails }: ThankYouModalPr
           <div className="bg-gray-50 rounded-lg p-4 space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Order ID:</span>
-              <span className="font-medium text-gray-900">#{orderDetails.orderId.slice(-8)}</span>
+              <span className="font-medium text-gray-900">#{orderDetails.orderId?.slice(-8) || 'N/A'}</span>
             </div>
             {orderDetails.eventTitle && (
               <div className="flex justify-between text-sm">
@@ -94,7 +94,7 @@ export function ThankYouModal({ isOpen, onClose, orderDetails }: ThankYouModalPr
             </div>
             <div className="flex justify-between text-sm pt-2 border-t">
               <span className="text-gray-600">Total Paid:</span>
-              <span className="font-bold text-gray-900">${orderDetails.totalAmount.toFixed(2)}</span>
+              <span className="font-bold text-gray-900">${(orderDetails.totalAmount || 0).toFixed(2)}</span>
             </div>
           </div>
 
@@ -106,7 +106,7 @@ export function ThankYouModal({ isOpen, onClose, orderDetails }: ThankYouModalPr
                 Confirmation Sent
               </p>
               <p className="text-sm text-blue-700 mt-1">
-                We've sent your tickets and receipt to {orderDetails.customerEmail}
+                We've sent your tickets and receipt to {orderDetails.customerEmail || 'your email'}
               </p>
             </div>
           </div>
