@@ -108,3 +108,6 @@
 | Fix React not defined | AdminRoute.tsx, TeamRoles.tsx | Added missing React imports causing production failure | No |
 | Restore AdminRoute | AdminRoute.tsx | Restored to original with React import | No |
 | Revert supabase import | TeamRoles.tsx | Already using correct @/lib/supabase import path | Yes |
+| Fix follower_promotions schema | 20250723_fix_follower_team_schema.sql | Added missing columns: commission_type, commission_fixed_amount, can_work_events | No |
+| Fix team_members schema | 20250723_fix_follower_team_schema.sql | Added missing columns: status, disabled_at, disabled_by, disable_reason | No |
+| Update get_user_permissions RPC | 20250723_fix_follower_team_schema.sql | Updated function to return new commission columns | No |
