@@ -115,7 +115,7 @@ const AppContent = () => {
     <div className="min-h-screen bg-background">
       <FaviconManager fallbackFavicon="/steppers-icon.svg" />
       <ReferralTracker />
-      {!isHomePage && <Navbar />}
+      <Navbar />
       
       {/* Global Checkout Modal */}
       <CheckoutModal 
