@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,7 +15,7 @@ import { TicketService } from "@/lib/services/TicketService";
 import { EmailService } from "@/lib/services/EmailService";
 import { seatingService } from "@/lib/services/SeatingService";
 import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
-import { EmergencySquareCard } from "@/components/payment/EmergencySquareCard";
+import { EmergencySquareCard, type EmergencySquareCardRef } from "@/components/payment/EmergencySquareCard";
 import { EmergencyCashApp } from "@/components/payment/EmergencyCashApp";
 import { SquareDiagnostic } from "@/components/payment/SquareDiagnostic";
 import { toast } from "sonner";
@@ -61,6 +61,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   const [seatTotal, setSeatTotal] = useState(0);
   const [squarePaymentToken, setSquarePaymentToken] = useState<string | null>(null);
   const [squarePaymentMethod, setSquarePaymentMethod] = useState<'card' | 'cashapp' | null>(null);
+  const squareCardRef = useRef<EmergencySquareCardRef>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -145,11 +146,31 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
     setError(null);
 
     try {
-      // For Square payments, ensure we have a payment token
-      if (selectedGateway === 'square' && !squarePaymentToken) {
-        setError("Please complete the payment form first");
-        setIsProcessing(false);
-        return;
+      // For Square payments, tokenize the card first
+      if (selectedGateway === 'square') {
+        if (!squareCardRef.current?.isReady) {
+          setError("Payment form is not ready. Please wait and try again.");
+          setIsProcessing(false);
+          return;
+        }
+        
+        // Tokenize the card
+        try {
+          await squareCardRef.current.tokenize();
+          // Token will be set via the onSuccess callback
+          // Wait a moment for the token to be set
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (!squarePaymentToken) {
+            setError("Failed to process card information. Please try again.");
+            setIsProcessing(false);
+            return;
+          }
+        } catch (tokenError) {
+          console.error('Tokenization error:', tokenError);
+          setIsProcessing(false);
+          return;
+        }
       }
       
       const orderId = `order_${Date.now()}_${user?.id || 'guest'}`;
@@ -659,6 +680,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                      <label className="block text-sm font-medium text-gray-700 mb-2">Card Information</label>
                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 hover:border-gray-400 focus-within:border-green-500 transition-colors">
                        <EmergencySquareCard
+                         ref={squareCardRef}
                          amount={seatCheckoutMode ? seatTotal : total}
                          onSuccess={handleSquarePaymentToken}
                          onError={handleSquarePaymentError}
@@ -704,7 +726,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
               disabled={
                 isProcessing || 
                 !customerEmail || 
-                (selectedGateway === 'square' && !squarePaymentToken)
+                (selectedGateway === 'square' && !squareCardRef.current?.isReady)
               }
               className="w-full h-12 bg-green-500 hover:bg-green-600 text-white font-semibold text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
             >
@@ -715,11 +737,8 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
                 </>
               ) : (
                 <>
-                  {selectedGateway === 'square' && !squarePaymentToken ? (
-                    'Complete Payment Form'
-                  ) : (
-                    `Pay $${seatCheckoutMode ? seatTotal.toFixed(2) : total.toFixed(2)}`
-                  )}
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Pay ${seatCheckoutMode ? seatTotal.toFixed(2) : total.toFixed(2)}
                 </>
               )}
             </Button>

@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { createSquareCard } from '@/lib/square/emergencyPaymentManager';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+
+export interface EmergencySquareCardRef {
+  tokenize: () => Promise<void>;
+  isReady: boolean;
+}
 
 interface EmergencySquareCardProps {
   amount: number; // Amount in dollars
@@ -12,11 +15,12 @@ interface EmergencySquareCardProps {
   isProcessing?: boolean;
 }
 
-export function EmergencySquareCard({ amount, onSuccess, onError, isProcessing = false }: EmergencySquareCardProps) {
-  const [isReady, setIsReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const cardRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+export const EmergencySquareCard = forwardRef<EmergencySquareCardRef, EmergencySquareCardProps>(
+  ({ amount, onSuccess, onError, isProcessing = false }, ref) => {
+    const [isReady, setIsReady] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const cardRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -71,30 +75,36 @@ export function EmergencySquareCard({ amount, onSuccess, onError, isProcessing =
     };
   }, [onError]);
 
-  const handlePayment = async () => {
-    if (!cardRef.current) {
-      onError('Payment form not ready');
-      return;
-    }
+    const handlePayment = async () => {
+      if (!cardRef.current) {
+        onError('Payment form not ready');
+        return;
+      }
 
-    try {
-      setError(null);
-      const result = await cardRef.current.tokenize();
-      
-      if (result.status === 'OK') {
-        console.log('[EmergencyCard] Token generated:', result.token);
-        onSuccess(result.token);
-      } else {
-        const errorMessage = result.errors?.[0]?.message || 'Card validation failed';
+      try {
+        setError(null);
+        const result = await cardRef.current.tokenize();
+        
+        if (result.status === 'OK') {
+          console.log('[EmergencyCard] Token generated:', result.token);
+          onSuccess(result.token, 'card');
+        } else {
+          const errorMessage = result.errors?.[0]?.message || 'Card validation failed';
+          setError(errorMessage);
+          onError(errorMessage);
+        }
+      } catch (err: any) {
+        const errorMessage = err.message || 'Payment failed';
         setError(errorMessage);
         onError(errorMessage);
       }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Payment failed';
-      setError(errorMessage);
-      onError(errorMessage);
-    }
-  };
+    };
+
+    // Expose methods to parent component
+    useImperativeHandle(ref, () => ({
+      tokenize: handlePayment,
+      isReady
+    }), [isReady]);
 
   return (
     <div className="space-y-4">
@@ -119,30 +129,8 @@ export function EmergencySquareCard({ amount, onSuccess, onError, isProcessing =
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
-      <Button 
-        onClick={handlePayment}
-        disabled={!isReady || isProcessing}
-        className="w-full"
-        size="lg"
-      >
-        {isProcessing ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processing...
-          </>
-        ) : !isReady ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading...
-          </>
-        ) : (
-          <>
-            <CreditCard className="mr-2 h-4 w-4" />
-            Pay ${amount.toFixed(2)}
-          </>
-        )}
-      </Button>
     </div>
   );
-}
+});
+
+EmergencySquareCard.displayName = 'EmergencySquareCard';
