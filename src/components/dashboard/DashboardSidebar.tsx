@@ -56,7 +56,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const location = useLocation()
   const { user } = useAuth()
   const { isAdmin } = useAdminPermissions()
-  const { isEventOwner } = useUserPermissions()
+  const { isEventOwner, isOrganizer } = useUserPermissions()
   const eventPermissions = useEventPermissions()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
 
@@ -100,7 +100,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     ]
 
     // Add following/followers based on context
-    if (isEventOwner) {
+    if (isEventOwner || isOrganizer) {
       items.push({
         title: 'Followers',
         href: '/dashboard/followers',
@@ -176,8 +176,8 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       })
     }
 
-    // Event Owner specific features
-    if (isEventOwner) {
+    // Event Owner/Organizer specific features
+    if (isEventOwner || isOrganizer) {
       items.push({
         title: 'My Events',
         icon: Calendar,

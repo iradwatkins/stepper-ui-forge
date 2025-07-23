@@ -13,6 +13,8 @@ export interface UserPermissionState {
   canWorkEvents: boolean
   isCoOrganizer: boolean
   isEventOwner: boolean
+  isOrganizer: boolean // Added to track organizer permission
+  userPermission: 'regular_user' | 'seller' | 'team_member' | 'co_organizer' | 'organizer' | 'admin' | null
   
   // Permission details
   sellingPermissions: Array<{
@@ -40,6 +42,8 @@ export const useUserPermissions = () => {
     canWorkEvents: false,
     isCoOrganizer: false,
     isEventOwner: false,
+    isOrganizer: false,
+    userPermission: null,
     sellingPermissions: [],
     loading: true,
     error: null
@@ -63,6 +67,8 @@ export const useUserPermissions = () => {
         canWorkEvents: false,
         isCoOrganizer: false,
         isEventOwner: false,
+        isOrganizer: false,
+        userPermission: null,
         sellingPermissions: [],
         loading: false,
         error: null
@@ -80,6 +86,21 @@ export const useUserPermissions = () => {
     setPermissionState(prev => ({ ...prev, loading: true, error: null }))
 
     try {
+      // First, get the user's permission level from their profile
+      const { supabase } = await import('@/integrations/supabase/client')
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('permission')
+        .eq('id', user.id)
+        .single()
+      
+      if (profileError) {
+        console.error('Failed to load user profile permission:', profileError)
+      }
+      
+      const userPermission = profile?.permission || 'regular_user'
+      const isOrganizer = userPermission === 'organizer' || userPermission === 'admin'
+      
       // Load selling permissions - FollowerService will handle auth checks
       const sellingPermissions = await FollowerService.getUserSellingPermissions(user.id)
       
@@ -96,15 +117,17 @@ export const useUserPermissions = () => {
       // Check co-organizer status
       const coOrganizerStatus = await FollowerService.getUserCoOrganizerStatus(user.id)
       
-      const canSellTickets = sellingPermissions.length > 0
-      const canWorkEvents = teamMemberPermissions.length > 0
-      const isCoOrganizer = coOrganizerStatus.length > 0
+      const canSellTickets = sellingPermissions.length > 0 || userPermission === 'seller'
+      const canWorkEvents = teamMemberPermissions.length > 0 || userPermission === 'team_member'
+      const isCoOrganizer = coOrganizerStatus.length > 0 || userPermission === 'co_organizer'
 
       setPermissionState({
         canSellTickets,
         canWorkEvents,
         isCoOrganizer,
         isEventOwner,
+        isOrganizer,
+        userPermission,
         sellingPermissions,
         loading: false,
         error: null
@@ -167,7 +190,7 @@ export const useUserPermissions = () => {
         return permissionState.canWorkEvents
       
       case 'manage_events':
-        return permissionState.isCoOrganizer || permissionState.isEventOwner
+        return permissionState.isCoOrganizer || permissionState.isEventOwner || permissionState.isOrganizer
       
       case 'create_events':
         return !!user // Any authenticated user can create events
