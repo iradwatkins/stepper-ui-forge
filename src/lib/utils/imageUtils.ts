@@ -33,16 +33,45 @@ export function getEventImageUrl(
 ): string | null {
   if (!event?.images) return null;
   
-  const images = event.images as EventImages;
+  const images = event.images;
+  
+  // Debug logging for production issues
+  if (typeof window !== 'undefined' && window.location.hostname === 'stepperslife.com') {
+    console.log('getEventImageUrl called with:', { eventTitle: event.title, size, images });
+  }
+  
+  // Handle if images is a string (single URL)
+  if (typeof images === 'string') {
+    return images;
+  }
+  
+  // Handle if images is an array (legacy format)
+  if (Array.isArray(images) && images.length > 0) {
+    return images[0];
+  }
+  
+  // Cast to expected structure
+  const typedImages = images as EventImages;
   
   // Determine which image to use (banner or postcard)
-  const primaryImage = preferPostcard ? images.postcard : images.banner;
-  const fallbackImage = preferPostcard ? images.banner : images.postcard;
+  const primaryImage = preferPostcard ? typedImages.postcard : typedImages.banner;
+  const fallbackImage = preferPostcard ? typedImages.banner : typedImages.postcard;
   
   // Get the URL for the requested size with fallbacks
-  const getImageBySize = (img: OptimizedImage | undefined): string | null => {
+  const getImageBySize = (img: OptimizedImage | undefined | string): string | null => {
     if (!img) return null;
     
+    // If img is already a string URL, return it
+    if (typeof img === 'string') {
+      return img;
+    }
+    
+    // Check if it's an object with direct URL property (legacy format)
+    if (img.url && typeof img.url === 'string') {
+      return img.url;
+    }
+    
+    // New optimized format with size variations
     switch (size) {
       case 'thumbnail':
         return img.thumbnail || img.small || img.medium || img.original || img.url || null;

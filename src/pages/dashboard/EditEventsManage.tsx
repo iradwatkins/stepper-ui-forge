@@ -65,6 +65,11 @@ export default function EditEventsManage() {
       try {
         setIsLoading(true)
         const userEvents = await EventsService.getUserEvents(user.id)
+        // Debug: Log the first event to see image structure
+        if (userEvents.length > 0) {
+          console.log('EditEventsManage - First event data:', userEvents[0]);
+          console.log('EditEventsManage - First event images:', userEvents[0].images);
+        }
         setEvents(userEvents)
       } catch (error) {
         console.error('Error loading events:', error)
@@ -325,6 +330,10 @@ export default function EditEventsManage() {
                   <div className="aspect-video overflow-hidden">
                     {(() => {
                       const imageUrl = getEventImageUrl(event, 'medium');
+                      // Debug logging
+                      if (!imageUrl && event.images) {
+                        console.log('EditEventsManage - No image URL found for event:', event.title, 'Images data:', event.images);
+                      }
                       return imageUrl ? (
                         <img
                           src={imageUrl}
@@ -423,6 +432,10 @@ export default function EditEventsManage() {
                         <div className="w-16 h-16 rounded-lg overflow-hidden">
                           {(() => {
                             const imageUrl = getEventImageUrl(event, 'thumbnail');
+                            // Debug logging
+                            if (!imageUrl && event.images) {
+                              console.log('EditEventsManage List - No image URL found for event:', event.title, 'Images data:', event.images);
+                            }
                             return imageUrl ? (
                               <img
                                 src={imageUrl}
