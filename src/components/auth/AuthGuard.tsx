@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Lock, UserPlus, Heart, Users, ShoppingCart, Calendar } from 'lucide-react'
-import { Auth } from './Auth'
+import { UnifiedAuthModal } from './UnifiedAuthModal'
 
 interface AuthGuardProps {
   children: ReactNode
@@ -35,7 +35,7 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({ action, icon, title, descript
       <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent>
-      <Auth />
+      <UnifiedAuthModal isOpen={true} onOpenChange={() => {}} />
     </CardContent>
   </Card>
 )
