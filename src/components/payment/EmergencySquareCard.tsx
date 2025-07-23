@@ -108,14 +108,14 @@ export const EmergencySquareCard = forwardRef<EmergencySquareCardRef, EmergencyS
     }), [isReady]);
 
   return (
-    <div className="space-y-4">
+    <>
       <div 
         ref={containerRef}
         id="emergency-card-container"
-        className="min-h-[100px] border rounded-lg p-3 bg-background relative"
+        className="min-h-[100px] relative mb-4"
       >
         {!isReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/90">
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
               <p className="text-sm text-gray-600">Loading secure payment form...</p>
@@ -123,6 +123,13 @@ export const EmergencySquareCard = forwardRef<EmergencySquareCardRef, EmergencyS
           </div>
         )}
       </div>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       
       <Button
         onClick={handlePayment}
@@ -141,14 +148,7 @@ export const EmergencySquareCard = forwardRef<EmergencySquareCardRef, EmergencyS
           </>
         )}
       </Button>
-      
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-    </div>
+    </>
   );
 });
 

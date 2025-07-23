@@ -413,14 +413,62 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
   };
 
   const handleSquareCheckout = async (token: string, paymentMethod: 'card' | 'cashapp') => {
-    // Set the token and payment method
-    handleSquarePaymentToken(token, paymentMethod);
+    // Set the token and payment method in state
+    setSquarePaymentToken(token);
+    setSquarePaymentMethod(paymentMethod);
+    setError(null);
+    console.log(`✅ Square ${paymentMethod} payment token received:`, token.substring(0, 20) + '...');
     
-    // Wait for state update
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Process the checkout immediately with the token
+    setIsProcessing(true);
     
-    // Process the checkout
-    await handleCheckout();
+    try {
+      const orderId = `order_${Date.now()}_${user?.id || 'guest'}`;
+      
+      const paymentData = {
+        orderId,
+        customerEmail,
+        customerName,
+        amount: seatCheckoutMode ? seatTotal : total,
+        currency: "USD",
+        paymentMethod: 'square',
+        gateway: 'square',
+        items: seatCheckoutMode ? undefined : items.map(item => ({
+          ticketTypeId: item.ticketTypeId,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        eventId: seatCheckoutMode ? selectedEventId : items[0]?.eventId,
+        userId: user?.id,
+        squareToken: token,
+        squarePaymentMethod: paymentMethod,
+        selectedSeats: seatCheckoutMode ? selectedSeats : undefined,
+        seatTotal: seatCheckoutMode ? seatTotal : undefined
+      };
+
+      const result = await PaymentService.processPayment(paymentData);
+      
+      if (result.success) {
+        onSuccess();
+        if (!seatCheckoutMode) {
+          clearCart();
+        }
+        onOpenChange(false);
+        
+        toast.success('Payment successful! Check your email for confirmation.');
+        
+        if (result.purchaseId) {
+          navigate(`/purchase-confirmation/${result.purchaseId}`);
+        }
+      } else {
+        throw new Error(result.error || 'Payment failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Checkout error:', error);
+      setError(error.message || 'Payment failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleCashAppSuccess = (result: any) => {
