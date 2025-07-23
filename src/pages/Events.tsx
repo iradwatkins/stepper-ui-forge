@@ -10,6 +10,7 @@ import { UnifiedSearchComponent } from "@/components/search/UnifiedSearchCompone
 import { SearchResult } from "@/lib/services/CategorySearchService";
 import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
 import { PastEventImage } from "@/components/event/PastEventImage";
+import { getEventImageUrl } from "@/lib/utils/imageUtils";
 
 interface EventImageData {
   original?: string;
@@ -344,13 +345,8 @@ const Events = () => {
 
   // Render event card component
   const renderEventCard = (event: EventWithStats) => {
-    // Get high-quality image URL
-    const imageUrl = (event.images as EventImages)?.banner?.original || 
-                    (event.images as EventImages)?.banner?.medium || 
-                    (event.images as EventImages)?.postcard?.original || 
-                    (event.images as EventImages)?.postcard?.medium || 
-                    (event.images as EventImages)?.banner?.thumbnail || 
-                    (event.images as EventImages)?.postcard?.thumbnail;
+    // Get thumbnail for card view (faster loading)
+    const imageUrl = getEventImageUrl(event, 'small');
 
     return (
       <Link key={event.id} to={`/events/${event.id}`}>
@@ -440,13 +436,8 @@ const Events = () => {
   };
 
   const renderMasonryCard = (event: EventWithStats, index: number) => {
-    // Get high-quality image URL
-    const imageUrl = (event.images as EventImages)?.banner?.original || 
-                    (event.images as EventImages)?.banner?.medium || 
-                    (event.images as EventImages)?.postcard?.original || 
-                    (event.images as EventImages)?.postcard?.medium || 
-                    (event.images as EventImages)?.banner?.thumbnail || 
-                    (event.images as EventImages)?.postcard?.thumbnail;
+    // Get medium size for masonry view (good balance of quality and performance)
+    const imageUrl = getEventImageUrl(event, 'medium');
 
     return (
       <Link key={event.id} to={`/events/${event.id}`}>
@@ -507,12 +498,7 @@ const Events = () => {
         return (
           <div className="space-y-4">
             {eventsToShow.map((event) => {
-              const imageUrl = (event.images as EventImages)?.banner?.original || 
-                              (event.images as EventImages)?.banner?.medium || 
-                              (event.images as EventImages)?.postcard?.original || 
-                              (event.images as EventImages)?.postcard?.medium || 
-                              (event.images as EventImages)?.banner?.thumbnail || 
-                              (event.images as EventImages)?.postcard?.thumbnail;
+              const imageUrl = getEventImageUrl(event, 'thumbnail');
               
               return (
                 <Link key={event.id} to={`/events/${event.id}`}>
@@ -627,7 +613,7 @@ const Events = () => {
                 <div className="relative h-96 md:h-[500px]">
                   <PastEventImage
                     eventDate={featuredEvent.date}
-                    imageUrl={(featuredEvent.images as EventImages)?.banner?.original || (featuredEvent.images as EventImages)?.postcard?.original}
+                    imageUrl={getEventImageUrl(featuredEvent, 'original')}
                     alt={featuredEvent.title}
                     className="w-full h-full object-cover"
                     showPlaceholder={true}

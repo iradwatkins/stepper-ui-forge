@@ -41,6 +41,7 @@ import {
   List
 } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
+import { getEventImageUrl } from '@/lib/utils/imageUtils'
 
 export default function EditEventsManage() {
   const { user } = useAuth()
@@ -322,23 +323,20 @@ export default function EditEventsManage() {
               {filteredEvents.map((event) => (
                 <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-video overflow-hidden">
-                    {event.images && (event.images as Record<string, ImageMetadata>)?.banner?.url ? (
-                      <img
-                        src={(event.images as Record<string, ImageMetadata>).banner.url}
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : event.images && (event.images as Record<string, ImageMetadata>)?.postcard?.url ? (
-                      <img
-                        src={(event.images as Record<string, ImageMetadata>).postcard.url}
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm">
-                        No Image
-                      </div>
-                    )}
+                    {(() => {
+                      const imageUrl = getEventImageUrl(event, 'medium');
+                      return imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                          No Image
+                        </div>
+                      );
+                    })()}
                   </div>
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start gap-2 mb-2">
@@ -423,17 +421,20 @@ export default function EditEventsManage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="w-16 h-16 rounded-lg overflow-hidden">
-                          {event.images && (event.images as Record<string, ImageMetadata>)?.banner?.url ? (
-                            <img
-                              src={(event.images as Record<string, ImageMetadata>).banner.url}
-                              alt={event.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                              No Image
-                            </div>
-                          )}
+                          {(() => {
+                            const imageUrl = getEventImageUrl(event, 'thumbnail');
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={event.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                                No Image
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">

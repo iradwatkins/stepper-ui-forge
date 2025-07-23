@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { EventLikesService } from '@/services/eventLikesService'
-import { Event } from '@/types/database'
+import { Event, EventWithStats } from '@/types/database'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Heart, Calendar, MapPin, User, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Link } from 'react-router-dom'
+import { getEventImageUrl } from '@/lib/utils/imageUtils'
 
 export default function LikedEvents() {
   const { user } = useAuth()
@@ -132,25 +133,31 @@ export default function LikedEvents() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {likedEvents.map((event) => (
-            <Card key={event.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <div className="relative">
-                {event.images?.hero && (
-                  <img
-                    src={event.images.hero}
-                    alt={event.title}
-                    className="w-full h-48 object-cover"
-                  />
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="absolute top-3 right-3 bg-white/90 hover:bg-white"
-                  onClick={() => handleUnlikeEvent(event.id)}
-                >
-                  <Heart className="h-4 w-4 text-red-500 fill-current" />
-                </Button>
-              </div>
+          {likedEvents.map((event) => {
+            const imageUrl = getEventImageUrl(event as EventWithStats, 'small');
+            return (
+              <Card key={event.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <div className="relative">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={event.title}
+                      className="w-full h-48 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-muted flex items-center justify-center">
+                      <span className="text-muted-foreground">No image</span>
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="absolute top-3 right-3 bg-white/90 hover:bg-white"
+                    onClick={() => handleUnlikeEvent(event.id)}
+                  >
+                    <Heart className="h-4 w-4 text-red-500 fill-current" />
+                  </Button>
+                </div>
 
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
@@ -208,7 +215,7 @@ export default function LikedEvents() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
       )}
 

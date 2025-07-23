@@ -25,6 +25,7 @@ import { EventMeta } from "@/components/meta/EventMeta";
 import { PastEventImage } from "@/components/event/PastEventImage";
 import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
 import { useAuth } from "@/contexts/AuthContext";
+import { getEventImageUrl, getAllEventImages } from "@/lib/utils/imageUtils";
 
 interface EventImageData {
   original?: string;
@@ -373,34 +374,11 @@ const EventDetail = () => {
   };
 
   // Helper function to get event images
-  const getEventImages = (event: EventWithStats) => {
-    const images: string[] = [];
-    const eventImages = event.images as EventImages;
-    
-    // Always prioritize original quality for gallery
-    const bannerImage = eventImages?.banner?.original || eventImages?.banner?.medium || eventImages?.banner?.url;
-    if (bannerImage) {
-      images.push(bannerImage);
-    }
-    
-    const postcardImage = eventImages?.postcard?.original || eventImages?.postcard?.medium || eventImages?.postcard?.url;
-    if (postcardImage) {
-      images.push(postcardImage);
-    }
-    
-    return images;
-  };
-
-  // Helper function to get primary display image
+  // Use utility functions for consistent image handling
+  const getEventImages = (event: EventWithStats) => getAllEventImages(event);
+  
   const getPrimaryImage = (event: EventWithStats) => {
-    const eventImages = event.images as EventImages;
-    return eventImages?.banner?.original || 
-           eventImages?.banner?.medium || 
-           eventImages?.banner?.url ||
-           eventImages?.postcard?.original || 
-           eventImages?.postcard?.medium || 
-           eventImages?.postcard?.url || 
-           '/placeholder-event.jpg';
+    return getEventImageUrl(event, 'original') || '/placeholder-event.jpg';
   };
 
 

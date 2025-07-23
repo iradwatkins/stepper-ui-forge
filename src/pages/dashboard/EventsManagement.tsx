@@ -51,6 +51,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react'
+import { getEventImageUrl } from '@/lib/utils/imageUtils'
 
 export default function EventsManagement() {
   const { user } = useAuth()
@@ -387,23 +388,20 @@ export default function EventsManagement() {
                     <TableRow key={event.id}>
                       <TableCell>
                         <div className="w-12 h-12 rounded-lg overflow-hidden border">
-                          {event.images && (event.images as Record<string, ImageMetadata>)?.banner?.url ? (
-                            <img
-                              src={(event.images as Record<string, ImageMetadata>).banner.url}
-                              alt={event.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : event.images && (event.images as Record<string, ImageMetadata>)?.postcard?.url ? (
-                            <img
-                              src={(event.images as Record<string, ImageMetadata>).postcard.url}
-                              alt={event.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                              No Image
-                            </div>
-                          )}
+                          {(() => {
+                            const imageUrl = getEventImageUrl(event, 'thumbnail');
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={event.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                                No Image
+                              </div>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell>
