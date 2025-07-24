@@ -3,6 +3,7 @@ import { useWindowSize } from "@/hooks/use-window-size";
 import { HeroCarouselSlides } from "./carousel/HeroCarouselSlides";
 import { HeroNavigationButtons } from "./carousel/HeroNavigationButtons";
 import { HeroContent } from "./carousel/HeroContent";
+import { HeroHeader } from "./carousel/HeroHeader";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -87,10 +88,20 @@ export function HeroCarousel() {
       {/* Navigation arrows */}
       <HeroNavigationButtons onPrevClick={prevSlide} onNextClick={nextSlide} />
 
+      {/* Desktop Login/Register button */}
+      {!isMobile && <HeroHeader />}
 
       {/* Mobile bottom actions */}
       {isMobile && (
         <div className="absolute bottom-5 left-0 right-0 flex justify-center gap-4 px-4 z-20">
+          {!user && (
+            <Button
+              className="bg-[#02a2c8] hover:bg-[#02a2c8]/90 text-white"
+              onClick={() => navigate('/account')}
+            >
+              Login / Register
+            </Button>
+          )}
           <Button
             variant="outline"
             className="border-white text-white hover:bg-white hover:text-black"

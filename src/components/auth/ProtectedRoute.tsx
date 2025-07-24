@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { UnifiedAuthModal } from './UnifiedAuthModal'
+import { Auth } from './Auth'
 import { Loader2Icon } from 'lucide-react'
 
 interface ProtectedRouteProps {
@@ -22,7 +22,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user) {
-    return <UnifiedAuthModal isOpen={true} onOpenChange={() => {}} />
+    return <Auth />
   }
 
   return <>{children}</>

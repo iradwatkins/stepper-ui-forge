@@ -93,46 +93,18 @@ const TestEmergencyPayment = lazy(() => import("./pages/TestEmergencyPayment"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
-import { CheckoutModal } from "./components/CheckoutModal";
-import { ThankYouModal } from "./components/checkout/ThankYouModal";
-import { useCart } from "./contexts/CartContext";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
-  const { 
-    isCheckoutOpen, 
-    setIsCheckoutOpen, 
-    checkoutProps,
-    isThankYouOpen,
-    setIsThankYouOpen,
-    thankYouProps 
-  } = useCart();
   
   return (
     <div className="min-h-screen bg-background">
       <FaviconManager fallbackFavicon="/steppers-icon.svg" />
       <ReferralTracker />
-      <Navbar />
-      
-      {/* Global Checkout Modal */}
-      <CheckoutModal 
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        {...checkoutProps}
-      />
-      
-      {/* Global Thank You Modal */}
-      {isThankYouOpen && thankYouProps.orderId && (
-        <ThankYouModal
-          isOpen={isThankYouOpen}
-          onClose={() => setIsThankYouOpen(false)}
-          orderDetails={thankYouProps as any}
-        />
-      )}
-      
+      {!isHomePage && <Navbar />}
       <Suspense fallback={<PageLoader />}>
         <Routes>
         <Route path="/" element={<Index />} />
