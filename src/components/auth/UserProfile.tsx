@@ -18,7 +18,6 @@ import { UserIcon, LogOutIcon, Loader2Icon, LayoutDashboardIcon, TicketIcon, Bel
 import { ProfileService } from '@/lib/profiles'
 import { Database } from '@/types/database'
 import { AvatarService } from '@/lib/avatars'
-import { AuthButton } from './AuthButton'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -106,10 +105,11 @@ export const UserProfile = () => {
     )
   }
   
-  // Show auth button for non-authenticated users
+  // No auth button in header for non-authenticated users
+  // Auth will be handled on homepage instead
   if (!user) {
-    console.log('👤 UserProfile: Showing auth button for non-authenticated user')
-    return <AuthButton variant="ghost" size="sm" mode="unified" />
+    console.log('👤 UserProfile: No auth button in header - will be on homepage')
+    return null
   }
   
   console.log('👤 UserProfile: Rendering user dropdown (user present)')

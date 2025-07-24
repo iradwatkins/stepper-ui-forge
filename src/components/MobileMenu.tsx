@@ -2,13 +2,12 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { Menu, PlusIcon, Download, UserIcon, LogOutIcon, LayoutDashboardIcon, TicketIcon, SettingsIcon, LogInIcon } from "lucide-react";
+import { Menu, PlusIcon, Download, UserIcon, LogOutIcon, LayoutDashboardIcon, TicketIcon, SettingsIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "next-themes";
 import DayNightSwitch from "@/components/ui/DayNightSwitch";
 import PWAInstallButton from "@/components/PWAInstallButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AuthButton } from "@/components/auth/AuthButton";
 import { AvatarService } from "@/lib/avatars";
 import { useState, useEffect } from "react";
 import { ProfileService } from "@/lib/profiles";
@@ -117,14 +116,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
               </Link>
             </div>
           </div>
-        ) : (
-          <div className="px-6 py-4 border-b">
-            <AuthButton variant="default" className="w-full" mode="unified">
-              <LogInIcon className="w-4 h-4 mr-2" />
-              Sign In / Register
-            </AuthButton>
-          </div>
-        )}
+        ) : null}
         
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle className="text-left">Navigation</SheetTitle>

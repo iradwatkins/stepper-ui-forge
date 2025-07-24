@@ -11,7 +11,6 @@ import { UserProfile } from "@/components/auth/UserProfile";
 import { CartDrawer } from "@/components/cart";
 import PWAInstallButton from "@/components/PWAInstallButton";
 import MobileMenu from "@/components/MobileMenu";
-import { AuthButton } from "@/components/auth/AuthButton";
 
 const Navbar = () => {
   const { theme, setTheme } = useTheme();
