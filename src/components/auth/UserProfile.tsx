@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { UserIcon, LogOutIcon, Loader2Icon, LayoutDashboardIcon, TicketIcon, BellIcon, SettingsIcon, SparklesIcon, AlertCircleIcon } from 'lucide-react'
+import { AuthButton } from './AuthButton'
 import { ProfileService } from '@/lib/profiles'
 import { Database } from '@/types/database'
 import { AvatarService } from '@/lib/avatars'
@@ -105,11 +106,19 @@ export const UserProfile = () => {
     )
   }
   
-  // No auth button in header for non-authenticated users
-  // Auth will be handled on homepage instead
+  // Show sign-in and join buttons for non-authenticated users
   if (!user) {
-    console.log('👤 UserProfile: No auth button in header - will be on homepage')
-    return null
+    console.log('👤 UserProfile: Rendering sign-in/join buttons (no user)')
+    return (
+      <div className="flex items-center gap-2">
+        <AuthButton 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 px-3 text-xs sm:text-sm"
+          mode="unified"
+        />
+      </div>
+    )
   }
   
   console.log('👤 UserProfile: Rendering user dropdown (user present)')
@@ -124,7 +133,7 @@ export const UserProfile = () => {
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
-          className={`relative h-8 w-8 rounded-full transition-all duration-300 hover:scale-105 ${
+          className={`relative h-8 w-8 rounded-full transition-all duration-300 ${
             isNewlyAuthenticated 
               ? 'ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse' 
               : ''
@@ -144,26 +153,22 @@ export const UserProfile = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-72" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal pb-2">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={userAvatarUrl} alt={user.email || ''} />
-              <AvatarFallback>{userInitials}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col space-y-1 flex-1">
-              <p className="text-sm font-medium leading-none flex items-center gap-2">
+      <DropdownMenuContent className="w-64" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium leading-none">
                 {user.user_metadata?.full_name || profile?.full_name || 'User'}
-                {isNewlyAuthenticated && (
-                  <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                    Welcome!
-                  </Badge>
-                )}
               </p>
-              <p className="text-xs leading-none text-muted-foreground truncate">
-                {user.email}
-              </p>
+              {isNewlyAuthenticated && (
+                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                  Welcome!
+                </Badge>
+              )}
             </div>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.email}
+            </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -182,73 +187,63 @@ export const UserProfile = () => {
           </div>
         )}
         
-        <div className="px-1">
-          {/* Main Actions */}
-          <DropdownMenuItem asChild className="rounded-md">
-            <Link to="/dashboard" className="flex items-center cursor-pointer">
-              <LayoutDashboardIcon className="mr-2 h-4 w-4" />
-              <span>Dashboard</span>
-            </Link>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem asChild className="rounded-md">
-            <Link to="/dashboard/profile" className="flex items-center cursor-pointer">
-              <UserIcon className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-              {isNewlyAuthenticated && (
-                <Badge variant="outline" className="ml-auto text-xs">
-                  Start here
-                </Badge>
-              )}
-              {showCompletionPrompt && profileCompletion < 100 && (
-                <AlertCircleIcon className="ml-auto h-3 w-3 text-orange-500" />
-              )}
-            </Link>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem asChild className="rounded-md">
-            <Link to="/my-tickets" className="flex items-center cursor-pointer">
-              <TicketIcon className="mr-2 h-4 w-4" />
-              <span>My Tickets</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-        
-        <DropdownMenuSeparator className="my-1" />
-        
-        <div className="px-1">
-          {/* Settings & Preferences */}
-          <DropdownMenuItem asChild className="rounded-md">
-            <Link to="/dashboard/notifications" className="flex items-center cursor-pointer">
-              <BellIcon className="mr-2 h-4 w-4" />
-              <span>Notifications</span>
-            </Link>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem asChild className="rounded-md">
-            <Link to="/dashboard/settings" className="flex items-center cursor-pointer">
-              <SettingsIcon className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-        
-        <DropdownMenuSeparator className="my-1" />
-        
-        <div className="px-1 pb-1">
-          <DropdownMenuItem
-            className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400 rounded-md cursor-pointer"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-          >
-            {isSigningOut ? (
-              <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <LogOutIcon className="mr-2 h-4 w-4" />
+        {/* Profile section with emphasis */}
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard/profile" className="flex items-center">
+            <UserIcon className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+            {isNewlyAuthenticated && (
+              <Badge variant="outline" className="ml-auto text-xs">
+                Start here
+              </Badge>
             )}
-            <span>Sign out</span>
-          </DropdownMenuItem>
-        </div>
+            {showCompletionPrompt && profileCompletion < 100 && (
+              <AlertCircleIcon className="ml-auto h-3 w-3 text-orange-500" />
+            )}
+          </Link>
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard">
+            <LayoutDashboardIcon className="mr-2 h-4 w-4" />
+            <span>Dashboard</span>
+          </Link>
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem asChild>
+          <Link to="/my-tickets">
+            <TicketIcon className="mr-2 h-4 w-4" />
+            <span>My Tickets</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard/notifications">
+            <BellIcon className="mr-2 h-4 w-4" />
+            <span>Notifications</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard/settings">
+            <SettingsIcon className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-red-600 focus:text-red-600"
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+        >
+          {isSigningOut ? (
+            <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOutIcon className="mr-2 h-4 w-4" />
+          )}
+          <span>Log out</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
