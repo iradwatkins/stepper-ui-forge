@@ -17,17 +17,35 @@ export class AvatarService {
 
     // 2. Try Google profile picture from user metadata
     if (user?.user_metadata?.avatar_url) {
-      return user.user_metadata?.avatar_url
+      return user.user_metadata.avatar_url
     }
 
     // 3. Try picture from user metadata (alternative field)
     if (user?.user_metadata?.picture) {
-      return user.user_metadata?.picture
+      return user.user_metadata.picture
     }
 
-    // 4. Generate fallback based on name or email
+    // 4. Try raw_user_meta_data (fallback for OAuth providers)
+    if (user?.raw_user_meta_data?.avatar_url) {
+      return user.raw_user_meta_data.avatar_url
+    }
+
+    // 5. Try raw_user_meta_data picture field
+    if (user?.raw_user_meta_data?.picture) {
+      return user.raw_user_meta_data.picture
+    }
+
+    // 6. Check localStorage fallback (for uploaded avatars)
+    const localAvatar = this.getFallbackAvatar(user?.id)
+    if (localAvatar) {
+      return localAvatar
+    }
+
+    // 7. Generate fallback based on name or email
     const seed = user?.user_metadata?.full_name || 
                  user?.user_metadata?.name ||
+                 user?.raw_user_meta_data?.full_name ||
+                 user?.raw_user_meta_data?.name ||
                  profile?.full_name || 
                  user?.email || 
                  'default'
@@ -39,6 +57,8 @@ export class AvatarService {
   static getInitials(user: any, profile: any): string {
     const fullName = user?.user_metadata?.full_name || 
                      user?.user_metadata?.name ||
+                     user?.raw_user_meta_data?.full_name ||
+                     user?.raw_user_meta_data?.name ||
                      profile?.full_name
 
     if (fullName) {

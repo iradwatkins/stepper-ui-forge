@@ -157,6 +157,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               error: profileError?.message,
               userId: session.user.id
             })
+            
+            // If profile exists but missing Google OAuth data, sync it
+            if (profile && session.user.app_metadata?.provider === 'google') {
+              const hasGoogleData = profile.avatar_url || 
+                                   (profile.full_name && profile.full_name !== profile.email?.split('@')[0])
+              
+              if (!hasGoogleData && (session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture)) {
+                regLogger.log('profile_sync', 'Syncing Google OAuth data to profile', {
+                  userId: session.user.id,
+                  avatarUrl: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture
+                })
+                
+                // Call the sync function
+                const { error: syncError } = await supabase.rpc('sync_google_oauth_profile', { 
+                  user_id: session.user.id 
+                })
+                
+                if (syncError) {
+                  regLogger.log('profile_sync_error', 'Error syncing Google data', {
+                    error: syncError.message,
+                    userId: session.user.id
+                  })
+                } else {
+                  regLogger.log('profile_sync_success', 'Google data synced successfully', {
+                    userId: session.user.id
+                  })
+                }
+              }
+            }
           } catch (err) {
             regLogger.log('profile_error', 'Error checking profile', {
               error: err,

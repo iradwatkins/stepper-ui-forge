@@ -76,6 +76,13 @@ export const UserProfile = () => {
     
     if (user) {
       console.log('👤 UserProfile: User email:', user.email)
+      console.log('👤 UserProfile: Provider:', user.app_metadata?.provider)
+      console.log('👤 UserProfile: Google data:', {
+        avatar_url: user.user_metadata?.avatar_url || user.raw_user_meta_data?.avatar_url,
+        picture: user.user_metadata?.picture || user.raw_user_meta_data?.picture,
+        full_name: user.user_metadata?.full_name || user.raw_user_meta_data?.full_name,
+        name: user.user_metadata?.name || user.raw_user_meta_data?.name
+      })
       console.log('✅ Authentication successful - User profile loaded!')
       
       // Show highlight for newly authenticated users
