@@ -31,7 +31,7 @@ const Navbar = () => {
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto px-4 h-14 sm:h-16">
         {/* Mobile Layout */}
-        <div className="md:hidden flex items-center justify-between h-full">
+        <div className="flex md:!hidden items-center justify-between h-full">
           {/* Left: Mobile Menu */}
           <MobileMenu 
             isOpen={isMobileMenuOpen} 
@@ -78,7 +78,7 @@ const Navbar = () => {
         </div>
 
         {/* Desktop Layout */}
-        <div className="hidden md:flex items-center justify-between h-full">
+        <div className="!hidden md:!flex items-center justify-between h-full">
           {/* Left: Logo */}
           <Link to="/" className="flex items-center">
             <img 
