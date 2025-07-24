@@ -90,6 +90,7 @@ const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
 const TestSquareInit = lazy(() => import("./pages/TestSquareInit"));
 const TestEmergencyPayment = lazy(() => import("./pages/TestEmergencyPayment"));
+const AuthTest = lazy(() => import("./pages/AuthTest"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -242,6 +243,9 @@ const AppContent = () => {
         
         {/* Admin Portal Redirect - consolidate to dashboard admin */}
         <Route path="/admin" element={<AdminAuth />} />
+        
+        {/* Auth Test Page */}
+        <Route path="/auth-test" element={<AuthTest />} />
         
           <Route path="*" element={<NotFound />} />
         </Routes>
