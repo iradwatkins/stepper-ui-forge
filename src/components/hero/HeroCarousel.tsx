@@ -3,7 +3,6 @@ import { useWindowSize } from "@/hooks/use-window-size";
 import { HeroCarouselSlides } from "./carousel/HeroCarouselSlides";
 import { HeroNavigationButtons } from "./carousel/HeroNavigationButtons";
 import { HeroContent } from "./carousel/HeroContent";
-import { HeroHeader } from "./carousel/HeroHeader";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,8 +87,6 @@ export function HeroCarousel() {
       {/* Navigation arrows */}
       <HeroNavigationButtons onPrevClick={prevSlide} onNextClick={nextSlide} />
 
-      {/* Desktop Login/Register button */}
-      {!isMobile && <HeroHeader />}
 
       {/* Mobile bottom actions */}
       {isMobile && (
