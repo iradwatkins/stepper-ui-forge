@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Debug Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .description {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #444;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #4338CA;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .output {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+        .output h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .log-entry {
+            padding: 8px;
+            margin: 4px 0;
+            background: white;
+            border-left: 3px solid #ccc;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        .log-entry.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .log-entry.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .log-entry.info {
+            border-left-color: #17a2b8;
+            background: #d1ecf1;
+        }
+        .log-entry.warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        .test-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e9ecef;
+        }
+        .test-results {
+            margin-top: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .test-result.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        .test-result.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .clear-button {
+            background: #6c757d;
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stepper UI Auth Debug Tool</h1>
+        <p class="description">Test authentication functionality and debug login issues</p>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="test@example.com" value="">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" placeholder="Password123!" value="">
+        </div>
+        
+        <div>
+            <button onclick="testSignUp()">Test Sign Up</button>
+            <button onclick="testSignIn()">Test Sign In</button>
+            <button onclick="testGoogleAuth()">Test Google Auth</button>
+            <button onclick="checkSession()">Check Session</button>
+            <button onclick="testProfileCreation()">Test Profile Creation</button>
+            <button onclick="signOut()">Sign Out</button>
+        </div>
+        
+        <div class="output">
+            <h3>Debug Output:</h3>
+            <button class="clear-button" onclick="clearLogs()">Clear Logs</button>
+            <div id="logs"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Automated Tests</h2>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <div class="test-results" id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with actual URL
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with actual key
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                storageKey: 'stepper-auth',
+                storage: window.localStorage,
+                autoRefreshToken: true,
+                detectSessionInUrl: true,
+                flowType: 'pkce'
+            }
+        });
+        
+        // Logging functions
+        function log(type, message, data = null) {
+            const logsDiv = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<strong>[${timestamp}] ${type.toUpperCase()}:</strong> ${message}`;
+            
+            if (data) {
+                const details = document.createElement('pre');
+                details.style.margin = '5px 0 0 0';
+                details.style.fontSize = '12px';
+                details.textContent = JSON.stringify(data, null, 2);
+                entry.appendChild(details);
+            }
+            
+            logsDiv.insertBefore(entry, logsDiv.firstChild);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            log('info', 'Logs cleared');
+        }
+        
+        // Helper functions
+        function getEmail() {
+            return document.getElementById('email').value.trim();
+        }
+        
+        function getPassword() {
+            return document.getElementById('password').value;
+        }
+        
+        // Test functions
+        async function testSignUp() {
+            const email = getEmail();
+            const password = getPassword();
+            
+            if (!email || !password) {
+                log('error', 'Please enter email and password');
+                return;
+            }
+            
+            log('info', `Testing sign up for: ${email}`);
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: window.location.origin
+                    }
+                });
+                
+                if (error) {
+                    log('error', 'Sign up failed', { message: error.message, status: error.status });
+                    
+                    // Check if profile creation might be the issue
+                    if (error.message.includes('Database error') || error.message.includes('trigger')) {
+                        log('warning', 'Possible profile creation trigger issue detected');
+                    }
+                } else {
+                    log('success', 'Sign up successful', { 
+                        user: data.user?.email,
+                        session: !!data.session,
+                        userId: data.user?.id
+                    });
+                    
+                    // Check if confirmation is required
+                    if (!data.session) {
+                        log('info', 'Email confirmation required - check your inbox');
+                    }
+                }
+            } catch (err) {
+                log('error', 'Sign up exception', { error: err.message });
+            }
+        }
+        
+        async function testSignIn() {
+            const email = getEmail();
+            const password = getPassword();
+            
+            if (!email || !password) {
+                log('error', 'Please enter email and password');
+                return;
+            }
+            
+            log('info', `Testing sign in for: ${email}`);
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) {
+                    log('error', 'Sign in failed', { 
+                        message: error.message, 
+                        status: error.status,
+                        name: error.name
+                    });
+                } else {
+                    log('success', 'Sign in successful', {
+                        user: data.user?.email,
+                        userId: data.user?.id,
+                        session: !!data.session,
+                        expiresAt: data.session?.expires_at
+                    });
+                    
+                    // Test profile fetch
+                    await testProfileFetch(data.user.id);
+                }
+            } catch (err) {
+                log('error', 'Sign in exception', { error: err.message });
+            }
+        }
+        
+        async function testGoogleAuth() {
+            log('info', 'Testing Google OAuth...');
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    log('error', 'Google OAuth failed', { message: error.message });
+                } else {
+                    log('info', 'Google OAuth initiated - redirecting...', { url: data.url });
+                }
+            } catch (err) {
+                log('error', 'Google OAuth exception', { error: err.message });
+            }
+        }
+        
+        async function checkSession() {
+            log('info', 'Checking current session...');
+            
+            try {
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                
+                if (error) {
+                    log('error', 'Session check failed', { message: error.message });
+                } else if (session) {
+                    log('success', 'Active session found', {
+                        user: session.user?.email,
+                        userId: session.user?.id,
+                        expiresAt: session.expires_at,
+                        provider: session.user?.app_metadata?.provider
+                    });
+                    
+                    // Check profile
+                    await testProfileFetch(session.user.id);
+                } else {
+                    log('info', 'No active session');
+                }
+                
+                // Check localStorage
+                const authKeys = Object.keys(localStorage).filter(k => k.includes('auth'));
+                log('info', 'Auth-related localStorage keys', authKeys);
+                
+            } catch (err) {
+                log('error', 'Session check exception', { error: err.message });
+            }
+        }
+        
+        async function testProfileFetch(userId) {
+            log('info', `Fetching profile for user: ${userId}`);
+            
+            try {
+                const { data: profile, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+                
+                if (error) {
+                    log('error', 'Profile fetch failed', { 
+                        message: error.message,
+                        code: error.code,
+                        details: error.details
+                    });
+                } else {
+                    log('success', 'Profile found', {
+                        id: profile.id,
+                        email: profile.email,
+                        full_name: profile.full_name,
+                        created_at: profile.created_at
+                    });
+                }
+            } catch (err) {
+                log('error', 'Profile fetch exception', { error: err.message });
+            }
+        }
+        
+        async function testProfileCreation() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            
+            if (!session) {
+                log('error', 'No active session - please sign in first');
+                return;
+            }
+            
+            log('info', 'Testing profile creation for current user...');
+            
+            try {
+                // First, check if profile exists
+                const { data: existingProfile } = await supabaseClient
+                    .from('profiles')
+                    .select('id')
+                    .eq('id', session.user.id)
+                    .single();
+                
+                if (existingProfile) {
+                    log('info', 'Profile already exists', { id: existingProfile.id });
+                    return;
+                }
+                
+                // Try to create profile manually
+                const { data: newProfile, error } = await supabaseClient
+                    .from('profiles')
+                    .insert({
+                        id: session.user.id,
+                        email: session.user.email,
+                        full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                if (error) {
+                    log('error', 'Manual profile creation failed', {
+                        message: error.message,
+                        code: error.code,
+                        details: error.details
+                    });
+                } else {
+                    log('success', 'Profile created manually', { id: newProfile.id });
+                }
+            } catch (err) {
+                log('error', 'Profile creation exception', { error: err.message });
+            }
+        }
+        
+        async function signOut() {
+            log('info', 'Signing out...');
+            
+            try {
+                const { error } = await supabaseClient.auth.signOut();
+                
+                if (error) {
+                    log('error', 'Sign out failed', { message: error.message });
+                } else {
+                    log('success', 'Signed out successfully');
+                }
+            } catch (err) {
+                log('error', 'Sign out exception', { error: err.message });
+            }
+        }
+        
+        // Automated tests
+        async function runAllTests() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<h3>Running tests...</h3>';
+            
+            const tests = [
+                {
+                    name: 'Supabase Connection',
+                    run: async () => {
+                        const { data, error } = await supabaseClient.from('profiles').select('count').limit(1);
+                        if (error && error.message.includes('auth')) {
+                            throw new Error('Authentication required - connection works but needs auth');
+                        }
+                        return !error;
+                    }
+                },
+                {
+                    name: 'Auth State Listener',
+                    run: async () => {
+                        return new Promise((resolve) => {
+                            const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event) => {
+                                subscription.unsubscribe();
+                                resolve(true);
+                            });
+                            
+                            // Trigger a session check
+                            supabaseClient.auth.getSession();
+                            
+                            // Timeout after 2 seconds
+                            setTimeout(() => {
+                                subscription.unsubscribe();
+                                resolve(false);
+                            }, 2000);
+                        });
+                    }
+                },
+                {
+                    name: 'Session Persistence',
+                    run: async () => {
+                        const key = 'stepper-auth';
+                        const stored = localStorage.getItem(key);
+                        return !!stored;
+                    }
+                },
+                {
+                    name: 'Profile Table Access',
+                    run: async () => {
+                        const { error } = await supabaseClient.from('profiles').select('id').limit(1);
+                        // If we get a different error than auth, the table is accessible
+                        return !error || error.message.includes('auth') || error.code === 'PGRST116';
+                    }
+                }
+            ];
+            
+            const results = [];
+            
+            for (const test of tests) {
+                try {
+                    const passed = await test.run();
+                    results.push({ name: test.name, passed, error: null });
+                } catch (error) {
+                    results.push({ name: test.name, passed: false, error: error.message });
+                }
+            }
+            
+            // Display results
+            resultsDiv.innerHTML = '<h3>Test Results:</h3>';
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result ${result.passed ? 'pass' : 'fail'}`;
+                div.innerHTML = `<strong>${result.name}:</strong> ${result.passed ? 'PASSED' : 'FAILED'}`;
+                if (result.error) {
+                    div.innerHTML += `<br><small>${result.error}</small>`;
+                }
+                resultsDiv.appendChild(div);
+            });
+            
+            // Summary
+            const passed = results.filter(r => r.passed).length;
+            const total = results.length;
+            const summary = document.createElement('div');
+            summary.style.marginTop = '20px';
+            summary.innerHTML = `<strong>Summary:</strong> ${passed}/${total} tests passed`;
+            resultsDiv.appendChild(summary);
+        }
+        
+        // Initialize
+        log('info', 'Auth debug tool initialized');
+        log('info', 'Supabase URL: ' + SUPABASE_URL);
+        
+        // Listen for auth state changes
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            log('info', `Auth state changed: ${event}`, {
+                hasSession: !!session,
+                user: session?.user?.email
+            });
+        });
+    </script>
+</body>
+</html>

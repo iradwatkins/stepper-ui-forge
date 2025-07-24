@@ -120,3 +120,6 @@
 | Liked events display error | event_likes query | display_price column doesn't exist | No |
 | Fix liked events RPC functions | 20250723_fix_liked_events_rpc.sql | Fixed column mismatches in RPC functions | No |
 | Document liked events fix | URGENT_LIKED_EVENTS_FIX.md | Instructions for fixing liked events display | No |
+| Login broken | 20250723_fix_missing_profiles.sql | GRANT on auth schema not allowed in Supabase | No |
+| Fix auth permissions | 20250724_fix_auth_permissions.sql | Remove problematic GRANT, fix auth triggers | No |
+| Document login fix | URGENT_FIX_LOGIN.md | Emergency fix for broken authentication | No |
