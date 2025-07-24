@@ -15,7 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { UserIcon, LogOutIcon, Loader2Icon, LayoutDashboardIcon, TicketIcon, BellIcon, SettingsIcon, SparklesIcon, AlertCircleIcon } from 'lucide-react'
-import { AuthButton } from './AuthButton'
+import { LoginDialog } from './LoginDialog'
+import { RegisterDialog } from './RegisterDialog'
 import { ProfileService } from '@/lib/profiles'
 import { Database } from '@/types/database'
 import { AvatarService } from '@/lib/avatars'
@@ -29,6 +30,8 @@ export const UserProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileCompletion, setProfileCompletion] = useState(0)
   const [showCompletionPrompt, setShowCompletionPrompt] = useState(false)
+  const [showLogin, setShowLogin] = useState(false)
+  const [showRegister, setShowRegister] = useState(false)
   
   // Calculate profile completion percentage
   const calculateProfileCompletion = (profileData: Profile | null) => {
@@ -110,14 +113,26 @@ export const UserProfile = () => {
   if (!user) {
     console.log('👤 UserProfile: Rendering sign-in/join buttons (no user)')
     return (
-      <div className="flex items-center gap-2">
-        <AuthButton 
+      <>
+        <Button 
           variant="ghost" 
           size="sm" 
           className="h-8 px-3 text-xs sm:text-sm"
-          mode="unified"
+          onClick={() => setShowLogin(true)}
+        >
+          Sign In / Register
+        </Button>
+        
+        <LoginDialog 
+          isOpen={showLogin} 
+          onClose={() => setShowLogin(false)}
         />
-      </div>
+        
+        <RegisterDialog 
+          isOpen={showRegister} 
+          onClose={() => setShowRegister(false)}
+        />
+      </>
     )
   }
   
