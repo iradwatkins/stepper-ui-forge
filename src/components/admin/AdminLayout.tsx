@@ -2,6 +2,12 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/lib/hooks/useAdminPermissions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Shield, 
   LogOut, 
@@ -11,7 +17,10 @@ import {
   BarChart3,
   Settings,
   Database,
-  Monitor
+  Monitor,
+  User,
+  Bell,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,9 +60,14 @@ const AdminLayout = () => {
     { path: "/admin/users", icon: Users, label: "Users" },
     { path: "/admin/events", icon: Calendar, label: "Events" },
     { path: "/admin/analytics", icon: BarChart3, label: "Analytics" },
-    { path: "/admin/settings", icon: Settings, label: "Settings" },
     { path: "/admin/monitor", icon: Monitor, label: "Monitor" },
     { path: "/admin/database", icon: Database, label: "Database" },
+  ];
+
+  const accountItems = [
+    { path: "/profile", icon: User, label: "Profile" },
+    { path: "/dashboard/notifications", icon: Bell, label: "Notifications" },
+    { path: "/settings", icon: Settings, label: "Settings" },
   ];
 
   return (
@@ -104,6 +118,39 @@ const AdminLayout = () => {
                   </Button>
                 </li>
               ))}
+              
+              {/* Account Dropdown */}
+              <li>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <User className="h-4 w-4 mr-3" />
+                      Account
+                      <ChevronDown className="h-4 w-4 ml-auto" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {accountItems.map((item) => (
+                      <DropdownMenuItem
+                        key={item.path}
+                        onClick={() => navigate(item.path)}
+                        className="cursor-pointer"
+                      >
+                        <item.icon className="h-4 w-4 mr-2" />
+                        {item.label}
+                        {item.label === "Notifications" && (
+                          <span className="ml-auto bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
+                            5
+                          </span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </li>
             </ul>
           </nav>
         </aside>
