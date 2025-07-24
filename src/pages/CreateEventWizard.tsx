@@ -11,6 +11,7 @@ import { WizardControls } from "@/components/create-event/wizard/WizardControls"
 import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
 import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
+import { VenueSelectionStep } from "@/components/create-event/VenueSelectionStep";
 import { SeatingChartWizard } from "@/components/create-event/SeatingChartWizard";
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
 import { Button } from "@/components/ui/button";
@@ -192,6 +193,7 @@ export default function CreateEventWizard() {
         date: formData.date,
         time: formData.time,
         location: locationWithVenue,
+        venue_layout_id: formData.venueLayoutId || null,
         event_type: eventType,
         max_attendees: formData.capacity || null,
         is_public: formData.isPublic,
@@ -341,6 +343,23 @@ export default function CreateEventWizard() {
             form={form}
             eventType={eventType}
             onTicketsChange={handleTicketsChange}
+          />
+        );
+        
+      case 'venue-selection':
+        return (
+          <VenueSelectionStep
+            form={form}
+            onVenueSelected={(venueLayoutId, venueData) => {
+              console.log('Venue selected:', venueLayoutId, venueData);
+              // Venue data is already set in the form by the component
+              // Just advance to next step
+              nextStep();
+            }}
+            onProceedWithCustom={() => {
+              console.log('Proceeding with custom layout');
+              nextStep();
+            }}
           />
         );
         

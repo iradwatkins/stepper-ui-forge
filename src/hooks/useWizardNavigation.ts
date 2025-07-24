@@ -114,9 +114,21 @@ export const useWizardNavigation = ({
         canNavigateBackward: () => true
       },
       {
+        id: 'venue-selection',
+        title: 'Venue Selection',
+        description: 'Choose or create venue layout',
+        icon: 'Building',
+        isRequired: (eventType) => eventType === 'premium',
+        canNavigateForward: (data) => {
+          // Can proceed if they selected a venue OR chose custom
+          return !!(data.venueLayoutId) || !!(data.venueImageUrl || data.hasVenueImage);
+        },
+        canNavigateBackward: () => true
+      },
+      {
         id: 'seating-setup',
-        title: 'Venue & Seating',
-        description: 'Upload venue layout and configure seating',
+        title: 'Seating Configuration',
+        description: 'Configure seating and pricing',
         icon: 'MousePointer',
         isRequired: (eventType) => eventType === 'premium',
         canNavigateForward: (data) => {

@@ -19,6 +19,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `src/pages/CreateEventWizard.tsx` - Added addressTBA to form defaults
     - `src/pages/EditEvent.tsx` - Added TBA functionality for editing events
 
+- **Venue Management Integration for Premium Events** - Fully integrated venue management system with premium ticket purchasing
+  - Added venue selection step in event creation wizard for premium events
+  - Event organizers can now select from saved venue layouts or create custom ones
+  - Premium events can reference pre-configured venue layouts via `venue_layout_id`
+  - Customers see the venue management seating chart when purchasing premium tickets
+  - Real-time seat availability tracking across events with hold status support
+  - Event-specific price overrides while maintaining base venue configuration
+  - Files created/modified:
+    - `supabase/migrations/20250125_venue_layout_integration.sql` - Added venue_layout_id and seat_overrides to events table
+    - `src/components/venue/VenueSelector.tsx` - New component for selecting venue layouts
+    - `src/components/create-event/VenueSelectionStep.tsx` - New wizard step for venue selection
+    - `src/lib/services/EventVenueService.ts` - New service for handling venue-event relationships
+    - `src/hooks/useWizardNavigation.ts` - Added venue-selection step to wizard flow
+    - `src/pages/CreateEventWizard.tsx` - Integrated venue selection into event creation
+    - `src/pages/EventDetail.tsx` - Updated to use EventVenueService for venue-based events
+    - `src/types/database.ts` - Added venue_layout_id and seat_overrides fields
+    - `src/types/event-form.ts` - Added venueLayoutId to form schema
+
 ### Fixed
 - **Early Bird Ticket Pricing** - Fixed early bird tickets not displaying correct prices
   - Database queries were missing `early_bird_price` and `early_bird_until` fields

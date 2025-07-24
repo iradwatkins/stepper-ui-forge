@@ -90,6 +90,7 @@ export const SeatingChartWizard = ({
   onStepAdvance
 }: SeatingChartWizardProps) => {
   const [loading, setLoading] = useState(false);
+  const [hasPreSelectedVenue, setHasPreSelectedVenue] = useState(false);
   const [seatingConfig, setSeatingConfig] = useState<SeatingConfig>(() => {
     // Create mappings from ticket types
     if (ticketTypes.length > 0) {
@@ -122,6 +123,15 @@ export const SeatingChartWizard = ({
   // Load persisted data from form on component mount
   useEffect(() => {
     const formData = form.getValues();
+    
+    // Check if venue was pre-selected
+    if (formData.venueLayoutId) {
+      setHasPreSelectedVenue(true);
+      // If venue is pre-selected, skip to configuration step
+      if (!showOnlyTab && currentStep === 'upload') {
+        setCurrentStep('configure');
+      }
+    }
     
     // Load venue image
     if (formData.venueImageUrl) {

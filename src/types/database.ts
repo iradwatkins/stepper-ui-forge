@@ -119,6 +119,8 @@ export interface Database {
           date: string
           time: string
           location: string
+          venue_layout_id: string | null
+          seat_overrides: any | null
           categories: string[]
           event_type: EventType
           status: EventStatus
@@ -139,6 +141,8 @@ export interface Database {
           date: string
           time: string
           location: string
+          venue_layout_id?: string | null
+          seat_overrides?: any | null
           categories?: string[]
           event_type?: EventType
           status?: EventStatus
@@ -159,6 +163,8 @@ export interface Database {
           date?: string
           time?: string
           location?: string
+          venue_layout_id?: string | null
+          seat_overrides?: any | null
           categories?: string[]
           event_type?: EventType
           status?: EventStatus

@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { ImageGalleryModal } from "@/components/ui/ImageGalleryModal";
 import { seatingService, AvailableSeat } from "@/lib/services/SeatingService";
 import { convertWizardToInteractive } from "@/lib/utils/seatingDataConverter";
+import { EventVenueService } from "@/lib/services/EventVenueService";
 import { EventHeader } from "@/components/event/EventHeader";
 import { EventOrganizer } from "@/components/event/EventOrganizer";
 import { EventActions } from "@/components/event/EventActions";
@@ -102,74 +103,103 @@ const EventDetail = () => {
           // Load seating charts for premium events
           if (foundEvent.event_type === 'premium') {
             try {
-              const charts = await seatingService.getSeatingCharts(foundEvent.id);
-              setSeatingCharts(charts);
+              // First check if the event has a venue_layout_id (from venue management)
+              const venueData = await EventVenueService.loadEventVenueData(foundEvent.id);
               
-              // Load detailed seating data for the professional component
-              if (charts.length > 0) {
-                const chart = charts[0];
+              if (venueData && venueData.venueLayout) {
+                // Use venue management data
+                console.log('Loading venue management layout for event:', foundEvent.id);
                 
-                // Set venue image URL from chart image_url or chart data
-                if (chart.image_url) {
-                  setVenueImageUrl(chart.image_url);
-                } else if (chart.chart_data?.uploadedChart) {
-                  setVenueImageUrl(chart.chart_data.uploadedChart);
+                // Set venue image URL from venue layout
+                if (venueData.venueLayout.image_url) {
+                  setVenueImageUrl(venueData.venueLayout.image_url);
                 }
                 
-                try {
-                  // Load seat categories from database
-                  const categories = await seatingService.getSeatCategories(chart.id);
+                // Get seats with real-time availability
+                const availableSeats = await EventVenueService.getAvailableSeats(foundEvent.id);
+                setSeats(availableSeats);
+                setPriceCategories(venueData.mergedCategories);
+                
+                // Create a mock seating chart object for compatibility
+                const mockChart = {
+                  id: venueData.venueLayoutId,
+                  event_id: foundEvent.id,
+                  image_url: venueData.venueLayout.image_url,
+                  chart_data: venueData.venueLayout.layout_data
+                };
+                setSeatingCharts([mockChart]);
+                
+              } else {
+                // Fallback to legacy seating chart system
+                const charts = await seatingService.getSeatingCharts(foundEvent.id);
+                setSeatingCharts(charts);
+                
+                // Load detailed seating data for the professional component
+                if (charts.length > 0) {
+                  const chart = charts[0];
                   
-                  // Use data converter for consistent format
-                  const { seats: convertedSeats, priceCategories } = convertWizardToInteractive(
-                    chart,
-                    categories
-                  );
-                  
-                  setSeats(convertedSeats);
-                  setPriceCategories(priceCategories);
-                } catch (error) {
-                  console.error('Error loading seat categories:', error);
-                  
-                  // Fallback to chart data if database loading fails
-                  const convertedSeats: SeatData[] = [];
-                  const categories: PriceCategory[] = [];
-                  
-                  if (chart.chart_data?.sections) {
-                    chart.chart_data.sections.forEach((section: any) => {
-                      categories.push({
-                        id: section.id,
-                        name: section.name,
-                        color: section.color,
-                        basePrice: section.price,
-                        description: `${section.name} seating`
-                      });
-                      
-                      if (section.seats) {
-                        section.seats.forEach((seat: any) => {
-                          convertedSeats.push({
-                            id: seat.id,
-                            x: seat.x,
-                            y: seat.y,
-                            seatNumber: seat.seatNumber,
-                            section: section.name,
-                            price: seat.price,
-                            category: section.id,
-                            categoryColor: section.color,
-                            isADA: false,
-                            status: seat.available ? 'available' : 'sold'
-                          });
-                        });
-                      }
-                    });
+                  // Set venue image URL from chart image_url or chart data
+                  if (chart.image_url) {
+                    setVenueImageUrl(chart.image_url);
+                  } else if (chart.chart_data?.uploadedChart) {
+                    setVenueImageUrl(chart.chart_data.uploadedChart);
                   }
                   
-                  setSeats(convertedSeats);
-                  setPriceCategories(categories);
+                  try {
+                    // Load seat categories from database
+                    const categories = await seatingService.getSeatCategories(chart.id);
+                    
+                    // Use data converter for consistent format
+                    const { seats: convertedSeats, priceCategories } = convertWizardToInteractive(
+                      chart,
+                      categories
+                    );
+                    
+                    setSeats(convertedSeats);
+                    setPriceCategories(priceCategories);
+                  } catch (error) {
+                    console.error('Error loading seat categories:', error);
+                    
+                    // Fallback to chart data if database loading fails
+                    const convertedSeats: SeatData[] = [];
+                    const categories: PriceCategory[] = [];
+                    
+                    if (chart.chart_data?.sections) {
+                      chart.chart_data.sections.forEach((section: any) => {
+                        categories.push({
+                          id: section.id,
+                          name: section.name,
+                          color: section.color,
+                          basePrice: section.price,
+                          description: `${section.name} seating`
+                        });
+                        
+                        if (section.seats) {
+                          section.seats.forEach((seat: any) => {
+                            convertedSeats.push({
+                              id: seat.id,
+                              x: seat.x,
+                              y: seat.y,
+                              seatNumber: seat.seatNumber,
+                              section: section.name,
+                              price: seat.price,
+                              category: section.id,
+                              categoryColor: section.color,
+                              isADA: false,
+                              status: seat.available ? 'available' : 'sold'
+                            });
+                          });
+                        }
+                      });
+                    }
+                    
+                    setSeats(convertedSeats);
+                    setPriceCategories(categories);
+                  }
                 }
               }
             } catch (error) {
-              console.error('Error loading seating charts:', error);
+              console.error('Error loading seating data:', error);
             }
           }
         } else {
