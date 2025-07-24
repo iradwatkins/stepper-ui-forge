@@ -114,3 +114,6 @@
 | Production schema errors | follower_promotions, team_members | Missing columns causing 400 errors in production | No |
 | Create urgent production fix | 20250723_fix_production_schema_urgent.sql | Added all missing columns including is_co_organizer | No |
 | Document production fix steps | URGENT_PRODUCTION_FIX.md | Instructions for applying migration to production | No |
+| Missing user profiles error | event_likes foreign key | User 1c1e6d27... not in profiles table | No |
+| Fix missing profiles | 20250723_fix_missing_profiles.sql | Create profiles for auth users, fix trigger | No |
+| Document profile fix | URGENT_PROFILE_FIX.md | Quick fix for missing profiles in production | No |

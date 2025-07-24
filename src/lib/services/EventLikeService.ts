@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { withProfileCheck } from '@/utils/profileHelper';
 
 export interface EventLike {
   id: string;
@@ -43,25 +44,34 @@ export class EventLikeService {
         return { success: false, error: 'Authentication required' };
       }
 
-      const { error } = await supabase
-        .from('event_likes')
-        .insert({
-          user_id: user.id,
-          event_id: eventId
-        });
+      // Ensure profile exists before liking
+      return await withProfileCheck(user.id, async () => {
+        const { error } = await supabase
+          .from('event_likes')
+          .insert({
+            user_id: user.id,
+            event_id: eventId
+          });
 
-      if (error) {
-        // Handle duplicate key error (user already liked the event)
-        if (error.code === '23505') {
-          return { success: false, error: 'Event already liked' };
+        if (error) {
+          // Handle duplicate key error (user already liked the event)
+          if (error.code === '23505') {
+            return { success: false, error: 'Event already liked' };
+          }
+          // Handle foreign key constraint error
+          if (error.code === '23503' && error.message?.includes('profiles')) {
+            console.error('Profile not found for user:', user.id);
+            return { success: false, error: 'User profile not found. Please try logging out and back in.' };
+          }
+          throw error;
         }
-        throw error;
-      }
 
-      return { success: true };
+        return { success: true };
+      });
     } catch (error) {
       console.error('Error liking event:', error);
-      return { success: false, error: 'Failed to like event' };
+      const errorMessage = error instanceof Error ? error.message : 'Failed to like event';
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -104,19 +114,28 @@ export class EventLikeService {
         return { success: false, isLiked: false, error: 'Authentication required' };
       }
 
-      const { data, error } = await supabase.rpc('toggle_event_like', {
-        user_uuid: user.id,
-        event_uuid: eventId
+      // Ensure profile exists before toggling like
+      return await withProfileCheck(user.id, async () => {
+        const { data, error } = await supabase.rpc('toggle_event_like', {
+          user_uuid: user.id,
+          event_uuid: eventId
+        });
+
+        if (error) {
+          // Handle specific foreign key constraint error
+          if (error.code === '23503' && error.message?.includes('profiles')) {
+            console.error('Profile not found for user:', user.id);
+            throw new Error('User profile not found. Please try logging out and back in.');
+          }
+          throw error;
+        }
+
+        return { success: true, isLiked: data as boolean };
       });
-
-      if (error) {
-        throw error;
-      }
-
-      return { success: true, isLiked: data as boolean };
     } catch (error) {
       console.error('Error toggling event like:', error);
-      return { success: false, isLiked: false, error: 'Failed to toggle event like' };
+      const errorMessage = error instanceof Error ? error.message : 'Failed to toggle event like';
+      return { success: false, isLiked: false, error: errorMessage };
     }
   }
 
