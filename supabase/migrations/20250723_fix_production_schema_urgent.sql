@@ -1,10 +1,46 @@
--- Fix follower_promotions and team_members schema mismatches
--- This migration adds missing columns that are expected by the application code
+-- URGENT: Fix production schema errors for follower_promotions and team_members
+-- Apply this migration to production ASAP to fix the 400 errors
 
 -- Add missing columns to follower_promotions table
 DO $$
 BEGIN
-    -- Add commission_type column if it doesn't exist
+    -- Add is_co_organizer if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_schema = 'public' 
+                   AND table_name = 'follower_promotions' 
+                   AND column_name = 'is_co_organizer') THEN
+        ALTER TABLE follower_promotions 
+        ADD COLUMN is_co_organizer BOOLEAN DEFAULT false;
+    END IF;
+
+    -- Add can_work_events if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_schema = 'public' 
+                   AND table_name = 'follower_promotions' 
+                   AND column_name = 'can_work_events') THEN
+        ALTER TABLE follower_promotions 
+        ADD COLUMN can_work_events BOOLEAN DEFAULT false;
+    END IF;
+
+    -- Add can_sell_events if missing (app expects this, not can_sell_tickets)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_schema = 'public' 
+                   AND table_name = 'follower_promotions' 
+                   AND column_name = 'can_sell_events') THEN
+        ALTER TABLE follower_promotions 
+        ADD COLUMN can_sell_events BOOLEAN DEFAULT false;
+    END IF;
+
+    -- Add is_approved if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_schema = 'public' 
+                   AND table_name = 'follower_promotions' 
+                   AND column_name = 'is_approved') THEN
+        ALTER TABLE follower_promotions 
+        ADD COLUMN is_approved BOOLEAN DEFAULT false;
+    END IF;
+
+    -- Add commission_type if missing
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_schema = 'public' 
                    AND table_name = 'follower_promotions' 
@@ -12,70 +48,32 @@ BEGIN
         ALTER TABLE follower_promotions 
         ADD COLUMN commission_type VARCHAR(20) DEFAULT 'percentage' 
         CHECK (commission_type IN ('percentage', 'fixed'));
-        
-        COMMENT ON COLUMN follower_promotions.commission_type IS 'Type of commission: percentage or fixed amount';
     END IF;
 
-    -- Add commission_fixed_amount column if it doesn't exist
+    -- Add commission_fixed_amount if missing
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_schema = 'public' 
                    AND table_name = 'follower_promotions' 
                    AND column_name = 'commission_fixed_amount') THEN
         ALTER TABLE follower_promotions 
         ADD COLUMN commission_fixed_amount DECIMAL(10,2) DEFAULT 0.00;
-        
-        COMMENT ON COLUMN follower_promotions.commission_fixed_amount IS 'Fixed dollar amount for commission when commission_type is fixed';
     END IF;
 
-    -- Add can_work_events column if it doesn't exist (referenced in errors)
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'follower_promotions' 
-                   AND column_name = 'can_work_events') THEN
-        ALTER TABLE follower_promotions 
-        ADD COLUMN can_work_events BOOLEAN DEFAULT false;
-        
-        COMMENT ON COLUMN follower_promotions.can_work_events IS 'Whether the follower can work at events as team member';
-    END IF;
-
-    -- Add is_co_organizer column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'follower_promotions' 
-                   AND column_name = 'is_co_organizer') THEN
-        ALTER TABLE follower_promotions 
-        ADD COLUMN is_co_organizer BOOLEAN DEFAULT false;
-        
-        COMMENT ON COLUMN follower_promotions.is_co_organizer IS 'Whether the follower is a co-organizer';
-    END IF;
-
-    -- Add can_sell_events column if it doesn't exist (app uses this, not can_sell_tickets)
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'follower_promotions' 
-                   AND column_name = 'can_sell_events') THEN
-        ALTER TABLE follower_promotions 
-        ADD COLUMN can_sell_events BOOLEAN DEFAULT false;
-        
-        COMMENT ON COLUMN follower_promotions.can_sell_events IS 'Whether the follower can sell event tickets';
-    END IF;
-
-    -- Add is_approved column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_schema = 'public' 
-                   AND table_name = 'follower_promotions' 
-                   AND column_name = 'is_approved') THEN
-        ALTER TABLE follower_promotions 
-        ADD COLUMN is_approved BOOLEAN DEFAULT false;
-        
-        COMMENT ON COLUMN follower_promotions.is_approved IS 'Whether the promotion has been approved';
+    -- Migrate data from can_sell_tickets to can_sell_events if needed
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_schema = 'public' 
+               AND table_name = 'follower_promotions' 
+               AND column_name = 'can_sell_tickets') THEN
+        UPDATE follower_promotions 
+        SET can_sell_events = can_sell_tickets 
+        WHERE can_sell_events = false AND can_sell_tickets = true;
     END IF;
 END $$;
 
 -- Add missing columns to team_members table
 DO $$
 BEGIN
-    -- Add status column if it doesn't exist
+    -- Add status column if missing
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_schema = 'public' 
                    AND table_name = 'team_members' 
@@ -83,45 +81,37 @@ BEGIN
         ALTER TABLE team_members 
         ADD COLUMN status VARCHAR(20) DEFAULT 'active' 
         CHECK (status IN ('active', 'disabled'));
-        
-        COMMENT ON COLUMN team_members.status IS 'Status of the team member: active or disabled';
     END IF;
 
-    -- Add disabled_at column if it doesn't exist
+    -- Add disabled_at column if missing
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_schema = 'public' 
                    AND table_name = 'team_members' 
                    AND column_name = 'disabled_at') THEN
         ALTER TABLE team_members 
         ADD COLUMN disabled_at TIMESTAMP WITH TIME ZONE;
-        
-        COMMENT ON COLUMN team_members.disabled_at IS 'Timestamp when the team member was disabled';
     END IF;
 
-    -- Add disabled_by column if it doesn't exist
+    -- Add disabled_by column if missing
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_schema = 'public' 
                    AND table_name = 'team_members' 
                    AND column_name = 'disabled_by') THEN
         ALTER TABLE team_members 
         ADD COLUMN disabled_by UUID REFERENCES auth.users(id);
-        
-        COMMENT ON COLUMN team_members.disabled_by IS 'User who disabled this team member';
     END IF;
 
-    -- Add disable_reason column if it doesn't exist
+    -- Add disable_reason column if missing
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_schema = 'public' 
                    AND table_name = 'team_members' 
                    AND column_name = 'disable_reason') THEN
         ALTER TABLE team_members 
         ADD COLUMN disable_reason TEXT;
-        
-        COMMENT ON COLUMN team_members.disable_reason IS 'Reason for disabling the team member';
     END IF;
 END $$;
 
--- Update the get_user_permissions function to include new commission columns
+-- Update the get_user_permissions function
 CREATE OR REPLACE FUNCTION get_user_permissions(user_uuid UUID)
 RETURNS TABLE (
     is_organizer boolean,
@@ -223,15 +213,23 @@ BEGIN
 END;
 $$;
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_follower_promotions_commission_type 
-ON follower_promotions(commission_type) 
-WHERE commission_type IS NOT NULL;
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_follower_promotions_is_co_organizer 
+ON follower_promotions(is_co_organizer) 
+WHERE is_co_organizer = true;
+
+CREATE INDEX IF NOT EXISTS idx_follower_promotions_can_work_events 
+ON follower_promotions(can_work_events) 
+WHERE can_work_events = true;
+
+CREATE INDEX IF NOT EXISTS idx_follower_promotions_can_sell_events 
+ON follower_promotions(can_sell_events) 
+WHERE can_sell_events = true;
 
 CREATE INDEX IF NOT EXISTS idx_team_members_status 
 ON team_members(status) 
 WHERE status = 'active';
 
--- Grant necessary permissions
+-- Grant permissions
 GRANT SELECT ON follower_promotions TO authenticated;
 GRANT SELECT ON team_members TO authenticated;

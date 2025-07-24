@@ -111,3 +111,6 @@
 | Fix follower_promotions schema | 20250723_fix_follower_team_schema.sql | Added missing columns: commission_type, commission_fixed_amount, can_work_events | No |
 | Fix team_members schema | 20250723_fix_follower_team_schema.sql | Added missing columns: status, disabled_at, disabled_by, disable_reason | No |
 | Update get_user_permissions RPC | 20250723_fix_follower_team_schema.sql | Updated function to return new commission columns | No |
+| Production schema errors | follower_promotions, team_members | Missing columns causing 400 errors in production | No |
+| Create urgent production fix | 20250723_fix_production_schema_urgent.sql | Added all missing columns including is_co_organizer | No |
+| Document production fix steps | URGENT_PRODUCTION_FIX.md | Instructions for applying migration to production | No |
