@@ -42,7 +42,7 @@ export const AuthButton = ({
         return (
           <>
             <LogInIcon className="w-4 h-4 mr-2" />
-            Sign In / Register
+            Sign In
           </>
         )
     }
@@ -76,7 +76,7 @@ export const AuthButton = ({
     <Button 
       variant={variant} 
       size={size} 
-      className={cn("transition-all duration-200", className)}
+      className={cn("transition-all duration-200 hover:scale-105", className)}
     >
       {getButtonContent()}
     </Button>
