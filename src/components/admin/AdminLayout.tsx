@@ -2,12 +2,6 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/lib/hooks/useAdminPermissions";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { 
   Shield, 
   LogOut, 
@@ -20,14 +14,18 @@ import {
   Monitor,
   User,
   Bell,
-  ChevronDown
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 const AdminLayout = () => {
   const { user, signOut } = useAuth();
   const { isAdmin, loading } = useIsAdmin();
   const navigate = useNavigate();
+  const [accountExpanded, setAccountExpanded] = useState(false);
+  const [administrationExpanded, setAdministrationExpanded] = useState(false);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -55,19 +53,19 @@ const AdminLayout = () => {
     return null;
   }
 
-  const adminNavItems = [
-    { path: "/admin", icon: Home, label: "Dashboard" },
-    { path: "/admin/users", icon: Users, label: "Users" },
-    { path: "/admin/events", icon: Calendar, label: "Events" },
-    { path: "/admin/analytics", icon: BarChart3, label: "Analytics" },
-    { path: "/admin/monitor", icon: Monitor, label: "Monitor" },
-    { path: "/admin/database", icon: Database, label: "Database" },
-  ];
-
   const accountItems = [
     { path: "/profile", icon: User, label: "Profile" },
-    { path: "/dashboard/notifications", icon: Bell, label: "Notifications" },
+    { path: "/dashboard/notifications", icon: Bell, label: "Notifications", badge: 5 },
     { path: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  const administrationItems = [
+    { path: "/admin", icon: Home, label: "Admin Panel" },
+    { path: "/admin/users", icon: Users, label: "User Management" },
+    { path: "/admin/analytics", icon: BarChart3, label: "Platform Analytics" },
+    { path: "/admin/settings", icon: Settings, label: "System Settings" },
+    { path: "/admin/monitor", icon: Monitor, label: "System Monitor" },
+    { path: "/admin/database", icon: Database, label: "Database Admin" },
   ];
 
   return (
@@ -106,50 +104,75 @@ const AdminLayout = () => {
         <aside className="w-64 bg-background border-r border-border shadow-sm min-h-screen">
           <nav className="p-4">
             <ul className="space-y-2">
-              {adminNavItems.map((item) => (
-                <li key={item.path}>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors"
-                    onClick={() => navigate(item.path)}
-                  >
-                    <item.icon className="h-4 w-4 mr-3" />
-                    {item.label}
-                  </Button>
-                </li>
-              ))}
-              
-              {/* Account Dropdown */}
+              {/* Account Section */}
               <li>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors"
-                    >
-                      <User className="h-4 w-4 mr-3" />
-                      Account
-                      <ChevronDown className="h-4 w-4 ml-auto" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors"
+                  onClick={() => setAccountExpanded(!accountExpanded)}
+                >
+                  <User className="h-4 w-4 mr-3" />
+                  Account
+                  {accountExpanded ? (
+                    <ChevronDown className="h-4 w-4 ml-auto" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 ml-auto" />
+                  )}
+                </Button>
+                {accountExpanded && (
+                  <ul className="ml-6 mt-2 space-y-1">
                     {accountItems.map((item) => (
-                      <DropdownMenuItem
-                        key={item.path}
-                        onClick={() => navigate(item.path)}
-                        className="cursor-pointer"
-                      >
-                        <item.icon className="h-4 w-4 mr-2" />
-                        {item.label}
-                        {item.label === "Notifications" && (
-                          <span className="ml-auto bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
-                            5
-                          </span>
-                        )}
-                      </DropdownMenuItem>
+                      <li key={item.path}>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors text-sm"
+                          onClick={() => navigate(item.path)}
+                        >
+                          <item.icon className="h-3 w-3 mr-2" />
+                          {item.label}
+                          {item.badge && (
+                            <span className="ml-auto bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
+                              {item.badge}
+                            </span>
+                          )}
+                        </Button>
+                      </li>
                     ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </ul>
+                )}
+              </li>
+
+              {/* Administration Section */}
+              <li>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors"
+                  onClick={() => setAdministrationExpanded(!administrationExpanded)}
+                >
+                  <Shield className="h-4 w-4 mr-3" />
+                  Administration
+                  {administrationExpanded ? (
+                    <ChevronDown className="h-4 w-4 ml-auto" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 ml-auto" />
+                  )}
+                </Button>
+                {administrationExpanded && (
+                  <ul className="ml-6 mt-2 space-y-1">
+                    {administrationItems.map((item) => (
+                      <li key={item.path}>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-colors text-sm"
+                          onClick={() => navigate(item.path)}
+                        >
+                          <item.icon className="h-3 w-3 mr-2" />
+                          {item.label}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             </ul>
           </nav>
