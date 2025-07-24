@@ -15,7 +15,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { UserIcon, LogOutIcon, Loader2Icon, LayoutDashboardIcon, TicketIcon, BellIcon, SettingsIcon, SparklesIcon, AlertCircleIcon } from 'lucide-react'
-import { AuthButton } from './AuthButton'
 import { ProfileService } from '@/lib/profiles'
 import { Database } from '@/types/database'
 import { AvatarService } from '@/lib/avatars'
@@ -106,19 +105,11 @@ export const UserProfile = () => {
     )
   }
   
-  // Show sign-in and join buttons for non-authenticated users
+  // No auth button in header for non-authenticated users
+  // Auth will be handled on homepage instead
   if (!user) {
-    console.log('👤 UserProfile: Rendering sign-in/join buttons (no user)')
-    return (
-      <AuthButton 
-        variant="ghost" 
-        size="sm" 
-        className="h-8 px-3 text-xs sm:text-sm"
-        mode="unified"
-      >
-        Sign In / Register
-      </AuthButton>
-    )
+    console.log('👤 UserProfile: No auth button in header - will be on homepage')
+    return null
   }
   
   console.log('👤 UserProfile: Rendering user dropdown (user present)')
