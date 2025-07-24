@@ -35,6 +35,9 @@ export interface ContentBlock {
   type: 'header' | 'subheader' | 'paragraph' | 'image' | 'youtube_video' | 'embedded_video' | 'ad_placement';
   content: string;
   order: number;
+  // Video timing options
+  startTime?: number; // in seconds
+  endTime?: number; // in seconds
 }
 
 export interface ArticleListResponse {

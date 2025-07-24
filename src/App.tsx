@@ -64,6 +64,10 @@ const AdminMonitor = lazy(() => import("./pages/dashboard/admin/AdminMonitor"));
 const AdminEvents = lazy(() => import("./pages/dashboard/admin/AdminEvents"));
 const DatabaseAdmin = lazy(() => import("./pages/dashboard/admin/DatabaseAdmin"));
 const MagazineManagementPage = lazy(() => import("./pages/admin/MagazineManagementPage"));
+const CreateArticlePage = lazy(() => import("./pages/admin/CreateArticlePage"));
+const EditArticlePage = lazy(() => import("./pages/admin/EditArticlePage"));
+const CategoryManagementPage = lazy(() => import("./pages/admin/CategoryManagementPage"));
+const ArticleDetailPage = lazy(() => import("./pages/ArticleDetailPage"));
 const EditEventsManage = lazy(() => import("./pages/dashboard/EditEventsManage"));
 const Following = lazy(() => import("./pages/dashboard/Following"));
 const FollowerManagement = lazy(() => import("./pages/dashboard/FollowerManagement"));
@@ -113,6 +117,7 @@ const AppContent = () => {
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/magazine" element={<Magazine />} />
+        <Route path="/magazine/article/:slug" element={<ArticleDetailPage />} />
         <Route path="/classes" element={<Classes />} />
         <Route path="/create-class" element={
           <ProtectedRoute>
@@ -238,6 +243,21 @@ const AppContent = () => {
           <Route path="admin/magazine" element={
             <AdminRoute>
               <MagazineManagementPage />
+            </AdminRoute>
+          } />
+          <Route path="admin/magazine/create" element={
+            <AdminRoute>
+              <CreateArticlePage />
+            </AdminRoute>
+          } />
+          <Route path="admin/magazine/edit/:id" element={
+            <AdminRoute>
+              <EditArticlePage />
+            </AdminRoute>
+          } />
+          <Route path="admin/magazine/categories" element={
+            <AdminRoute>
+              <CategoryManagementPage />
             </AdminRoute>
           } />
         </Route>

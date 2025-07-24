@@ -1,6 +1,5 @@
 import { MagazineCategory, MagazineArticle, ArticleListResponse } from '@/hooks/useMagazine';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock data for development (since backend might not be running)
 const mockCategories: MagazineCategory[] = [
@@ -154,93 +153,124 @@ const mockArticles: MagazineArticle[] = [
 ];
 
 class MagazineService {
-  private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<unknown> {
-    const url = `${API_BASE_URL}${endpoint}`;
-    
+  private async withFallback<T>(
+    supabaseOperation: () => Promise<T>,
+    mockData: T,
+    operationName: string
+  ): Promise<T> {
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        ...options,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await supabaseOperation();
     } catch (error) {
-      console.warn('API request failed, using mock data:', error);
-      // Return mock data when API is not available
-      return this.getMockResponse(endpoint);
+      console.warn(`${operationName} failed, using mock data:`, error);
+      return mockData;
     }
-  }
-
-  private getMockResponse(endpoint: string): unknown {
-    // Return appropriate mock data based on endpoint
-    if (endpoint.includes('/categories')) {
-      return mockCategories;
-    }
-    if (endpoint.includes('/articles')) {
-      return {
-        articles: mockArticles,
-        total: mockArticles.length,
-        page: 1,
-        limit: 10,
-        totalPages: 1
-      };
-    }
-    return null;
   }
 
   // Public API methods
   async getCategories(): Promise<MagazineCategory[]> {
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
-    return mockCategories;
+    return this.withFallback(
+      async () => {
+        const { data, error } = await supabase
+          .from('magazine_categories')
+          .select('*')
+          .order('name');
+        
+        if (error) throw error;
+        
+        // Transform database format to interface format
+        return data.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          slug: cat.slug,
+          description: cat.description,
+          articleCount: 0, // Will be calculated separately if needed
+          createdAt: cat.created_at,
+          updatedAt: cat.updated_at
+        }));
+      },
+      mockCategories,
+      'getCategories'
+    );
   }
 
   async getArticles(filters: Record<string, unknown> = {}): Promise<ArticleListResponse> {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-    
-    let filteredArticles = [...mockArticles];
-    
-    // Apply filters
-    if (filters.featured) {
-      // For featured articles, return a subset
-      filteredArticles = mockArticles.slice(0, 2);
-    }
-    
-    if (filters.categorySlug) {
-      const category = mockCategories.find(cat => cat.slug === filters.categorySlug);
-      if (category) {
-        filteredArticles = filteredArticles.filter(article => 
-          article.category?.id === category.id
-        );
-      }
-    }
-    
-    if (filters.search) {
-      const query = filters.search.toLowerCase();
-      filteredArticles = filteredArticles.filter(article =>
-        article.title.toLowerCase().includes(query) ||
-        (article.excerpt && article.excerpt.toLowerCase().includes(query))
-      );
-    }
-    
-    // Sort by creation date (newest first)
-    filteredArticles.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    return this.withFallback(
+      async () => {
+        let query = supabase
+          .from('magazine_articles')
+          .select(`
+            *,
+            category:magazine_categories(*)
+          `)
+          .eq('status', 'published');
+
+        // Apply filters
+        if (filters.categorySlug) {
+          query = query.eq('category.slug', filters.categorySlug);
+        }
+
+        if (filters.search) {
+          const searchTerm = `%${filters.search}%`;
+          query = query.or(`title.ilike.${searchTerm},excerpt.ilike.${searchTerm}`);
+        }
+
+        // Add pagination
+        const page = (filters.page as number) || 1;
+        const limit = (filters.limit as number) || 10;
+        const offset = (page - 1) * limit;
+        
+        query = query
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+
+        // Transform to interface format
+        const articles = data?.map(article => ({
+          id: article.id,
+          title: article.title,
+          slug: article.slug,
+          excerpt: article.excerpt,
+          featuredImage: article.featured_image,
+          authorId: article.author_id,
+          authorName: 'Author', // TODO: Join with profiles table
+          authorAvatar: undefined,
+          status: article.status as 'draft' | 'published',
+          createdAt: article.created_at,
+          updatedAt: article.updated_at,
+          readTimeMinutes: article.read_time_minutes,
+          viewCount: article.view_count,
+          category: article.category ? {
+            id: article.category.id,
+            name: article.category.name,
+            slug: article.category.slug,
+            description: article.category.description,
+            createdAt: article.category.created_at,
+            updatedAt: article.category.updated_at
+          } : undefined,
+          contentBlocks: Array.isArray(article.content_blocks) 
+            ? article.content_blocks 
+            : []
+        })) || [];
+
+        return {
+          articles: filters.featured ? articles.slice(0, 2) : articles,
+          total: count || 0,
+          page,
+          limit,
+          totalPages: Math.ceil((count || 0) / limit)
+        };
+      },
+      {
+        articles: filters.featured ? mockArticles.slice(0, 2) : mockArticles,
+        total: mockArticles.length,
+        page: (filters.page as number) || 1,
+        limit: (filters.limit as number) || 10,
+        totalPages: Math.ceil(mockArticles.length / ((filters.limit as number) || 10))
+      },
+      'getArticles'
     );
-    
-    return {
-      articles: filteredArticles,
-      total: filteredArticles.length,
-      page: filters.page || 1,
-      limit: filters.limit || 10,
-      totalPages: Math.ceil(filteredArticles.length / (filters.limit || 10))
-    };
   }
 
   async getArticlesByCategory(categorySlug: string, page = 1, limit = 10): Promise<ArticleListResponse> {
@@ -248,69 +278,180 @@ class MagazineService {
   }
 
   async getArticleBySlug(slug: string): Promise<MagazineArticle | null> {
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
-    
-    const article = mockArticles.find(article => article.slug === slug);
-    if (article && article.id) {
-      // Increment view count (in real app, this would be server-side)
-      article.viewCount = (article.viewCount || 0) + 1;
-    }
-    return article || null;
+    return this.withFallback(
+      async () => {
+        // First get the article
+        const { data: article, error } = await supabase
+          .from('magazine_articles')
+          .select(`
+            *,
+            category:magazine_categories(*)
+          `)
+          .eq('slug', slug)
+          .eq('status', 'published')
+          .single();
+
+        if (error) throw error;
+        if (!article) return null;
+
+        // Increment view count
+        await supabase
+          .from('magazine_articles')
+          .update({ view_count: (article.view_count || 0) + 1 })
+          .eq('id', article.id);
+
+        // Transform to interface format
+        return {
+          id: article.id,
+          title: article.title,
+          slug: article.slug,
+          excerpt: article.excerpt,
+          featuredImage: article.featured_image,
+          authorId: article.author_id,
+          authorName: 'Author', // TODO: Join with profiles table
+          authorAvatar: undefined,
+          status: article.status as 'draft' | 'published',
+          createdAt: article.created_at,
+          updatedAt: article.updated_at,
+          readTimeMinutes: article.read_time_minutes,
+          viewCount: (article.view_count || 0) + 1,
+          category: article.category ? {
+            id: article.category.id,
+            name: article.category.name,
+            slug: article.category.slug,
+            description: article.category.description,
+            createdAt: article.category.created_at,
+            updatedAt: article.category.updated_at
+          } : undefined,
+          contentBlocks: Array.isArray(article.content_blocks) 
+            ? article.content_blocks 
+            : []
+        };
+      },
+      mockArticles.find(article => article.slug === slug) || null,
+      'getArticleBySlug'
+    );
   }
 
   // Admin API methods
   async getAdminArticles(filters: Record<string, unknown> = {}): Promise<ArticleListResponse> {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-    
-    let filteredArticles = [...mockArticles];
-    
-    // Apply admin filters (including drafts)
-    if (filters.status) {
-      filteredArticles = filteredArticles.filter(article => article.status === filters.status);
-    }
-    
-    if (filters.categoryId) {
-      filteredArticles = filteredArticles.filter(article => 
-        article.category?.id === filters.categoryId
-      );
-    }
-    
-    if (filters.search) {
-      const query = filters.search.toLowerCase();
-      filteredArticles = filteredArticles.filter(article =>
-        article.title.toLowerCase().includes(query)
-      );
-    }
-    
-    // Sort by updated date (newest first)
-    filteredArticles.sort((a, b) => 
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    return this.withFallback(
+      async () => {
+        let query = supabase
+          .from('magazine_articles')
+          .select(`
+            *,
+            category:magazine_categories(*)
+          `);
+
+        // Apply admin filters (including drafts)
+        if (filters.status) {
+          query = query.eq('status', filters.status);
+        }
+
+        if (filters.categoryId) {
+          query = query.eq('category_id', filters.categoryId);
+        }
+
+        if (filters.search) {
+          const searchTerm = `%${filters.search}%`;
+          query = query.ilike('title', searchTerm);
+        }
+
+        // Add pagination
+        const page = (filters.page as number) || 1;
+        const limit = (filters.limit as number) || 10;
+        const offset = (page - 1) * limit;
+        
+        query = query
+          .order('updated_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+
+        // Transform to interface format
+        const articles = data?.map(article => ({
+          id: article.id,
+          title: article.title,
+          slug: article.slug,
+          excerpt: article.excerpt,
+          featuredImage: article.featured_image,
+          authorId: article.author_id,
+          authorName: 'Author', // TODO: Join with profiles table
+          authorAvatar: undefined,
+          status: article.status as 'draft' | 'published',
+          createdAt: article.created_at,
+          updatedAt: article.updated_at,
+          readTimeMinutes: article.read_time_minutes,
+          viewCount: article.view_count,
+          category: article.category ? {
+            id: article.category.id,
+            name: article.category.name,
+            slug: article.category.slug,
+            description: article.category.description,
+            createdAt: article.category.created_at,
+            updatedAt: article.category.updated_at
+          } : undefined,
+          contentBlocks: Array.isArray(article.content_blocks) 
+            ? article.content_blocks 
+            : []
+        })) || [];
+
+        return {
+          articles,
+          total: count || 0,
+          page,
+          limit,
+          totalPages: Math.ceil((count || 0) / limit)
+        };
+      },
+      {
+        articles: mockArticles,
+        total: mockArticles.length,
+        page: (filters.page as number) || 1,
+        limit: (filters.limit as number) || 10,
+        totalPages: Math.ceil(mockArticles.length / ((filters.limit as number) || 10))
+      },
+      'getAdminArticles'
     );
-    
-    return {
-      articles: filteredArticles,
-      total: filteredArticles.length,
-      page: filters.page || 1,
-      limit: filters.limit || 10,
-      totalPages: Math.ceil(filteredArticles.length / (filters.limit || 10))
-    };
   }
 
   async createCategory(data: { name: string }): Promise<MagazineCategory> {
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API delay
-    
-    const newCategory: MagazineCategory = {
-      id: Math.max(...mockCategories.map(c => c.id)) + 1,
-      name: data.name,
-      slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      description: `Explore our collection of ${data.name.toLowerCase()} articles`,
-      articleCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    mockCategories.push(newCategory);
-    return newCategory;
+    return this.withFallback(
+      async () => {
+        const { data: category, error } = await supabase
+          .from('magazine_categories')
+          .insert({
+            name: data.name,
+            description: `Explore our collection of ${data.name.toLowerCase()} articles`
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        return {
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          articleCount: 0,
+          createdAt: category.created_at,
+          updatedAt: category.updated_at
+        };
+      },
+      {
+        id: Math.max(...mockCategories.map(c => c.id)) + 1,
+        name: data.name,
+        slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        description: `Explore our collection of ${data.name.toLowerCase()} articles`,
+        articleCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      'createCategory'
+    );
   }
 
   async updateCategory(id: number, data: { name?: string }): Promise<MagazineCategory> {
@@ -353,35 +494,87 @@ class MagazineService {
   }
 
   async createArticle(data: Record<string, unknown>): Promise<MagazineArticle> {
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
-    
-    const category = mockCategories.find(cat => cat.id === data.magazineCategoryId);
-    
-    const newArticle: MagazineArticle = {
-      id: Math.max(...mockArticles.map(a => a.id)) + 1,
-      title: data.title,
-      slug: data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      excerpt: data.excerpt,
-      featuredImage: data.featuredImage,
-      authorId: 1, // Current admin user
-      authorName: 'Current Admin',
-      authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-      status: data.status,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      readTimeMinutes: Math.max(1, Math.floor((data.contentBlocks || []).length * 2)),
-      viewCount: 0,
-      category: category,
-      contentBlocks: (data.contentBlocks as unknown[] || []).map((block: Record<string, unknown>, index: number) => ({
-        id: Date.now() + index,
-        type: block.type,
-        content: block.content,
-        order: block.order
-      }))
-    };
-    
-    mockArticles.unshift(newArticle);
-    return newArticle;
+    return this.withFallback(
+      async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const { data: article, error } = await supabase
+          .from('magazine_articles')
+          .insert({
+            title: data.title as string,
+            excerpt: data.excerpt as string,
+            featured_image: data.featuredImage as string,
+            author_id: user.id,
+            category_id: data.magazineCategoryId as number,
+            status: data.status as string,
+            content_blocks: data.contentBlocks || []
+          })
+          .select(`
+            *,
+            category:magazine_categories(*)
+          `)
+          .single();
+
+        if (error) throw error;
+
+        return {
+          id: article.id,
+          title: article.title,
+          slug: article.slug,
+          excerpt: article.excerpt,
+          featuredImage: article.featured_image,
+          authorId: article.author_id,
+          authorName: 'Current Admin',
+          authorAvatar: undefined,
+          status: article.status as 'draft' | 'published',
+          createdAt: article.created_at,
+          updatedAt: article.updated_at,
+          readTimeMinutes: article.read_time_minutes,
+          viewCount: article.view_count,
+          category: article.category ? {
+            id: article.category.id,
+            name: article.category.name,
+            slug: article.category.slug,
+            description: article.category.description,
+            createdAt: article.category.created_at,
+            updatedAt: article.category.updated_at
+          } : undefined,
+          contentBlocks: Array.isArray(article.content_blocks) 
+            ? article.content_blocks 
+            : []
+        };
+      },
+      // Mock fallback
+      (() => {
+        const category = mockCategories.find(cat => cat.id === data.magazineCategoryId);
+        const newArticle: MagazineArticle = {
+          id: Math.max(...mockArticles.map(a => a.id)) + 1,
+          title: data.title as string,
+          slug: (data.title as string).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+          excerpt: data.excerpt as string,
+          featuredImage: data.featuredImage as string,
+          authorId: 1,
+          authorName: 'Current Admin',
+          authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+          status: data.status as 'draft' | 'published',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          readTimeMinutes: Math.max(1, Math.floor(((data.contentBlocks as unknown[]) || []).length * 2)),
+          viewCount: 0,
+          category: category,
+          contentBlocks: ((data.contentBlocks as unknown[]) || []).map((block: Record<string, unknown>, index: number) => ({
+            id: Date.now() + index,
+            type: block.type as string,
+            content: block.content as string,
+            order: block.order as number
+          }))
+        };
+        mockArticles.unshift(newArticle);
+        return newArticle;
+      })(),
+      'createArticle'
+    );
   }
 
   async updateArticle(id: number, data: Record<string, unknown>): Promise<MagazineArticle> {
