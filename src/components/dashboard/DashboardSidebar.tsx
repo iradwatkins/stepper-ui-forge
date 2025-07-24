@@ -292,38 +292,65 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
 
   const getAdminNavigation = (): NavigationItem[] => [
     {
-      title: 'Admin Panel',
-      icon: Shield,
+      title: 'Admin Hub',
+      href: '/dashboard/admin',
+      icon: LayoutDashboard
+    },
+    {
+      title: 'Content',
+      icon: BookOpen,
       children: [
         {
-          title: 'User Management',
+          title: 'Magazine',
+          href: '/dashboard/admin/magazine',
+          icon: BookOpen
+        },
+        {
+          title: 'Events',
+          href: '/dashboard/admin/events',
+          icon: Calendar
+        }
+      ]
+    },
+    {
+      title: 'Users & Data',
+      icon: Users,
+      children: [
+        {
+          title: 'Users',
           href: '/dashboard/admin/users',
           icon: Users
         },
         {
-          title: 'Platform Analytics',
+          title: 'Analytics',
           href: '/dashboard/admin/analytics',
           icon: BarChart3
-        },
+        }
+      ]
+    },
+    {
+      title: 'System',
+      icon: Settings,
+      children: [
         {
-          title: 'System Settings',
+          title: 'Settings',
           href: '/dashboard/admin/settings',
           icon: Settings
         },
         {
-          title: 'System Monitor',
+          title: 'Payments',
+          href: '/dashboard/admin/payments',
+          icon: CreditCard
+        },
+        {
+          title: 'Monitor',
           href: '/dashboard/admin/monitor',
           icon: Monitor
         },
         {
-          title: 'Database Admin',
+          title: 'Database',
           href: '/dashboard/admin/database',
           icon: Database
-        },
-        {
-          title: 'Magazine Management',
-          href: '/dashboard/admin/magazine',
-          icon: BookOpen
         }
       ]
     }

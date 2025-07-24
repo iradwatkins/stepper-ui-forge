@@ -68,6 +68,7 @@ const CreateArticlePage = lazy(() => import("./pages/admin/CreateArticlePage"));
 const EditArticlePage = lazy(() => import("./pages/admin/EditArticlePage"));
 const CategoryManagementPage = lazy(() => import("./pages/admin/CategoryManagementPage"));
 const ArticleDetailPage = lazy(() => import("./pages/ArticleDetailPage"));
+const AdminDashboardOverview = lazy(() => import("./pages/admin/AdminDashboardOverview"));
 const EditEventsManage = lazy(() => import("./pages/dashboard/EditEventsManage"));
 const Following = lazy(() => import("./pages/dashboard/Following"));
 const FollowerManagement = lazy(() => import("./pages/dashboard/FollowerManagement"));
@@ -205,6 +206,11 @@ const AppContent = () => {
           <Route path="tickets" element={<MyTickets />} />
           <Route path="scanner" element={<QRScanner />} />
           {/* Admin routes within dashboard */}
+          <Route path="admin" element={
+            <AdminRoute>
+              <AdminDashboardOverview />
+            </AdminRoute>
+          } />
           <Route path="admin/events" element={
             <AdminRoute>
               <AdminEvents />

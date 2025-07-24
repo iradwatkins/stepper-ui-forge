@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import AdminToolbar from '@/components/admin/AdminToolbar';
 import { 
   Table, 
   TableBody, 
@@ -155,6 +156,9 @@ export default function MagazineManagementPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Admin Toolbar */}
+      <AdminToolbar className="mb-6" />
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
