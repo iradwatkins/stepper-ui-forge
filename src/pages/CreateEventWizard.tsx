@@ -46,6 +46,7 @@ export default function CreateEventWizard() {
       endDate: '',
       endTime: '',
       address: '',
+      addressTBA: false,
       categories: [],
       capacity: undefined,
       displayPrice: {
@@ -231,6 +232,8 @@ export default function CreateEventWizard() {
             name: ticket.name.trim(),
             description: ticket.description?.trim() || null,
             price: ticket.price,
+            early_bird_price: ticket.hasEarlyBird && ticket.earlyBirdPrice ? ticket.earlyBirdPrice : null,
+            early_bird_until: ticket.hasEarlyBird && ticket.earlyBirdUntil ? ticket.earlyBirdUntil : null,
             quantity: ticket.quantity,
             max_per_person: 10, // Default limit
             is_active: true
