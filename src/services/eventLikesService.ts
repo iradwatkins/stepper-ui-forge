@@ -83,7 +83,6 @@ export class EventLikesService {
           event_type,
           status,
           images,
-          display_price,
           owner:profiles!owner_id (
             full_name,
             avatar_url
