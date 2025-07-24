@@ -32,63 +32,17 @@ const Navbar = () => {
         className="w-full" 
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 h-16">
           
-          {/* ULTRA-NARROW MOBILE: 360px-374px (Galaxy S24, older Android) */}
-          <div className="flex items-center justify-between h-14 sm:hidden">
-            {/* Left: Mobile Menu */}
+          {/* MOBILE LAYOUT: < 1024px (All phones, tablets, foldables) */}
+          <div className="lg:hidden flex items-center justify-between h-full">
+            {/* Left: Mobile Menu Hamburger */}
             <MobileMenu 
               isOpen={isMobileMenuOpen} 
               onOpenChange={setIsMobileMenuOpen} 
             />
             
-            {/* Center: Compact Logo */}
-            <Link to="/" className="flex items-center">
-              <img 
-                src="/lovable-uploads/2e635021-dedb-40f2-9817-c404d5bd828d.png" 
-                alt="Steppers Life Logo" 
-                className="h-6 w-auto object-contain dark:hidden"
-              />
-              <img 
-                src="/lovable-uploads/6bcc30f5-9623-4562-a26a-1c4b50f3028b.png" 
-                alt="Steppers Life Logo" 
-                className="h-6 w-auto object-contain hidden dark:block"
-              />
-            </Link>
-            
-            {/* Right: Minimal Actions */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative h-8 w-8 p-0 touch-manipulation"
-                onClick={() => setIsCartOpen(true)}
-              >
-                <ShoppingBag className="h-3.5 w-3.5" />
-                {totalItems > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-3 w-3 flex items-center justify-center p-0 text-xs scale-75"
-                  >
-                    {totalItems > 9 ? '9+' : totalItems}
-                  </Badge>
-                )}
-                <span className="sr-only">Shopping cart</span>
-              </Button>
-              
-              <UserProfile />
-            </div>
-          </div>
-
-          {/* STANDARD MOBILE: 375px-767px (Most phones) */}
-          <div className="hidden sm:flex lg:hidden items-center justify-between h-16">
-            {/* Left: Mobile Menu */}
-            <MobileMenu 
-              isOpen={isMobileMenuOpen} 
-              onOpenChange={setIsMobileMenuOpen} 
-            />
-            
-            {/* Center: Standard Logo */}
+            {/* Center: Logo */}
             <Link to="/" className="flex items-center">
               <img 
                 src="/lovable-uploads/2e635021-dedb-40f2-9817-c404d5bd828d.png" 
@@ -102,8 +56,9 @@ const Navbar = () => {
               />
             </Link>
             
-            {/* Right: Standard Actions */}
+            {/* Right: Cart + User Profile */}
             <div className="flex items-center gap-2">
+              {/* Cart Button */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -122,101 +77,13 @@ const Navbar = () => {
                 <span className="sr-only">Shopping cart</span>
               </Button>
               
+              {/* User Profile */}
               <UserProfile />
             </div>
           </div>
 
-          {/* TABLET/FOLDABLES: 768px-1023px (Folds open, tablets) */}
-          <div className="hidden lg:hidden md:flex items-center justify-between h-16">
-            {/* Left: Logo with crease offset */}
-            <Link to="/" className="flex items-center ml-4">
-              <img 
-                src="/lovable-uploads/2e635021-dedb-40f2-9817-c404d5bd828d.png" 
-                alt="Steppers Life Logo" 
-                className="h-9 w-auto object-contain dark:hidden"
-              />
-              <img 
-                src="/lovable-uploads/6bcc30f5-9623-4562-a26a-1c4b50f3028b.png" 
-                alt="Steppers Life Logo" 
-                className="h-9 w-auto object-contain hidden dark:block"
-              />
-            </Link>
-            
-            {/* Center: Core Navigation */}
-            <div className="flex items-center gap-2">
-              <Link to="/events">
-                <Button 
-                  variant={isActiveRoute("/events") ? "default" : "ghost"}
-                  size="sm"
-                  className="font-medium text-sm px-3 h-9"
-                >
-                  Events
-                </Button>
-              </Link>
-
-              <Link to="/magazine">
-                <Button 
-                  variant={isActiveRoute("/magazine") ? "default" : "ghost"}
-                  size="sm"
-                  className="font-medium text-sm px-3 h-9"
-                >
-                  Magazine
-                </Button>
-              </Link>
-
-              <Link to="/classes">
-                <Button 
-                  variant={isActiveRoute("/classes") ? "default" : "ghost"}
-                  size="sm"
-                  className="font-medium text-sm px-3 h-9"
-                >
-                  Classes
-                </Button>
-              </Link>
-
-              <Link to="/community">
-                <Button 
-                  variant={isActiveRoute("/community") ? "default" : "ghost"}
-                  size="sm"
-                  className="font-medium text-sm px-3 h-9"
-                >
-                  Community
-                </Button>
-              </Link>
-            </div>
-            
-            {/* Right: Actions optimized for two-hand use */}
-            <div className="flex items-center gap-2 mr-4">
-              <DayNightSwitch
-                checked={theme !== "dark"}
-                onToggle={handleThemeToggle}
-                className="h-9 w-16"
-              />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative h-12 w-12 p-0 touch-manipulation"
-                onClick={() => setIsCartOpen(true)}
-              >
-                <ShoppingBag className="h-5 w-5" />
-                {totalItems > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    {totalItems > 99 ? '99+' : totalItems}
-                  </Badge>
-                )}
-                <span className="sr-only">Shopping cart</span>
-              </Button>
-              
-              <UserProfile />
-            </div>
-          </div>
-
-          {/* DESKTOP: 1024px+ (Full desktop experience) */}
-          <div className="hidden lg:flex items-center justify-between h-16">
+          {/* DESKTOP LAYOUT: ≥ 1024px */}
+          <div className="hidden lg:flex items-center justify-between h-full">
             {/* Left: Logo */}
             <Link to="/" className="flex items-center">
               <img 
@@ -233,6 +100,7 @@ const Navbar = () => {
             
             {/* Right: Full Navigation */}
             <div className="flex items-center gap-4">
+              {/* Navigation Links */}
               <Link to="/events">
                 <Button 
                   variant={isActiveRoute("/events") ? "default" : "ghost"}
@@ -269,6 +137,7 @@ const Navbar = () => {
                 </Button>
               </Link>
               
+              {/* Create Event (authenticated users only) */}
               {user && (
                 <Link to="/create-event">
                   <Button variant="outline" size="sm" className="text-sm px-4 h-10">
@@ -286,13 +155,14 @@ const Navbar = () => {
                 className="h-10 w-10 p-0"
               />
 
+              {/* Theme Toggle */}
               <DayNightSwitch
                 checked={theme !== "dark"}
                 onToggle={handleThemeToggle}
                 className="h-10 w-20"
               />
 
-              {/* Cart Icon */}
+              {/* Cart Button */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -311,6 +181,7 @@ const Navbar = () => {
                 <span className="sr-only">Shopping cart</span>
               </Button>
               
+              {/* User Profile */}
               <UserProfile />
             </div>
           </div>
