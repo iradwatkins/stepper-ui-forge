@@ -31,7 +31,25 @@ export class EventsService {
       const { data, error } = await supabase
         .from('events')
         .select(`
-          *,
+          id,
+          created_at,
+          updated_at,
+          owner_id,
+          title,
+          description,
+          date,
+          time,
+          location,
+          address,
+          venue_name,
+          event_type,
+          status,
+          is_public,
+          image_url,
+          images,
+          capacity,
+          categories,
+          settings,
           ticket_types (
             id,
             name,
@@ -76,7 +94,25 @@ export class EventsService {
       const { data, error } = await supabase
         .from('events')
         .select(`
-          *,
+          id,
+          created_at,
+          updated_at,
+          owner_id,
+          title,
+          description,
+          date,
+          time,
+          location,
+          address,
+          venue_name,
+          event_type,
+          status,
+          is_public,
+          image_url,
+          images,
+          capacity,
+          categories,
+          settings,
           ticket_types (
             id,
             name,
@@ -126,11 +162,29 @@ export class EventsService {
     try {
       console.log('Attempting to fetch public events from database...')
       
-      // Build query
+      // Build query - use specific fields to avoid issues with missing columns
       let query = supabase
         .from('events')
         .select(`
-          *,
+          id,
+          created_at,
+          updated_at,
+          owner_id,
+          title,
+          description,
+          date,
+          time,
+          location,
+          address,
+          venue_name,
+          event_type,
+          status,
+          is_public,
+          image_url,
+          images,
+          capacity,
+          categories,
+          settings,
           ticket_types (
             id,
             name,
@@ -171,7 +225,13 @@ export class EventsService {
         const total_revenue = ticketTypes?.reduce((sum, tt) => sum + (tt.price * tt.sold_quantity), 0) || 0
         
         // Get follower count for the event organizer
-        const follower_count = await FollowerService.getFollowerCount(event.owner_id)
+        let follower_count = 0
+        try {
+          follower_count = await FollowerService.getFollowerCount(event.owner_id)
+        } catch (error) {
+          console.error('Error getting follower count for event:', event.id, error)
+          // Continue with 0 followers if there's an error
+        }
 
         return {
           ...event,
@@ -195,7 +255,25 @@ export class EventsService {
       const { data, error } = await supabase
         .from('events')
         .select(`
-          *,
+          id,
+          created_at,
+          updated_at,
+          owner_id,
+          title,
+          description,
+          date,
+          time,
+          location,
+          address,
+          venue_name,
+          event_type,
+          status,
+          is_public,
+          image_url,
+          images,
+          capacity,
+          categories,
+          settings,
           ticket_types (
             id,
             name,

@@ -91,6 +91,7 @@ const QRScanner = lazy(() => import("./pages/QRScanner"));
 const TestSquareInit = lazy(() => import("./pages/TestSquareInit"));
 const TestEmergencyPayment = lazy(() => import("./pages/TestEmergencyPayment"));
 const AuthTest = lazy(() => import("./pages/AuthTest"));
+const EventDebug = lazy(() => import("./pages/EventDebug"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -246,6 +247,13 @@ const AppContent = () => {
         
         {/* Auth Test Page */}
         <Route path="/auth-test" element={<AuthTest />} />
+        
+        {/* Event Debug Page */}
+        <Route path="/event-debug" element={
+          <Suspense fallback={<PageLoader />}>
+            <EventDebug />
+          </Suspense>
+        } />
         
           <Route path="*" element={<NotFound />} />
         </Routes>

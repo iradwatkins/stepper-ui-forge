@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events Debug Test</title>
+</head>
+<body>
+    <h1>Events Loading Debug Test</h1>
+    <div id="status">Testing connection...</div>
+    <div id="results"></div>
+
+    <script type="module">
+        // Test direct Supabase connection
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+        
+        const supabaseUrl = 'https://aszzhlgwfbijaotfddsh.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzenpobGd3ZmJpamFvdGZkZHNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExNDMwODgsImV4cCI6MjA2NjcxOTA4OH0.ilfdDmbwme7oACe4TxsAJVko3O-DgPl-QWIHKbfZop0';
+        
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        
+        try {
+            const supabase = createClient(supabaseUrl, supabaseAnonKey);
+            statusDiv.textContent = 'Supabase client created. Testing events query...';
+            
+            // Test basic events query
+            const { data, error } = await supabase
+                .from('events')
+                .select('id, title, date, status, is_public')
+                .eq('is_public', true)
+                .eq('status', 'published')
+                .limit(5);
+            
+            if (error) {
+                statusDiv.textContent = 'Error loading events:';
+                resultsDiv.innerHTML = `<pre style="color: red;">${JSON.stringify(error, null, 2)}</pre>`;
+            } else {
+                statusDiv.textContent = `Successfully loaded ${data?.length || 0} events:`;
+                resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            // Also test if the table exists
+            const { error: tableError } = await supabase
+                .from('events')
+                .select('count', { count: 'exact', head: true });
+                
+            if (tableError) {
+                resultsDiv.innerHTML += `<br><strong>Table check error:</strong><pre style="color: red;">${JSON.stringify(tableError, null, 2)}</pre>`;
+            } else {
+                resultsDiv.innerHTML += `<br><strong>Table exists and is accessible</strong>`;
+            }
+            
+        } catch (err) {
+            statusDiv.textContent = 'Connection error:';
+            resultsDiv.innerHTML = `<pre style="color: red;">${err.message}</pre>`;
+        }
+    </script>
+</body>
+</html>

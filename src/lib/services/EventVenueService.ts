@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { VenueService } from './VenueService';
 
 export interface EventVenueData {
@@ -20,13 +20,40 @@ export class EventVenueService {
   static async loadEventVenueData(eventId: string): Promise<EventVenueData | null> {
     try {
       // First, get the event to check if it has a venue_layout_id
+      // Try to get the new fields, but handle gracefully if they don't exist
       const { data: event, error: eventError } = await supabase
         .from('events')
-        .select('venue_layout_id, seat_overrides')
+        .select('id')
         .eq('id', eventId)
         .single();
 
-      if (eventError || !event || !event.venue_layout_id) {
+      if (eventError || !event) {
+        return null;
+      }
+
+      // Try to get venue_layout_id and seat_overrides if they exist
+      // This prevents errors if the columns don't exist in production yet
+      try {
+        const { data: eventWithVenue, error: venueError } = await supabase
+          .from('events')
+          .select('venue_layout_id, seat_overrides')
+          .eq('id', eventId)
+          .single();
+
+        if (!venueError && eventWithVenue && eventWithVenue.venue_layout_id) {
+          event.venue_layout_id = eventWithVenue.venue_layout_id;
+          event.seat_overrides = eventWithVenue.seat_overrides;
+        } else {
+          // Columns don't exist or no venue_layout_id
+          return null;
+        }
+      } catch (e) {
+        // Columns don't exist in the database
+        console.log('Venue layout columns not available in database');
+        return null;
+      }
+
+      if (!event.venue_layout_id) {
         return null;
       }
 

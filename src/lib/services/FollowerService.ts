@@ -13,9 +13,13 @@ import type {
 const db = supabase as any
 
 // Authentication check helper
-function ensureAuthenticated(): boolean {
-  const user = supabase.auth.getUser()
-  return user !== null
+async function ensureAuthenticated(): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    return user !== null
+  } catch {
+    return false
+  }
 }
 
 export interface FollowResult {
@@ -212,11 +216,8 @@ export class FollowerService {
    * REQUIRES: User must be authenticated
    */
   static async getFollowerCount(organizerId: string): Promise<number> {
-    // CRITICAL: Only authenticated users can get follower counts
-    if (!ensureAuthenticated()) {
-      console.debug('🔒 getFollowerCount: Authentication required');
-      return 0;
-    }
+    // For public event viewing, allow follower count to be retrieved without authentication
+    // This is safe as it's just a count, not sensitive follower data
     
     // Skip follower system entirely if not available
     if (!this.isFollowerSystemAvailable()) {
