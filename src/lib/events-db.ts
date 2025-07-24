@@ -54,7 +54,9 @@ export class EventsService {
             name,
             price,
             quantity,
-            sold_quantity
+            sold_quantity,
+            early_bird_price,
+            early_bird_until
           )
         `)
         .eq('owner_id', userId)
@@ -121,7 +123,9 @@ export class EventsService {
             name,
             price,
             quantity,
-            sold_quantity
+            sold_quantity,
+            early_bird_price,
+            early_bird_until
           ),
           profiles!events_owner_id_fkey (
             full_name,
@@ -195,7 +199,9 @@ export class EventsService {
             name,
             price,
             quantity,
-            sold_quantity
+            sold_quantity,
+            early_bird_price,
+            early_bird_until
           ),
           profiles!events_owner_id_fkey (
             full_name,
@@ -291,7 +297,9 @@ export class EventsService {
             max_per_person,
             sale_start,
             sale_end,
-            is_active
+            is_active,
+            early_bird_price,
+            early_bird_until
           ),
           profiles!events_owner_id_fkey (
             full_name,
@@ -534,7 +542,9 @@ export class EventsService {
             name,
             price,
             quantity,
-            sold_quantity
+            sold_quantity,
+            early_bird_price,
+            early_bird_until
           )
         `)
         .eq('owner_id', userId)
