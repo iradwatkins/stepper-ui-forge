@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuthButton } from "@/components/auth/AuthButton";
 
 export function CommunitySection() {
   const { user } = useAuth();
@@ -16,13 +16,14 @@ export function CommunitySection() {
           </p>
           
           {!user && (
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Button asChild size="lg" className="bg-primary hover:bg-blue-600">
-                <Link to="/account">Create Account</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link to="/account">Sign In</Link>
-              </Button>
+            <div className="flex justify-center">
+              <AuthButton 
+                size="lg" 
+                className="bg-primary hover:bg-blue-600"
+                mode="unified"
+              >
+                Join Community
+              </AuthButton>
             </div>
           )}
           
