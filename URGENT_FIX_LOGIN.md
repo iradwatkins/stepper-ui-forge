@@ -79,8 +79,16 @@ CREATE TRIGGER on_auth_user_created
 ## Verification:
 After running, test login at https://stepperslife.com/auth
 
-## Complete Fix:
-After login works, also run the full migration:
-`supabase/migrations/20250724_fix_auth_permissions.sql`
+## ✅ Complete Fix Applied:
+The problematic GRANT statements have been removed from:
+`supabase/migrations/20250723_fix_missing_profiles.sql`
 
-This includes additional improvements for handling profile updates.
+**Changes Made:**
+- Removed: `GRANT USAGE ON SCHEMA auth TO postgres, service_role;`
+- Removed: `GRANT SELECT ON auth.users TO postgres, service_role;`
+- Added explanatory comment about why these statements are not allowed
+
+**Status:** ✅ FIXED - Authentication should now work properly
+
+**Additional Migration Available:**
+`supabase/migrations/20250724_fix_auth_permissions.sql` - Contains additional improvements for handling profile updates.

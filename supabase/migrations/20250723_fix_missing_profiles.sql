@@ -139,6 +139,6 @@ BEGIN
     END IF;
 END $$;
 
--- Grant necessary permissions
-GRANT USAGE ON SCHEMA auth TO postgres, service_role;
-GRANT SELECT ON auth.users TO postgres, service_role;
+-- Note: GRANT statements on auth schema are not allowed in Supabase
+-- The auth schema is managed by Supabase and custom grants will fail the migration
+-- Removed problematic GRANT statements that were breaking authentication
