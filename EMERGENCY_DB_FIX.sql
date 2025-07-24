@@ -86,15 +86,19 @@ CREATE TRIGGER on_auth_user_created
 -- Enable RLS on profiles table
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- Create policies for profiles table
-CREATE POLICY IF NOT EXISTS "Users can view own profile" 
+-- Create policies for profiles table (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Service role can manage all profiles" ON profiles;
+
+CREATE POLICY "Users can view own profile" 
     ON profiles FOR SELECT 
     USING (auth.uid() = id);
 
-CREATE POLICY IF NOT EXISTS "Users can update own profile" 
+CREATE POLICY "Users can update own profile" 
     ON profiles FOR UPDATE 
     USING (auth.uid() = id);
 
-CREATE POLICY IF NOT EXISTS "Service role can manage all profiles" 
+CREATE POLICY "Service role can manage all profiles" 
     ON profiles FOR ALL 
     USING (auth.role() = 'service_role');
