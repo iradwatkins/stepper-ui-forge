@@ -307,7 +307,7 @@ const EventDetail = () => {
       eventTitle: event?.title,
       eventDate: event?.date,
       eventTime: event?.time,
-      eventLocation: event?.venue_name
+      eventLocation: event?.location
     });
   };
 
@@ -364,7 +364,7 @@ const EventDetail = () => {
         eventTitle: event?.title,
         eventDate: event?.date,
         eventTime: event?.time,
-        eventLocation: event?.venue_name
+        eventLocation: event?.location
       });
     } catch (error) {
       console.error('Error holding seats:', error);
@@ -410,7 +410,7 @@ const EventDetail = () => {
       eventTitle: event?.title,
       eventDate: event?.date,
       eventTime: event?.time,
-      eventLocation: event?.venue_name
+      eventLocation: event?.location
     });
   };
 
