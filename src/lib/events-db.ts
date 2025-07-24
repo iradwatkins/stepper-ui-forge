@@ -73,6 +73,11 @@ export class EventsService {
 
         return {
           ...event,
+          // Provide defaults for potentially missing fields
+          organization_name: event.organization_name || 'N/A',
+          display_price: event.display_price || null,
+          registration_deadline: event.registration_deadline || null,
+          max_attendees: event.max_attendees || null,
           ticket_types: ticketTypes,
           tickets_sold,
           total_revenue,
@@ -115,8 +120,6 @@ export class EventsService {
             id,
             name,
             price,
-            early_bird_price,
-            early_bird_until,
             quantity,
             sold_quantity
           ),
@@ -140,6 +143,11 @@ export class EventsService {
 
         return {
           ...event,
+          // Provide defaults for potentially missing fields
+          organization_name: event.organization_name || 'N/A',
+          display_price: event.display_price || null,
+          registration_deadline: event.registration_deadline || null,
+          max_attendees: event.max_attendees || null,
           ticket_types: ticketTypes,
           tickets_sold,
           total_revenue,
@@ -186,8 +194,6 @@ export class EventsService {
             id,
             name,
             price,
-            early_bird_price,
-            early_bird_until,
             quantity,
             sold_quantity
           ),
@@ -232,6 +238,11 @@ export class EventsService {
 
         return {
           ...event,
+          // Provide defaults for potentially missing fields
+          organization_name: event.organization_name || 'N/A',
+          display_price: event.display_price || null,
+          registration_deadline: event.registration_deadline || null,
+          max_attendees: event.max_attendees || null,
           ticket_types: ticketTypes,
           tickets_sold,
           total_revenue,
@@ -275,8 +286,6 @@ export class EventsService {
             name,
             description,
             price,
-            early_bird_price,
-            early_bird_until,
             quantity,
             sold_quantity,
             max_per_person,
