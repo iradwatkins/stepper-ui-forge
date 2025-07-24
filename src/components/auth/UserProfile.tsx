@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { UserIcon, LogOutIcon, Loader2Icon, LayoutDashboardIcon, TicketIcon, BellIcon, SettingsIcon, SparklesIcon, AlertCircleIcon } from 'lucide-react'
-import { AuthButton } from './AuthButton'
+import { HeaderAuth } from './HeaderAuth'
 import { ProfileService } from '@/lib/profiles'
 import { Database } from '@/types/database'
 import { AvatarService } from '@/lib/avatars'
@@ -106,19 +106,10 @@ export const UserProfile = () => {
     )
   }
   
-  // Show sign-in and join buttons for non-authenticated users
+  // Show HeaderAuth for non-authenticated users
   if (!user) {
-    console.log('👤 UserProfile: Rendering sign-in/join buttons (no user)')
-    return (
-      <div className="flex items-center gap-2">
-        <AuthButton 
-          variant="ghost" 
-          size="sm" 
-          className="h-8 px-3 text-xs sm:text-sm"
-          mode="unified"
-        />
-      </div>
-    )
+    console.log('👤 UserProfile: Rendering HeaderAuth for non-authenticated user')
+    return <HeaderAuth />
   }
   
   console.log('👤 UserProfile: Rendering user dropdown (user present)')
@@ -153,25 +144,40 @@ export const UserProfile = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium leading-none">
-                {user.user_metadata?.full_name || profile?.full_name || 'User'}
+      <DropdownMenuContent className="w-80" align="end" forceMount>
+        {/* User Profile Header */}
+        <div className="px-4 py-3 bg-gradient-to-br from-primary/5 to-primary/10 border-b">
+          <div className="flex items-start gap-3">
+            <Avatar className="h-12 w-12 ring-2 ring-background shadow-sm">
+              <AvatarImage src={userAvatarUrl} alt={user.email || ''} />
+              <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold leading-none">
+                  {user.user_metadata?.full_name || profile?.full_name || 'Stepper'}
+                </p>
+                {isNewlyAuthenticated && (
+                  <Badge variant="secondary" className="text-xs bg-green-500 text-white animate-pulse">
+                    <SparklesIcon className="w-3 h-3 mr-1" />
+                    New
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                {user.email}
               </p>
-              {isNewlyAuthenticated && (
-                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                  Welcome!
-                </Badge>
+              {profile?.location && (
+                <p className="text-xs text-muted-foreground flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse" />
+                  {profile.location}
+                </p>
               )}
             </div>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
-            </p>
           </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        </div>
         
         {/* Profile completion section */}
         {showCompletionPrompt && profileCompletion < 100 && (
@@ -187,63 +193,79 @@ export const UserProfile = () => {
           </div>
         )}
         
-        {/* Profile section with emphasis */}
-        <DropdownMenuItem asChild>
-          <Link to="/dashboard/profile" className="flex items-center">
-            <UserIcon className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-            {isNewlyAuthenticated && (
-              <Badge variant="outline" className="ml-auto text-xs">
-                Start here
-              </Badge>
-            )}
-            {showCompletionPrompt && profileCompletion < 100 && (
-              <AlertCircleIcon className="ml-auto h-3 w-3 text-orange-500" />
-            )}
-          </Link>
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem asChild>
-          <Link to="/dashboard">
-            <LayoutDashboardIcon className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
-          </Link>
-        </DropdownMenuItem>
+        {/* Quick Actions */}
+        <div className="p-2">
+          <div className="grid grid-cols-2 gap-2">
+            <Link to="/dashboard">
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <LayoutDashboardIcon className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+            <Link to="/my-tickets">
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <TicketIcon className="mr-2 h-4 w-4" />
+                Tickets
+              </Button>
+            </Link>
+          </div>
+        </div>
         
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem asChild>
-          <Link to="/my-tickets">
-            <TicketIcon className="mr-2 h-4 w-4" />
-            <span>My Tickets</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/dashboard/notifications">
-            <BellIcon className="mr-2 h-4 w-4" />
-            <span>Notifications</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/dashboard/settings">
-            <SettingsIcon className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-          </Link>
-        </DropdownMenuItem>
+        {/* Main Menu */}
+        <div className="p-1">
+          <DropdownMenuItem asChild>
+            <Link to="/dashboard/profile" className="flex items-center px-3 py-2 rounded-md cursor-pointer">
+              <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+              <span className="flex-1">Profile</span>
+              {showCompletionPrompt && profileCompletion < 100 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{profileCompletion}%</span>
+                  <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-500"
+                      style={{ width: `${profileCompletion}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </Link>
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem asChild>
+            <Link to="/dashboard/notifications" className="flex items-center px-3 py-2 rounded-md cursor-pointer">
+              <BellIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+              <span className="flex-1">Notifications</span>
+              <Badge variant="secondary" className="text-xs">3</Badge>
+            </Link>
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem asChild>
+            <Link to="/dashboard/settings" className="flex items-center px-3 py-2 rounded-md cursor-pointer">
+              <SettingsIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+              <span>Account Settings</span>
+            </Link>
+          </DropdownMenuItem>
+        </div>
         
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-red-600 focus:text-red-600"
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-        >
-          {isSigningOut ? (
-            <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <LogOutIcon className="mr-2 h-4 w-4" />
-          )}
-          <span>Log out</span>
-        </DropdownMenuItem>
+        
+        {/* Sign Out */}
+        <div className="p-1">
+          <DropdownMenuItem
+            className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 px-3 py-2 rounded-md cursor-pointer"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+          >
+            {isSigningOut ? (
+              <Loader2Icon className="mr-3 h-4 w-4 animate-spin" />
+            ) : (
+              <LogOutIcon className="mr-3 h-4 w-4" />
+            )}
+            <span>Sign out</span>
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   )

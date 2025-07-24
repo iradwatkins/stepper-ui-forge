@@ -6,10 +6,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TicketCard } from './TicketCard';
 import { PriceCalculator } from './PriceCalculator';
 import { TicketType } from '@/types/database';
-import { AlertCircle, ShoppingCart, LogIn } from 'lucide-react';
+import { AlertCircle, ShoppingCart, LogIn, ShieldIcon, TicketIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 import { toast } from 'sonner';
+import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 
 interface SelectedTicket {
   ticketTypeId: string;
@@ -238,40 +238,63 @@ export const TicketSelector = ({
               getCurrentPrice={getCurrentPrice}
             />
             
-            {/* Add to Cart Button */}
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleAddToCart}
-              disabled={totalQuantity === 0 || errors.length > 0}
-              variant={!user ? "outline" : "default"}
-            >
-              {!user ? (
-                <>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Sign In to Add to Cart
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Add {totalQuantity} Ticket{totalQuantity !== 1 ? 's' : ''} to Cart
-                  <span className="ml-2 font-bold">${subtotal.toFixed(2)}</span>
-                </>
-              )}
-            </Button>
+            {/* Add to Cart Section */}
+            {!user ? (
+              <div className="space-y-3">
+                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <ShieldIcon className="w-5 h-5 text-amber-600 dark:text-amber-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                        Secure Your Tickets
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        Sign in to reserve your tickets and complete your purchase
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <UnifiedAuthModal
+                  trigger={
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      disabled={totalQuantity === 0 || errors.length > 0}
+                    >
+                      <TicketIcon className="w-4 h-4 mr-2" />
+                      Sign In to Continue
+                      {totalQuantity > 0 && (
+                        <span className="ml-2 font-bold">${subtotal.toFixed(2)}</span>
+                      )}
+                    </Button>
+                  }
+                  title="Secure Your Tickets"
+                  description="Sign in to add tickets to your cart and complete your purchase"
+                  defaultMode="signin"
+                  onSuccess={handleLoginSuccess}
+                />
+                
+                <p className="text-xs text-center text-muted-foreground">
+                  New to Steppers Life? You can create an account during checkout
+                </p>
+              </div>
+            ) : (
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handleAddToCart}
+                disabled={totalQuantity === 0 || errors.length > 0}
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Add {totalQuantity} Ticket{totalQuantity !== 1 ? 's' : ''} to Cart
+                <span className="ml-2 font-bold">${subtotal.toFixed(2)}</span>
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
       
-      {/* Login Modal */}
-      <UnifiedAuthModal
-        title="Sign In to Purchase Tickets"
-        description="Sign in to add tickets to your cart"
-        mode="modal"
-        isOpen={showLogin}
-        onOpenChange={setShowLogin}
-        onSuccess={handleLoginSuccess}
-      />
     </Card>
   );
 };

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useIsAdmin } from '@/lib/hooks/useAdminPermissions'
 import { useAdminSetup } from '@/hooks/useAdminSetup'
-import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal'
 import { Shield } from 'lucide-react'
+import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal'
+import { Button } from '@/components/ui/button'
 
 export default function AdminAuth() {
   const { user } = useAuth()
@@ -40,17 +41,11 @@ export default function AdminAuth() {
   }
 
   return (
-    <div className="relative">
-      <UnifiedAuthModal 
-        mode="page"
-        title="Admin Portal"
-        description="Administrator access required"
-      />
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-        <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-          Regular user? <a href="/account" className="text-primary hover:underline">Login here</a>
-        </p>
-      </div>
-    </div>
+    <UnifiedAuthModal
+      mode="page"
+      title="Admin Portal Access"
+      description="Sign in with your administrator credentials"
+      defaultMode="signin"
+    />
   )
 }

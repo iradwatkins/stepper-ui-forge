@@ -7,9 +7,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CartItem as CartItemComponent } from './CartItem';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ShoppingBag, X, CreditCard, LogIn } from 'lucide-react';
-import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
+import { ShoppingBag, X, CreditCard, LogIn, SparklesIcon, ShieldCheckIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { UnifiedAuthModal } from '@/components/auth/UnifiedAuthModal';
 
 interface CartDrawerProps {
   open: boolean;
@@ -113,23 +113,68 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
 
                 {/* Action Buttons */}
                 <div className="space-y-2 sm:space-y-3">
-                  <Button 
-                    className="w-full text-sm sm:text-base h-10 sm:h-11" 
-                    onClick={handleCheckout}
-                    variant={!user ? "outline" : "default"}
-                  >
-                    {!user ? (
-                      <>
-                        <LogIn className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                        Sign In to Checkout
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                        Proceed to Checkout
-                      </>
-                    )}
-                  </Button>
+                  {!user ? (
+                    <div className="space-y-3">
+                      {/* Quick Sign In Section */}
+                      <div className="bg-primary/5 rounded-lg p-4 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <ShieldCheckIcon className="w-5 h-5 text-primary mt-0.5" />
+                          <div className="flex-1 space-y-1">
+                            <p className="text-sm font-semibold">Secure Checkout</p>
+                            <p className="text-xs text-muted-foreground">
+                              Sign in to save your tickets and track your orders
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <UnifiedAuthModal
+                          trigger={
+                            <Button 
+                              className="w-full text-sm sm:text-base h-10 sm:h-11" 
+                              variant="default"
+                            >
+                              <LogIn className="w-4 h-4 mr-2" />
+                              Sign In to Checkout
+                            </Button>
+                          }
+                          title="Sign In to Continue"
+                          description="Access your account to complete your purchase"
+                          defaultMode="signin"
+                          onSuccess={handleLoginSuccess}
+                        />
+                        
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-px bg-border" />
+                          <span className="text-xs text-muted-foreground">or</span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                        
+                        <UnifiedAuthModal
+                          trigger={
+                            <Button 
+                              className="w-full text-xs sm:text-sm h-9" 
+                              variant="outline"
+                            >
+                              <SparklesIcon className="w-3 h-3 mr-2" />
+                              Create Account & Checkout
+                            </Button>
+                          }
+                          title="Join Steppers Life"
+                          description="Create your account and complete your purchase"
+                          defaultMode="signup"
+                          onSuccess={handleLoginSuccess}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <Button 
+                      className="w-full text-sm sm:text-base h-10 sm:h-11" 
+                      onClick={handleCheckout}
+                    >
+                      <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                      Proceed to Checkout
+                    </Button>
+                  )}
                   
                   <div className="flex gap-1 sm:gap-2">
                     <Button 
@@ -155,17 +200,6 @@ export const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
           )}
         </SheetContent>
       </Sheet>
-
-      {/* Login Modal */}
-      <UnifiedAuthModal
-        title="Sign In to Complete Purchase"
-        description="Sign in to continue with your checkout"
-        mode="modal"
-        isOpen={showLogin}
-        onOpenChange={setShowLogin}
-        onSuccess={handleLoginSuccess}
-        redirectPath="/checkout"
-      />
     </>
   );
 };
