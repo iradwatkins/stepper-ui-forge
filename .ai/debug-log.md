@@ -117,3 +117,6 @@
 | Missing user profiles error | event_likes foreign key | User 1c1e6d27... not in profiles table | No |
 | Fix missing profiles | 20250723_fix_missing_profiles.sql | Create profiles for auth users, fix trigger | No |
 | Document profile fix | URGENT_PROFILE_FIX.md | Quick fix for missing profiles in production | No |
+| Liked events display error | event_likes query | display_price column doesn't exist | No |
+| Fix liked events RPC functions | 20250723_fix_liked_events_rpc.sql | Fixed column mismatches in RPC functions | No |
+| Document liked events fix | URGENT_LIKED_EVENTS_FIX.md | Instructions for fixing liked events display | No |
