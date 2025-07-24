@@ -37,7 +37,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
         <Button
           variant="ghost"
           size="sm"
-          className="md:hidden h-8 w-8 p-0"
+          className="lg:hidden h-8 w-8 p-0"
           aria-label="Open navigation menu"
         >
           <Menu className="h-4 w-4" />
