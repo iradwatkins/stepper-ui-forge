@@ -71,11 +71,14 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   authStateId: number
+  profileLoading: boolean
+  profileError: string | null
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signInWithGoogle: () => Promise<{ error: AuthError | null }>
   signInWithMagicLink: (email: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -97,6 +100,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [authStateId, setAuthStateId] = useState(0) // Counter to force re-renders
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [profileCache, setProfileCache] = useState<any>(null)
 
   useEffect(() => {
     regLogger.log('init', 'AuthContext: Initializing authentication system')
@@ -169,8 +175,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                   avatarUrl: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture
                 })
                 
-                // Call the sync function
-                const { error: syncError } = await supabase.rpc('sync_google_oauth_profile', { 
+                // Call the sync function using the new name
+                const { error: syncError } = await supabase.rpc('sync_user_profile', { 
                   user_id: session.user.id 
                 })
                 
@@ -183,9 +189,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                   regLogger.log('profile_sync_success', 'Google data synced successfully', {
                     userId: session.user.id
                   })
+                  // Update cache
+                  setProfileCache(profile)
                 }
               }
             }
+            
+            // Cache the profile
+            setProfileCache(profile)
           } catch (err) {
             regLogger.log('profile_error', 'Error checking profile', {
               error: err,
@@ -376,7 +387,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signOut = async () => {
     // Supabase handles all session cleanup automatically
     const { error } = await supabase.auth.signOut()
+    // Clear profile cache
+    setProfileCache(null)
     return { error }
+  }
+
+  const refreshProfile = async () => {
+    if (!user) return
+    
+    setProfileLoading(true)
+    setProfileError(null)
+    
+    try {
+      // Force profile sync
+      const { data, error } = await supabase.rpc('sync_user_profile', { 
+        user_id: user.id 
+      })
+      
+      if (error) {
+        setProfileError(error.message)
+        regLogger.log('profile_refresh_error', 'Failed to refresh profile', {
+          error: error.message,
+          userId: user.id
+        })
+      } else {
+        regLogger.log('profile_refresh_success', 'Profile refreshed successfully', {
+          userId: user.id,
+          data
+        })
+        
+        // Reload profile from database
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+          
+        if (profile) {
+          setProfileCache(profile)
+        }
+      }
+    } catch (err) {
+      setProfileError('Failed to refresh profile')
+      regLogger.log('profile_refresh_exception', 'Exception during profile refresh', {
+        error: err,
+        userId: user.id
+      })
+    } finally {
+      setProfileLoading(false)
+    }
   }
 
   const value = {
@@ -384,11 +443,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     session,
     loading,
     authStateId,
+    profileLoading,
+    profileError,
     signIn,
     signUp,
     signInWithGoogle,
     signInWithMagicLink,
     signOut,
+    refreshProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,77 +1,154 @@
-// Generic avatar service for fallback avatars and improved avatar handling
+// Enhanced avatar service with comprehensive Google OAuth support and caching
+
+interface AvatarCache {
+  [userId: string]: {
+    url: string
+    timestamp: number
+  }
+}
 
 export class AvatarService {
+  private static cache: AvatarCache = {}
+  private static CACHE_DURATION = 3600000 // 1 hour in milliseconds
   
   // Generate a consistent color-based avatar URL using DiceBear API
   static generateGenericAvatar(seed: string, style: 'avataaars' | 'initials' | 'personas' = 'initials'): string {
     const cleanSeed = encodeURIComponent(seed.toLowerCase().trim())
     return `https://api.dicebear.com/7.x/${style}/svg?seed=${cleanSeed}&backgroundColor=random`
   }
-
-  // Get avatar URL with proper fallback chain
-  static getAvatarUrl(user: any, profile: any): string {
-    // 1. Try profile avatar_url first
-    if (profile?.avatar_url) {
-      return profile.avatar_url
-    }
-
-    // 2. Try Google profile picture from user metadata
-    if (user?.user_metadata?.avatar_url) {
-      return user.user_metadata.avatar_url
-    }
-
-    // 3. Try picture from user metadata (alternative field)
-    if (user?.user_metadata?.picture) {
-      return user.user_metadata.picture
-    }
-
-    // 4. Try raw_user_meta_data (fallback for OAuth providers)
-    if (user?.raw_user_meta_data?.avatar_url) {
-      return user.raw_user_meta_data.avatar_url
-    }
-
-    // 5. Try raw_user_meta_data picture field
-    if (user?.raw_user_meta_data?.picture) {
-      return user.raw_user_meta_data.picture
-    }
-
-    // 6. Check localStorage fallback (for uploaded avatars)
-    const localAvatar = this.getFallbackAvatar(user?.id)
-    if (localAvatar) {
-      return localAvatar
-    }
-
-    // 7. Generate fallback based on name or email
-    const seed = user?.user_metadata?.full_name || 
-                 user?.user_metadata?.name ||
-                 user?.raw_user_meta_data?.full_name ||
-                 user?.raw_user_meta_data?.name ||
-                 profile?.full_name || 
-                 user?.email || 
-                 'default'
+  
+  // Get high-resolution Google avatar URL if available
+  static getHighResGoogleAvatar(url: string): string {
+    if (!url || !url.includes('googleusercontent.com')) return url
     
-    return this.generateGenericAvatar(seed)
+    // Google avatar URLs can have size parameters
+    // Replace =s96-c with =s400-c for higher resolution
+    return url.replace(/=s\d+-c/, '=s400-c')
   }
 
-  // Get user initials for fallback
+  // Get avatar URL with proper fallback chain and caching
+  static getAvatarUrl(user: any, profile: any): string {
+    // Check cache first
+    const userId = user?.id || profile?.id
+    if (userId && this.cache[userId]) {
+      const cached = this.cache[userId]
+      if (Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        return cached.url
+      }
+    }
+    
+    let avatarUrl: string | null = null
+    
+    // 1. Try profile avatar_url first (most reliable)
+    if (profile?.avatar_url) {
+      avatarUrl = this.getHighResGoogleAvatar(profile.avatar_url)
+    }
+    
+    // 2. Try all possible Google OAuth fields
+    const googleFields = [
+      user?.user_metadata?.avatar_url,
+      user?.user_metadata?.picture,
+      user?.user_metadata?.photo_url,
+      user?.raw_user_meta_data?.avatar_url,
+      user?.raw_user_meta_data?.picture,
+      user?.raw_user_meta_data?.photo_url,
+      user?.raw_app_metadata?.avatar_url,
+      user?.identities?.[0]?.identity_data?.avatar_url,
+      user?.identities?.[0]?.identity_data?.picture
+    ]
+    
+    if (!avatarUrl) {
+      for (const field of googleFields) {
+        if (field) {
+          avatarUrl = this.getHighResGoogleAvatar(field)
+          break
+        }
+      }
+    }
+
+    // 3. Check localStorage fallback (for uploaded avatars)
+    if (!avatarUrl) {
+      const localAvatar = this.getFallbackAvatar(userId)
+      if (localAvatar) {
+        avatarUrl = localAvatar
+      }
+    }
+
+    // 4. Generate fallback based on name or email
+    if (!avatarUrl) {
+      const nameFields = [
+        user?.user_metadata?.full_name,
+        user?.user_metadata?.name,
+        user?.raw_user_meta_data?.full_name,
+        user?.raw_user_meta_data?.name,
+        profile?.full_name,
+        user?.identities?.[0]?.identity_data?.full_name,
+        user?.identities?.[0]?.identity_data?.name
+      ]
+      
+      const seed = nameFields.find(name => name && name.trim()) || 
+                   user?.email || 
+                   profile?.email || 
+                   'default'
+      
+      avatarUrl = this.generateGenericAvatar(seed)
+    }
+    
+    // Cache the result
+    if (userId && avatarUrl) {
+      this.cache[userId] = {
+        url: avatarUrl,
+        timestamp: Date.now()
+      }
+    }
+    
+    return avatarUrl
+  }
+
+  // Get user initials for fallback with better name extraction
   static getInitials(user: any, profile: any): string {
-    const fullName = user?.user_metadata?.full_name || 
-                     user?.user_metadata?.name ||
-                     user?.raw_user_meta_data?.full_name ||
-                     user?.raw_user_meta_data?.name ||
-                     profile?.full_name
+    // Try all possible name fields
+    const nameFields = [
+      user?.user_metadata?.full_name,
+      user?.user_metadata?.name,
+      user?.raw_user_meta_data?.full_name,
+      user?.raw_user_meta_data?.name,
+      profile?.full_name,
+      user?.identities?.[0]?.identity_data?.full_name,
+      user?.identities?.[0]?.identity_data?.name,
+      // Combine given_name and family_name if available
+      (user?.user_metadata?.given_name && user?.user_metadata?.family_name) 
+        ? `${user.user_metadata.given_name} ${user.user_metadata.family_name}` 
+        : null,
+      (user?.raw_user_meta_data?.given_name && user?.raw_user_meta_data?.family_name)
+        ? `${user.raw_user_meta_data.given_name} ${user.raw_user_meta_data.family_name}`
+        : null
+    ]
+    
+    const fullName = nameFields.find(name => name && name.trim())
 
     if (fullName) {
-      return fullName
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
+      const names = fullName.trim().split(/\s+/)
+      if (names.length >= 2) {
+        // Use first letter of first name and last name
+        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
+      } else {
+        // Use first two letters of single name
+        return fullName.slice(0, 2).toUpperCase()
+      }
     }
 
     const email = user?.email || profile?.email
     return email ? email[0].toUpperCase() : 'U'
+  }
+  
+  // Clear avatar cache for a specific user
+  static clearCache(userId?: string) {
+    if (userId) {
+      delete this.cache[userId]
+    } else {
+      this.cache = {}
+    }
   }
 
   // Validate image file for upload
