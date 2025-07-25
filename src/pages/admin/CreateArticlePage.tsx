@@ -9,8 +9,7 @@ import {
 } from 'lucide-react';
 import { useIsAdmin } from '@/lib/hooks/useAdminPermissions';
 import { useAdminMagazine, ContentBlock } from '@/hooks/useMagazine';
-import ModernContentBlock from '@/components/magazine/ModernContentBlock';
-import ModernContentBlockEditor from '@/components/magazine/ModernContentBlockEditor';
+import DragDropContentEditor from '@/components/magazine/DragDropContentEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -231,16 +230,15 @@ export default function CreateArticlePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Article Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Article Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
+      <div className="space-y-6">
+        {/* Article Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Article Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
                 <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
@@ -250,7 +248,7 @@ export default function CreateArticlePage() {
                   className={!title.trim() && isDirty ? 'border-destructive' : ''}
                 />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <Label htmlFor="excerpt">Excerpt</Label>
                 <Textarea
                   id="excerpt"
@@ -270,58 +268,6 @@ export default function CreateArticlePage() {
                   type="featured"
                 />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Content Blocks */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Content Blocks</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {contentBlocks.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Type className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="mb-4">No content blocks yet. Click the + button below to start writing your article.</p>
-                  <ModernContentBlockEditor onAddBlock={addContentBlock} />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <ModernContentBlockEditor onAddBlock={addContentBlock} position={0} />
-                  {contentBlocks
-                    .sort((a, b) => a.order - b.order)
-                    .map((block, index) => (
-                      <div key={block.id}>
-                        <ModernContentBlock 
-                          block={block}
-                          index={index}
-                          total={contentBlocks.length}
-                          onUpdate={updateContentBlock}
-                          onDelete={deleteContentBlock}
-                          onMove={moveBlock}
-                          onDuplicate={duplicateBlock}
-                          onToggleEdit={setBlockEditing}
-                        />
-                        <ModernContentBlockEditor 
-                          onAddBlock={addContentBlock} 
-                          position={index + 1}
-                        />
-                      </div>
-                    ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Publishing Options */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Publishing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="category">Category *</Label>
                 <Select
@@ -340,44 +286,32 @@ export default function CreateArticlePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Separator />
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Draft:</strong> Save your work without publishing
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <strong>Publish:</strong> Make article visible to readers
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Article Preview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Article Preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <strong>Title:</strong> {title || 'Untitled Article'}
-                </div>
-                <div className="text-sm">
-                  <strong>Content Blocks:</strong> {contentBlocks.length}
-                </div>
-                <div className="text-sm">
-                  <strong>Estimated Read Time:</strong> {Math.max(1, Math.ceil(contentBlocks.length * 1.5))} min
-                </div>
-                {categoryId && (
-                  <div className="text-sm">
-                    <strong>Category:</strong> {categories.find(c => c.id === categoryId)?.name}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Drag & Drop Content Editor */}
+        <DragDropContentEditor
+          contentBlocks={contentBlocks}
+          onBlocksChange={setContentBlocks}
+          onBlockUpdate={updateContentBlock}
+          onBlockDelete={deleteContentBlock}
+          onBlockDuplicate={duplicateBlock}
+          onBlockToggleEdit={setBlockEditing}
+        />
       </div>
+
+      {/* Status Summary */}
+      {isDirty && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-amber-800">
+              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+              <p className="text-sm font-medium">You have unsaved changes</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
