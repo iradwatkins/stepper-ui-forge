@@ -127,4 +127,8 @@
 | Admin nav flicker fix | DashboardSidebar.tsx | Add loading state handling and localStorage persistence for admin section | No |
 | Dashboard navigation redesign | DashboardSidebar.tsx | Complete restructure with better grouping, search, and visual improvements | No |
 | Admin-specific navigation | DashboardSidebar.tsx | Remove Browse Events, My Tickets, Liked Events from admin view | No |
+| Magazine system glitch fix | magazineService.ts, MagazineManagementPage.tsx | Fix production mode fallback, add error handling | No |
+| Magazine table fix | 20250125_fix_magazine_system.sql | Create magazine tables with proper admin policies | No |
+| Magazine main navigation | DashboardSidebar.tsx | Move Magazine to main nav for admins, remove from Content section | No |
+| Admin dashboard Quick Access | AdminDashboardOverview.tsx | Enhanced Quick Access with prominent icons and better layout | No |
 | Document login fix | URGENT_FIX_LOGIN.md | Emergency fix for broken authentication | No |

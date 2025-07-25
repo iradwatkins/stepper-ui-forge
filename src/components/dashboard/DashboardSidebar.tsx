@@ -153,6 +153,11 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
           title: 'Dashboard',
           href: '/dashboard',
           icon: LayoutDashboard
+        },
+        {
+          title: 'Magazine',
+          href: '/dashboard/admin/magazine',
+          icon: BookOpen
         }
       ]
     }
@@ -408,20 +413,9 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       icon: LayoutDashboard
     },
     {
-      title: 'Content',
-      icon: BookOpen,
-      children: [
-        {
-          title: 'Magazine',
-          href: '/dashboard/admin/magazine',
-          icon: BookOpen
-        },
-        {
-          title: 'Events',
-          href: '/dashboard/admin/events',
-          icon: Calendar
-        }
-      ]
+      title: 'Events',
+      href: '/dashboard/admin/events',
+      icon: Calendar
     },
     {
       title: 'Users & Data',

@@ -192,24 +192,37 @@ export default function AdminDashboardOverview() {
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage your platform from this central hub</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            onClick={() => navigate('/dashboard/admin/magazine/create')}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Article
-          </Button>
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            <Activity className="w-3 h-3 mr-1" />
-            System Online
-          </Badge>
+      {/* Header - Enhanced with Icons */}
+      <div className="bg-gradient-to-r from-background to-muted/20 rounded-lg p-6 border">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary rounded-lg">
+              <Settings className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                Admin Dashboard
+                <Badge className="font-normal">Administrator</Badge>
+              </h1>
+              <p className="text-muted-foreground flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Manage your platform from this central hub
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => navigate('/dashboard/admin/magazine/create')}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Article
+            </Button>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-4 py-2">
+              <Activity className="w-4 h-4 mr-2 animate-pulse" />
+              System Online
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -244,111 +257,177 @@ export default function AdminDashboardOverview() {
         ))}
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Prominent Section */}
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold">Quick Actions</h2>
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6 border border-primary/20">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary rounded-lg">
+                <Activity className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Quick Actions</h2>
+                <p className="text-sm text-muted-foreground">Access your most used admin tools</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Top-level prominent actions grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {quickActions.slice(0, 6).map((action) => (
+              <Card 
+                key={action.title}
+                className="cursor-pointer hover:shadow-xl transition-all duration-300 group border-2 hover:border-primary/50 bg-background/95 backdrop-blur"
+                onClick={() => navigate(action.href)}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-4 rounded-xl ${action.color} bg-opacity-20 group-hover:bg-opacity-30 transition-colors`}>
+                      <action.icon className={`w-8 h-8 ${action.color.replace('bg-', 'text-')}`} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors flex items-center gap-2">
+                        {action.title}
+                        <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {action.description}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
         
+        {/* Additional actions by category */}
         {Object.entries(groupedActions).map(([category, actions]) => (
-          <div key={category}>
-            <h3 className="text-lg font-medium mb-3 text-muted-foreground border-b pb-2">
+          <div key={category} className="bg-muted/30 rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              {category === 'Content' && <BookOpen className="w-5 h-5 text-blue-500" />}
+              {category === 'Users' && <Users className="w-5 h-5 text-purple-500" />}
+              {category === 'System' && <Settings className="w-5 h-5 text-gray-500" />}
               {category} Management
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {actions.map((action) => (
-                <Card 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {actions.slice(6).map((action) => (
+                <Button
                   key={action.title}
-                  className="cursor-pointer hover:shadow-lg transition-all duration-300 group border-l-4 border-l-transparent hover:border-l-primary"
+                  variant="outline"
+                  className="h-auto p-4 justify-start hover:bg-background hover:shadow-md transition-all group"
                   onClick={() => navigate(action.href)}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={`p-2 rounded-lg ${action.color} bg-opacity-10`}>
-                        <action.icon className={`w-5 h-5 ${action.color.replace('bg-', 'text-')}`} />
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                    </div>
-                    <h4 className="font-semibold mb-1 group-hover:text-primary transition-colors">
-                      {action.title}
-                    </h4>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {action.description}
-                    </p>
-                  </CardContent>
-                </Card>
+                  <div className="flex items-center gap-3 w-full">
+                    <action.icon className={`w-5 h-5 ${action.color.replace('bg-', 'text-')} group-hover:scale-110 transition-transform`} />
+                    <span className="text-left font-medium">{action.title}</span>
+                  </div>
+                </Button>
               ))}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+      {/* Recent Activity - Enhanced with Icons */}
+      <Card className="border-2">
+        <CardHeader className="bg-muted/30">
+          <CardTitle className="flex items-center gap-3">
+            <div className="p-2 bg-primary rounded-lg">
+              <FileText className="w-5 h-5 text-primary-foreground" />
+            </div>
             Recent Admin Activity
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm">New article published: "Stepping Techniques"</span>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <BookOpen className="w-4 h-4 text-green-600" />
               </div>
-              <span className="text-xs text-muted-foreground">2 hours ago</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium">New article published</p>
+                <p className="text-xs text-muted-foreground">"Stepping Techniques" - 2 hours ago</p>
+              </div>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm">User permissions updated for 3 organizers</span>
+            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <UserCheck className="w-4 h-4 text-blue-600" />
               </div>
-              <span className="text-xs text-muted-foreground">4 hours ago</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium">User permissions updated</p>
+                <p className="text-xs text-muted-foreground">3 organizers modified - 4 hours ago</p>
+              </div>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <span className="text-sm">Payment gateway configuration updated</span>
+            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <CreditCard className="w-4 h-4 text-orange-600" />
               </div>
-              <span className="text-xs text-muted-foreground">1 day ago</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Payment gateway updated</p>
+                <p className="text-xs text-muted-foreground">Configuration changes applied - 1 day ago</p>
+              </div>
             </div>
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span className="text-sm">Database backup completed successfully</span>
+            <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Database className="w-4 h-4 text-purple-600" />
               </div>
-              <span className="text-xs text-muted-foreground">1 day ago</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Database backup completed</p>
+                <p className="text-xs text-muted-foreground">Automated backup successful - 1 day ago</p>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Quick Access Footer */}
-      <div className="flex flex-wrap gap-3 pt-4 border-t">
-        <Button 
-          size="sm" 
-          onClick={() => navigate('/dashboard/admin/magazine/create')}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Article
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/admin/magazine')}>
-          <BookOpen className="w-4 h-4 mr-2" />
-          Manage Articles
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/admin/users')}>
-          <UserCheck className="w-4 h-4 mr-2" />
-          User Actions
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/admin/analytics')}>
-          <BarChart3 className="w-4 h-4 mr-2" />
-          View Reports
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/admin/monitor')}>
-          <Monitor className="w-4 h-4 mr-2" />
-          System Status
-        </Button>
+      {/* Quick Access Footer - Enhanced */}
+      <div className="bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg p-6 border">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Activity className="w-5 h-5" />
+          Frequently Used Actions
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <Button 
+            onClick={() => navigate('/dashboard/admin/magazine/create')}
+            className="h-auto p-4 bg-green-600 hover:bg-green-700 flex flex-col items-center gap-2"
+          >
+            <Plus className="w-6 h-6" />
+            <span className="text-sm font-medium">New Article</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/dashboard/admin/magazine')}
+            className="h-auto p-4 hover:bg-background hover:shadow-md flex flex-col items-center gap-2 group"
+          >
+            <BookOpen className="w-6 h-6 text-blue-500 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium">Articles</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/dashboard/admin/users')}
+            className="h-auto p-4 hover:bg-background hover:shadow-md flex flex-col items-center gap-2 group"
+          >
+            <UserCheck className="w-6 h-6 text-purple-500 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium">Users</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/dashboard/admin/analytics')}
+            className="h-auto p-4 hover:bg-background hover:shadow-md flex flex-col items-center gap-2 group"
+          >
+            <BarChart3 className="w-6 h-6 text-orange-500 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium">Analytics</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/dashboard/admin/monitor')}
+            className="h-auto p-4 hover:bg-background hover:shadow-md flex flex-col items-center gap-2 group"
+          >
+            <Monitor className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium">Monitor</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

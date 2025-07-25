@@ -293,7 +293,22 @@ export default function MagazineManagementPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {error ? (
+            <div className="text-center py-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mb-4">
+                <FileText className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Magazine System Error</h3>
+              <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                {error.includes('not initialized') 
+                  ? 'The magazine system is not properly initialized. Please contact your administrator to set up the magazine database tables.'
+                  : 'Unable to load magazine articles. Please try again later.'}
+              </p>
+              <Button onClick={() => fetchAllArticles(filters)} variant="outline">
+                Try Again
+              </Button>
+            </div>
+          ) : loading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center space-x-4">

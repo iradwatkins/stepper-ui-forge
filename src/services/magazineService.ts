@@ -160,8 +160,21 @@ class MagazineService {
   ): Promise<T> {
     try {
       return await supabaseOperation();
-    } catch (error) {
-      console.warn(`${operationName} failed, using mock data:`, error);
+    } catch (error: any) {
+      console.error(`${operationName} failed:`, error);
+      
+      // Check if this is a table not found error
+      if (error?.message?.includes('relation') && error?.message?.includes('does not exist')) {
+        console.error('Magazine tables not found in database. Please run migrations.');
+        throw new Error('Magazine system not initialized. Please contact administrator.');
+      }
+      
+      // In production, don't fall back to mock data - throw the error
+      if (import.meta.env.PROD) {
+        throw error;
+      }
+      
+      console.warn(`Using mock data in development mode`);
       return mockData;
     }
   }

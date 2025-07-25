@@ -62,13 +62,13 @@ CREATE POLICY "Public can read categories" ON magazine_categories
 CREATE POLICY "Public can read published articles" ON magazine_articles
   FOR SELECT USING (status = 'published');
 
--- Admin full access (assumes profile.role = 'admin')
+-- Admin full access (checks is_admin column)
 CREATE POLICY "Admins can manage categories" ON magazine_categories
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM profiles 
       WHERE profiles.id = auth.uid() 
-      AND profiles.role = 'admin'
+      AND profiles.is_admin = true
     )
   );
 
@@ -77,7 +77,7 @@ CREATE POLICY "Admins can manage articles" ON magazine_articles
     EXISTS (
       SELECT 1 FROM profiles 
       WHERE profiles.id = auth.uid() 
-      AND profiles.role = 'admin'
+      AND profiles.is_admin = true
     )
   );
 
