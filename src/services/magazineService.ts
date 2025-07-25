@@ -261,6 +261,8 @@ const mockArticles: MagazineArticle[] = [
 ];
 
 class MagazineService {
+  private hasConnectionIssues = false;
+  
   private async withFallback<T>(
     supabaseOperation: () => Promise<T>,
     mockData: T,
@@ -277,9 +279,10 @@ class MagazineService {
         throw new Error('Magazine system not initialized. Please contact administrator.');
       }
       
-      // Check if this is a CORS error
-      if (error?.message?.includes('CORS') || error?.message?.includes('Failed to fetch')) {
-        console.warn('CORS error detected, using fallback data');
+      // Check if this is a CORS error or connection issue
+      if (error?.message?.includes('CORS') || error?.message?.includes('Failed to fetch') || error?.message?.includes('ERR_CONNECTION')) {
+        console.warn('Connection/CORS error detected, using fallback data');
+        this.hasConnectionIssues = true;
         return mockData;
       }
       
@@ -422,14 +425,17 @@ class MagazineService {
         if (error) throw error;
         if (!article) return null;
 
-        // Increment view count (wrapped in try-catch to not break if it fails)
-        try {
-          await supabase
-            .from('magazine_articles')
-            .update({ view_count: (article.view_count || 0) + 1 })
-            .eq('id', article.id);
-        } catch (updateError) {
-          console.warn('Failed to update view count:', updateError);
+        // Increment view count only if no connection issues
+        if (!this.hasConnectionIssues) {
+          try {
+            await supabase
+              .from('magazine_articles')
+              .update({ view_count: (article.view_count || 0) + 1 })
+              .eq('id', article.id);
+          } catch (updateError) {
+            console.warn('Failed to update view count:', updateError);
+            this.hasConnectionIssues = true;
+          }
         }
 
         // Transform to interface format
@@ -460,7 +466,11 @@ class MagazineService {
             : []
         };
       },
-      mockArticles.find(article => article.slug === slug) || null,
+      (() => {
+        const mockArticle = mockArticles.find(article => article.slug === slug);
+        console.log('📚 Looking for article in mock data:', { slug, found: !!mockArticle });
+        return mockArticle || null;
+      })(),
       'getArticleBySlug'
     );
   }
