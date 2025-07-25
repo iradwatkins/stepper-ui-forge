@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useIsAdmin } from '@/lib/hooks/useAdminPermissions';
 import { useAdminMagazine, ContentBlock } from '@/hooks/useMagazine';
+import EnhancedContentBlock from '@/components/magazine/EnhancedContentBlock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -122,6 +123,23 @@ export default function CreateArticlePage() {
           : block
       )
     );
+  };
+
+  const duplicateBlock = (block: ContentBlock) => {
+    const newBlock = {
+      ...block,
+      id: Date.now(), // Generate new ID
+      order: block.order + 1
+    };
+    
+    setContentBlocks(blocks => {
+      const newBlocks = [...blocks];
+      const insertIndex = blocks.findIndex(b => b.id === block.id) + 1;
+      newBlocks.splice(insertIndex, 0, newBlock);
+      
+      // Update order for blocks after insertion
+      return newBlocks.map((b, index) => ({ ...b, order: index }));
+    });
   };
 
   const handleSave = async (status: 'draft' | 'published') => {
@@ -340,8 +358,18 @@ export default function CreateArticlePage() {
                 <div className="space-y-4">
                   {contentBlocks
                     .sort((a, b) => a.order - b.order)
-                    .map((block) => (
-                      <ContentBlockComponent key={block.id} block={block} />
+                    .map((block, index) => (
+                      <EnhancedContentBlock 
+                        key={block.id} 
+                        block={block}
+                        index={index}
+                        total={contentBlocks.length}
+                        onUpdate={updateContentBlock}
+                        onDelete={deleteContentBlock}
+                        onMove={moveBlock}
+                        onDuplicate={duplicateBlock}
+                        onToggleEdit={setBlockEditing}
+                      />
                     ))}
                 </div>
               )}
