@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { waitForContainer, detectBrowserExtensions } from '@/utils/containerUtils';
 
 interface ImageUploadProps {
   value?: string;
@@ -28,38 +29,125 @@ export default function ImageUpload({
   folder = 'featured-images'
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [containerReady, setContainerReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const containerId = `image-upload-${Math.random().toString(36).substring(2)}`;
+
+  // Wait for container to be ready
+  useEffect(() => {
+    const initializeContainer = async () => {
+      try {
+        // Detect browser extension interference
+        const extensionCheck = detectBrowserExtensions();
+        if (extensionCheck.hasExtensions) {
+          console.warn('[ImageUpload] Browser extensions detected:', extensionCheck.message);
+        }
+
+        // Wait for container to be ready
+        await waitForContainer(containerId, containerRef, {
+          maxAttempts: 20,
+          interval: 100,
+          requiresRef: true,
+          requireSize: false
+        });
+        
+        console.log('[ImageUpload] Container ready');
+        setContainerReady(true);
+      } catch (error) {
+        console.error('[ImageUpload] Container initialization failed:', error);
+        // Allow component to function without container detection
+        setContainerReady(true);
+      }
+    };
+
+    initializeContainer();
+  }, [containerId]);
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
       setUploading(true);
+
+      // Check if bucket exists first
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      if (bucketError) {
+        console.error('Error checking buckets:', bucketError);
+        throw new Error('Storage service unavailable. Please try again later.');
+      }
+
+      const bucketExists = buckets?.some(b => b.id === bucket);
+      if (!bucketExists) {
+        console.error(`Bucket '${bucket}' not found. Available buckets:`, buckets?.map(b => b.id));
+        throw new Error(`Storage bucket '${bucket}' not configured. Please contact administrator.`);
+      }
 
       // Generate unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
 
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+      console.log(`[ImageUpload] Uploading to bucket: ${bucket}, path: ${filePath}`);
 
-      if (error) {
-        console.error('Upload error:', error);
-        throw error;
+      // Upload to Supabase Storage with retry logic
+      let uploadError: any = null;
+      let uploadData: any = null;
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { data, error } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false,
+            });
+
+          if (error) {
+            uploadError = error;
+            console.error(`Upload attempt ${attempt} failed:`, error);
+            
+            if (attempt < 3) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+              continue;
+            }
+          } else {
+            uploadData = data;
+            uploadError = null;
+            break;
+          }
+        } catch (err) {
+          uploadError = err;
+          console.error(`Upload attempt ${attempt} exception:`, err);
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+      }
+
+      if (uploadError) {
+        console.error('All upload attempts failed:', uploadError);
+        throw uploadError;
       }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
-        .getPublicUrl(data.path);
+        .getPublicUrl(uploadData.path);
 
+      console.log(`[ImageUpload] Upload successful: ${publicUrl}`);
       return publicUrl;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to upload image. Please try again.');
+      
+      // Provide specific error messages
+      if (error?.message?.includes('Bucket not found')) {
+        toast.error('Image storage not configured. Please contact administrator.');
+      } else if (error?.message?.includes('not authenticated')) {
+        toast.error('Please sign in to upload images.');
+      } else if (error?.message?.includes('file size')) {
+        toast.error(`File too large. Maximum size is ${maxSizeMB}MB.`);
+      } else {
+        toast.error('Failed to upload image. Please try again.');
+      }
+      
       return null;
     } finally {
       setUploading(false);
@@ -68,6 +156,13 @@ export default function ImageUpload({
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
+
+    // Wait for container to be ready before processing
+    if (!containerReady) {
+      console.log('[ImageUpload] Waiting for container before upload...');
+      toast.info('Preparing upload area...');
+      return;
+    }
 
     const file = acceptedFiles[0];
     
@@ -83,18 +178,19 @@ export default function ImageUpload({
       return;
     }
 
+    console.log(`[ImageUpload] Processing file: ${file.name} (${file.size} bytes)`);
     const uploadedUrl = await uploadImage(file);
     if (uploadedUrl) {
       onChange(uploadedUrl);
       toast.success('Image uploaded successfully!');
     }
-  }, [maxSizeMB, acceptedFormats, onChange]);
+  }, [maxSizeMB, acceptedFormats, onChange, containerReady]);
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     accept: acceptedFormats.reduce((acc, format) => ({ ...acc, [format]: [] }), {}),
     maxFiles: 1,
-    disabled: disabled || uploading,
+    disabled: disabled || uploading || !containerReady,
   });
 
   const removeImage = () => {
@@ -133,13 +229,15 @@ export default function ImageUpload({
     <Card className={`relative ${className}`}>
       <CardContent className="p-0">
         <div
+          ref={containerRef}
+          id={containerId}
           {...getRootProps()}
           className={`
             border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
             ${isDragActive && !isDragReject ? 'border-primary bg-primary/10' : ''}
             ${isDragReject ? 'border-destructive bg-destructive/10' : ''}
             ${!isDragActive && !isDragReject ? 'border-muted-foreground/25 hover:border-primary hover:bg-primary/5' : ''}
-            ${disabled || uploading ? 'cursor-not-allowed opacity-50' : ''}
+            ${disabled || uploading || !containerReady ? 'cursor-not-allowed opacity-50' : ''}
           `}
         >
           <input {...getInputProps()} />
@@ -155,7 +253,9 @@ export default function ImageUpload({
             )}
             
             <div>
-              {uploading ? (
+              {!containerReady ? (
+                <p className="font-medium text-muted-foreground">Preparing upload area...</p>
+              ) : uploading ? (
                 <p className="font-medium">Uploading image...</p>
               ) : isDragActive ? (
                 isDragReject ? (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
@@ -73,15 +73,21 @@ export default function CreateArticlePage() {
     setContentBlocks([...contentBlocks, newBlock]);
   };
 
-  const updateContentBlock = (id: number, updates: Partial<ContentBlock>) => {
+  const updateContentBlock = useCallback((id: number, updates: Partial<ContentBlock>) => {
     setContentBlocks(blocks =>
       blocks.map(block =>
         block.id === id
-          ? { ...block, ...updates, isEditing: false }
+          ? { ...block, ...updates }
           : block
       )
     );
-  };
+  }, []);
+
+  // Debounced content update to prevent rapid state changes
+  const debouncedUpdateContent = useCallback((id: number, content: string) => {
+    console.log(`[ContentBlock] Debounced update for block ${id}:`, content);
+    updateContentBlock(id, { content });
+  }, [updateContentBlock]);
 
   const deleteContentBlock = (id: number) => {
     setContentBlocks(blocks =>
@@ -146,6 +152,13 @@ export default function CreateArticlePage() {
   };
 
   const ContentBlockComponent = ({ block }: { block: ContentBlockEditor }) => {
+    const [localContent, setLocalContent] = useState(block.content);
+
+    // Sync local content with block content when block changes
+    useEffect(() => {
+      setLocalContent(block.content);
+    }, [block.content]);
+
     if (block.isEditing) {
       return (
         <Card className="border-primary/50">
@@ -163,7 +176,11 @@ export default function CreateArticlePage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setBlockEditing(block.id, false)}
+                  onClick={() => {
+                    console.log(`[ContentBlock] Saving block ${block.id} with final content:`, localContent);
+                    updateContentBlock(block.id, { content: localContent });
+                    setBlockEditing(block.id, false);
+                  }}
                 >
                   <Save className="w-3 h-3" />
                 </Button>
@@ -181,16 +198,34 @@ export default function CreateArticlePage() {
             {(block.type === 'header' || block.type === 'subheader') && (
               <Input
                 placeholder="Enter heading text..."
-                value={block.content}
-                onChange={(e) => updateContentBlock(block.id, { content: e.target.value })}
+                value={localContent}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  console.log(`[ContentBlock] Local content update ${block.type}:`, value);
+                  setLocalContent(value);
+                  debouncedUpdateContent(block.id, value);
+                }}
+                onBlur={() => {
+                  console.log(`[ContentBlock] Blur event - finalizing content for block ${block.id}:`, localContent);
+                  updateContentBlock(block.id, { content: localContent });
+                }}
                 autoFocus
               />
             )}
             {block.type === 'paragraph' && (
               <Textarea
                 placeholder="Enter paragraph content..."
-                value={block.content}
-                onChange={(e) => updateContentBlock(block.id, { content: e.target.value })}
+                value={localContent}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  console.log(`[ContentBlock] Local content update paragraph:`, value);
+                  setLocalContent(value);
+                  debouncedUpdateContent(block.id, value);
+                }}
+                onBlur={() => {
+                  console.log(`[ContentBlock] Blur event - finalizing content for block ${block.id}:`, localContent);
+                  updateContentBlock(block.id, { content: localContent });
+                }}
                 rows={4}
                 autoFocus
               />
@@ -209,8 +244,15 @@ export default function CreateArticlePage() {
               <div className="space-y-3">
                 <Input
                   placeholder="Enter video URL or embed code..."
-                  value={block.content}
-                  onChange={(e) => updateContentBlock(block.id, { content: e.target.value })}
+                  value={localContent}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setLocalContent(value);
+                    debouncedUpdateContent(block.id, value);
+                  }}
+                  onBlur={() => {
+                    updateContentBlock(block.id, { content: localContent });
+                  }}
                   autoFocus
                 />
                 <div className="grid grid-cols-2 gap-3">
