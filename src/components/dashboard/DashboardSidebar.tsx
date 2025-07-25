@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import {
   User,
@@ -572,21 +571,17 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     return (
       <div className="space-y-1">
         {title && (
-          <div className="px-3 py-2 mb-1">
+          <div className="px-3 py-2">
             <button
               onClick={() => toggleSection(title)}
-              className="w-full text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-2 hover:text-muted-foreground transition-colors"
+              className="w-full text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 hover:text-foreground transition-colors"
             >
-              <span className="h-px flex-1 bg-border" />
-              <span className="flex items-center gap-1">
-                {isExpanded ? (
-                  <ChevronDown className="h-3 w-3" />
-                ) : (
-                  <ChevronRight className="h-3 w-3" />
-                )}
-                {title}
-              </span>
-              <span className="h-px flex-1 bg-border" />
+              {isExpanded ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+              <span>{title}</span>
             </button>
           </div>
         )}
@@ -649,50 +644,32 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
           
           {/* Events & Sales Section */}
           {getEventsAndSalesNavigation().length > 0 && filterNavigationItems(getEventsAndSalesNavigation()).length > 0 && (
-            <>
-              <Separator />
-              <NavigationGroup items={filterNavigationItems(getEventsAndSalesNavigation())} title="Events & Sales" />
-            </>
+            <NavigationGroup items={filterNavigationItems(getEventsAndSalesNavigation())} title="Events & Sales" />
           )}
           
           {/* Operations Section */}
           {getOperationsNavigation().length > 0 && filterNavigationItems(getOperationsNavigation()).length > 0 && (
-            <>
-              <Separator />
-              <NavigationGroup items={filterNavigationItems(getOperationsNavigation())} title="Operations" />
-            </>
+            <NavigationGroup items={filterNavigationItems(getOperationsNavigation())} title="Operations" />
           )}
           
           {/* Analytics Section */}
           {getAnalyticsNavigation().length > 0 && filterNavigationItems(getAnalyticsNavigation()).length > 0 && (
-            <>
-              <Separator />
-              <NavigationGroup items={filterNavigationItems(getAnalyticsNavigation())} title="Analytics" />
-            </>
+            <NavigationGroup items={filterNavigationItems(getAnalyticsNavigation())} title="Analytics" />
           )}
           
           {/* Management Section */}
           {getManagementNavigation().length > 0 && filterNavigationItems(getManagementNavigation()).length > 0 && (
-            <>
-              <Separator />
-              <NavigationGroup items={filterNavigationItems(getManagementNavigation())} title="Management" />
-            </>
+            <NavigationGroup items={filterNavigationItems(getManagementNavigation())} title="Management" />
           )}
           
           {/* Account Section */}
           {filterNavigationItems(getAccountNavigation()).length > 0 && (
-            <>
-              <Separator />
-              <NavigationGroup items={filterNavigationItems(getAccountNavigation())} title="Account" />
-            </>
+            <NavigationGroup items={filterNavigationItems(getAccountNavigation())} title="Account" />
           )}
           
           {/* Admin Section */}
           {showAdminSection && filterNavigationItems(getAdminNavigation()).length > 0 && (
-            <>
-              <Separator />
-              <NavigationGroup items={filterNavigationItems(getAdminNavigation())} title="Administration" />
-            </>
+            <NavigationGroup items={filterNavigationItems(getAdminNavigation())} title="Administration" />
           )}
         </div>
       </ScrollArea>
