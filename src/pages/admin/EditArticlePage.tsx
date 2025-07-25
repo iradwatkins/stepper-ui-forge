@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
@@ -14,7 +14,8 @@ import {
   Heading2,
   Upload,
   GripVertical,
-  Loader2
+  Loader2,
+  Monitor
 } from 'lucide-react';
 import { useIsAdmin } from '@/lib/hooks/useAdminPermissions';
 import { useAdminMagazine, ContentBlock } from '@/hooks/useMagazine';
@@ -41,6 +42,9 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import SimpleImageUpload from '@/components/ui/SimpleImageUpload';
+import EnhancedContentBlock from '@/components/magazine/EnhancedContentBlock';
+import QuickInsertToolbar from '@/components/magazine/QuickInsertToolbar';
+import ArticlePreview from '@/components/magazine/ArticlePreview';
 
 interface ContentBlockEditor extends ContentBlock {
   isEditing?: boolean;
@@ -61,6 +65,8 @@ export default function EditArticlePage() {
   const [currentStatus, setCurrentStatus] = useState<'draft' | 'published'>('draft');
   const [isDirty, setIsDirty] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
 
   // Load article data
   useEffect(() => {
@@ -112,15 +118,15 @@ export default function EditArticlePage() {
     setContentBlocks([...contentBlocks, newBlock]);
   };
 
-  const updateContentBlock = (blockId: number, updates: Partial<ContentBlock>) => {
+  const updateContentBlock = useCallback((blockId: number, updates: Partial<ContentBlock>) => {
     setContentBlocks(blocks =>
       blocks.map(block =>
         block.id === blockId
-          ? { ...block, ...updates, isEditing: false }
+          ? { ...block, ...updates }
           : block
       )
     );
-  };
+  }, []);
 
   const deleteContentBlock = (blockId: number) => {
     setContentBlocks(blocks =>
@@ -128,6 +134,23 @@ export default function EditArticlePage() {
         .map((block, index) => ({ ...block, order: index }))
     );
   };
+
+  const duplicateContentBlock = (block: ContentBlock) => {
+    const newBlock: ContentBlockEditor = {
+      ...block,
+      id: Date.now(),
+      order: contentBlocks.length,
+      isEditing: false
+    };
+    setContentBlocks([...contentBlocks, newBlock]);
+    toast.success('Block duplicated');
+  };
+
+  // Debounced content update to prevent rapid state changes
+  const debouncedUpdateContent = useCallback((id: number, content: string) => {
+    console.log(`[ContentBlock] Debounced update for block ${id}:`, content);
+    updateContentBlock(id, { content });
+  }, [updateContentBlock]);
 
   const moveBlock = (blockId: number, direction: 'up' | 'down') => {
     const currentIndex = contentBlocks.findIndex(block => block.id === blockId);
@@ -187,190 +210,6 @@ export default function EditArticlePage() {
     }
   };
 
-  const ContentBlockComponent = ({ block }: { block: ContentBlockEditor }) => {
-    if (block.isEditing) {
-      return (
-        <Card className="border-primary/50">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-xs">
-                {block.type === 'header' && 'Header'}
-                {block.type === 'subheader' && 'Subheader'}
-                {block.type === 'paragraph' && 'Paragraph'}
-                {block.type === 'image' && 'Image'}
-                {block.type === 'youtube_video' && 'YouTube Video'}
-                {block.type === 'embedded_video' && 'Embedded Video'}
-              </Badge>
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setBlockEditing(block.id, false)}
-                >
-                  <Save className="w-3 h-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => deleteContentBlock(block.id)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {(block.type === 'header' || block.type === 'subheader') && (
-              <Input
-                placeholder="Enter heading text..."
-                value={block.content}
-                onChange={(e) => updateContentBlock(block.id, { content: e.target.value })}
-                autoFocus
-              />
-            )}
-            {block.type === 'paragraph' && (
-              <Textarea
-                placeholder="Enter paragraph content..."
-                value={block.content}
-                onChange={(e) => updateContentBlock(block.id, { content: e.target.value })}
-                rows={4}
-                autoFocus
-              />
-            )}
-            {block.type === 'image' && (
-              <div className="space-y-3">
-                <SimpleImageUpload
-                  value={block.content}
-                  onChange={(url) => updateContentBlock(block.id, { content: url || '' })}
-                  placeholder="Upload, paste, or drop an image here"
-                />
-              </div>
-            )}
-            {(block.type === 'youtube_video' || block.type === 'embedded_video') && (
-              <div className="space-y-3">
-                <Input
-                  placeholder="Enter video URL or embed code..."
-                  value={block.content}
-                  onChange={(e) => updateContentBlock(block.id, { content: e.target.value })}
-                  autoFocus
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Start Time</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      min="0"
-                      value={block.startTime || ''}
-                      onChange={(e) => updateContentBlock(block.id, { 
-                        startTime: e.target.value ? parseInt(e.target.value) : undefined 
-                      })}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {block.startTime ? `${Math.floor(block.startTime / 60)}:${(block.startTime % 60).toString().padStart(2, '0')}` : 'Start from beginning'}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-xs">End Time</Label>
-                    <Input
-                      type="number"
-                      placeholder="Auto"
-                      min="0"
-                      value={block.endTime || ''}
-                      onChange={(e) => updateContentBlock(block.id, { 
-                        endTime: e.target.value ? parseInt(e.target.value) : undefined 
-                      })}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {block.endTime ? `${Math.floor(block.endTime / 60)}:${(block.endTime % 60).toString().padStart(2, '0')}` : 'Play until end'}
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    <strong>Video Timing:</strong> Enter times in seconds (e.g., 90 = 1:30, 150 = 2:30).
-                    {block.startTime && block.endTime && ` Duration: ${Math.max(0, block.endTime - block.startTime)}s`}
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    return (
-      <Card className="group hover:shadow-md transition-shadow">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              {block.type === 'header' && (
-                <h2 className="text-2xl font-bold break-words">{block.content}</h2>
-              )}
-              {block.type === 'subheader' && (
-                <h3 className="text-xl font-semibold break-words">{block.content}</h3>
-              )}
-              {block.type === 'paragraph' && (
-                <p className="text-muted-foreground whitespace-pre-wrap break-words">{block.content}</p>
-              )}
-              {block.type === 'image' && block.content && (
-                <img
-                  src={block.content}
-                  alt="Content"
-                  className="w-full h-40 object-cover rounded"
-                />
-              )}
-              {(block.type === 'youtube_video' || block.type === 'embedded_video') && (
-                <div className="bg-muted p-4 rounded text-center">
-                  <Video className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Video: {block.content}</p>
-                  {(block.startTime || block.endTime) && (
-                    <div className="mt-2 flex gap-4 justify-center text-xs text-muted-foreground">
-                      {block.startTime && <span>Start: {Math.floor(block.startTime / 60)}:{(block.startTime % 60).toString().padStart(2, '0')}</span>}
-                      {block.endTime && <span>End: {Math.floor(block.endTime / 60)}:{(block.endTime % 60).toString().padStart(2, '0')}</span>}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => moveBlock(block.id, 'up')}
-                disabled={block.order === 0}
-              >
-                ↑
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => moveBlock(block.id, 'down')}
-                disabled={block.order === contentBlocks.length - 1}
-              >
-                ↓
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setBlockEditing(block.id, true)}
-              >
-                <Type className="w-3 h-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => deleteContentBlock(block.id)}
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
-              <GripVertical className="w-4 h-4 text-muted-foreground" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
   if (authLoading || loading) {
     return (
@@ -443,6 +282,14 @@ export default function EditArticlePage() {
         <div className="flex gap-2">
           <Button
             variant="outline"
+            onClick={() => setShowPreview(!showPreview)}
+            size="sm"
+          >
+            <Monitor className="w-4 h-4 mr-2" />
+            {showPreview ? 'Hide' : 'Show'} Preview
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => handleSave('draft')}
             disabled={updateLoading || !title.trim()}
           >
@@ -459,9 +306,9 @@ export default function EditArticlePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className={`grid gap-8 ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 lg:grid-cols-3'}`}>
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`space-y-6 ${showPreview ? '' : 'lg:col-span-2'}`}>
           {/* Article Details */}
           <Card>
             <CardHeader>
@@ -505,69 +352,7 @@ export default function EditArticlePage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Content Blocks</CardTitle>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Block
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Content Block</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('header')}
-                      >
-                        <Heading1 className="w-6 h-6" />
-                        Header
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('subheader')}
-                      >
-                        <Heading2 className="w-6 h-6" />
-                        Subheader
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('paragraph')}
-                      >
-                        <Type className="w-6 h-6" />
-                        Paragraph
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('image')}
-                      >
-                        <ImageIcon className="w-6 h-6" />
-                        Image
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('youtube_video')}
-                      >
-                        <Video className="w-6 h-6" />
-                        YouTube
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('embedded_video')}
-                      >
-                        <Upload className="w-6 h-6" />
-                        Video
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <QuickInsertToolbar onInsert={addContentBlock} />
               </div>
             </CardHeader>
             <CardContent>
@@ -580,8 +365,18 @@ export default function EditArticlePage() {
                 <div className="space-y-4">
                   {contentBlocks
                     .sort((a, b) => a.order - b.order)
-                    .map((block) => (
-                      <ContentBlockComponent key={block.id} block={block} />
+                    .map((block, index) => (
+                      <EnhancedContentBlock
+                        key={block.id}
+                        block={block}
+                        index={index}
+                        total={contentBlocks.length}
+                        onUpdate={updateContentBlock}
+                        onDelete={deleteContentBlock}
+                        onMove={(id, direction) => moveBlock(id, direction)}
+                        onDuplicate={duplicateContentBlock}
+                        onToggleEdit={setBlockEditing}
+                      />
                     ))}
                 </div>
               )}
@@ -589,8 +384,21 @@ export default function EditArticlePage() {
           </Card>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
+        {/* Sidebar & Preview */}
+        {showPreview ? (
+          <div className="h-[calc(100vh-12rem)] sticky top-8">
+            <ArticlePreview
+              title={title}
+              excerpt={excerpt}
+              featuredImage={featuredImage}
+              category={categories.find(c => c.id === categoryId)?.name}
+              contentBlocks={contentBlocks}
+              viewMode={previewMode}
+              onViewModeChange={setPreviewMode}
+            />
+          </div>
+        ) : (
+          <div className="space-y-6">
           {/* Publishing Options */}
           <Card>
             <CardHeader>
@@ -658,7 +466,8 @@ export default function EditArticlePage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
