@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, X, Loader2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 
 interface SimpleImageUploadProps {
@@ -10,8 +10,7 @@ interface SimpleImageUploadProps {
   className?: string;
   placeholder?: string;
   maxSizeMB?: number;
-  bucket?: string;
-  folder?: string;
+  type?: 'content' | 'featured';
 }
 
 export default function SimpleImageUpload({
@@ -20,8 +19,7 @@ export default function SimpleImageUpload({
   className = '',
   placeholder = 'Click to upload or paste an image',
   maxSizeMB = 5,
-  bucket = 'venue-images',
-  folder = 'magazine/content-images'
+  type = 'content'
 }: SimpleImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -41,31 +39,16 @@ export default function SimpleImageUpload({
         return null;
       }
 
-      // Generate unique filename
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${folder}/${fileName}`;
+      // Use the proper upload service
+      const result = await imageUploadService.uploadMagazineImage(file, type);
 
-      // Upload to Supabase
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (error) {
-        console.error('Upload error:', error);
-        toast.error('Failed to upload image');
+      if (!result.success) {
+        console.error('Upload error:', result.error);
+        toast.error(result.error || 'Failed to upload image');
         return null;
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
-
-      return publicUrl;
+      return result.url || null;
     } catch (error) {
       console.error('Upload error:', error);
       toast.error('Failed to upload image');

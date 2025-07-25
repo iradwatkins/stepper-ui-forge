@@ -138,6 +138,28 @@ export class ImageUploadService {
   }
 
   /**
+   * Upload magazine image (content or featured)
+   */
+  async uploadMagazineImage(
+    file: File,
+    type: 'content' | 'featured' = 'content',
+    userId?: string
+  ): Promise<UploadResult> {
+    const currentUser = userId || (await supabase.auth.getUser()).data.user?.id;
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    return this.uploadImage(file, {
+      bucket: 'venue-images',
+      folder: `${currentUser}/magazine/${type}-images`,
+      maxSizeBytes: 10 * 1024 * 1024, // 10MB
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      userId: currentUser
+    });
+  }
+
+  /**
    * Delete an image from storage
    */
   async deleteImage(bucket: string, path: string): Promise<boolean> {

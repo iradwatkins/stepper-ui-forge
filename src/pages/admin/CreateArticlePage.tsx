@@ -267,6 +267,7 @@ export default function CreateArticlePage() {
                   onChange={(url) => setFeaturedImage(url || '')}
                   className="mt-2"
                   placeholder="Upload featured image for the article"
+                  type="featured"
                 />
               </div>
             </CardContent>

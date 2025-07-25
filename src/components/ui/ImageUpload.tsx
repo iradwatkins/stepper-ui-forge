@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
+import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 
 interface ImageUploadProps {
@@ -13,8 +13,7 @@ interface ImageUploadProps {
   disabled?: boolean;
   maxSizeMB?: number;
   acceptedFormats?: string[];
-  bucket?: string;
-  folder?: string;
+  type?: 'content' | 'featured';
 }
 
 export default function ImageUpload({
@@ -24,8 +23,7 @@ export default function ImageUpload({
   disabled = false,
   maxSizeMB = 5,
   acceptedFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-  bucket = 'venue-images',
-  folder = 'magazine/featured-images'
+  type = 'featured'
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,87 +32,38 @@ export default function ImageUpload({
     try {
       setUploading(true);
 
-      // Check if bucket exists first
-      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      if (bucketError) {
-        console.error('Error checking buckets:', bucketError);
-        throw new Error('Storage service unavailable. Please try again later.');
+      // Validate file size and type
+      if (file.size > maxSizeMB * 1024 * 1024) {
+        toast.error(`File too large. Maximum size is ${maxSizeMB}MB.`);
+        return null;
       }
 
-      const bucketExists = buckets?.some(b => b.id === bucket);
-      if (!bucketExists) {
-        console.error(`Bucket '${bucket}' not found. Available buckets:`, buckets?.map(b => b.id));
-        throw new Error(`Storage bucket '${bucket}' not configured. Please contact administrator.`);
+      if (!acceptedFormats.includes(file.type)) {
+        toast.error('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
+        return null;
       }
 
-      // Generate unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${folder}/${fileName}`;
+      // Use the proper upload service
+      const result = await imageUploadService.uploadMagazineImage(file, type);
 
-      console.log(`[ImageUpload] Uploading to bucket: ${bucket}, path: ${filePath}`);
-
-      // Upload to Supabase Storage with retry logic
-      let uploadError: any = null;
-      let uploadData: any = null;
-
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          const { data, error } = await supabase.storage
-            .from(bucket)
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: false,
-            });
-
-          if (error) {
-            uploadError = error;
-            console.error(`Upload attempt ${attempt} failed:`, error);
-            
-            if (attempt < 3) {
-              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-              continue;
-            }
-          } else {
-            uploadData = data;
-            uploadError = null;
-            break;
-          }
-        } catch (err) {
-          uploadError = err;
-          console.error(`Upload attempt ${attempt} exception:`, err);
-          if (attempt < 3) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          }
+      if (!result.success) {
+        console.error('Upload error:', result.error);
+        
+        // Provide specific error messages
+        if (result.error?.includes('not authenticated')) {
+          toast.error('Please sign in to upload images.');
+        } else {
+          toast.error(result.error || 'Failed to upload image. Please try again.');
         }
+        
+        return null;
       }
 
-      if (uploadError) {
-        console.error('All upload attempts failed:', uploadError);
-        throw uploadError;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(uploadData.path);
-
-      console.log(`[ImageUpload] Upload successful: ${publicUrl}`);
-      return publicUrl;
+      console.log(`[ImageUpload] Upload successful: ${result.url}`);
+      return result.url || null;
     } catch (error: any) {
       console.error('Error uploading image:', error);
-      
-      // Provide specific error messages
-      if (error?.message?.includes('Bucket not found')) {
-        toast.error('Image storage not configured. Please contact administrator.');
-      } else if (error?.message?.includes('not authenticated')) {
-        toast.error('Please sign in to upload images.');
-      } else if (error?.message?.includes('file size')) {
-        toast.error(`File too large. Maximum size is ${maxSizeMB}MB.`);
-      } else {
-        toast.error('Failed to upload image. Please try again.');
-      }
-      
+      toast.error('Failed to upload image. Please try again.');
       return null;
     } finally {
       setUploading(false);
