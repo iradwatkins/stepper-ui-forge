@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAdminPermissions } from '@/lib/hooks/useAdminPermissions'
@@ -6,6 +6,7 @@ import { useUserPermissions } from '@/lib/hooks/useUserPermissions'
 import { useEventPermissions } from '@/hooks/useEventPermissions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
@@ -35,7 +36,8 @@ import {
   Monitor,
   Database,
   BookOpen,
-  LayoutDashboard
+  LayoutDashboard,
+  Search
 } from 'lucide-react'
 
 interface NavigationItem {
@@ -59,6 +61,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const { isEventOwner, isOrganizer } = useUserPermissions()
   const eventPermissions = useEventPermissions()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
   // Initialize from localStorage to prevent flicker
   const [showAdminSection, setShowAdminSection] = useState(() => {
     const stored = localStorage.getItem('showAdminSection')
@@ -91,9 +94,59 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     )
   }
 
+  // Filter navigation items based on search query
+  const filterNavigationItems = (items: NavigationItem[]): NavigationItem[] => {
+    if (!searchQuery.trim()) return items
+    
+    const query = searchQuery.toLowerCase()
+    
+    return items.reduce((filtered: NavigationItem[], item) => {
+      const matchesTitle = item.title.toLowerCase().includes(query)
+      
+      if (item.children) {
+        const filteredChildren = item.children.filter(child => 
+          child.title.toLowerCase().includes(query)
+        )
+        
+        if (matchesTitle || filteredChildren.length > 0) {
+          filtered.push({
+            ...item,
+            children: filteredChildren.length > 0 ? filteredChildren : item.children
+          })
+        }
+      } else if (matchesTitle) {
+        filtered.push(item)
+      }
+      
+      return filtered
+    }, [])
+  }
+
+  // Auto-expand items when searching
+  useEffect(() => {
+    if (searchQuery) {
+      // Expand all items with children when searching
+      const allNavItems = [
+        ...getMainNavigation(),
+        ...getEventsAndSalesNavigation(),
+        ...getOperationsNavigation(),
+        ...getAnalyticsNavigation(),
+        ...getManagementNavigation(),
+        ...getAccountNavigation(),
+        ...(showAdminSection ? getAdminNavigation() : [])
+      ]
+      
+      const itemsWithChildren = allNavItems
+        .filter(item => item.children && item.children.length > 0)
+        .map(item => item.title)
+      
+      setExpandedItems(itemsWithChildren)
+    }
+  }, [searchQuery])
+
   // Build navigation based on user permissions - Progressive Enhancement System
   const getMainNavigation = (): NavigationItem[] => {
-    // Base navigation for ALL users (except admin)
+    // Core navigation for all users
     const items: NavigationItem[] = [
       {
         title: 'Dashboard',
@@ -109,11 +162,6 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         title: 'Liked Events',
         href: '/dashboard/liked',
         icon: Heart
-      },
-      {
-        title: 'Browse Events',
-        href: '/events',
-        icon: Calendar
       }
     ]
 
@@ -132,43 +180,61 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       })
     }
 
-    // Progressive Enhancement - Add Staff/Team Member features
-    if (eventPermissions.canWorkEvents) {
+    return items
+  }
+
+  // Events & Sales section
+  const getEventsAndSalesNavigation = (): NavigationItem[] => {
+    const items: NavigationItem[] = [
+      {
+        title: 'Browse Events',
+        href: '/events',
+        icon: Calendar
+      }
+    ]
+
+    // Event management for organizers
+    if (isEventOwner || isOrganizer) {
       items.push({
-        title: 'Staff',
-        icon: QrCode,
-        badge: eventPermissions.teamMemberEvents.length,
+        title: 'My Events',
+        icon: Calendar,
         children: [
           {
-            title: 'QR Scanner',
-            href: '/dashboard/scanner',
-            icon: QrCode
+            title: 'Create New',
+            href: '/create-event',
+            icon: Plus
           },
           {
-            title: 'Check-In Tools',
-            href: '/dashboard/checkin',
-            icon: Shield
+            title: 'Manage Events',
+            href: '/dashboard/events',
+            icon: Edit3
           },
           {
-            title: 'Event Assignments',
-            href: '/dashboard/assignments',
-            icon: Calendar
+            title: 'Drafts',
+            href: '/dashboard/events/drafts',
+            icon: Edit3,
+            badge: 3
           },
           {
-            title: 'Schedule',
-            href: '/dashboard/schedule',
-            icon: Clock
+            title: 'Archived',
+            href: '/dashboard/events/archived',
+            icon: Trash2
           }
         ]
       })
+      
+      items.push({
+        title: 'Venues',
+        href: '/dashboard/venues',
+        icon: Building2
+      })
     }
 
-    // Progressive Enhancement - Add Seller features
+    // Sales tools for sellers
     if (eventPermissions.canSellTickets) {
       items.push({
-        title: 'Seller',
+        title: 'Sales Tools',
         icon: DollarSign,
-        badge: eventPermissions.sellerEvents.length,
         children: [
           {
             title: 'Sales Dashboard',
@@ -186,7 +252,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             icon: DollarSign
           },
           {
-            title: 'My Payouts',
+            title: 'Payouts',
             href: '/dashboard/payouts',
             icon: CreditCard
           }
@@ -194,71 +260,85 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       })
     }
 
-    // Event Owner/Organizer specific features
-    if (isEventOwner || isOrganizer) {
+    return items
+  }
+
+  // Operations section for staff and organizers
+  const getOperationsNavigation = (): NavigationItem[] => {
+    const items: NavigationItem[] = []
+
+    // Staff operations
+    if (eventPermissions.canWorkEvents) {
       items.push({
-        title: 'My Events',
-        icon: Calendar,
+        title: 'Check-In & Scanning',
+        icon: QrCode,
         children: [
           {
-            title: 'All Events',
-            href: '/dashboard/events',
-            icon: Calendar
+            title: 'QR Scanner',
+            href: '/dashboard/scanner',
+            icon: QrCode
           },
           {
-            title: 'Create Event',
-            href: '/create-event',
-            icon: Plus
-          },
-          {
-            title: 'Edit Events',
-            href: '/dashboard/events/manage',
-            icon: Edit3
-          },
-          {
-            title: 'Draft Events',
-            href: '/dashboard/events/drafts',
-            icon: Edit3,
-            badge: 3
-          },
-          {
-            title: 'Archived',
-            href: '/dashboard/events/archived',
-            icon: Trash2
-          },
-          {
-            title: 'Venues',
-            href: '/dashboard/venues',
-            icon: Building2
+            title: 'Check-In Tools',
+            href: '/dashboard/checkin',
+            icon: Shield
           }
         ]
       })
-
+      
       items.push({
-        title: 'Analytics',
-        icon: PieChart,
-        children: [
-          {
-            title: 'Event Analytics',
-            href: '/dashboard/analytics',
-            icon: BarChart3
-          },
-          {
-            title: 'Sales Reports',
-            href: '/dashboard/tickets/analytics',
-            icon: DollarSign
-          },
-          {
-            title: 'Audience Insights',
-            href: '/dashboard/audience',
-            icon: Users
-          }
-        ]
-      })
-
-      items.push({
-        title: 'Team Management',
+        title: 'Team & Assignments',
         icon: Briefcase,
+        children: [
+          {
+            title: 'Event Assignments',
+            href: '/dashboard/assignments',
+            icon: Calendar,
+            badge: eventPermissions.teamMemberEvents.length
+          },
+          {
+            title: 'My Schedule',
+            href: '/dashboard/schedule',
+            icon: Clock
+          }
+        ]
+      })
+    }
+
+    return items
+  }
+
+  // Analytics section for organizers
+  const getAnalyticsNavigation = (): NavigationItem[] => {
+    if (!isEventOwner && !isOrganizer) return []
+    
+    return [
+      {
+        title: 'Event Analytics',
+        href: '/dashboard/analytics',
+        icon: BarChart3
+      },
+      {
+        title: 'Sales Reports',
+        href: '/dashboard/tickets/analytics',
+        icon: DollarSign
+      },
+      {
+        title: 'Audience Insights',
+        href: '/dashboard/audience',
+        icon: Users
+      }
+    ]
+  }
+
+  // Management section for organizers
+  const getManagementNavigation = (): NavigationItem[] => {
+    if (!isEventOwner && !isOrganizer) return []
+    
+    return [
+      {
+        title: 'Team Management',
+        icon: Users,
         children: [
           {
             title: 'Team Members',
@@ -271,22 +351,18 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             icon: UserPlus
           },
           {
-            title: 'Roles & Permissions',
+            title: 'Permissions',
             href: '/dashboard/team/roles',
             icon: Shield
           }
         ]
-      })
-
-      // Add Seller Payouts management for event owners
-      items.push({
+      },
+      {
         title: 'Seller Payouts',
         href: '/dashboard/seller-payouts',
         icon: DollarSign
-      })
-    }
-
-    return items
+      }
+    ]
   }
 
   const getAccountNavigation = (): NavigationItem[] => [
@@ -465,9 +541,11 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const NavigationGroup = ({ items, title }: { items: NavigationItem[], title?: string }) => (
     <div className="space-y-1">
       {title && (
-        <div className="px-3 py-2">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {title}
+        <div className="px-3 py-2 mb-1">
+          <h2 className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-2">
+            <span className="h-px flex-1 bg-border" />
+            <span>{title}</span>
+            <span className="h-px flex-1 bg-border" />
           </h2>
         </div>
       )}
@@ -480,40 +558,94 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const sidebarContent = (
     <>
       {/* Header */}
-      <div className="flex h-16 items-center justify-between border-b border-border px-6">
-        <Link to="/dashboard" className="flex items-center space-x-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Calendar className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-semibold text-foreground">Dashboard</span>
-        </Link>
+      <div className="border-b border-border">
+        <div className="flex h-16 items-center justify-between px-6">
+          <Link to="/dashboard" className="flex items-center space-x-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <Calendar className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-semibold text-foreground">Dashboard</span>
+          </Link>
+          
+          {/* Mobile close button */}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="lg:hidden"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
         
-        {/* Mobile close button */}
-        {onClose && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="lg:hidden"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
+        {/* Search Bar */}
+        <div className="px-3 pb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search navigation..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-6">
-          <NavigationGroup items={getMainNavigation()} />
+          {/* Main Navigation */}
+          <NavigationGroup items={filterNavigationItems(getMainNavigation())} />
           
-          <Separator />
-          
-          <NavigationGroup items={getAccountNavigation()} title="Account" />
-          
-          {showAdminSection && (
+          {/* Events & Sales Section */}
+          {getEventsAndSalesNavigation().length > 0 && filterNavigationItems(getEventsAndSalesNavigation()).length > 0 && (
             <>
               <Separator />
-              <NavigationGroup items={getAdminNavigation()} title="Administration" />
+              <NavigationGroup items={filterNavigationItems(getEventsAndSalesNavigation())} title="Events & Sales" />
+            </>
+          )}
+          
+          {/* Operations Section */}
+          {getOperationsNavigation().length > 0 && filterNavigationItems(getOperationsNavigation()).length > 0 && (
+            <>
+              <Separator />
+              <NavigationGroup items={filterNavigationItems(getOperationsNavigation())} title="Operations" />
+            </>
+          )}
+          
+          {/* Analytics Section */}
+          {getAnalyticsNavigation().length > 0 && filterNavigationItems(getAnalyticsNavigation()).length > 0 && (
+            <>
+              <Separator />
+              <NavigationGroup items={filterNavigationItems(getAnalyticsNavigation())} title="Analytics" />
+            </>
+          )}
+          
+          {/* Management Section */}
+          {getManagementNavigation().length > 0 && filterNavigationItems(getManagementNavigation()).length > 0 && (
+            <>
+              <Separator />
+              <NavigationGroup items={filterNavigationItems(getManagementNavigation())} title="Management" />
+            </>
+          )}
+          
+          {/* Account Section */}
+          {filterNavigationItems(getAccountNavigation()).length > 0 && (
+            <>
+              <Separator />
+              <NavigationGroup items={filterNavigationItems(getAccountNavigation())} title="Account" />
+            </>
+          )}
+          
+          {/* Admin Section */}
+          {showAdminSection && filterNavigationItems(getAdminNavigation()).length > 0 && (
+            <>
+              <Separator />
+              <NavigationGroup items={filterNavigationItems(getAdminNavigation())} title="Administration" />
             </>
           )}
         </div>
