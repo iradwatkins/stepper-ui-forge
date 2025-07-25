@@ -86,20 +86,22 @@ export const useUserPermissions = () => {
     setPermissionState(prev => ({ ...prev, loading: true, error: null }))
 
     try {
-      // First, get the user's permission level from their profile
+      // First, check if user is admin
       const { supabase } = await import('@/integrations/supabase/client')
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('permission')
+        .select('is_admin')
         .eq('id', user.id)
         .single()
       
       if (profileError) {
-        console.error('Failed to load user profile permission:', profileError)
+        console.error('Failed to load user profile:', profileError)
       }
       
-      const userPermission = profile?.permission || 'regular_user'
-      const isOrganizer = userPermission === 'organizer' || userPermission === 'admin'
+      // Determine user permission level based on admin status
+      const isAdmin = profile?.is_admin || false
+      const userPermission = isAdmin ? 'admin' : 'regular_user'
+      const isOrganizer = isAdmin // For now, admins are considered organizers
       
       // Load selling permissions - FollowerService will handle auth checks
       const sellingPermissions = await FollowerService.getUserSellingPermissions(user.id)

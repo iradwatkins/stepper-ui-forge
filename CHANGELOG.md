@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Latest Changes - July 25, 2025]
 
+### Fixed
+- **Database Permissions and Schema Errors** - Comprehensive fix for all permission-related database errors
+  - Fixed "column profiles.permission does not exist" error by updating useUserPermissions hook to use is_admin column
+  - Fixed missing get_admin_permissions RPC function with proper error handling
+  - Fixed magazine_articles permission errors with corrected RLS policies and table structure
+  - Fixed follower_promotions foreign key relationship error by removing malformed query joins
+  - Created comprehensive database fix script (`fix-all-database-errors.sql`) for immediate deployment
+  - Files modified:
+    - `src/lib/hooks/useUserPermissions.ts` - Updated to query is_admin instead of non-existent permission column
+    - `src/lib/services/FollowerService.ts` - Fixed foreign key relationship queries and added separate profile fetching
+    - `fix-all-database-errors.sql` - Complete fix script for all database schema issues
+
+- **Magazine Category Management Permissions** - Fixed RLS policies preventing admin category operations
+  - Fixed "permission denied for table users" error by correcting RLS policy references
+  - Added explicit slug generation when creating categories
+  - Enhanced error messages for permission-denied scenarios
+  - Improved user feedback for create/delete operations with specific error messages
+  - Created migration to fix magazine system RLS policies
+  - Files modified:
+    - `src/services/magazineService.ts` - Added slug generation and improved error handling
+    - `src/hooks/useMagazine.ts` - Enhanced error message display from service layer
+    - `supabase/migrations/20250125_fix_magazine_rls_policies.sql` - Fixed RLS policy references
+    - `fix-magazine-permissions.sql` - Emergency fix script for immediate deployment
+
 ## [Unreleased]
 
 ### Changed

@@ -433,16 +433,29 @@ class MagazineService {
   async createCategory(data: { name: string; description?: string }): Promise<MagazineCategory> {
     return this.withFallback(
       async () => {
+        // Generate slug from name
+        const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        
         const { data: category, error } = await supabase
           .from('magazine_categories')
           .insert({
             name: data.name,
+            slug: slug,
             description: data.description || `Explore our collection of ${data.name.toLowerCase()} articles`
           })
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Create category error:', error);
+          if (error.code === '42501') {
+            throw new Error('You do not have permission to create categories. Please ensure you are logged in as an admin.');
+          }
+          if (error.code === '23505') {
+            throw new Error('A category with this name already exists.');
+          }
+          throw error;
+        }
 
         return {
           id: category.id,
@@ -526,10 +539,16 @@ class MagazineService {
           .eq('category_id', id)
           .limit(1);
 
-        if (articlesError) throw articlesError;
+        if (articlesError) {
+          console.error('Error checking articles:', articlesError);
+          if (articlesError.code === '42501') {
+            throw new Error('You do not have permission to delete categories. Please ensure you are logged in as an admin.');
+          }
+          throw articlesError;
+        }
 
         if (articles && articles.length > 0) {
-          throw new Error('Cannot delete category that contains articles');
+          throw new Error('Cannot delete this category because it contains articles. Please move or delete the articles first.');
         }
 
         // Delete the category
@@ -538,7 +557,13 @@ class MagazineService {
           .delete()
           .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Delete category error:', error);
+          if (error.code === '42501') {
+            throw new Error('You do not have permission to delete categories. Please ensure you are logged in as an admin.');
+          }
+          throw error;
+        }
       },
       async () => {
         const categoryIndex = mockCategories.findIndex(cat => cat.id === id);
@@ -549,7 +574,7 @@ class MagazineService {
         // Check if category has articles
         const hasArticles = mockArticles.some(article => article.category?.id === id);
         if (hasArticles) {
-          throw new Error('Cannot delete category that contains articles');
+          throw new Error('Cannot delete this category because it contains articles. Please move or delete the articles first.');
         }
         
         mockCategories.splice(categoryIndex, 1);

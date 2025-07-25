@@ -746,11 +746,7 @@ export class FollowerService {
         .from('follower_promotions')
         .select(`
           organizer_id,
-          can_work_events,
-          profiles:organizer_id (
-            full_name,
-            organization
-          )
+          can_work_events
         `)
         .eq('follower_id', userId)
         .eq('can_work_events', true);
@@ -787,12 +783,34 @@ export class FollowerService {
         can_work_events: boolean
       }> = [];
 
+      // Get organizer profiles separately for follower promotions
+      const followerOrganizerIds = (followerPerms || []).map(p => p.organizer_id);
+      let followerOrganizerProfiles: any[] = [];
+      
+      if (followerOrganizerIds.length > 0) {
+        const { data: profiles, error: profilesError } = await db
+          .from('profiles')
+          .select('id, full_name, organization')
+          .in('id', followerOrganizerIds);
+          
+        if (!profilesError) {
+          followerOrganizerProfiles = profiles || [];
+        }
+      }
+      
+      // Create profiles map
+      const profilesMap = new Map();
+      followerOrganizerProfiles.forEach(p => {
+        profilesMap.set(p.id, p);
+      });
+
       // Add follower promotions (general work permissions)
       (followerPerms || []).forEach((item: any) => {
+        const profile = profilesMap.get(item.organizer_id);
         permissions.push({
           event_id: 'all', // General permission across all events
           organizer_id: item.organizer_id,
-          organizer_name: item.profiles.full_name || item.profiles.organization || 'Unknown Organizer',
+          organizer_name: profile?.full_name || profile?.organization || 'Unknown Organizer',
           can_work_events: item.can_work_events
         });
       });

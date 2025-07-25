@@ -172,9 +172,10 @@ export const useAdminMagazine = () => {
       
       toast.success('Category created successfully!');
       return newCategory;
-    } catch (err) {
-      setError('Failed to create category');
-      toast.error('Failed to create category');
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to create category';
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error creating category:', err);
       return null;
     } finally {
@@ -216,9 +217,10 @@ export const useAdminMagazine = () => {
       
       toast.success('Category deleted successfully!');
       return true;
-    } catch (err) {
-      setError('Failed to delete category');
-      toast.error('Failed to delete category');
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to delete category';
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error deleting category:', err);
       return false;
     } finally {
