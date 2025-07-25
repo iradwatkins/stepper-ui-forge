@@ -1,70 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Bell, Check, Trash2, Settings, Mail, Smartphone, AlertTriangle } from 'lucide-react'
-
-interface Notification {
-  id: string
-  title: string
-  message: string
-  type: 'info' | 'warning' | 'success' | 'error'
-  read: boolean
-  timestamp: string
-  category: string
-}
+import { Bell, Check, Trash2, Settings, Mail, Smartphone, AlertTriangle, Loader2 } from 'lucide-react'
+import { 
+  NotificationService, 
+  type Notification, 
+  type NotificationSettings 
+} from '@/lib/services/NotificationService'
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'New team member joined',
-      message: 'Sarah Johnson accepted the invitation to join as Check-in Staff',
-      type: 'success',
-      read: false,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      category: 'team'
-    },
-    {
-      id: '2',
-      title: 'Duplicate ticket detected',
-      message: 'Multiple check-in attempts detected for ticket #12345',
-      type: 'warning',
-      read: false,
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      category: 'security'
-    },
-    {
-      id: '3',
-      title: 'Payment processed',
-      message: 'Payment of $150 successfully processed for Tech Conference tickets',
-      type: 'success',
-      read: true,
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-      category: 'payment'
-    },
-    {
-      id: '4',
-      title: 'Event published',
-      message: 'Summer Music Festival has been published and is now live',
-      type: 'info',
-      read: true,
-      timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-      category: 'event'
-    },
-    {
-      id: '5',
-      title: 'Low ticket inventory',
-      message: 'Only 5 VIP tickets remaining for Summer Music Festival',
-      type: 'warning',
-      read: false,
-      timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-      category: 'inventory'
-    }
-  ])
-
-  const [notificationSettings, setNotificationSettings] = useState({
+  const { user } = useAuth()
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     email: true,
     push: true,
     teamUpdates: true,
@@ -72,17 +22,123 @@ export default function Notifications() {
     paymentNotifications: true,
     eventUpdates: false
   })
+  const [loading, setLoading] = useState(true)
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [stats, setStats] = useState({
+    total: 0,
+    unread: 0,
+    today: 0
+  })
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+  useEffect(() => {
+    if (user) {
+      loadNotifications()
+      loadNotificationSettings()
+      
+      // Subscribe to real-time notifications
+      const subscription = NotificationService.subscribeToNotifications(
+        user.id,
+        (newNotification) => {
+          setNotifications(prev => [newNotification, ...prev])
+          setStats(prev => ({
+            ...prev,
+            total: prev.total + 1,
+            unread: prev.unread + 1,
+            today: isToday(newNotification.created_at) ? prev.today + 1 : prev.today
+          }))
+        }
+      )
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [user])
+
+  const loadNotifications = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      const [notifs, counts] = await Promise.all([
+        NotificationService.getUserNotifications(user.id),
+        NotificationService.getNotificationCounts(user.id)
+      ])
+      
+      setNotifications(notifs)
+      setStats({
+        total: counts.total,
+        unread: counts.unread,
+        today: counts.today
+      })
+    } catch (error) {
+      console.error('Failed to load notifications:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  const loadNotificationSettings = async () => {
+    if (!user) return
+
+    try {
+      const settings = await NotificationService.getNotificationSettings(user.id)
+      setNotificationSettings(settings)
+    } catch (error) {
+      console.error('Failed to load notification settings:', error)
+    }
   }
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
+  const markAsRead = async (id: string) => {
+    if (!user) return
+
+    const success = await NotificationService.markAsRead(user.id, [id])
+    if (success) {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+      setStats(prev => ({ ...prev, unread: Math.max(0, prev.unread - 1) }))
+    }
+  }
+
+  const markAllAsRead = async () => {
+    if (!user) return
+
+    const success = await NotificationService.markAsRead(user.id)
+    if (success) {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      setStats(prev => ({ ...prev, unread: 0 }))
+    }
+  }
+
+  const deleteNotification = async (id: string) => {
+    if (!user) return
+
+    const success = await NotificationService.deleteNotification(user.id, id)
+    if (success) {
+      const notif = notifications.find(n => n.id === id)
+      setNotifications(prev => prev.filter(n => n.id !== id))
+      setStats(prev => ({
+        total: prev.total - 1,
+        unread: notif && !notif.read ? prev.unread - 1 : prev.unread,
+        today: notif && isToday(notif.created_at) ? prev.today - 1 : prev.today
+      }))
+    }
+  }
+
+  const saveSettings = async () => {
+    if (!user) return
+
+    setSavingSettings(true)
+    try {
+      await NotificationService.updateNotificationSettings(user.id, notificationSettings)
+    } catch (error) {
+      console.error('Failed to save settings:', error)
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const isToday = (timestamp: string) => {
+    return new Date(timestamp).toDateString() === new Date().toDateString()
   }
 
   const getTypeColor = (type: string) => {
@@ -94,7 +150,18 @@ export default function Notifications() {
     }
   }
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  const unreadCount = stats.unread
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading notifications...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -163,7 +230,7 @@ export default function Notifications() {
                           {notification.message}
                         </p>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(notification.timestamp).toLocaleString()} • {notification.category}
+                          {new Date(notification.created_at).toLocaleString()} • {notification.category}
                         </div>
                       </div>
                       <div className="flex items-center space-x-2 ml-4">
@@ -279,8 +346,19 @@ export default function Notifications() {
                 </div>
               </div>
 
-              <Button className="w-full">
-                Save Settings
+              <Button 
+                className="w-full" 
+                onClick={saveSettings}
+                disabled={savingSettings}
+              >
+                {savingSettings ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Settings'
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -294,19 +372,15 @@ export default function Notifications() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm">Total Notifications</span>
-                  <span className="font-medium">{notifications.length}</span>
+                  <span className="font-medium">{stats.total}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Unread</span>
-                  <span className="font-medium">{unreadCount}</span>
+                  <span className="font-medium">{stats.unread}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Today</span>
-                  <span className="font-medium">
-                    {notifications.filter(n => 
-                      new Date(n.timestamp).toDateString() === new Date().toDateString()
-                    ).length}
-                  </span>
+                  <span className="font-medium">{stats.today}</span>
                 </div>
               </div>
             </CardContent>

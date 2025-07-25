@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useUserPermissions } from '@/lib/hooks/useUserPermissions'
+import { Navigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,9 +31,13 @@ import {
   Users,
   DollarSign,
   TrendingUp,
-  Filter
+  Filter,
+  AlertCircle
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
+import { AnalyticsService } from '@/lib/services/AnalyticsService'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface TicketData {
   id: string
@@ -47,68 +53,86 @@ interface TicketData {
 
 export default function TicketsOverview() {
   const { user } = useAuth()
+  const { isOrganizer, isEventOwner, loading: permissionsLoading } = useUserPermissions()
   const [tickets, setTickets] = useState<TicketData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [analyticsData, setAnalyticsData] = useState<any>(null)
 
   useEffect(() => {
-    loadTicketsData()
-  }, [user?.id])
+    if (!permissionsLoading && user?.id) {
+      loadTicketsData()
+    }
+  }, [user?.id, permissionsLoading])
 
   const loadTicketsData = async () => {
     if (!user?.id) return
 
     try {
       setIsLoading(true)
-      // Mock data for now - replace with actual service call
-      const mockTickets: TicketData[] = [
-        {
-          id: 'ticket-1',
-          eventTitle: 'Summer Music Festival',
-          eventDate: '2024-08-15',
-          ticketType: 'General Admission',
-          price: 45,
-          sold: 320,
-          available: 180,
-          revenue: 14400,
-          status: 'active'
-        },
-        {
-          id: 'ticket-2',
-          eventTitle: 'Summer Music Festival',
-          eventDate: '2024-08-15',
-          ticketType: 'VIP Package',
-          price: 120,
-          sold: 48,
-          available: 2,
-          revenue: 5760,
-          status: 'active'
-        },
-        {
-          id: 'ticket-3',
-          eventTitle: 'Tech Conference 2024',
-          eventDate: '2024-09-20',
-          ticketType: 'Early Bird',
-          price: 199,
-          sold: 150,
-          available: 0,
-          revenue: 29850,
-          status: 'sold_out'
-        },
-        {
-          id: 'ticket-4',
-          eventTitle: 'Art Gallery Opening',
-          eventDate: '2024-07-10',
-          ticketType: 'Standard',
-          price: 25,
-          sold: 45,
-          available: 55,
-          revenue: 1125,
-          status: 'paused'
+      
+      // Load analytics data
+      const analytics = await AnalyticsService.getTicketAnalytics(user.id, '30d')
+      setAnalyticsData(analytics)
+      
+      // Load detailed ticket data
+      const { data: ticketData, error } = await supabase
+        .from('tickets')
+        .select(`
+          id,
+          created_at,
+          status,
+          ticket_types!inner(
+            id,
+            name,
+            price,
+            quantity,
+            events!inner(
+              id,
+              title,
+              date,
+              organizer_id
+            )
+          )
+        `)
+        .eq('ticket_types.events.organizer_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      // Group tickets by event and ticket type
+      const ticketMap = new Map<string, TicketData>()
+      
+      ticketData?.forEach((ticket: any) => {
+        const key = `${ticket.ticket_types.events.id}-${ticket.ticket_types.id}`
+        const existing = ticketMap.get(key)
+        
+        if (existing) {
+          existing.sold += ticket.status !== 'cancelled' ? 1 : 0
+          existing.revenue += ticket.status !== 'cancelled' ? ticket.ticket_types.price : 0
+        } else {
+          ticketMap.set(key, {
+            id: key,
+            eventTitle: ticket.ticket_types.events.title,
+            eventDate: ticket.ticket_types.events.date,
+            ticketType: ticket.ticket_types.name,
+            price: ticket.ticket_types.price,
+            sold: ticket.status !== 'cancelled' ? 1 : 0,
+            available: ticket.ticket_types.quantity - 1, // This is approximate
+            revenue: ticket.status !== 'cancelled' ? ticket.ticket_types.price : 0,
+            status: 'active' // We'll update this based on availability
+          })
         }
-      ]
-      setTickets(mockTickets)
+      })
+      
+      // Convert to array and update status
+      const ticketArray = Array.from(ticketMap.values()).map(ticket => ({
+        ...ticket,
+        status: ticket.available === 0 ? 'sold_out' as const : 'active' as const
+      }))
+      
+      setTickets(ticketArray)
     } catch (error) {
       console.error('Error loading tickets data:', error)
     } finally {
@@ -138,7 +162,30 @@ export default function TicketsOverview() {
     totalAvailable: acc.totalAvailable + ticket.available
   }), { totalSold: 0, totalRevenue: 0, totalAvailable: 0 })
 
-  if (isLoading) {
+  // Check permissions and redirect if not authorized
+  if (!permissionsLoading && !isOrganizer && !isEventOwner) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Access Restricted</AlertTitle>
+          <AlertDescription>
+            This page is for event organizers only. Looking for your tickets?
+          </AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Link to="/my-tickets">
+            <Button>
+              <Ticket className="w-4 h-4 mr-2" />
+              Go to My Tickets
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading || permissionsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">

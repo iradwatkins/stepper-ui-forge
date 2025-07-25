@@ -161,11 +161,11 @@ export const useAdminMagazine = () => {
     }
   };
 
-  const createCategory = async (name: string): Promise<MagazineCategory | null> => {
+  const createCategory = async (name: string, description?: string): Promise<MagazineCategory | null> => {
     try {
       setLoading(true);
       setError(null);
-      const newCategory = await magazineService.createCategory({ name });
+      const newCategory = await magazineService.createCategory({ name, description });
       
       // Update local state
       setCategories(prev => [...prev, newCategory]);
@@ -182,7 +182,7 @@ export const useAdminMagazine = () => {
     }
   };
 
-  const updateCategory = async (id: number, data: { name?: string }): Promise<MagazineCategory | null> => {
+  const updateCategory = async (id: number, data: { name?: string; description?: string }): Promise<MagazineCategory | null> => {
     try {
       setLoading(true);
       setError(null);

@@ -24,11 +24,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { FollowerService } from '@/lib/services/FollowerService'
+import { supabase } from '@/lib/supabase'
+import { Link } from 'react-router-dom'
 
 interface Organizer {
   id: string
   name: string
-  email: string
+  email?: string
   avatar_url?: string
   bio?: string
   location?: string
@@ -36,9 +39,13 @@ interface Organizer {
   events_count: number
   total_revenue?: number
   commission_rate: number
+  commission_type?: 'percentage' | 'fixed'
+  commission_fixed_amount?: number
   following_since: string
   notifications_enabled: boolean
   can_sell_tickets: boolean
+  can_work_events: boolean
+  is_co_organizer: boolean
   upcoming_events: number
 }
 
@@ -57,55 +64,76 @@ export default function Following() {
 
     setLoading(true)
     try {
-      // Mock data for demonstration
-      const mockOrganizers: Organizer[] = [
-        {
-          id: '1',
-          name: 'Sarah Events Co.',
-          email: 'sarah@eventsco.com',
-          avatar_url: '/avatars/sarah.jpg',
-          bio: 'Creating unforgettable experiences in the Bay Area',
-          location: 'San Francisco, CA',
-          followers_count: 1250,
-          events_count: 15,
-          total_revenue: 45000,
-          commission_rate: 0.12,
-          following_since: '2024-01-15',
-          notifications_enabled: true,
-          can_sell_tickets: true,
-          upcoming_events: 3
-        },
-        {
-          id: '2',
-          name: 'TechConf Organizers',
-          email: 'info@techconf.com',
-          bio: 'Leading technology conferences and workshops',
-          location: 'Austin, TX',
-          followers_count: 890,
-          events_count: 8,
-          commission_rate: 0.15,
-          following_since: '2024-02-01',
-          notifications_enabled: false,
-          can_sell_tickets: true,
-          upcoming_events: 1
-        },
-        {
-          id: '3',
-          name: 'Local Music Venues',
-          email: 'bookings@localmusic.com',
-          bio: 'Supporting local artists and live music',
-          location: 'Nashville, TN',
-          followers_count: 2340,
-          events_count: 42,
-          commission_rate: 0.10,
-          following_since: '2023-12-10',
-          notifications_enabled: true,
-          can_sell_tickets: false,
-          upcoming_events: 7
-        }
-      ]
+      // Get list of followed organizers
+      const followedOrganizers = await FollowerService.getFollowedOrganizers(user.id)
+      
+      if (followedOrganizers.length === 0) {
+        setOrganizers([])
+        return
+      }
 
-      setOrganizers(mockOrganizers)
+      // Get permissions for each organizer
+      const organizerIds = followedOrganizers.map(org => org.id)
+      
+      // Get additional data for each organizer in parallel
+      const organizerPromises = organizerIds.map(async (organizerId) => {
+        const [permissions, followData, followerCount, eventCount, upcomingEvents] = await Promise.all([
+          // Get user permissions
+          FollowerService.getUserPermissions(user.id, organizerId),
+          
+          // Get follow relationship data
+          supabase
+            .from('user_follows')
+            .select('created_at')
+            .eq('follower_id', user.id)
+            .eq('organizer_id', organizerId)
+            .single(),
+          
+          // Get follower count
+          supabase
+            .from('user_follows')
+            .select('id', { count: 'exact', head: true })
+            .eq('organizer_id', organizerId),
+          
+          // Get total events count
+          supabase
+            .from('events')
+            .select('id', { count: 'exact', head: true })
+            .eq('organizer_id', organizerId),
+          
+          // Get upcoming events count
+          supabase
+            .from('events')
+            .select('id', { count: 'exact', head: true })
+            .eq('organizer_id', organizerId)
+            .gte('date', new Date().toISOString())
+        ])
+
+        const profile = followedOrganizers.find(org => org.id === organizerId)
+        
+        return {
+          id: organizerId,
+          name: profile?.full_name || profile?.organization || 'Unknown Organizer',
+          email: profile?.email,
+          avatar_url: profile?.avatar_url,
+          bio: profile?.bio,
+          location: profile?.location,
+          followers_count: followerCount.count || 0,
+          events_count: eventCount.count || 0,
+          commission_rate: permissions.commission_rate,
+          commission_type: permissions.commission_type,
+          commission_fixed_amount: permissions.commission_fixed_amount,
+          following_since: followData.data?.created_at || new Date().toISOString(),
+          notifications_enabled: true, // TODO: Add notification preferences
+          can_sell_tickets: permissions.can_sell_tickets,
+          can_work_events: permissions.can_work_events,
+          is_co_organizer: permissions.is_co_organizer,
+          upcoming_events: upcomingEvents.count || 0
+        } as Organizer
+      })
+
+      const organizersData = await Promise.all(organizerPromises)
+      setOrganizers(organizersData)
     } catch (error) {
       console.error('Failed to load following data:', error)
     } finally {
@@ -122,8 +150,17 @@ export default function Following() {
   }
 
   const unfollowOrganizer = async (organizerId: string) => {
+    if (!user) return
+    
     if (confirm('Are you sure you want to unfollow this organizer? You may lose selling privileges.')) {
-      setOrganizers(prev => prev.filter(org => org.id !== organizerId))
+      try {
+        const result = await FollowerService.unfollowOrganizer(user.id, organizerId)
+        if (result.success) {
+          setOrganizers(prev => prev.filter(org => org.id !== organizerId))
+        }
+      } catch (error) {
+        console.error('Failed to unfollow organizer:', error)
+      }
     }
   }
 
@@ -134,7 +171,12 @@ export default function Following() {
 
   const totalEarningPotential = organizers
     .filter(org => org.can_sell_tickets)
-    .reduce((sum, org) => sum + (org.total_revenue || 0) * org.commission_rate, 0)
+    .reduce((sum, org) => {
+      if (org.commission_type === 'fixed') {
+        return sum + (org.commission_fixed_amount || 0) * org.upcoming_events
+      }
+      return sum + (org.total_revenue || 0) * org.commission_rate
+    }, 0)
 
   if (loading) {
     return (
@@ -213,10 +255,12 @@ export default function Following() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline">
-          <Users className="h-4 w-4 mr-2" />
-          Discover Organizers
-        </Button>
+        <Link to="/events">
+          <Button variant="outline">
+            <Users className="h-4 w-4 mr-2" />
+            Discover Organizers
+          </Button>
+        </Link>
       </div>
 
       {/* Organizers List */}
@@ -228,10 +272,12 @@ export default function Following() {
             <p className="text-muted-foreground mb-4">
               {searchTerm ? 'Try adjusting your search terms' : 'Start following organizers to see them here'}
             </p>
-            <Button>
-              <Users className="h-4 w-4 mr-2" />
-              Discover Organizers
-            </Button>
+            <Link to="/events">
+              <Button>
+                <Users className="h-4 w-4 mr-2" />
+                Discover Organizers
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
@@ -253,6 +299,12 @@ export default function Following() {
                         <h3 className="text-lg font-semibold">{organizer.name}</h3>
                         {organizer.can_sell_tickets && (
                           <Badge className="bg-green-100 text-green-800">Selling Enabled</Badge>
+                        )}
+                        {organizer.can_work_events && (
+                          <Badge className="bg-blue-100 text-blue-800">Team Member</Badge>
+                        )}
+                        {organizer.is_co_organizer && (
+                          <Badge className="bg-purple-100 text-purple-800">Co-Organizer</Badge>
                         )}
                       </div>
                       
@@ -280,7 +332,12 @@ export default function Following() {
                         </div>
                         {organizer.can_sell_tickets && (
                           <div>
-                            <p className="font-medium">{(organizer.commission_rate * 100).toFixed(1)}%</p>
+                            <p className="font-medium">
+                              {organizer.commission_type === 'fixed' 
+                                ? `$${organizer.commission_fixed_amount || 0}`
+                                : `${(organizer.commission_rate * 100).toFixed(1)}%`
+                              }
+                            </p>
                             <p className="text-muted-foreground">Commission</p>
                           </div>
                         )}

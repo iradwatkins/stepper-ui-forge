@@ -120,6 +120,12 @@
 | Liked events display error | event_likes query | display_price column doesn't exist | No |
 | Fix liked events RPC functions | 20250723_fix_liked_events_rpc.sql | Fixed column mismatches in RPC functions | No |
 | Document liked events fix | URGENT_LIKED_EVENTS_FIX.md | Instructions for fixing liked events display | No |
+| Update TicketsOverview for real data | TicketsOverview.tsx | Replace mock data with AnalyticsService calls | No |
+| Update Following for real data | Following.tsx | Replace mock data with FollowerService calls | No |
+| Add notifications system | 20250125_add_notifications_system.sql | Create user_notifications table with triggers | No |
+| Create NotificationService | NotificationService.ts | Service for managing user notifications | No |
+| Update Notifications page | Notifications.tsx | Replace mock data with real NotificationService calls | No |
+| Enhance magazine categories CRUD | CategoryManagementPage.tsx, magazineService.ts | Add description field support to create/update/delete | No |
 | Login broken | 20250723_fix_missing_profiles.sql | GRANT on auth schema not allowed in Supabase | No |
 | Fix auth permissions | 20250724_fix_auth_permissions.sql | Remove problematic GRANT, fix auth triggers | No |
 | Magazine image drag-drop | CreateArticlePage.tsx, EditArticlePage.tsx, ImageUpload.tsx | Replace URL inputs with ImageUpload component for drag-and-drop | No |

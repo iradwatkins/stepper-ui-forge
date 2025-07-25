@@ -61,14 +61,20 @@ export default function CategoryManagementPage() {
 
   // Form states
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryDescription, setEditCategoryDescription] = useState('');
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
 
-    const result = await createCategory(newCategoryName.trim());
+    const result = await createCategory(
+      newCategoryName.trim(), 
+      newCategoryDescription.trim() || undefined
+    );
     if (result) {
       setNewCategoryName('');
+      setNewCategoryDescription('');
       setCreateDialogOpen(false);
     }
   };
@@ -76,10 +82,14 @@ export default function CategoryManagementPage() {
   const handleEditCategory = async () => {
     if (!editingCategory || !editCategoryName.trim()) return;
 
-    const result = await updateCategory(editingCategory.id, { name: editCategoryName.trim() });
+    const result = await updateCategory(editingCategory.id, { 
+      name: editCategoryName.trim(),
+      description: editCategoryDescription.trim() || undefined
+    });
     if (result) {
       setEditingCategory(null);
       setEditCategoryName('');
+      setEditCategoryDescription('');
       setEditDialogOpen(false);
     }
   };
@@ -94,6 +104,7 @@ export default function CategoryManagementPage() {
   const openEditDialog = (category: MagazineCategory) => {
     setEditingCategory(category);
     setEditCategoryName(category.name);
+    setEditCategoryDescription(category.description || '');
     setEditDialogOpen(true);
   };
 
@@ -166,7 +177,16 @@ export default function CategoryManagementPage() {
                   placeholder="Enter category name..."
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
+                />
+              </div>
+              <div>
+                <Label htmlFor="category-description">Description</Label>
+                <Textarea
+                  id="category-description"
+                  placeholder="Enter category description..."
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  rows={3}
                 />
               </div>
             </div>
@@ -175,6 +195,7 @@ export default function CategoryManagementPage() {
                 variant="outline" 
                 onClick={() => {
                   setNewCategoryName('');
+                  setNewCategoryDescription('');
                   setCreateDialogOpen(false);
                 }}
               >
@@ -325,7 +346,16 @@ export default function CategoryManagementPage() {
                 placeholder="Enter category name..."
                 value={editCategoryName}
                 onChange={(e) => setEditCategoryName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleEditCategory()}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-category-description">Description</Label>
+              <Textarea
+                id="edit-category-description"
+                placeholder="Enter category description..."
+                value={editCategoryDescription}
+                onChange={(e) => setEditCategoryDescription(e.target.value)}
+                rows={3}
               />
             </div>
             {editingCategory && (
@@ -348,6 +378,7 @@ export default function CategoryManagementPage() {
               onClick={() => {
                 setEditingCategory(null);
                 setEditCategoryName('');
+                setEditCategoryDescription('');
                 setEditDialogOpen(false);
               }}
             >

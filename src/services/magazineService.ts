@@ -430,14 +430,14 @@ class MagazineService {
     );
   }
 
-  async createCategory(data: { name: string }): Promise<MagazineCategory> {
+  async createCategory(data: { name: string; description?: string }): Promise<MagazineCategory> {
     return this.withFallback(
       async () => {
         const { data: category, error } = await supabase
           .from('magazine_categories')
           .insert({
             name: data.name,
-            description: `Explore our collection of ${data.name.toLowerCase()} articles`
+            description: data.description || `Explore our collection of ${data.name.toLowerCase()} articles`
           })
           .select()
           .single();
@@ -458,7 +458,7 @@ class MagazineService {
         id: Math.max(...mockCategories.map(c => c.id)) + 1,
         name: data.name,
         slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-        description: `Explore our collection of ${data.name.toLowerCase()} articles`,
+        description: data.description || `Explore our collection of ${data.name.toLowerCase()} articles`,
         articleCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -467,43 +467,95 @@ class MagazineService {
     );
   }
 
-  async updateCategory(id: number, data: { name?: string }): Promise<MagazineCategory> {
-    await new Promise(resolve => setTimeout(resolve, 600)); // Simulate API delay
-    
-    const categoryIndex = mockCategories.findIndex(cat => cat.id === id);
-    if (categoryIndex === -1) {
-      throw new Error('Category not found');
-    }
-    
-    const updatedCategory = {
-      ...mockCategories[categoryIndex],
-      ...data,
-      updatedAt: new Date().toISOString()
-    };
-    
-    if (data.name) {
-      updatedCategory.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    }
-    
-    mockCategories[categoryIndex] = updatedCategory;
-    return updatedCategory;
+  async updateCategory(id: number, data: { name?: string; description?: string }): Promise<MagazineCategory> {
+    return this.withFallback(
+      async () => {
+        const updateData: any = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.description !== undefined) updateData.description = data.description;
+
+        const { data: category, error } = await supabase
+          .from('magazine_categories')
+          .update(updateData)
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        return {
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          articleCount: 0,
+          createdAt: category.created_at,
+          updatedAt: category.updated_at
+        };
+      },
+      (() => {
+        const categoryIndex = mockCategories.findIndex(cat => cat.id === id);
+        if (categoryIndex === -1) {
+          throw new Error('Category not found');
+        }
+        
+        const updatedCategory = {
+          ...mockCategories[categoryIndex],
+          ...data,
+          updatedAt: new Date().toISOString()
+        };
+        
+        if (data.name) {
+          updatedCategory.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        }
+        
+        mockCategories[categoryIndex] = updatedCategory;
+        return updatedCategory;
+      })(),
+      'updateCategory'
+    );
   }
 
   async deleteCategory(id: number): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 400)); // Simulate API delay
-    
-    const categoryIndex = mockCategories.findIndex(cat => cat.id === id);
-    if (categoryIndex === -1) {
-      throw new Error('Category not found');
-    }
-    
-    // Check if category has articles
-    const hasArticles = mockArticles.some(article => article.category?.id === id);
-    if (hasArticles) {
-      throw new Error('Cannot delete category that contains articles');
-    }
-    
-    mockCategories.splice(categoryIndex, 1);
+    return this.withFallback(
+      async () => {
+        // First check if category has articles
+        const { data: articles, error: articlesError } = await supabase
+          .from('magazine_articles')
+          .select('id')
+          .eq('category_id', id)
+          .limit(1);
+
+        if (articlesError) throw articlesError;
+
+        if (articles && articles.length > 0) {
+          throw new Error('Cannot delete category that contains articles');
+        }
+
+        // Delete the category
+        const { error } = await supabase
+          .from('magazine_categories')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+      },
+      async () => {
+        const categoryIndex = mockCategories.findIndex(cat => cat.id === id);
+        if (categoryIndex === -1) {
+          throw new Error('Category not found');
+        }
+        
+        // Check if category has articles
+        const hasArticles = mockArticles.some(article => article.category?.id === id);
+        if (hasArticles) {
+          throw new Error('Cannot delete category that contains articles');
+        }
+        
+        mockCategories.splice(categoryIndex, 1);
+      },
+      'deleteCategory'
+    );
   }
 
   async createArticle(data: Record<string, unknown>): Promise<MagazineArticle> {
