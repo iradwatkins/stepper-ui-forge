@@ -63,53 +63,37 @@ export const useAdminPermissions = (): AdminPermissions => {
         };
 
         try {
-          // Try the RPC function first with correct parameter name
-          const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_permissions', {
-            user_id: user.id
-          });
-
-          if (!rpcError && rpcData?.[0]) {
-            const rpcResult = rpcData[0];
-            adminData = {
-              is_admin: rpcResult.is_admin || false,
-              admin_level: rpcResult.admin_level || 0,
-              can_manage_users: (rpcResult.admin_level || 0) >= 2,
-              can_manage_events: (rpcResult.admin_level || 0) >= 1,
-              can_view_analytics: (rpcResult.admin_level || 0) >= 1,
-              can_manage_system: (rpcResult.admin_level || 0) >= 3,
-              can_manage_billing: (rpcResult.admin_level || 0) >= 3
-            };
-          } else {
-            console.warn('RPC get_admin_permissions failed, falling back to direct query:', rpcError);
-            // Try to check if admin columns exist first
-            const { error: columnCheckError } = await supabase
+          // Skip RPC and go directly to profile query for reliability
+          console.log('🔐 Querying profile directly for admin permissions');
+          
+          // Try to check if admin columns exist first
+          const { error: columnCheckError } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .limit(0);
+          
+          if (!columnCheckError) {
+            // Columns exist, so query them
+            const { data: profileData, error: profileError } = await supabase
               .from('profiles')
-              .select('is_admin')
-              .limit(0);
-            
-            if (!columnCheckError) {
-              // Columns exist, so query them
-              const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('is_admin, admin_level')
-                .eq('id', user.id)
-                .single();
+              .select('is_admin, admin_level')
+              .eq('id', user.id)
+              .single();
 
-              if (!profileError && profileData) {
-                adminData = {
-                  is_admin: profileData.is_admin || false,
-                  admin_level: profileData.admin_level || 0,
-                  can_manage_users: (profileData.admin_level || 0) >= 2,
-                  can_manage_events: (profileData.admin_level || 0) >= 1,
-                  can_view_analytics: (profileData.admin_level || 0) >= 1,
-                  can_manage_system: (profileData.admin_level || 0) >= 3,
-                  can_manage_billing: (profileData.admin_level || 0) >= 3
-                };
-              }
-            } else if (columnCheckError.code === '42703') {
-              // Column doesn't exist - migration needed
-              console.warn('Admin columns not found. Migration 007_add_admin_permissions.sql needs to be run.');
+            if (!profileError && profileData) {
+              adminData = {
+                is_admin: profileData.is_admin || false,
+                admin_level: profileData.admin_level || 0,
+                can_manage_users: (profileData.admin_level || 0) >= 2,
+                can_manage_events: (profileData.admin_level || 0) >= 1,
+                can_view_analytics: (profileData.admin_level || 0) >= 1,
+                can_manage_system: (profileData.admin_level || 0) >= 3,
+                can_manage_billing: (profileData.admin_level || 0) >= 3
+              };
             }
+          } else if (columnCheckError.code === '42703') {
+            // Column doesn't exist - migration needed
+            console.warn('Admin columns not found. Migration 007_add_admin_permissions.sql needs to be run.');
           }
         } catch (error) {
           console.error('Error checking admin permissions:', error);

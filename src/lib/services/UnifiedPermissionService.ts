@@ -254,28 +254,8 @@ export class UnifiedPermissionService {
         }
       }
 
-      // Try RPC function first
-      try {
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_permissions', {
-          user_id: userId
-        })
-
-        if (!rpcError && rpcData?.[0]) {
-          const adminData = rpcData[0]
-          const adminLevel = adminData.admin_level || 0
-          return {
-            isAdmin: adminData.is_admin || false,
-            adminLevel,
-            canManageUsers: adminLevel >= 2,
-            canManageEvents: adminLevel >= 1,
-            canViewAnalytics: adminLevel >= 1,
-            canManageSystem: adminLevel >= 3,
-            canManageBilling: adminLevel >= 3
-          }
-        }
-      } catch (rpcError) {
-        console.warn('RPC function get_admin_permissions failed, using fallback:', rpcError)
-      }
+      // Skip RPC and use direct profile query for reliability
+      console.log('🔐 Using direct profile query for admin permissions');
 
       // Fallback to profile data
       if (profile) {

@@ -159,7 +159,7 @@ BEGIN
       SELECT 1 FROM information_schema.table_constraints 
       WHERE table_name = 'follower_promotions' 
       AND constraint_type = 'FOREIGN KEY'
-      AND constraint_name LIKE '%organizer_id%'
+      AND constraint_name = 'fk_follower_promotions_organizer'
     ) THEN
       -- Add foreign key constraint if missing
       ALTER TABLE follower_promotions 
