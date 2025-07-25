@@ -234,9 +234,7 @@ export default function ImageUpload({
             )}
             
             <div>
-              {!containerReady ? (
-                <p className="font-medium text-muted-foreground">Preparing upload area...</p>
-              ) : uploading ? (
+              {uploading ? (
                 <p className="font-medium">Uploading image...</p>
               ) : isDragActive ? (
                 isDragReject ? (

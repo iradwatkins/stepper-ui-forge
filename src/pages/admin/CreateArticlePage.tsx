@@ -411,8 +411,7 @@ export default function CreateArticlePage() {
               </div>
             </CardContent>
           </Card>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
