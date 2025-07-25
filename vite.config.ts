@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: '0.0.0.0',
+    host: true,  // This binds to both IPv4 and IPv6
     port: 8080,
     middlewareMode: false,
     strictPort: true,
