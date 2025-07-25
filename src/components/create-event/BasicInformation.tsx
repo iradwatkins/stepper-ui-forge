@@ -209,7 +209,7 @@ export const BasicInformation = ({
             </div>
 
             <div>
-              <Label htmlFor="venueName" className="text-sm font-medium">Venue Name *</Label>
+              <Label htmlFor="venueName" className="text-sm font-medium">Venue Name</Label>
               <Input
                 id="venueName"
                 placeholder="Enter venue or location name..."
@@ -222,7 +222,7 @@ export const BasicInformation = ({
             </div>
 
             <div>
-              <Label htmlFor="address" className="text-sm font-medium">Venue Address *</Label>
+              <Label htmlFor="address" className="text-sm font-medium">Venue Address</Label>
               <div className="mt-1">
                 <GooglePlacesInput
                   value={form.watch('address') || ''}

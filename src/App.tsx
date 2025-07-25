@@ -101,18 +101,26 @@ const MyBusinesses = lazy(() => import("./pages/dashboard/MyBusinesses"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
+import { CheckoutModal } from "./components/CheckoutModal";
+import { useCart } from "./contexts/CartContext";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const { isCheckoutOpen, checkoutProps, setIsCheckoutOpen } = useCart();
   
   return (
     <div className="min-h-screen bg-background">
       <FaviconManager fallbackFavicon="/steppers-icon.svg" />
       <ReferralTracker />
       {!isHomePage && <Navbar />}
+      <CheckoutModal 
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        {...checkoutProps}
+      />
       <Suspense fallback={<PageLoader />}>
         <Routes>
         <Route path="/" element={<Index />} />

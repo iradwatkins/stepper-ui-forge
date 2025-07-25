@@ -149,6 +149,114 @@ const mockArticles: MagazineArticle[] = [
         order: 3
       }
     ]
+  },
+  {
+    id: 4,
+    title: 'Overview of Chicago Steppin\' and Its Cultural Significance',
+    slug: 'overview-of-chicago-steppin-and-its-cultural-significance',
+    excerpt: 'Discover the rich history and cultural impact of Chicago Steppin\', a sophisticated partner dance that emerged from the African American community in Chicago.',
+    featuredImage: 'https://images.unsplash.com/photo-1547153760-18fc86324498?w=1200&h=600&fit=crop',
+    authorId: 4,
+    authorName: 'Cultural Historian',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=historian',
+    status: 'published',
+    createdAt: '2024-12-15T12:00:00Z',
+    updatedAt: '2024-12-15T12:00:00Z',
+    readTimeMinutes: 10,
+    viewCount: 1250,
+    category: mockCategories[3], // Stepping Culture
+    contentBlocks: [
+      {
+        id: 10,
+        type: 'image',
+        content: 'https://images.unsplash.com/photo-1517456215183-9a2c3b6d3e7f?w=1200&h=800&fit=crop',
+        order: 1
+      },
+      {
+        id: 11,
+        type: 'paragraph',
+        content: '<p>Chicago Steppin\' is more than just a dance; it\'s a cultural phenomenon that represents decades of African American social dance evolution. Born in the vibrant dance halls and clubs of Chicago\'s South Side, this elegant partner dance has become a symbol of sophistication, community, and cultural pride.</p>',
+        order: 2
+      },
+      {
+        id: 12,
+        type: 'header',
+        content: 'The Birth of a Movement',
+        order: 3
+      },
+      {
+        id: 13,
+        type: 'paragraph',
+        content: '<p>Chicago Steppin\' evolved from the Bop in the 1970s, a dance that was itself derived from the Jitterbug and Swing. What distinguished Steppin\' from its predecessors was its smooth, gliding movements and the emphasis on improvisational lead and follow techniques. The dance emerged during a time of cultural renaissance in Chicago\'s African American community, reflecting both tradition and innovation.</p>',
+        order: 4
+      },
+      {
+        id: 14,
+        type: 'youtube_video',
+        content: 'https://www.youtube.com/watch?v=6COmYeLsz4c',
+        order: 5
+      },
+      {
+        id: 15,
+        type: 'subheader',
+        content: 'The Music That Moves',
+        order: 6
+      },
+      {
+        id: 16,
+        type: 'paragraph',
+        content: '<p>Chicago Steppin\' is intrinsically linked to R&B, soul, and jazz music. The dance is performed to a specific tempo and rhythm that steppers call "Steppers\' Music." Artists like The Whispers, The Isley Brothers, and Frankie Beverly & Maze have become staples in the stepping community, with their smooth grooves providing the perfect backdrop for the dance\'s sophisticated movements.</p>',
+        order: 7
+      },
+      {
+        id: 17,
+        type: 'image',
+        content: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1200&h=800&fit=crop',
+        order: 8
+      },
+      {
+        id: 18,
+        type: 'header',
+        content: 'Cultural Impact and Community',
+        order: 9
+      },
+      {
+        id: 19,
+        type: 'paragraph',
+        content: '<p>The impact of Chicago Steppin\' extends far beyond the dance floor. It has created a tight-knit community that spans generations, bringing together people from all walks of life. Stepping sets (social gatherings where the dance is performed) have become important social institutions, providing spaces for networking, courtship, and cultural preservation.</p>',
+        order: 10
+      },
+      {
+        id: 20,
+        type: 'paragraph',
+        content: '<p>The dance has also had economic implications, spawning an industry of instructors, DJs, event promoters, and clothing designers who cater specifically to the stepping community. Annual stepping competitions and workshops draw thousands of participants from around the world, contributing to local economies and spreading Chicago\'s cultural influence globally.</p>',
+        order: 11
+      },
+      {
+        id: 21,
+        type: 'image',
+        content: 'https://images.unsplash.com/photo-1504609813442-a8924e83f76e?w=1200&h=800&fit=crop',
+        order: 12
+      },
+      {
+        id: 22,
+        type: 'subheader',
+        content: 'Preserving the Legacy',
+        order: 13
+      },
+      {
+        id: 23,
+        type: 'paragraph',
+        content: '<p>Today, Chicago Steppin\' continues to evolve while maintaining its core principles of smoothness, style, and connection. Young dancers are learning from master steppers, ensuring that the tradition is passed down authentically. Social media and online platforms have helped spread the dance internationally, with stepping communities now thriving in cities across the United States and beyond.</p>',
+        order: 14
+      },
+      {
+        id: 24,
+        type: 'paragraph',
+        content: '<p>The cultural significance of Chicago Steppin\' cannot be overstated. It represents resilience, creativity, and the power of community. As both an art form and a social practice, it continues to bring joy, foster connections, and preserve an important piece of African American cultural heritage for future generations.</p>',
+        order: 15
+      }
+    ]
   }
 ];
 
@@ -174,7 +282,7 @@ class MagazineService {
         throw error;
       }
       
-      console.warn(`Using mock data in development mode`);
+      console.warn(`📚 Using mock data for ${operationName} in development mode`);
       return mockData;
     }
   }
@@ -291,6 +399,7 @@ class MagazineService {
   }
 
   async getArticleBySlug(slug: string): Promise<MagazineArticle | null> {
+    console.log('🔍 Fetching article with slug:', slug);
     return this.withFallback(
       async () => {
         // First get the article

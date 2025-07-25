@@ -350,6 +350,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       eventTitle: event.title,
       eventDate: event.date,
       eventTime: event.time,
+      eventLocation: event.location || 'TO BE ANNOUNCED',
       earlyBirdPrice: ticketType.early_bird_price || undefined,
       earlyBirdUntil: ticketType.early_bird_until || undefined,
       maxPerPerson: ticketType.max_per_person

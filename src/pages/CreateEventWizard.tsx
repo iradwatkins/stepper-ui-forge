@@ -180,9 +180,14 @@ export default function CreateEventWizard() {
       }
 
       // Combine venue name with address for location field
-      let locationWithVenue = formData.address.trim();
-      if (formData.venueName?.trim()) {
-        locationWithVenue = `${formData.venueName.trim()}, ${formData.address.trim()}`;
+      const trimmedAddress = formData.address?.trim() || '';
+      const trimmedVenueName = formData.venueName?.trim() || '';
+      
+      let locationWithVenue = 'TO BE ANNOUNCED';
+      if (trimmedAddress) {
+        locationWithVenue = trimmedVenueName ? `${trimmedVenueName}, ${trimmedAddress}` : trimmedAddress;
+      } else if (trimmedVenueName) {
+        locationWithVenue = trimmedVenueName;
       }
 
       // Debug venue_name specifically
