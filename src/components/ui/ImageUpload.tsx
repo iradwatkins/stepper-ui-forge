@@ -29,39 +29,7 @@ export default function ImageUpload({
   folder = 'featured-images'
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [containerReady, setContainerReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const containerId = `image-upload-${Math.random().toString(36).substring(2)}`;
-
-  // Wait for container to be ready
-  useEffect(() => {
-    const initializeContainer = async () => {
-      try {
-        // Detect browser extension interference
-        const extensionCheck = detectBrowserExtensions();
-        if (extensionCheck.hasExtensions) {
-          console.warn('[ImageUpload] Browser extensions detected:', extensionCheck.message);
-        }
-
-        // Wait for container to be ready
-        await waitForContainer(containerId, containerRef, {
-          maxAttempts: 20,
-          interval: 100,
-          requiresRef: true,
-          requireSize: false
-        });
-        
-        console.log('[ImageUpload] Container ready');
-        setContainerReady(true);
-      } catch (error) {
-        console.error('[ImageUpload] Container initialization failed:', error);
-        // Allow component to function without container detection
-        setContainerReady(true);
-      }
-    };
-
-    initializeContainer();
-  }, [containerId]);
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
@@ -157,13 +125,6 @@ export default function ImageUpload({
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
-    // Wait for container to be ready before processing
-    if (!containerReady) {
-      console.log('[ImageUpload] Waiting for container before upload...');
-      toast.info('Preparing upload area...');
-      return;
-    }
-
     const file = acceptedFiles[0];
     
     // Validate file size
@@ -184,18 +145,39 @@ export default function ImageUpload({
       onChange(uploadedUrl);
       toast.success('Image uploaded successfully!');
     }
-  }, [maxSizeMB, acceptedFormats, onChange, containerReady]);
+  }, [maxSizeMB, acceptedFormats, onChange]);
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     accept: acceptedFormats.reduce((acc, format) => ({ ...acc, [format]: [] }), {}),
     maxFiles: 1,
-    disabled: disabled || uploading || !containerReady,
+    disabled: disabled || uploading,
   });
 
   const removeImage = () => {
     onChange(null);
   };
+
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          console.log(`[ImageUpload] Processing pasted image: ${file.name} (${file.size} bytes)`);
+          const uploadedUrl = await uploadImage(file);
+          if (uploadedUrl) {
+            onChange(uploadedUrl);
+            toast.success('Image uploaded successfully!');
+          }
+        }
+        break;
+      }
+    }
+  }, [onChange]);
 
   if (value) {
     return (
