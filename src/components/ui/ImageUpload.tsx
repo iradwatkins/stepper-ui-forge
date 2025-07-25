@@ -252,6 +252,9 @@ export default function ImageUpload({
                   <p className="text-sm text-muted-foreground">
                     Supports JPEG, PNG, WebP, GIF up to {maxSizeMB}MB
                   </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    💡 Tip: You can also paste images from your clipboard
+                  </p>
                 </>
               )}
             </div>

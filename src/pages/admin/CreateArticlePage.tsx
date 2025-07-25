@@ -38,7 +38,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import ImageUpload from '@/components/ui/ImageUpload';
+import SimpleImageUpload from '@/components/ui/SimpleImageUpload';
 
 interface ContentBlockEditor extends ContentBlock {
   isEditing?: boolean;
@@ -232,11 +232,10 @@ export default function CreateArticlePage() {
             )}
             {block.type === 'image' && (
               <div className="space-y-3">
-                <ImageUpload
+                <SimpleImageUpload
                   value={block.content}
                   onChange={(url) => updateContentBlock(block.id, { content: url || '' })}
-                  bucket="magazine-images"
-                  folder="content-images"
+                  placeholder="Upload, paste, or drop an image here"
                 />
               </div>
             )}
@@ -471,12 +470,11 @@ export default function CreateArticlePage() {
               </div>
               <div>
                 <Label>Featured Image</Label>
-                <ImageUpload
+                <SimpleImageUpload
                   value={featuredImage}
                   onChange={(url) => setFeaturedImage(url || '')}
                   className="mt-2"
-                  bucket="magazine-images"
-                  folder="featured-images"
+                  placeholder="Upload featured image for the article"
                 />
               </div>
             </CardContent>
