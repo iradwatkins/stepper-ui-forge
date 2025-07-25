@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -76,9 +76,16 @@ export default function MagazineManagementPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [deleteDialogArticle, setDeleteDialogArticle] = useState<MagazineArticle | null>(null);
+  const initialLoadRef = useRef(false);
 
-  // Apply filters when they change
+  // Apply filters when they change, but skip initial empty filter load
   useEffect(() => {
+    // Skip if this is the first render and filters are empty
+    if (!initialLoadRef.current && !filters.search && !filters.status && !filters.categoryId) {
+      initialLoadRef.current = true;
+      return;
+    }
+    
     fetchAllArticles(filters);
   }, [filters, fetchAllArticles]);
 

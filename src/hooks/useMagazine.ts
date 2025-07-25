@@ -146,7 +146,7 @@ export const useAdminMagazine = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAllCategories = async () => {
+  const fetchAllCategories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -159,7 +159,7 @@ export const useAdminMagazine = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const createCategory = async (name: string, description?: string): Promise<MagazineCategory | null> => {
     try {
@@ -228,7 +228,7 @@ export const useAdminMagazine = () => {
     }
   };
 
-  const fetchAllArticles = async (filters: Record<string, string> = {}) => {
+  const fetchAllArticles = useCallback(async (filters: Record<string, string> = {}) => {
     try {
       setLoading(true);
       setError(null);
@@ -241,7 +241,7 @@ export const useAdminMagazine = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const createArticle = async (data: Record<string, unknown>): Promise<MagazineArticle | null> => {
     try {
@@ -312,7 +312,7 @@ export const useAdminMagazine = () => {
   useEffect(() => {
     fetchAllCategories();
     fetchAllArticles();
-  }, []);
+  }, [fetchAllCategories, fetchAllArticles]);
 
   return {
     categories,
