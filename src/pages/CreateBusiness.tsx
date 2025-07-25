@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,6 +36,8 @@ import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { 
   CommunityBusinessService,
   BusinessCategory,
+  BusinessType,
+  ServiceRateType,
   PriceRange,
   BusinessHours,
   SocialMedia
@@ -43,44 +45,103 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-// Validation schema
-const businessSchema = z.object({
-  business_name: z.string().min(2, 'Business name must be at least 2 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  category: z.string().min(1, 'Please select a category'),
-  subcategory: z.string().optional(),
-  contact_email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  contact_phone: z.string().optional(),
-  website_url: z.string().url('Invalid website URL').optional().or(z.literal('')),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zip_code: z.string().optional(),
-  price_range: z.enum(['$', '$$', '$$$', '$$$$']).optional(),
-  service_area_radius: z.number().min(0).max(500).optional()
-});
+// Validation schema - dynamic based on business type
+const createBusinessSchema = (businessType: BusinessType) => {
+  const baseSchema = {
+    business_name: z.string().min(2, 'Business name must be at least 2 characters'),
+    description: z.string().min(10, 'Description must be at least 10 characters'),
+    category: z.string().min(1, 'Please select a category'),
+    business_type: z.string().min(1, 'Please select a business type'),
+    subcategory: z.string().optional(),
+    contact_email: z.string().email('Invalid email address').optional().or(z.literal('')),
+    contact_phone: z.string().optional(),
+    website_url: z.string().url('Invalid website URL').optional().or(z.literal('')),
+    price_range: z.enum(['$', '$$', '$$$', '$$$$']).optional(),
+    service_area_radius: z.number().min(0).max(500).optional()
+  };
 
-type BusinessFormData = z.infer<typeof businessSchema>;
+  // Conditional validation based on business type
+  if (CommunityBusinessService.requiresPhysicalAddress(businessType)) {
+    return z.object({
+      ...baseSchema,
+      address: z.string().min(1, 'Address is required for physical businesses'),
+      city: z.string().min(1, 'City is required for physical businesses'),
+      state: z.string().min(1, 'State is required for physical businesses'),
+      zip_code: z.string().optional()
+    });
+  }
+
+  if (businessType === 'online_business') {
+    return z.object({
+      ...baseSchema,
+      website_url: z.string().url('Website URL is required for online businesses'),
+      address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zip_code: z.string().optional()
+    });
+  }
+
+  if (businessType === 'service_provider' || businessType === 'mobile_service') {
+    return z.object({
+      ...baseSchema,
+      address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zip_code: z.string().optional(),
+      service_area_radius: z.number().min(1, 'Service area radius is required').max(500)
+    });
+  }
+
+  return z.object({
+    ...baseSchema,
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip_code: z.string().optional()
+  });
+};
+
+type BusinessFormData = {
+  business_name: string;
+  description: string;
+  category: string;
+  business_type: string;
+  subcategory?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  website_url?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  price_range?: PriceRange;
+  service_area_radius?: number;
+};
 
 export default function CreateBusiness() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [selectedBusinessType, setSelectedBusinessType] = useState<BusinessType>('physical_business');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [newSpecialty, setNewSpecialty] = useState('');
+  const [serviceOfferings, setServiceOfferings] = useState<string[]>([]);
+  const [newServiceOffering, setNewServiceOffering] = useState('');
   const [businessHours, setBusinessHours] = useState<BusinessHours>({});
   const [socialMedia, setSocialMedia] = useState<SocialMedia>({});
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
   const form = useForm<BusinessFormData>({
-    resolver: zodResolver(businessSchema),
+    resolver: zodResolver(createBusinessSchema(selectedBusinessType)),
     defaultValues: {
       business_name: '',
       description: '',
       category: '',
+      business_type: 'physical_business',
       subcategory: '',
       contact_email: user?.email || '',
       contact_phone: '',
@@ -89,11 +150,22 @@ export default function CreateBusiness() {
       city: '',
       state: '',
       zip_code: '',
-      service_area_radius: 25
+      service_area_radius: CommunityBusinessService.getDefaultServiceAreaRadius('physical_business') || 25
     }
   });
 
+  // Update form validation when business type changes
+  React.useEffect(() => {
+    form.clearErrors();
+    const defaultRadius = CommunityBusinessService.getDefaultServiceAreaRadius(selectedBusinessType);
+    if (defaultRadius) {
+      form.setValue('service_area_radius', defaultRadius);
+    }
+  }, [selectedBusinessType, form]);
+
   const categories = CommunityBusinessService.getBusinessCategories();
+  const businessTypes = CommunityBusinessService.getBusinessTypes();
+  const serviceRateTypes = CommunityBusinessService.getServiceRateTypes();
 
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
@@ -115,6 +187,17 @@ export default function CreateBusiness() {
 
   const removeSpecialty = (specialtyToRemove: string) => {
     setSpecialties(specialties.filter(specialty => specialty !== specialtyToRemove));
+  };
+
+  const addServiceOffering = () => {
+    if (newServiceOffering.trim() && !serviceOfferings.includes(newServiceOffering.trim())) {
+      setServiceOfferings([...serviceOfferings, newServiceOffering.trim()]);
+      setNewServiceOffering('');
+    }
+  };
+
+  const removeServiceOffering = (offeringToRemove: string) => {
+    setServiceOfferings(serviceOfferings.filter(offering => offering !== offeringToRemove));
   };
 
   const updateBusinessHours = (day: keyof BusinessHours, hours: { open: string; close: string; closed?: boolean }) => {
@@ -185,9 +268,11 @@ export default function CreateBusiness() {
       const businessData = {
         ...data,
         category: data.category as BusinessCategory,
+        business_type: selectedBusinessType,
         price_range: data.price_range as PriceRange,
         tags,
         specialties,
+        service_offerings: serviceOfferings.length > 0 ? serviceOfferings : undefined,
         business_hours: Object.keys(businessHours).length > 0 ? businessHours : undefined,
         social_media: Object.keys(socialMedia).length > 0 ? socialMedia : undefined,
         gallery_images: uploadedImages,
@@ -240,9 +325,9 @@ export default function CreateBusiness() {
             Back to Community
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Add Your Business</h1>
+            <h1 className="text-3xl font-bold">Add Your Business or Service</h1>
             <p className="text-muted-foreground">
-              Create a listing to connect with our community
+              List your business, service, or venue in our community directory
             </p>
           </div>
         </div>
@@ -251,13 +336,68 @@ export default function CreateBusiness() {
           {/* Form */}
           <div className="lg:col-span-2">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+              <Tabs defaultValue="type" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="type">Type</TabsTrigger>
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
                   <TabsTrigger value="contact">Contact</TabsTrigger>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="hours">Hours</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="type" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Business Type</CardTitle>
+                      <CardDescription>
+                        Choose the type that best describes your listing
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {businessTypes.map((type) => (
+                          <div
+                            key={type.value}
+                            onClick={() => {
+                              setSelectedBusinessType(type.value);
+                              form.setValue('business_type', type.value);
+                            }}
+                            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                              selectedBusinessType === type.value
+                                ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className="text-2xl">{type.icon}</div>
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-sm">{type.label}</h3>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {type.description}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Business Type Specific Info */}
+                      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <h4 className="font-medium text-sm mb-2">
+                          Requirements for {CommunityBusinessService.getBusinessTypeLabel(selectedBusinessType)}:
+                        </h4>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          {CommunityBusinessService.getRequiredFieldsForType(selectedBusinessType).map((field) => (
+                            <li key={field} className="flex items-center space-x-2">
+                              <CheckCircle className="w-3 h-3 text-green-500" />
+                              <span className="capitalize">{field.replace('_', ' ')}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
                 <TabsContent value="basic" className="space-y-6">
                   <Card>
@@ -332,20 +472,80 @@ export default function CreateBusiness() {
                         )}
                       </div>
 
-                      <div>
-                        <Label htmlFor="price_range">Price Range</Label>
-                        <Select onValueChange={(value: PriceRange) => form.setValue('price_range', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select price range" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="$">$ - Budget friendly</SelectItem>
-                            <SelectItem value="$$">$$ - Moderate</SelectItem>
-                            <SelectItem value="$$$">$$$ - Premium</SelectItem>
-                            <SelectItem value="$$$$">$$$$ - Luxury</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {/* Conditional Price Range or Service Rate */}
+                      {selectedBusinessType === 'service_provider' ? (
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="hourly_rate">Service Rate</Label>
+                            <div className="flex space-x-2">
+                              <Input
+                                id="hourly_rate"
+                                type="number"
+                                placeholder="Enter rate"
+                                className="flex-1"
+                              />
+                              <Select>
+                                <SelectTrigger className="w-40">
+                                  <SelectValue placeholder="Rate type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {serviceRateTypes.map(rateType => (
+                                    <SelectItem key={rateType.value} value={rateType.value}>
+                                      {rateType.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <Label htmlFor="price_range">Price Range</Label>
+                          <Select onValueChange={(value: PriceRange) => form.setValue('price_range', value)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select price range" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="$">$ - Budget friendly</SelectItem>
+                              <SelectItem value="$$">$$ - Moderate</SelectItem>
+                              <SelectItem value="$$$">$$$ - Premium</SelectItem>
+                              <SelectItem value="$$$$">$$$$ - Luxury</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Service-specific fields */}
+                      {(selectedBusinessType === 'service_provider' || selectedBusinessType === 'mobile_service') && (
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Service Offerings</Label>
+                            <div className="flex gap-2 mb-2">
+                              <Input
+                                value={newServiceOffering}
+                                onChange={(e) => setNewServiceOffering(e.target.value)}
+                                placeholder="Add a service offering"
+                                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addServiceOffering())}
+                              />
+                              <Button type="button" onClick={addServiceOffering}>
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {serviceOfferings.map(offering => (
+                                <Badge key={offering} variant="secondary" className="flex items-center gap-1">
+                                  {offering}
+                                  <X
+                                    className="w-3 h-3 cursor-pointer"
+                                    onClick={() => removeServiceOffering(offering)}
+                                  />
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Image Upload Section */}
                       <div>
@@ -530,18 +730,29 @@ export default function CreateBusiness() {
                         />
                       </div>
 
-                      <div>
-                        <Label htmlFor="service_area_radius">Service Area Radius (miles)</Label>
-                        <Input
-                          id="service_area_radius"
-                          type="number"
-                          {...form.register('service_area_radius', { valueAsNumber: true })}
-                          placeholder="25"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Leave blank for online-only services
-                        </p>
-                      </div>
+                      {/* Conditional Service Area */}
+                      {(selectedBusinessType === 'service_provider' || selectedBusinessType === 'mobile_service') && (
+                        <div>
+                          <Label htmlFor="service_area_radius">Service Area Radius (miles)</Label>
+                          <Input
+                            id="service_area_radius"
+                            type="number"
+                            {...form.register('service_area_radius', { valueAsNumber: true })}
+                            placeholder={CommunityBusinessService.getDefaultServiceAreaRadius(selectedBusinessType)?.toString() || "25"}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            How far are you willing to travel or provide services?
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedBusinessType === 'online_business' && (
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <p className="text-sm text-muted-foreground">
+                            As an online business, make sure to provide a website URL in the contact section.
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -606,6 +817,36 @@ export default function CreateBusiness() {
                           ))}
                         </div>
                       </div>
+
+                      {/* Online Booking for Service Providers */}
+                      {CommunityBusinessService.supportsOnlineBooking(selectedBusinessType) && (
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="accepts_booking" className="rounded" />
+                            <Label htmlFor="accepts_booking" className="text-sm">
+                              Accept online booking/scheduling
+                            </Label>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="min_duration">Min Booking (minutes)</Label>
+                              <Input
+                                id="min_duration"
+                                type="number"
+                                placeholder="60"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="advance_notice">Advance Notice (hours)</Label>
+                              <Input
+                                id="advance_notice"
+                                type="number"
+                                placeholder="24"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -613,9 +854,15 @@ export default function CreateBusiness() {
                 <TabsContent value="hours" className="space-y-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Business Hours</CardTitle>
+                      <CardTitle>
+                        {selectedBusinessType === 'service_provider' ? 'Availability' : 'Business Hours'}
+                      </CardTitle>
                       <CardDescription>
-                        When are you available?
+                        {selectedBusinessType === 'service_provider' 
+                          ? 'When are you available to provide services?' 
+                          : selectedBusinessType === 'online_business'
+                          ? 'When do you respond to inquiries?'
+                          : 'When are you open?'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -700,7 +947,7 @@ export default function CreateBusiness() {
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                Your listing will be reviewed before being published to ensure quality and relevance to our community.
+                Your {selectedBusinessType === 'service_provider' ? 'service' : 'business'} listing will be reviewed before being published to ensure quality and relevance to our community.
               </AlertDescription>
             </Alert>
 

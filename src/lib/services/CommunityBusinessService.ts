@@ -22,6 +22,20 @@ export type BusinessCategory =
   | 'travel_hospitality'
   | 'other';
 
+export type BusinessType = 
+  | 'physical_business'
+  | 'service_provider'
+  | 'venue'
+  | 'online_business'
+  | 'mobile_service';
+
+export type ServiceRateType = 
+  | 'hourly'
+  | 'per_project'
+  | 'per_session'
+  | 'per_day'
+  | 'fixed';
+
 export type BusinessStatus = 'pending' | 'approved' | 'suspended' | 'rejected';
 
 export type PriceRange = '$' | '$$' | '$$$' | '$$$$';
@@ -52,6 +66,7 @@ export interface CommunityBusiness {
   description: string;
   category: BusinessCategory;
   subcategory?: string;
+  business_type: BusinessType;
   contact_email?: string;
   contact_phone?: string;
   website_url?: string;
@@ -86,6 +101,18 @@ export interface CommunityBusiness {
   created_at: string;
   updated_at: string;
   last_active_at?: string;
+  // Service-specific fields
+  hourly_rate?: number;
+  service_rate_type?: ServiceRateType;
+  min_booking_duration?: number;
+  max_booking_duration?: number;
+  availability_schedule?: Record<string, { start: string; end: string; available: boolean }>;
+  booking_advance_notice?: number;
+  accepts_online_booking?: boolean;
+  service_offerings?: string[];
+  service_area_description?: string;
+  travel_fee?: number;
+  max_travel_distance?: number;
 }
 
 export interface BusinessReview {
@@ -118,6 +145,7 @@ export interface BusinessInquiry {
 
 export interface BusinessSearchFilters {
   category?: BusinessCategory;
+  businessType?: BusinessType;
   location?: {
     city?: string;
     state?: string;
@@ -129,7 +157,8 @@ export interface BusinessSearchFilters {
   rating?: number; // minimum rating
   verified?: boolean;
   tags?: string[];
-  sortBy?: 'newest' | 'oldest' | 'rating' | 'alphabetical' | 'featured';
+  serviceType?: 'booking_available' | 'online_service' | 'mobile_service';
+  sortBy?: 'newest' | 'oldest' | 'rating' | 'alphabetical' | 'featured' | 'distance';
   limit?: number;
   offset?: number;
 }
@@ -150,6 +179,10 @@ export class CommunityBusinessService {
     // Apply filters
     if (filters.category) {
       query = query.eq('category', filters.category);
+    }
+
+    if (filters.businessType) {
+      query = query.eq('business_type', filters.businessType);
     }
 
     if (filters.location?.city) {
@@ -174,6 +207,20 @@ export class CommunityBusinessService {
 
     if (filters.tags && filters.tags.length > 0) {
       query = query.overlaps('tags', filters.tags);
+    }
+
+    if (filters.serviceType) {
+      switch (filters.serviceType) {
+        case 'booking_available':
+          query = query.eq('accepts_online_booking', true);
+          break;
+        case 'online_service':
+          query = query.eq('business_type', 'online_business');
+          break;
+        case 'mobile_service':
+          query = query.eq('business_type', 'mobile_service');
+          break;
+      }
     }
 
     // Apply sorting
@@ -539,5 +586,180 @@ export class CommunityBusinessService {
       { value: 'travel_hospitality', label: 'Travel & Hospitality', description: 'Travel planning, accommodations, tours' },
       { value: 'other', label: 'Other', description: 'Services not listed in other categories' }
     ];
+  }
+
+  /**
+   * Get business types for selection
+   */
+  static getBusinessTypes(): Array<{
+    value: BusinessType;
+    label: string;
+    description: string;
+    icon: string;
+  }> {
+    return [
+      { 
+        value: 'physical_business', 
+        label: 'Physical Business', 
+        description: 'Brick-and-mortar stores, restaurants, shops with fixed locations',
+        icon: '🏪'
+      },
+      { 
+        value: 'service_provider', 
+        label: 'Service Provider', 
+        description: 'Individual professionals offering services (instructors, consultants, etc.)',
+        icon: '👨‍💼'
+      },
+      { 
+        value: 'venue', 
+        label: 'Venue', 
+        description: 'Event spaces, studios, halls available for booking',
+        icon: '🏢'
+      },
+      { 
+        value: 'online_business', 
+        label: 'Online Business', 
+        description: 'E-commerce stores, digital services, virtual businesses',
+        icon: '💻'
+      },
+      { 
+        value: 'mobile_service', 
+        label: 'Mobile Service', 
+        description: 'Services that travel to the customer location',
+        icon: '🚗'
+      }
+    ];
+  }
+
+  /**
+   * Get service rate types
+   */
+  static getServiceRateTypes(): Array<{
+    value: ServiceRateType;
+    label: string;
+    description: string;
+  }> {
+    return [
+      { value: 'hourly', label: 'Hourly Rate', description: 'Charged per hour of service' },
+      { value: 'per_project', label: 'Per Project', description: 'Fixed rate per project or job' },
+      { value: 'per_session', label: 'Per Session', description: 'Fixed rate per session or appointment' },
+      { value: 'per_day', label: 'Per Day', description: 'Daily rate for extended services' },
+      { value: 'fixed', label: 'Fixed Price', description: 'Set price for specific services' }
+    ];
+  }
+
+  /**
+   * Helper methods for business type logic
+   */
+  static isServiceProvider(businessType: BusinessType): boolean {
+    return businessType === 'service_provider';
+  }
+
+  static requiresPhysicalAddress(businessType: BusinessType): boolean {
+    return businessType === 'physical_business' || businessType === 'venue';
+  }
+
+  static supportsOnlineBooking(businessType: BusinessType): boolean {
+    return businessType === 'service_provider' || businessType === 'venue';
+  }
+
+  static canHaveMobileService(businessType: BusinessType): boolean {
+    return businessType === 'service_provider' || businessType === 'mobile_service';
+  }
+
+  static getBusinessTypeLabel(businessType: BusinessType): string {
+    const types = this.getBusinessTypes();
+    return types.find(t => t.value === businessType)?.label || businessType;
+  }
+
+  static getRequiredFieldsForType(businessType: BusinessType): string[] {
+    const baseFields = ['business_name', 'description', 'category'];
+    
+    switch (businessType) {
+      case 'physical_business':
+      case 'venue':
+        return [...baseFields, 'address', 'city', 'state'];
+      case 'service_provider':
+        return [...baseFields, 'service_offerings'];
+      case 'online_business':
+        return [...baseFields, 'website_url'];
+      case 'mobile_service':
+        return [...baseFields, 'service_area_radius', 'service_offerings'];
+      default:
+        return baseFields;
+    }
+  }
+
+  static getDefaultServiceAreaRadius(businessType: BusinessType): number | null {
+    switch (businessType) {
+      case 'service_provider':
+        return 25;
+      case 'mobile_service':
+        return 50;
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Get businesses by type with type-specific sorting
+   */
+  static async getBusinessesByType(businessType: BusinessType, filters: BusinessSearchFilters = {}): Promise<{
+    businesses: CommunityBusiness[];
+    total: number;
+  }> {
+    const typeFilters = { ...filters, businessType };
+    
+    // Add type-specific sorting
+    if (!typeFilters.sortBy) {
+      switch (businessType) {
+        case 'service_provider':
+          typeFilters.sortBy = 'rating';
+          break;
+        case 'venue':
+          typeFilters.sortBy = 'featured';
+          break;
+        default:
+          typeFilters.sortBy = 'newest';
+      }
+    }
+    
+    return this.getBusinesses(typeFilters);
+  }
+
+  /**
+   * Get service providers with availability
+   */
+  static async getAvailableServiceProviders(filters: BusinessSearchFilters = {}): Promise<{
+    businesses: CommunityBusiness[];
+    total: number;
+  }> {
+    return this.getBusinesses({
+      ...filters,
+      businessType: 'service_provider',
+      serviceType: 'booking_available'
+    });
+  }
+
+  /**
+   * Search businesses with type-aware logic
+   */
+  static async searchByTypeAndLocation(
+    query: string, 
+    businessType?: BusinessType, 
+    userLocation?: { lat: number; lng: number }, 
+    radius: number = 25
+  ): Promise<{ businesses: CommunityBusiness[]; total: number }> {
+    const filters: BusinessSearchFilters = {
+      businessType,
+      location: userLocation ? {
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        radius
+      } : undefined,
+      sortBy: userLocation ? 'distance' : 'rating'
+    };
+    
+    return this.searchBusinesses(query, filters);
   }
 }

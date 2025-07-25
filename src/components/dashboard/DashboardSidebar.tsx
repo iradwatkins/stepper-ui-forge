@@ -194,6 +194,11 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         title: 'Liked Events',
         href: '/dashboard/liked',
         icon: Heart
+      },
+      {
+        title: 'List Business/Service',
+        href: '/dashboard/businesses/create',
+        icon: Building2
       }
     ]
 
@@ -399,6 +404,11 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       title: 'Profile',
       href: '/dashboard/profile',
       icon: User
+    },
+    {
+      title: 'My Businesses',
+      href: '/dashboard/businesses',
+      icon: Building2
     },
     {
       title: 'Notifications',

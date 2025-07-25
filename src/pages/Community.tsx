@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Store, MapPin, Phone, Globe, Star, Search, Filter, Plus, Clock, CheckCircle, Users, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Store, MapPin, Phone, Globe, Star, Search, Filter, Plus, Clock, CheckCircle, Users, Heart, ChevronLeft, ChevronRight, Building, Calendar, Car, Laptop } from 'lucide-react';
 import { LocationSearchBar, LocationFilterPanel, LocationMapToggle } from '@/components/location';
 import { SimpleMapView } from '@/components/map';
 import { BusinessCard } from '@/components/business';
@@ -15,11 +15,12 @@ import {
   filterByLocation, 
   getDistanceText 
 } from '@/services/locationSearchService';
-import { CommunityBusinessService, CommunityBusiness, BusinessCategory } from '@/lib/services/CommunityBusinessService';
+import { CommunityBusinessService, CommunityBusiness, BusinessCategory, BusinessType } from '@/lib/services/CommunityBusinessService';
 import { Link } from 'react-router-dom';
 
 export default function Community() {
   const [activeTab, setActiveTab] = useState('all');
+  const [businessTypeFilter, setBusinessTypeFilter] = useState<BusinessType | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
 
@@ -48,7 +49,8 @@ export default function Community() {
       subtitle: "Find a service provider.",
       description: "Connect with trusted professionals for home services, repairs, and maintenance",
       buttonText: "Find Services",
-      gradient: "from-emerald-600 to-teal-600"
+      gradient: "from-emerald-600 to-teal-600",
+      businessType: 'service_provider' as BusinessType
     },
     {
       id: 2,
@@ -56,7 +58,17 @@ export default function Community() {
       subtitle: "near you.",
       description: "Discover local businesses that understand and support our stepping community",
       buttonText: "Browse Businesses",
-      gradient: "from-purple-600 to-indigo-600"
+      gradient: "from-purple-600 to-indigo-600",
+      businessType: 'physical_business' as BusinessType
+    },
+    {
+      id: 3,
+      title: "Book your next event venue",
+      subtitle: "for stepping events.",
+      description: "Find the perfect venue for your next stepping event, practice, or celebration",
+      buttonText: "Browse Venues",
+      gradient: "from-blue-600 to-cyan-600",
+      businessType: 'venue' as BusinessType
     }
   ];
 
@@ -128,16 +140,20 @@ export default function Community() {
       const matchesSearch = business.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            business.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (business.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                           (business.city || '').toLowerCase().includes(searchTerm.toLowerCase());
+                           (business.city || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (business.service_offerings || []).some(service => service.toLowerCase().includes(searchTerm.toLowerCase()));
       
       // Category filter
       const matchesCategory = activeTab === 'all' || business.category === activeTab;
+      
+      // Business type filter
+      const matchesBusinessType = businessTypeFilter === 'all' || business.business_type === businessTypeFilter;
       
       // Location filter (legacy dropdown)
       const matchesLocation = selectedLocation === 'All Locations' || 
                               `${business.city || ''}, ${business.state || ''}` === selectedLocation;
       
-      return matchesSearch && matchesCategory && matchesLocation;
+      return matchesSearch && matchesCategory && matchesBusinessType && matchesLocation;
     });
 
     // Location-based filtering
@@ -173,12 +189,18 @@ export default function Community() {
                       {slide.description}
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                      <Button size="lg" className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-4">
+                      <Button 
+                        size="lg" 
+                        className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-4"
+                        onClick={() => slide.businessType && setBusinessTypeFilter(slide.businessType)}
+                      >
                         {slide.buttonText}
                       </Button>
-                      <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8 py-4">
-                        Learn More
-                      </Button>
+                      <Link to="/dashboard/businesses/create">
+                        <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 text-lg px-8 py-4">
+                          List Your {slide.businessType === 'service_provider' ? 'Service' : 'Business'}
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                   <div className="hidden lg:block">
@@ -384,6 +406,41 @@ export default function Community() {
                   className="w-full mb-4"
                 />
 
+                {/* Business Type Filter */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium mb-2">Business Type</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setBusinessTypeFilter('all')}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                        businessTypeFilter === 'all'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10'
+                      }`}
+                    >
+                      All Types
+                    </button>
+                    {CommunityBusinessService.getBusinessTypes().map((type) => (
+                      <button
+                        key={type.value}
+                        onClick={() => setBusinessTypeFilter(type.value)}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+                          businessTypeFilter === type.value
+                            ? 'bg-green-600 text-white'
+                            : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10'
+                        }`}
+                      >
+                        {type.value === 'physical_business' && <Building className="w-3.5 h-3.5" />}
+                        {type.value === 'service_provider' && <Calendar className="w-3.5 h-3.5" />}
+                        {type.value === 'mobile_service' && <Car className="w-3.5 h-3.5" />}
+                        {type.value === 'online_business' && <Laptop className="w-3.5 h-3.5" />}
+                        {type.value === 'venue' && <Building className="w-3.5 h-3.5" />}
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Category Tabs */}
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -468,10 +525,10 @@ export default function Community() {
               coordinates: business.latitude && business.longitude ? {
                 lat: business.latitude,
                 lng: business.longitude
-              } : null,
+              } : undefined,
               description: business.description,
               category: business.category
-            }))}
+            })) as any}
             userLocation={userLocation}
             onItemClick={(item) => {
               // Could navigate to business detail page
@@ -526,6 +583,7 @@ export default function Community() {
                   onClick={() => {
                     setSearchTerm('');
                     setActiveTab('all');
+                    setBusinessTypeFilter('all');
                     setSelectedLocation('All Locations');
                     handleClearLocation();
                   }}

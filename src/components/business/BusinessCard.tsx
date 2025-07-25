@@ -12,7 +12,12 @@ import {
   Eye,
   Check,
   ExternalLink,
-  MessageCircle
+  MessageCircle,
+  Calendar,
+  Car,
+  Laptop,
+  Building,
+  Clock
 } from 'lucide-react';
 import { CommunityBusiness, CommunityBusinessService } from '@/lib/services/CommunityBusinessService';
 import { BusinessDetailModal } from './BusinessDetailModal';
@@ -95,14 +100,18 @@ export function BusinessCard({
             )}
           </div>
 
-          {/* Price range badge */}
-          {business.price_range && (
-            <div className="absolute top-3 right-3">
+          {/* Price/Rate display based on type */}
+          <div className="absolute top-3 right-3">
+            {business.business_type === 'service_provider' && business.hourly_rate ? (
+              <Badge className="bg-black/70 text-white backdrop-blur-sm">
+                ${business.hourly_rate}/{business.service_rate_type || 'hr'}
+              </Badge>
+            ) : business.price_range ? (
               <Badge className="bg-black/70 text-white backdrop-blur-sm">
                 {business.price_range}
               </Badge>
-            </div>
-          )}
+            ) : null}
+          </div>
 
           {/* Quick action overlay */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
@@ -126,9 +135,18 @@ export function BusinessCard({
             }`}>
               {business.business_name}
             </h3>
-            <p className="text-sm text-muted-foreground">
-              {categoryInfo?.description || business.subcategory || business.category}
-            </p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{categoryInfo?.description || business.subcategory || business.category}</span>
+              {/* Business Type Icon */}
+              <span className="flex items-center gap-1 text-xs">
+                {business.business_type === 'physical_business' && <Building className="w-3 h-3" />}
+                {business.business_type === 'service_provider' && <Calendar className="w-3 h-3" />}
+                {business.business_type === 'mobile_service' && <Car className="w-3 h-3" />}
+                {business.business_type === 'online_business' && <Laptop className="w-3 h-3" />}
+                {business.business_type === 'venue' && <Building className="w-3 h-3" />}
+                {CommunityBusinessService.getBusinessTypeLabel(business.business_type || 'physical_business')}
+              </span>
+            </div>
           </div>
 
           {/* Description */}
@@ -138,17 +156,34 @@ export function BusinessCard({
             {business.description}
           </p>
 
-          {/* Location */}
+          {/* Location or Service Area */}
           <div className="flex items-center text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4 mr-2" />
-            <span className="flex-1">
-              {business.city}, {business.state}
-            </span>
-            {userLocation && business.latitude && business.longitude && (
-              <span className="text-blue-600 text-xs ml-2">
-                {getDistanceText(userLocation, { lat: business.latitude, lng: business.longitude })}
-              </span>
-            )}
+            {CommunityBusinessService.requiresPhysicalAddress(business.business_type || 'physical_business') ? (
+              <>
+                <MapPin className="w-4 h-4 mr-2" />
+                <span className="flex-1">
+                  {business.city}, {business.state}
+                </span>
+                {userLocation && business.latitude && business.longitude && (
+                  <span className="text-blue-600 text-xs ml-2">
+                    {getDistanceText(userLocation, { lat: business.latitude, lng: business.longitude })}
+                  </span>
+                )}
+              </>
+            ) : business.service_area_radius ? (
+              <>
+                <Car className="w-4 h-4 mr-2" />
+                <span className="flex-1">
+                  {business.service_area_radius} mile service area
+                  {business.city && ` • ${business.city}, ${business.state}`}
+                </span>
+              </>
+            ) : business.business_type === 'online_business' ? (
+              <>
+                <Laptop className="w-4 h-4 mr-2" />
+                <span className="flex-1">Online Service</span>
+              </>
+            ) : null}
           </div>
 
           {/* Rating and Views */}
@@ -170,8 +205,21 @@ export function BusinessCard({
             </div>
           </div>
 
-          {/* Specialties/Tags */}
-          {business.specialties && business.specialties.length > 0 && (
+          {/* Specialties/Tags or Service Offerings */}
+          {(business.service_offerings && business.service_offerings.length > 0) ? (
+            <div className="flex flex-wrap gap-1">
+              {business.service_offerings.slice(0, 2).map((service, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {service}
+                </Badge>
+              ))}
+              {business.service_offerings.length > 2 && (
+                <Badge variant="outline" className="text-xs">
+                  +{business.service_offerings.length - 2} more services
+                </Badge>
+              )}
+            </div>
+          ) : business.specialties && business.specialties.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {business.specialties.slice(0, 2).map((specialty, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
@@ -184,6 +232,14 @@ export function BusinessCard({
                 </Badge>
               )}
             </div>
+          ) : null}
+          
+          {/* Online Booking Indicator */}
+          {business.accepts_online_booking && (
+            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+              <Clock className="w-3 h-3 mr-1" />
+              Online Booking Available
+            </Badge>
           )}
 
           {/* Quick Contact Actions */}
@@ -194,8 +250,13 @@ export function BusinessCard({
                 size="sm"
                 className="flex-1"
               >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Contact
+                {business.accepts_online_booking && <Calendar className="w-4 h-4 mr-2" />}
+                {!business.accepts_online_booking && <MessageCircle className="w-4 h-4 mr-2" />}
+                {business.business_type === 'service_provider' && business.accepts_online_booking ? 'Book Now' : 
+                 business.business_type === 'service_provider' ? 'Request Quote' :
+                 business.business_type === 'venue' ? 'Check Availability' :
+                 business.business_type === 'online_business' ? 'Learn More' :
+                 'Contact'}
               </Button>
             )}
             

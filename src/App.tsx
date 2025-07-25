@@ -97,6 +97,7 @@ const TestSquareInit = lazy(() => import("./pages/TestSquareInit"));
 const TestEmergencyPayment = lazy(() => import("./pages/TestEmergencyPayment"));
 const AuthTest = lazy(() => import("./pages/AuthTest"));
 const EventDebug = lazy(() => import("./pages/EventDebug"));
+const MyBusinesses = lazy(() => import("./pages/dashboard/MyBusinesses"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -205,6 +206,8 @@ const AppContent = () => {
           <Route path="liked" element={<LikedEvents />} />
           <Route path="tickets" element={<MyTickets />} />
           <Route path="scanner" element={<QRScanner />} />
+          <Route path="businesses" element={<MyBusinesses />} />
+          <Route path="businesses/create" element={<CreateBusiness />} />
           {/* Admin routes within dashboard */}
           <Route path="admin" element={
             <AdminRoute>
