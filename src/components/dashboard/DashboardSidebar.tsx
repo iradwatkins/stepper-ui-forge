@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAdminPermissions } from '@/lib/hooks/useAdminPermissions'
@@ -55,10 +55,28 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ open = true, onClose, className }: DashboardSidebarProps) {
   const location = useLocation()
   const { user } = useAuth()
-  const { isAdmin } = useAdminPermissions()
+  const { isAdmin, loading: adminLoading } = useAdminPermissions()
   const { isEventOwner, isOrganizer } = useUserPermissions()
   const eventPermissions = useEventPermissions()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  // Initialize from localStorage to prevent flicker
+  const [showAdminSection, setShowAdminSection] = useState(() => {
+    const stored = localStorage.getItem('showAdminSection')
+    return stored === 'true'
+  })
+  
+  // Update showAdminSection based on isAdmin, but only hide after loading completes
+  useEffect(() => {
+    if (!adminLoading) {
+      setShowAdminSection(isAdmin)
+      // Store the value to prevent flicker on next load
+      localStorage.setItem('showAdminSection', String(isAdmin))
+    } else if (isAdmin) {
+      // If we detect admin status during loading, show immediately
+      setShowAdminSection(true)
+      localStorage.setItem('showAdminSection', 'true')
+    }
+  }, [isAdmin, adminLoading])
 
   const isActive = (href?: string) => {
     if (!href) return false
@@ -492,7 +510,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
           
           <NavigationGroup items={getAccountNavigation()} title="Account" />
           
-          {isAdmin && (
+          {showAdminSection && (
             <>
               <Separator />
               <NavigationGroup items={getAdminNavigation()} title="Administration" />

@@ -124,4 +124,5 @@
 | Fix auth permissions | 20250724_fix_auth_permissions.sql | Remove problematic GRANT, fix auth triggers | No |
 | Magazine image drag-drop | CreateArticlePage.tsx, EditArticlePage.tsx, ImageUpload.tsx | Replace URL inputs with ImageUpload component for drag-and-drop | No |
 | Magazine storage bucket | 20250125_magazine_images_bucket.sql | Create magazine-images bucket with proper RLS policies | No |
+| Admin nav flicker fix | DashboardSidebar.tsx | Add loading state handling and localStorage persistence for admin section | No |
 | Document login fix | URGENT_FIX_LOGIN.md | Emergency fix for broken authentication | No |
