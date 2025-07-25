@@ -74,7 +74,7 @@ export const useMagazine = () => {
     }
   }, []);
 
-  const getArticlesByCategory = async (categorySlug: string, page = 1, limit = 10): Promise<ArticleListResponse> => {
+  const getArticlesByCategory = useCallback(async (categorySlug: string, page = 1, limit = 10): Promise<ArticleListResponse> => {
     try {
       setLoading(true);
       setError(null);
@@ -88,9 +88,9 @@ export const useMagazine = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getArticleBySlug = async (slug: string): Promise<MagazineArticle | null> => {
+  const getArticleBySlug = useCallback(async (slug: string): Promise<MagazineArticle | null> => {
     try {
       setLoading(true);
       setError(null);
@@ -104,7 +104,7 @@ export const useMagazine = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Initialize data on mount - only once
   useEffect(() => {
