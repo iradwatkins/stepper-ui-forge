@@ -42,8 +42,12 @@ CREATE INDEX IF NOT EXISTS idx_magazine_articles_slug ON magazine_articles(slug)
 CREATE INDEX IF NOT EXISTS idx_magazine_articles_created_at ON magazine_articles(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_magazine_categories_slug ON magazine_categories(slug);
 
--- Drop existing function if it exists
-DROP FUNCTION IF EXISTS update_updated_at_column();
+-- Drop existing triggers first (they might depend on the function)
+DROP TRIGGER IF EXISTS update_magazine_categories_updated_at ON magazine_categories;
+DROP TRIGGER IF EXISTS update_magazine_articles_updated_at ON magazine_articles;
+
+-- Now we can safely drop and recreate the function
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 
 -- Create or replace function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -54,13 +58,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create triggers for updated_at
-DROP TRIGGER IF EXISTS update_magazine_categories_updated_at ON magazine_categories;
+-- Recreate triggers for updated_at
 CREATE TRIGGER update_magazine_categories_updated_at
   BEFORE UPDATE ON magazine_categories
   FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_magazine_articles_updated_at ON magazine_articles;
 CREATE TRIGGER update_magazine_articles_updated_at
   BEFORE UPDATE ON magazine_articles
   FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
@@ -133,7 +135,7 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM magazine_categories LIMIT 1);
 
 -- Drop existing function if it exists with different signature
-DROP FUNCTION IF EXISTS generate_slug(text);
+DROP FUNCTION IF EXISTS generate_slug(text) CASCADE;
 
 -- Create or replace function to generate slug from title
 CREATE OR REPLACE FUNCTION generate_slug(title TEXT)
@@ -144,7 +146,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Drop existing function if it exists with different signature
-DROP FUNCTION IF EXISTS calculate_read_time(jsonb);
+DROP FUNCTION IF EXISTS calculate_read_time(jsonb) CASCADE;
 
 -- Create or replace function to calculate read time
 CREATE OR REPLACE FUNCTION calculate_read_time(blocks JSONB)
@@ -185,8 +187,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create triggers for slug generation
+-- Drop existing triggers before creating new ones
 DROP TRIGGER IF EXISTS auto_generate_slug ON magazine_articles;
+DROP TRIGGER IF EXISTS update_read_time ON magazine_articles;
+
+-- Create triggers for slug generation
 CREATE TRIGGER auto_generate_slug
   BEFORE INSERT ON magazine_articles
   FOR EACH ROW
@@ -194,7 +199,6 @@ CREATE TRIGGER auto_generate_slug
   EXECUTE PROCEDURE set_slug_from_title();
 
 -- Create trigger for read time calculation
-DROP TRIGGER IF EXISTS update_read_time ON magazine_articles;
 CREATE TRIGGER update_read_time
   BEFORE INSERT OR UPDATE ON magazine_articles
   FOR EACH ROW
