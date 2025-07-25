@@ -10,14 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Enhanced Admin Dashboard Navigation** - Improved navigation with collapsible sections
-  - Removed separator lines for cleaner appearance
-  - Added collapsible sections: Events & Sales, Analytics, Management, Account, Administration
+- **Dashboard Navigation Updates** - Improved navigation and access control
+  - Removed "Browse Events" from dashboard sidebar (users can access via main menu)
+  - Venues link now appears for any user who has created at least one event
+  - Enhanced admin dashboard with collapsible sections
   - Sections remember expanded/collapsed state using localStorage
   - Auto-expand all sections when searching
   - Clean arrow indicators (▶ collapsed, ▼ expanded) next to section names
   - Files modified:
-    - `src/components/dashboard/DashboardSidebar.tsx` - Added collapsible sections and state persistence
+    - `src/components/dashboard/DashboardSidebar.tsx` - Removed Browse Events, added collapsible sections
 
 - **Simplified Venue Management Integration** - Streamlined venue selection for premium events
   - Replaced complex inline venue creation with simple venue selection

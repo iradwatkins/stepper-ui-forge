@@ -219,15 +219,6 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const getEventsAndSalesNavigation = (): NavigationItem[] => {
     const items: NavigationItem[] = []
     
-    // Only show Browse Events for non-admin users
-    if (!isAdmin) {
-      items.push({
-        title: 'Browse Events',
-        href: '/events',
-        icon: Calendar
-      })
-    }
-
     // Event management for organizers and admins
     if (isEventOwner || isOrganizer || isAdmin) {
       items.push({
