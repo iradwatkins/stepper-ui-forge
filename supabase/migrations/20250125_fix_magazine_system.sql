@@ -42,6 +42,9 @@ CREATE INDEX IF NOT EXISTS idx_magazine_articles_slug ON magazine_articles(slug)
 CREATE INDEX IF NOT EXISTS idx_magazine_articles_created_at ON magazine_articles(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_magazine_categories_slug ON magazine_categories(slug);
 
+-- Drop existing function if it exists
+DROP FUNCTION IF EXISTS update_updated_at_column();
+
 -- Create or replace function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -129,6 +132,9 @@ SELECT * FROM (VALUES
 ) AS v(name, slug, description)
 WHERE NOT EXISTS (SELECT 1 FROM magazine_categories LIMIT 1);
 
+-- Drop existing function if it exists with different signature
+DROP FUNCTION IF EXISTS generate_slug(text);
+
 -- Create or replace function to generate slug from title
 CREATE OR REPLACE FUNCTION generate_slug(title TEXT)
 RETURNS TEXT AS $$
@@ -136,6 +142,9 @@ BEGIN
   RETURN lower(regexp_replace(regexp_replace(title, '[^a-zA-Z0-9\s]', '', 'g'), '\s+', '-', 'g'));
 END;
 $$ LANGUAGE plpgsql;
+
+-- Drop existing function if it exists with different signature
+DROP FUNCTION IF EXISTS calculate_read_time(jsonb);
 
 -- Create or replace function to calculate read time
 CREATE OR REPLACE FUNCTION calculate_read_time(blocks JSONB)
