@@ -38,6 +38,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import ImageUpload from '@/components/ui/ImageUpload';
 
 interface ContentBlockEditor extends ContentBlock {
   isEditing?: boolean;
@@ -196,20 +197,12 @@ export default function CreateArticlePage() {
             )}
             {block.type === 'image' && (
               <div className="space-y-3">
-                <Input
-                  placeholder="Enter image URL..."
+                <ImageUpload
                   value={block.content}
-                  onChange={(e) => updateContentBlock(block.id, { content: e.target.value })}
-                  autoFocus
+                  onChange={(url) => updateContentBlock(block.id, { content: url || '' })}
+                  bucket="magazine-images"
+                  folder="content-images"
                 />
-                {block.content && (
-                  <img
-                    src={block.content}
-                    alt="Preview"
-                    className="w-full h-40 object-cover rounded border"
-                    onError={() => updateContentBlock(block.id, { content: '' })}
-                  />
-                )}
               </div>
             )}
             {(block.type === 'youtube_video' || block.type === 'embedded_video') && (
@@ -435,21 +428,14 @@ export default function CreateArticlePage() {
                 />
               </div>
               <div>
-                <Label htmlFor="featured-image">Featured Image URL</Label>
-                <Input
-                  id="featured-image"
-                  placeholder="Enter image URL..."
+                <Label>Featured Image</Label>
+                <ImageUpload
                   value={featuredImage}
-                  onChange={(e) => setFeaturedImage(e.target.value)}
+                  onChange={(url) => setFeaturedImage(url || '')}
+                  className="mt-2"
+                  bucket="magazine-images"
+                  folder="featured-images"
                 />
-                {featuredImage && (
-                  <img
-                    src={featuredImage}
-                    alt="Featured"
-                    className="mt-2 w-full h-40 object-cover rounded border"
-                    onError={() => setFeaturedImage('')}
-                  />
-                )}
               </div>
             </CardContent>
           </Card>

@@ -122,4 +122,6 @@
 | Document liked events fix | URGENT_LIKED_EVENTS_FIX.md | Instructions for fixing liked events display | No |
 | Login broken | 20250723_fix_missing_profiles.sql | GRANT on auth schema not allowed in Supabase | No |
 | Fix auth permissions | 20250724_fix_auth_permissions.sql | Remove problematic GRANT, fix auth triggers | No |
+| Magazine image drag-drop | CreateArticlePage.tsx, EditArticlePage.tsx, ImageUpload.tsx | Replace URL inputs with ImageUpload component for drag-and-drop | No |
+| Magazine storage bucket | 20250125_magazine_images_bucket.sql | Create magazine-images bucket with proper RLS policies | No |
 | Document login fix | URGENT_FIX_LOGIN.md | Emergency fix for broken authentication | No |
