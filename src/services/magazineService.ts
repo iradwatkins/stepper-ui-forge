@@ -1,7 +1,7 @@
 import { MagazineCategory, MagazineArticle, ArticleListResponse } from '@/hooks/useMagazine';
 import { supabase } from '@/integrations/supabase/client';
 
-// Mock data for development (since backend might not be running)
+// Mock data for fallback when database is unavailable or CORS errors occur
 const mockCategories: MagazineCategory[] = [
   {
     id: 1,
@@ -277,8 +277,14 @@ class MagazineService {
         throw new Error('Magazine system not initialized. Please contact administrator.');
       }
       
-      // In production, don't fall back to mock data - throw the error
-      if (import.meta.env.PROD) {
+      // Check if this is a CORS error
+      if (error?.message?.includes('CORS') || error?.message?.includes('Failed to fetch')) {
+        console.warn('CORS error detected, using fallback data');
+        return mockData;
+      }
+      
+      // In production, only throw for non-CORS errors
+      if (import.meta.env.PROD && !error?.message?.includes('CORS') && !error?.message?.includes('Failed to fetch')) {
         throw error;
       }
       
@@ -416,11 +422,15 @@ class MagazineService {
         if (error) throw error;
         if (!article) return null;
 
-        // Increment view count
-        await supabase
-          .from('magazine_articles')
-          .update({ view_count: (article.view_count || 0) + 1 })
-          .eq('id', article.id);
+        // Increment view count (wrapped in try-catch to not break if it fails)
+        try {
+          await supabase
+            .from('magazine_articles')
+            .update({ view_count: (article.view_count || 0) + 1 })
+            .eq('id', article.id);
+        } catch (updateError) {
+          console.warn('Failed to update view count:', updateError);
+        }
 
         // Transform to interface format
         return {
