@@ -280,14 +280,15 @@ class MagazineService {
       }
       
       // Check if this is a CORS error or connection issue
-      if (error?.message?.includes('CORS') || error?.message?.includes('Failed to fetch') || error?.message?.includes('ERR_CONNECTION')) {
+      const errorMessage = error?.message || error?.details || String(error);
+      if (errorMessage.includes('CORS') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_CONNECTION') || errorMessage.includes('TypeError')) {
         console.warn('Connection/CORS error detected, using fallback data');
         this.hasConnectionIssues = true;
         return mockData;
       }
       
-      // In production, only throw for non-CORS errors
-      if (import.meta.env.PROD && !error?.message?.includes('CORS') && !error?.message?.includes('Failed to fetch')) {
+      // In production, only throw for non-CORS/connection errors
+      if (import.meta.env.PROD && !errorMessage.includes('CORS') && !errorMessage.includes('Failed to fetch') && !errorMessage.includes('TypeError')) {
         throw error;
       }
       
