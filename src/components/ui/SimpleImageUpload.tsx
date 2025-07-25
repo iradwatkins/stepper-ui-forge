@@ -20,8 +20,8 @@ export default function SimpleImageUpload({
   className = '',
   placeholder = 'Click to upload or paste an image',
   maxSizeMB = 5,
-  bucket = 'magazine-images',
-  folder = 'content-images'
+  bucket = 'venue-images',
+  folder = 'magazine/content-images'
 }: SimpleImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);

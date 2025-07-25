@@ -32,7 +32,7 @@ export interface MagazineArticle {
 
 export interface ContentBlock {
   id: number;
-  type: 'header' | 'subheader' | 'paragraph' | 'image' | 'youtube_video' | 'embedded_video' | 'ad_placement';
+  type: 'header' | 'subheader' | 'paragraph' | 'image' | 'youtube_video' | 'embedded_video' | 'ad_placement' | 'quote' | 'bullet_list' | 'numbered_list' | 'video' | 'divider';
   content: string;
   order: number;
   // Video timing options

@@ -5,19 +5,12 @@ import {
   ArrowLeft, 
   Save, 
   Eye, 
-  Plus, 
-  Trash2, 
-  Image as ImageIcon, 
-  Video, 
-  Type, 
-  Heading1, 
-  Heading2,
-  Upload,
-  GripVertical
+  Type
 } from 'lucide-react';
 import { useIsAdmin } from '@/lib/hooks/useAdminPermissions';
 import { useAdminMagazine, ContentBlock } from '@/hooks/useMagazine';
-import EnhancedContentBlock from '@/components/magazine/EnhancedContentBlock';
+import ModernContentBlock from '@/components/magazine/ModernContentBlock';
+import ModernContentBlockEditor from '@/components/magazine/ModernContentBlockEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,13 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import SimpleImageUpload from '@/components/ui/SimpleImageUpload';
 
@@ -63,15 +49,23 @@ export default function CreateArticlePage() {
     setIsDirty(hasContent);
   }, [title, excerpt, featuredImage, categoryId, contentBlocks]);
 
-  const addContentBlock = (type: ContentBlock['type']) => {
+  const addContentBlock = (type: string, position?: number) => {
+    const insertPosition = position !== undefined ? position : contentBlocks.length;
     const newBlock: ContentBlockEditor = {
       id: Date.now(),
-      type,
-      content: '',
-      order: contentBlocks.length,
-      isEditing: true
+      type: type as ContentBlock['type'],
+      content: type === 'divider' ? '---' : '',
+      order: insertPosition,
+      isEditing: type !== 'divider' // Don't auto-edit dividers
     };
-    setContentBlocks([...contentBlocks, newBlock]);
+
+    // Update existing blocks' order if inserting in middle
+    const updatedBlocks = contentBlocks.map(block => ({
+      ...block,
+      order: block.order >= insertPosition ? block.order + 1 : block.order
+    }));
+
+    setContentBlocks([...updatedBlocks, newBlock]);
   };
 
   const updateContentBlock = useCallback((id: number, updates: Partial<ContentBlock>) => {
@@ -281,95 +275,37 @@ export default function CreateArticlePage() {
           {/* Content Blocks */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Content Blocks</CardTitle>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Block
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Content Block</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('header')}
-                      >
-                        <Heading1 className="w-6 h-6" />
-                        Header
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('subheader')}
-                      >
-                        <Heading2 className="w-6 h-6" />
-                        Subheader
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('paragraph')}
-                      >
-                        <Type className="w-6 h-6" />
-                        Paragraph
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('image')}
-                      >
-                        <ImageIcon className="w-6 h-6" />
-                        Image
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('youtube_video')}
-                      >
-                        <Video className="w-6 h-6" />
-                        YouTube
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-20 flex-col gap-2"
-                        onClick={() => addContentBlock('embedded_video')}
-                      >
-                        <Upload className="w-6 h-6" />
-                        Video
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
+              <CardTitle>Content Blocks</CardTitle>
             </CardHeader>
             <CardContent>
               {contentBlocks.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Type className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No content blocks yet. Click "Add Block" to start writing your article.</p>
+                  <p className="mb-4">No content blocks yet. Click the + button below to start writing your article.</p>
+                  <ModernContentBlockEditor onAddBlock={addContentBlock} />
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
+                  <ModernContentBlockEditor onAddBlock={addContentBlock} position={0} />
                   {contentBlocks
                     .sort((a, b) => a.order - b.order)
                     .map((block, index) => (
-                      <EnhancedContentBlock 
-                        key={block.id} 
-                        block={block}
-                        index={index}
-                        total={contentBlocks.length}
-                        onUpdate={updateContentBlock}
-                        onDelete={deleteContentBlock}
-                        onMove={moveBlock}
-                        onDuplicate={duplicateBlock}
-                        onToggleEdit={setBlockEditing}
-                      />
+                      <div key={block.id}>
+                        <ModernContentBlock 
+                          block={block}
+                          index={index}
+                          total={contentBlocks.length}
+                          onUpdate={updateContentBlock}
+                          onDelete={deleteContentBlock}
+                          onMove={moveBlock}
+                          onDuplicate={duplicateBlock}
+                          onToggleEdit={setBlockEditing}
+                        />
+                        <ModernContentBlockEditor 
+                          onAddBlock={addContentBlock} 
+                          position={index + 1}
+                        />
+                      </div>
                     ))}
                 </div>
               )}

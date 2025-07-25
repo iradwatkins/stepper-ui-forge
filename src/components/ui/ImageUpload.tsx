@@ -24,8 +24,8 @@ export default function ImageUpload({
   disabled = false,
   maxSizeMB = 5,
   acceptedFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-  bucket = 'magazine-images',
-  folder = 'featured-images'
+  bucket = 'venue-images',
+  folder = 'magazine/featured-images'
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
