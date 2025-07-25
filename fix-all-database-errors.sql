@@ -22,6 +22,17 @@ END $$;
 -- Drop existing function first to avoid return type conflicts
 DROP FUNCTION IF EXISTS get_admin_permissions(UUID);
 
+-- Ensure admin_level column exists in profiles table
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'profiles' AND column_name = 'admin_level'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN admin_level INTEGER DEFAULT 0;
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION get_admin_permissions(user_id UUID)
 RETURNS TABLE (
   is_admin BOOLEAN,
@@ -30,16 +41,21 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+DECLARE
+  profile_record RECORD;
 BEGIN
-  RETURN QUERY
+  -- Get the profile record
   SELECT 
-    p.is_admin,
+    COALESCE(p.is_admin, false) as is_admin,
     COALESCE(p.admin_level, 0) as admin_level
+  INTO profile_record
   FROM profiles p
   WHERE p.id = user_id;
   
-  -- If no profile found, return defaults
-  IF NOT FOUND THEN
+  -- Return the results or defaults if no profile found
+  IF profile_record IS NOT NULL THEN
+    RETURN QUERY SELECT profile_record.is_admin, profile_record.admin_level;
+  ELSE
     RETURN QUERY SELECT false::boolean, 0::integer;
   END IF;
 END;

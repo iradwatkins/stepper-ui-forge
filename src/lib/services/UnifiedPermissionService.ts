@@ -257,19 +257,20 @@ export class UnifiedPermissionService {
       // Try RPC function first
       try {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_permissions', {
-          user_uuid: userId
+          user_id: userId
         })
 
         if (!rpcError && rpcData?.[0]) {
           const adminData = rpcData[0]
+          const adminLevel = adminData.admin_level || 0
           return {
             isAdmin: adminData.is_admin || false,
-            adminLevel: adminData.admin_level || 0,
-            canManageUsers: adminData.can_manage_users || false,
-            canManageEvents: adminData.can_manage_events || false,
-            canViewAnalytics: adminData.can_view_analytics || false,
-            canManageSystem: adminData.can_manage_system || false,
-            canManageBilling: adminData.can_manage_billing || false
+            adminLevel,
+            canManageUsers: adminLevel >= 2,
+            canManageEvents: adminLevel >= 1,
+            canViewAnalytics: adminLevel >= 1,
+            canManageSystem: adminLevel >= 3,
+            canManageBilling: adminLevel >= 3
           }
         }
       } catch (rpcError) {

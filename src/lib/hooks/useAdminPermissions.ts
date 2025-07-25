@@ -63,14 +63,24 @@ export const useAdminPermissions = (): AdminPermissions => {
         };
 
         try {
-          // Try the RPC function first
+          // Try the RPC function first with correct parameter name
           const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_permissions', {
-            user_uuid: user.id
+            user_id: user.id
           });
 
           if (!rpcError && rpcData?.[0]) {
-            adminData = rpcData[0];
+            const rpcResult = rpcData[0];
+            adminData = {
+              is_admin: rpcResult.is_admin || false,
+              admin_level: rpcResult.admin_level || 0,
+              can_manage_users: (rpcResult.admin_level || 0) >= 2,
+              can_manage_events: (rpcResult.admin_level || 0) >= 1,
+              can_view_analytics: (rpcResult.admin_level || 0) >= 1,
+              can_manage_system: (rpcResult.admin_level || 0) >= 3,
+              can_manage_billing: (rpcResult.admin_level || 0) >= 3
+            };
           } else {
+            console.warn('RPC get_admin_permissions failed, falling back to direct query:', rpcError);
             // Try to check if admin columns exist first
             const { error: columnCheckError } = await supabase
               .from('profiles')

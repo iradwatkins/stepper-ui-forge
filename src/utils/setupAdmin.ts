@@ -106,7 +106,7 @@ export const manualAdminSetup = async () => {
     
     // Verify the setup
     const { data: verification, error: verifyError } = await supabase
-      .rpc('get_admin_permissions', { user_uuid: profile.id })
+      .rpc('get_admin_permissions', { user_id: profile.id })
     
     if (verifyError) {
       console.warn('⚠️ Could not verify admin setup:', verifyError)
@@ -164,7 +164,7 @@ export const checkAdminStatus = async (email: string = import.meta.env.VITE_ADMI
     }
     
     const { data: permissions } = await supabase
-      .rpc('get_admin_permissions', { user_uuid: profile.id })
+      .rpc('get_admin_permissions', { user_id: profile.id })
     
     return {
       exists: true,
