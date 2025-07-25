@@ -84,7 +84,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminAuth = lazy(() => import("./pages/AdminAuth"));
 const AccountAuth = lazy(() => import("./pages/AccountAuth"));
 const PaymentConfiguration = lazy(() => import("./pages/dashboard/admin/PaymentConfiguration"));
-const CreateBusiness = lazy(() => import("./pages/CreateBusiness"));
+const CreateBusiness = lazy(() => import("./pages/CreateBusinessSteps"));
 const SellerPayouts = lazy(() => import("./pages/SellerPayouts"));
 const PayoutsDashboard = lazy(() => import("./pages/PayoutsDashboard"));
 const PayPalCallback = lazy(() => import("./pages/PayPalCallback"));

@@ -7,7 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Latest Changes - July 25, 2025]
 
+### Added
+- **🎨 Drag-and-Drop Magazine Editor** - Complete redesign of content block system
+  - **Visual Content Block Palette** - Categorized blocks (Text, Media, Layout) with color coding
+    - Text Blocks: Paragraph, Header, Subheader, Quote, Bullet List, Numbered List
+    - Media Blocks: Image Upload, YouTube Video Embed, Video File  
+    - Layout Blocks: Visual Divider
+  - **Drag-and-Drop Functionality** - Drag blocks from palette directly into article content area
+  - **Click-to-Add Alternative** - Users can click blocks to add them at bottom of article
+  - **Real-time Drag Feedback** - Visual drop zones, hover states, and drag overlays
+  - **Touch Support** - Mobile-friendly drag-and-drop for tablet/phone editing
+  - **Pro Tips Section** - Built-in usage guidance for new magazine editors
+  - **Dependencies Added**:
+    - `@dnd-kit/core` ^6.3.1 - Core drag-and-drop functionality
+    - `@dnd-kit/sortable` ^10.0.0 - Sortable lists for block reordering
+    - `@dnd-kit/utilities` ^3.2.2 - Drag utilities and transforms
+    - `@dnd-kit/modifiers` ^9.0.0 - Drag constraints and modifiers
+  - **Components Created**:
+    - `ContentBlockPalette.tsx` - Visual block selection palette with categories
+    - `DraggableContentBlock.tsx` - Unified draggable content blocks with inline editing
+    - `DragDropContentEditor.tsx` - Main drag-and-drop orchestrator with DndContext
+
+### Changed  
+- **📝 CreateArticlePage Layout Overhaul** - Streamlined from 3-column to single-column design
+  - Replaced old grid layout with modern single-column approach
+  - Integrated drag-and-drop editor as primary content creation method
+  - Simplified header with inline save/publish actions (no more bottom sticky bar)
+  - Added amber status indicator for unsaved changes
+  - Removed duplicate category selection (now only in Article Details card)
+  - Clean, focused writing environment for magazine editors
+
+### Enhanced
+- **⚡ Content Block Management** - Unified editing experience across all block types
+  - **Inline Editing** - Click any block to edit content directly in place
+  - **Block Reordering** - Drag existing blocks up/down to rearrange article structure  
+  - **Enhanced Actions Menu** - Dropdown with Edit, Duplicate, Delete options
+  - **Keyboard Shortcuts** - Ctrl+Enter to save edits, Esc to cancel
+  - **Auto-resize Textarea** - Text areas expand automatically based on content
+  - **Block Type Indicators** - Visual badges show block type on hover
+  - **Empty State Handling** - Helpful prompts for empty blocks with click-to-edit
+
 ### Fixed
+- **🔧 Magazine Editor JSX Structure** - Resolved broken layout preventing article creation
+  - Fixed incomplete JSX elements in CreateArticlePage causing render failures
+  - Corrected malformed div tags and missing closing elements
+  - Removed obsolete publishing section that was causing layout conflicts
+  - **Files modified**: `src/pages/admin/CreateArticlePage.tsx`
+
+- **📦 Missing Dependencies** - Added required drag-and-drop dependencies for build success
+  - Installed missing `@dnd-kit/modifiers` package that was causing Vite build failures
+  - All drag-and-drop functionality now loads without dependency errors
+  - Development server starts cleanly without missing module warnings
+
+- **🏗️ Build & TypeScript Validation** - Ensured clean compilation and type safety
+  - All new drag-and-drop components pass TypeScript compilation
+  - No ESLint errors introduced in magazine editor components
+  - Production build completes successfully with new drag-and-drop system
+  - **Verification**: `npm run build` and `npx tsc --noEmit` both pass
+
+### Technical Details
+- **Performance Optimization** - Efficient drag-and-drop with minimal re-renders
+  - Uses @dnd-kit collision detection algorithms for smooth dragging
+  - Debounced content updates prevent excessive state changes
+  - Optimized sortable context for large articles with many blocks
+- **Accessibility** - Full keyboard navigation and screen reader support
+  - Drag handles accessible via keyboard with proper ARIA labels
+  - All form elements have proper labels and focus management
+  - Keyboard shortcuts clearly documented for power users
+- **Mobile Experience** - Touch-optimized for tablet and phone editing
+  - Touch-friendly drag handles and drop zones
+  - Responsive palette layout collapses appropriately on small screens
+  - Swipe gestures work naturally with drag-and-drop system
+
+### User Experience Improvements  
+- **Intuitive Workflow** - Magazine creation now follows natural creative process
+  - Visual block selection eliminates confusion about available content types
+  - Drag-from-palette interaction matches user mental model
+  - Real-time preview shows exactly how content will appear
+- **Error Prevention** - Built-in validation prevents common mistakes
+  - Required fields clearly marked with visual indicators
+  - Unsaved changes warning prevents accidental data loss
+  - Block validation ensures content quality before publishing
+- **Content Organization** - Tools for managing complex articles
+  - Visual block reordering makes structure changes effortless
+  - Block duplication speeds up repetitive content creation
+  - Category organization helps users find the right block type quickly
+
+### Workflow Verified
+- ✅ **Create Article** - New articles can be created with drag-and-drop blocks
+- ✅ **Add Content Blocks** - All 10 block types (header, paragraph, image, etc.) work correctly
+- ✅ **Edit Inline** - Click any block to edit content directly in place
+- ✅ **Drag Reorder** - Existing blocks can be rearranged by dragging
+- ✅ **Save Draft** - Articles save with all block content and ordering preserved
+- ✅ **Publish Article** - Published articles display correctly with all block types
+- ✅ **Mobile Support** - Touch devices can drag blocks and edit content
+
+### Previous Critical Fixes
 - **🚨 CRITICAL: Google Maps API Authentication Restored** - Fixed complete Google Maps functionality failure
   - **Issue**: Google Maps venue address search was broken with "You must use an API key to authenticate" errors
   - **Root Cause**: On July 21, 2025 (commit 943941b), hardcoded API key fallback was removed for security, breaking functionality when environment variables weren't loading properly

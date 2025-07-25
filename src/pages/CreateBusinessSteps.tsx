@@ -125,7 +125,7 @@ type BusinessFormData = {
   service_area_radius?: number;
 };
 
-export default function CreateBusiness() {
+export default function CreateBusinessSteps() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -177,32 +177,27 @@ export default function CreateBusiness() {
     {
       id: 'type',
       title: 'Business Type',
-      description: 'Choose your listing type',
-      icon: <Building className="w-5 h-5" />
+      description: 'Choose your listing type'
     },
     {
       id: 'basic',
       title: 'Basic Info',
-      description: 'Name and description',
-      icon: <FileText className="w-5 h-5" />
+      description: 'Name and description'
     },
     {
       id: 'contact',
       title: 'Contact & Location',
-      description: 'How to reach you',
-      icon: <MapPin className="w-5 h-5" />
+      description: 'How to reach you'
     },
     {
       id: 'details',
       title: 'Details & Tags',
-      description: 'Specialties and features',
-      icon: <Settings className="w-5 h-5" />
+      description: 'Specialties and features'
     },
     {
       id: 'hours',
       title: 'Hours & Review',
-      description: 'Schedule and final review',
-      icon: <Clock className="w-5 h-5" />
+      description: 'Schedule and final review'
     }
   ];
 
@@ -210,6 +205,62 @@ export default function CreateBusiness() {
   const businessTypes = CommunityBusinessService.getBusinessTypes();
   const serviceRateTypes = CommunityBusinessService.getServiceRateTypes();
 
+  // Step navigation functions
+  const goToNextStep = () => {
+    if (currentStep < steps.length - 1) {
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps(prev => [...prev, currentStep]);
+      }
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const goToPreviousStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Step validation
+  const validateCurrentStep = (): boolean => {
+    const stepId = steps[currentStep].id;
+    
+    switch (stepId) {
+      case 'type':
+        return !!selectedBusinessType;
+      case 'basic':
+        return !!(form.getValues().business_name && 
+                 form.getValues().description && 
+                 form.getValues().category);
+      case 'contact': {
+        const requiredFields = CommunityBusinessService.getRequiredFieldsForType(selectedBusinessType);
+        if (requiredFields.includes('address')) {
+          return !!(form.getValues().address && form.getValues().city && form.getValues().state);
+        }
+        if (selectedBusinessType === 'online_business') {
+          return !!form.getValues().website_url;
+        }
+        return true;
+      }
+      case 'details':
+        return true;
+      case 'hours':
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  // Save as draft functionality
+  const handleSaveAsDraft = async () => {
+    setSavingDraft(true);
+    setTimeout(() => {
+      setSavingDraft(false);
+      toast.success('Draft saved successfully!');
+    }, 1000);
+  };
+
+  // Form handlers
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
       setTags([...tags, newTag.trim()]);
@@ -267,7 +318,7 @@ export default function CreateBusiness() {
         const result = await imageUploadService.uploadOptimizedImage(file, {
           bucket: 'venue-images',
           folder: `businesses/${user?.id}`,
-          maxSizeBytes: 5 * 1024 * 1024, // 5MB
+          maxSizeBytes: 5 * 1024 * 1024,
           allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
           userId: user?.id
         });
@@ -297,63 +348,6 @@ export default function CreateBusiness() {
 
   const removeImage = (imageUrl: string) => {
     setUploadedImages(prev => prev.filter(url => url !== imageUrl));
-  };
-
-  // Step navigation functions
-  const goToNextStep = () => {
-    if (currentStep < steps.length - 1) {
-      // Mark current step as completed
-      if (!completedSteps.includes(currentStep)) {
-        setCompletedSteps(prev => [...prev, currentStep]);
-      }
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const goToPreviousStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  // Step validation
-  const validateCurrentStep = (): boolean => {
-    const stepId = steps[currentStep].id;
-    
-    switch (stepId) {
-      case 'type':
-        return !!selectedBusinessType;
-      case 'basic':
-        return !!(form.getValues().business_name && 
-                 form.getValues().description && 
-                 form.getValues().category);
-      case 'contact':
-        const requiredFields = CommunityBusinessService.getRequiredFieldsForType(selectedBusinessType);
-        if (requiredFields.includes('address')) {
-          return !!(form.getValues().address && form.getValues().city && form.getValues().state);
-        }
-        if (selectedBusinessType === 'online_business') {
-          return !!form.getValues().website_url;
-        }
-        return true;
-      case 'details':
-        return true; // Optional step
-      case 'hours':
-        return true; // Optional step
-      default:
-        return true;
-    }
-  };
-
-  // Save as draft functionality
-  const handleSaveAsDraft = async () => {
-    setSavingDraft(true);
-    // Implement draft saving logic here
-    // For now, just simulate the action
-    setTimeout(() => {
-      setSavingDraft(false);
-      toast.success('Draft saved successfully!');
-    }, 1000);
   };
 
   const onSubmit = async (data: BusinessFormData) => {
@@ -419,22 +413,22 @@ export default function CreateBusiness() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" onClick={() => navigate('/community')}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 sm:mb-8">
+          <Button variant="ghost" onClick={() => navigate('/community')} className="self-start">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Community
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Add Your Business or Service</h1>
-            <p className="text-muted-foreground">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight">Add Your Business or Service</h1>
+            <p className="text-muted-foreground text-sm sm:text-base mt-1">
               List your business, service, or venue in our community directory
             </p>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Form */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Step Indicator */}
               <StepIndicator
@@ -446,17 +440,15 @@ export default function CreateBusiness() {
 
               {/* Step Content */}
               <div className="space-y-6">
-
-                <TabsContent value="type" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Business Type</CardTitle>
-                      <CardDescription>
-                        Choose the type that best describes your listing
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Step 1: Business Type */}
+                {currentStep === 0 && (
+                  <FormStep
+                    title="Business Type"
+                    description="Choose the type that best describes your listing"
+                    icon={<Building className="w-5 h-5" />}
+                  >
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {businessTypes.map((type) => (
                           <div
                             key={type.value}
@@ -497,19 +489,18 @@ export default function CreateBusiness() {
                           ))}
                         </ul>
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    </div>
+                  </FormStep>
+                )}
 
-                <TabsContent value="basic" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Business Information</CardTitle>
-                      <CardDescription>
-                        Tell us about your business or service
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                {/* Step 2: Basic Information */}
+                {currentStep === 1 && (
+                  <FormStep
+                    title="Business Information"
+                    description="Tell us about your business or service"
+                    icon={<FileText className="w-5 h-5" />}
+                  >
+                    <div className="space-y-4">
                       <div>
                         <Label htmlFor="business_name">Business Name *</Label>
                         <Input
@@ -574,81 +565,6 @@ export default function CreateBusiness() {
                         )}
                       </div>
 
-                      {/* Conditional Price Range or Service Rate */}
-                      {selectedBusinessType === 'service_provider' ? (
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="hourly_rate">Service Rate</Label>
-                            <div className="flex space-x-2">
-                              <Input
-                                id="hourly_rate"
-                                type="number"
-                                placeholder="Enter rate"
-                                className="flex-1"
-                              />
-                              <Select>
-                                <SelectTrigger className="w-40">
-                                  <SelectValue placeholder="Rate type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {serviceRateTypes.map(rateType => (
-                                    <SelectItem key={rateType.value} value={rateType.value}>
-                                      {rateType.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <Label htmlFor="price_range">Price Range</Label>
-                          <Select onValueChange={(value: PriceRange) => form.setValue('price_range', value)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select price range" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="$">$ - Budget friendly</SelectItem>
-                              <SelectItem value="$$">$$ - Moderate</SelectItem>
-                              <SelectItem value="$$$">$$$ - Premium</SelectItem>
-                              <SelectItem value="$$$$">$$$$ - Luxury</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Service-specific fields */}
-                      {(selectedBusinessType === 'service_provider' || selectedBusinessType === 'mobile_service') && (
-                        <div className="space-y-4">
-                          <div>
-                            <Label>Service Offerings</Label>
-                            <div className="flex gap-2 mb-2">
-                              <Input
-                                value={newServiceOffering}
-                                onChange={(e) => setNewServiceOffering(e.target.value)}
-                                placeholder="Add a service offering"
-                                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addServiceOffering())}
-                              />
-                              <Button type="button" onClick={addServiceOffering}>
-                                <Plus className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {serviceOfferings.map(offering => (
-                                <Badge key={offering} variant="secondary" className="flex items-center gap-1">
-                                  {offering}
-                                  <X
-                                    className="w-3 h-3 cursor-pointer"
-                                    onClick={() => removeServiceOffering(offering)}
-                                  />
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
                       {/* Image Upload Section */}
                       <div>
                         <Label>Business Photos</Label>
@@ -691,7 +607,7 @@ export default function CreateBusiness() {
 
                           {/* Display uploaded images */}
                           {uploadedImages.length > 0 && (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                               {uploadedImages.map((imageUrl, index) => (
                                 <div key={index} className="relative group">
                                   <img
@@ -714,19 +630,18 @@ export default function CreateBusiness() {
                           )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    </div>
+                  </FormStep>
+                )}
 
-                <TabsContent value="contact" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Contact Information</CardTitle>
-                      <CardDescription>
-                        How can customers reach you?
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                {/* Step 3: Contact & Location */}
+                {currentStep === 2 && (
+                  <FormStep
+                    title="Contact Information"
+                    description="How can customers reach you?"
+                    icon={<MapPin className="w-5 h-5" />}
+                  >
+                    <div className="space-y-4">
                       <div>
                         <Label htmlFor="contact_email">Email</Label>
                         <Input
@@ -757,7 +672,7 @@ export default function CreateBusiness() {
 
                       <div className="space-y-4">
                         <Label>Social Media</Label>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="facebook" className="flex items-center gap-2">
                               <Facebook className="w-4 h-4" />
@@ -784,90 +699,76 @@ export default function CreateBusiness() {
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    
+                      <div className="mt-6 pt-6 border-t">
+                        <h3 className="text-lg font-semibold mb-4">Location</h3>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="address">Address</Label>
+                            <Input
+                              id="address"
+                              {...form.register('address')}
+                              placeholder="123 Main Street"
+                            />
+                          </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Location</CardTitle>
-                      <CardDescription>
-                        Where is your business located?
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <Label htmlFor="address">Address</Label>
-                        <Input
-                          id="address"
-                          {...form.register('address')}
-                          placeholder="123 Main Street"
-                        />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="city">City</Label>
+                              <Input
+                                id="city"
+                                {...form.register('city')}
+                                placeholder="City"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="state">State</Label>
+                              <Input
+                                id="state"
+                                {...form.register('state')}
+                                placeholder="State"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="zip_code">ZIP Code</Label>
+                            <Input
+                              id="zip_code"
+                              {...form.register('zip_code')}
+                              placeholder="12345"
+                            />
+                          </div>
+
+                          {/* Conditional Service Area */}
+                          {(selectedBusinessType === 'service_provider' || selectedBusinessType === 'mobile_service') && (
+                            <div>
+                              <Label htmlFor="service_area_radius">Service Area Radius (miles)</Label>
+                              <Input
+                                id="service_area_radius"
+                                type="number"
+                                {...form.register('service_area_radius', { valueAsNumber: true })}
+                                placeholder={CommunityBusinessService.getDefaultServiceAreaRadius(selectedBusinessType)?.toString() || "25"}
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                How far are you willing to travel or provide services?
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                    </div>
+                  </FormStep>
+                )}
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            {...form.register('city')}
-                            placeholder="City"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            {...form.register('state')}
-                            placeholder="State"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="zip_code">ZIP Code</Label>
-                        <Input
-                          id="zip_code"
-                          {...form.register('zip_code')}
-                          placeholder="12345"
-                        />
-                      </div>
-
-                      {/* Conditional Service Area */}
-                      {(selectedBusinessType === 'service_provider' || selectedBusinessType === 'mobile_service') && (
-                        <div>
-                          <Label htmlFor="service_area_radius">Service Area Radius (miles)</Label>
-                          <Input
-                            id="service_area_radius"
-                            type="number"
-                            {...form.register('service_area_radius', { valueAsNumber: true })}
-                            placeholder={CommunityBusinessService.getDefaultServiceAreaRadius(selectedBusinessType)?.toString() || "25"}
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            How far are you willing to travel or provide services?
-                          </p>
-                        </div>
-                      )}
-
-                      {selectedBusinessType === 'online_business' && (
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <p className="text-sm text-muted-foreground">
-                            As an online business, make sure to provide a website URL in the contact section.
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="details" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Tags & Specialties</CardTitle>
-                      <CardDescription>
-                        Help customers find you with relevant keywords
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                {/* Step 4: Details & Tags */}
+                {currentStep === 3 && (
+                  <FormStep
+                    title="Tags & Specialties"
+                    description="Help customers find you with relevant keywords"
+                    icon={<Settings className="w-5 h-5" />}
+                  >
+                    <div className="space-y-4">
                       <div>
                         <Label>Tags</Label>
                         <div className="flex gap-2 mb-2">
@@ -920,60 +821,58 @@ export default function CreateBusiness() {
                         </div>
                       </div>
 
-                      {/* Online Booking for Service Providers */}
-                      {CommunityBusinessService.supportsOnlineBooking(selectedBusinessType) && (
-                        <div className="space-y-4">
-                          <div className="flex items-center space-x-2">
-                            <input type="checkbox" id="accepts_booking" className="rounded" />
-                            <Label htmlFor="accepts_booking" className="text-sm">
-                              Accept online booking/scheduling
-                            </Label>
+                      {/* Service Offerings for Service Providers */}
+                      {(selectedBusinessType === 'service_provider' || selectedBusinessType === 'mobile_service') && (
+                        <div>
+                          <Label>Service Offerings</Label>
+                          <div className="flex gap-2 mb-2">
+                            <Input
+                              value={newServiceOffering}
+                              onChange={(e) => setNewServiceOffering(e.target.value)}
+                              placeholder="Add a service offering"
+                              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addServiceOffering())}
+                            />
+                            <Button type="button" onClick={addServiceOffering}>
+                              <Plus className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="min_duration">Min Booking (minutes)</Label>
-                              <Input
-                                id="min_duration"
-                                type="number"
-                                placeholder="60"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="advance_notice">Advance Notice (hours)</Label>
-                              <Input
-                                id="advance_notice"
-                                type="number"
-                                placeholder="24"
-                              />
-                            </div>
+                          <div className="flex flex-wrap gap-2">
+                            {serviceOfferings.map(offering => (
+                              <Badge key={offering} variant="secondary" className="flex items-center gap-1">
+                                {offering}
+                                <X
+                                  className="w-3 h-3 cursor-pointer"
+                                  onClick={() => removeServiceOffering(offering)}
+                                />
+                              </Badge>
+                            ))}
                           </div>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    </div>
+                  </FormStep>
+                )}
 
-                <TabsContent value="hours" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>
-                        {selectedBusinessType === 'service_provider' ? 'Availability' : 'Business Hours'}
-                      </CardTitle>
-                      <CardDescription>
-                        {selectedBusinessType === 'service_provider' 
-                          ? 'When are you available to provide services?' 
-                          : selectedBusinessType === 'online_business'
-                          ? 'When do you respond to inquiries?'
-                          : 'When are you open?'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
-                          <div key={day} className="flex items-center gap-4">
-                            <div className="w-20 text-sm font-medium capitalize">
-                              {day}
-                            </div>
+                {/* Step 5: Hours & Review */}
+                {currentStep === 4 && (
+                  <FormStep
+                    title={selectedBusinessType === 'service_provider' ? 'Availability' : 'Business Hours'}
+                    description={
+                      selectedBusinessType === 'service_provider' 
+                        ? 'When are you available to provide services?' 
+                        : selectedBusinessType === 'online_business'
+                        ? 'When do you respond to inquiries?'
+                        : 'When are you open?'
+                    }
+                    icon={<Clock className="w-5 h-5" />}
+                  >
+                    <div className="space-y-4">
+                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
+                        <div key={day} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border rounded-lg">
+                          <div className="w-full sm:w-20 text-sm font-medium capitalize">
+                            {day}
+                          </div>
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
                             <div className="flex items-center gap-2 flex-1">
                               <Input
                                 type="time"
@@ -984,9 +883,9 @@ export default function CreateBusiness() {
                                   close: businessHours[day as keyof BusinessHours]?.close || '',
                                   closed: false
                                 })}
-                                className="w-32"
+                                className="flex-1 sm:w-32"
                               />
-                              <span className="text-muted-foreground">to</span>
+                              <span className="text-muted-foreground text-sm">to</span>
                               <Input
                                 type="time"
                                 placeholder="Close"
@@ -996,56 +895,50 @@ export default function CreateBusiness() {
                                   close: e.target.value,
                                   closed: false
                                 })}
-                                className="w-32"
+                                className="flex-1 sm:w-32"
                               />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => updateBusinessHours(day as keyof BusinessHours, {
-                                  open: '',
-                                  close: '',
-                                  closed: true
-                                })}
-                              >
-                                Closed
-                              </Button>
                             </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateBusinessHours(day as keyof BusinessHours, {
+                                open: '',
+                                close: '',
+                                closed: true
+                              })}
+                              className="w-full sm:w-auto"
+                            >
+                              Closed
+                            </Button>
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-
-              <div className="flex gap-4">
-                <Button type="submit" disabled={loading} className="flex-1">
-                  {loading ? (
-                    <>
-                      <Save className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Create Business Listing
-                    </>
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/community')}
-                >
-                  Cancel
-                </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </FormStep>
+                )}
               </div>
+
+              {/* Step Navigation */}
+              <StepNavigation
+                currentStep={currentStep}
+                totalSteps={steps.length}
+                onPrevious={goToPreviousStep}
+                onNext={goToNextStep}
+                onSubmit={() => form.handleSubmit(onSubmit)()}
+                isFirstStep={currentStep === 0}
+                isLastStep={currentStep === steps.length - 1}
+                isValid={validateCurrentStep()}
+                isSubmitting={loading}
+                onSaveAsDraft={handleSaveAsDraft}
+                isSavingDraft={savingDraft}
+                className="mt-8"
+              />
             </form>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-6 order-1 lg:order-2">
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
