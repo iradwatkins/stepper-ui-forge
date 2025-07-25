@@ -269,30 +269,34 @@ class MagazineService {
     operationName: string
   ): Promise<T> {
     try {
-      return await supabaseOperation();
+      const result = await supabaseOperation();
+      console.log(`✅ ${operationName} succeeded`);
+      return result;
     } catch (error: any) {
       console.error(`${operationName} failed:`, error);
+      console.log('Error type:', typeof error);
+      console.log('Error properties:', Object.keys(error || {}));
       
       // Check if this is a table not found error
       if (error?.message?.includes('relation') && error?.message?.includes('does not exist')) {
         console.error('Magazine tables not found in database. Please run migrations.');
-        throw new Error('Magazine system not initialized. Please contact administrator.');
-      }
-      
-      // Check if this is a CORS error or connection issue
-      const errorMessage = error?.message || error?.details || String(error);
-      if (errorMessage.includes('CORS') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_CONNECTION') || errorMessage.includes('TypeError')) {
-        console.warn('Connection/CORS error detected, using fallback data');
         this.hasConnectionIssues = true;
         return mockData;
       }
       
-      // In production, only throw for non-CORS/connection errors
-      if (import.meta.env.PROD && !errorMessage.includes('CORS') && !errorMessage.includes('Failed to fetch') && !errorMessage.includes('TypeError')) {
-        throw error;
+      // Check if this is a CORS error or connection issue
+      const errorMessage = error?.message || error?.details || String(error);
+      console.log('Error message:', errorMessage);
+      
+      if (errorMessage.includes('CORS') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_CONNECTION') || errorMessage.includes('TypeError')) {
+        console.warn('🚫 Connection/CORS error detected, using fallback data');
+        this.hasConnectionIssues = true;
+        return mockData;
       }
       
-      console.warn(`📚 Using mock data for ${operationName} in development mode`);
+      // Always use mock data if we get here
+      console.warn(`📚 Using mock data for ${operationName} due to error`);
+      this.hasConnectionIssues = true;
       return mockData;
     }
   }
@@ -410,6 +414,14 @@ class MagazineService {
 
   async getArticleBySlug(slug: string): Promise<MagazineArticle | null> {
     console.log('🔍 Fetching article with slug:', slug);
+    
+    // If we already know there are connection issues, go straight to mock data
+    if (this.hasConnectionIssues) {
+      console.log('📚 Using mock data due to previous connection issues');
+      const mockArticle = mockArticles.find(article => article.slug === slug);
+      return mockArticle || null;
+    }
+    
     return this.withFallback(
       async () => {
         // First get the article
@@ -469,7 +481,11 @@ class MagazineService {
       },
       (() => {
         const mockArticle = mockArticles.find(article => article.slug === slug);
-        console.log('📚 Looking for article in mock data:', { slug, found: !!mockArticle });
+        console.log('📚 Looking for article in mock data:', { 
+          slug, 
+          found: !!mockArticle,
+          availableSlugs: mockArticles.map(a => a.slug)
+        });
         return mockArticle || null;
       })(),
       'getArticleBySlug'
