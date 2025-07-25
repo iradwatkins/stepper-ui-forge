@@ -230,44 +230,13 @@ export const BasicInformation = ({
                   onPlaceSelected={handlePlaceSelected}
                   placeholder="Search for venue, address, or landmark..."
                   error={!!form.formState.errors.address}
-                  disabled={form.watch('addressTBA')}
                   className="w-full"
                 />
               </div>
               
-              {/* To Be Announced Checkbox */}
-              <div className="flex items-center space-x-2 mt-2">
-                <input
-                  type="checkbox"
-                  id="addressTBA"
-                  checked={form.watch('addressTBA') || false}
-                  onChange={(e) => {
-                    const isChecked = e.target.checked;
-                    form.setValue('addressTBA', isChecked);
-                    if (isChecked) {
-                      form.setValue('address', 'To Be Announced');
-                      setSelectedPlaceData(null);
-                    } else {
-                      form.setValue('address', '');
-                    }
-                  }}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <Label 
-                  htmlFor="addressTBA" 
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  Location To Be Announced
-                </Label>
-              </div>
-              
               <div className="flex items-start justify-between mt-1">
                 <p className="text-xs text-muted-foreground">
-                  {form.watch('addressTBA') ? (
-                    <>
-                      <strong>✓ Location will be announced later.</strong> You can update this anytime by editing the event.
-                    </>
-                  ) : isGoogleMapsLoaded ? (
+                  {isGoogleMapsLoaded ? (
                     <>
                       <strong>🌍 Enhanced search enabled!</strong> Search for venues, addresses, or use current location.
                     </>
@@ -277,7 +246,7 @@ export const BasicInformation = ({
                     </>
                   )}
                 </p>
-                {selectedPlaceData && !form.watch('addressTBA') && (
+                {selectedPlaceData && (
                   <div className="text-xs text-green-600 font-medium">
                     📍 Location verified
                   </div>

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Reverted TBA Location Feature** - Simplified location handling for events
+  - Removed addressTBA checkbox from event creation and editing forms
+  - Address field is now always required in forms
+  - Google Places autocomplete remains fully functional
+  - Frontend automatically displays "To Be Announced" when event location is empty
+  - Event organizers can update location at any time through edit event page
+  - Files modified:
+    - `src/types/event-form.ts` - Removed addressTBA field and validation
+    - `src/components/create-event/BasicInformation.tsx` - Removed TBA checkbox UI
+    - `src/pages/EditEvent.tsx` - Removed TBA checkbox and related logic
+    - `src/pages/CreateEventWizard.tsx` - Removed addressTBA from defaults
+    - `src/pages/EventDetail.tsx` - Added "To Be Announced" fallback for empty locations
+    - `src/components/meta/EventMeta.tsx` - Updated meta tags to handle empty locations
+    - `src/components/create-event/ReviewStep.tsx` - Shows "To Be Announced" for empty locations
+
 ### Added
 - **Dashboard Navigation Updates** - Improved navigation and access control
   - Removed "Browse Events" from dashboard sidebar (users can access via main menu)

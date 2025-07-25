@@ -47,7 +47,6 @@ export default function CreateEventWizard() {
       endDate: '',
       endTime: '',
       address: '',
-      addressTBA: false,
       categories: [],
       capacity: undefined,
       displayPrice: {

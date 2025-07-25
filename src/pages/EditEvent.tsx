@@ -23,21 +23,10 @@ const eventSchema = z.object({
   date: z.string().min(1, "Event date is required"),
   time: z.string().min(1, "Event time is required"),
   location: z.string().min(1, "Event location is required"),
-  addressTBA: z.boolean().optional(),
   eventType: z.enum(["simple", "ticketed", "premium"]),
   maxAttendees: z.number().min(1).optional(),
   isPublic: z.boolean().default(true),
   status: z.enum(["draft", "published", "cancelled", "completed"])
-}).refine((data) => {
-  // If addressTBA is true, location can be "To Be Announced"
-  // If addressTBA is false or undefined, location must be a real address
-  if (data.addressTBA) {
-    return true;
-  }
-  return data.location && data.location.length > 0 && data.location !== "To Be Announced";
-}, {
-  message: "Please enter a location or mark as 'To Be Announced'",
-  path: ["location"]
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -69,7 +58,6 @@ export default function EditEvent() {
       date: "",
       time: "",
       location: "",
-      addressTBA: false,
       eventType: "ticketed",
       isPublic: true,
       status: "draft"
@@ -497,41 +485,8 @@ export default function EditEvent() {
                   id="location"
                   placeholder="Enter event location or address"
                   {...form.register("location")}
-                  disabled={form.watch("addressTBA")}
                   className={form.formState.errors.location ? "border-destructive" : ""}
                 />
-                
-                {/* To Be Announced Checkbox */}
-                <div className="flex items-center space-x-2 mt-2">
-                  <input
-                    type="checkbox"
-                    id="addressTBA"
-                    checked={form.watch("addressTBA") || false}
-                    onChange={(e) => {
-                      const isChecked = e.target.checked;
-                      form.setValue("addressTBA", isChecked);
-                      if (isChecked) {
-                        form.setValue("location", "To Be Announced");
-                      } else {
-                        form.setValue("location", "");
-                      }
-                    }}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <Label 
-                    htmlFor="addressTBA" 
-                    className="text-sm font-medium cursor-pointer"
-                  >
-                    Location To Be Announced
-                  </Label>
-                </div>
-                
-                {form.watch("addressTBA") && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <strong>✓ Location will be announced later.</strong> Uncheck to add the actual location.
-                  </p>
-                )}
-                
                 {form.formState.errors.location && (
                   <p className="text-sm text-destructive mt-1">
                     {form.formState.errors.location.message}

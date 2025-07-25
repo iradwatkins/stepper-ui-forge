@@ -27,8 +27,8 @@ export const EventMeta = ({ event, currentUrl }: EventMetaProps) => {
     "startDate": isoDate,
     "location": {
       "@type": "Place",
-      "name": event.location,
-      "address": event.location
+      "name": event.location || "To Be Announced",
+      "address": event.location || "To Be Announced"
     },
     "organizer": {
       "@type": "Organization",
@@ -76,7 +76,7 @@ export const EventMeta = ({ event, currentUrl }: EventMetaProps) => {
       
       {/* Event-specific meta tags */}
       <meta property="event:start_time" content={metaTags['event:start_time']} />
-      <meta property="event:location" content={metaTags['event:location']} />
+      <meta property="event:location" content={metaTags['event:location'] || "To Be Announced"} />
       <meta property="event:organizer" content={metaTags['event:organizer']} />
       
       {/* Canonical URL */}

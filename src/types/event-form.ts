@@ -16,7 +16,6 @@ export const eventFormSchema = z.object({
   endDate: z.string().optional(),
   endTime: z.string().optional(),
   address: z.string().min(10, "Please enter a complete address").max(200, "Address too long"),
-  addressTBA: z.boolean().optional(),
   categories: z.array(z.string()).min(1, "At least one category must be selected"),
   capacity: z.number().positive().optional(),
   displayPrice: z.object({
@@ -120,16 +119,6 @@ export const eventFormSchema = z.object({
 }, {
   message: "End time requires an end date",
   path: ["endTime"]
-}).refine((data) => {
-  // If addressTBA is true, address can be "To Be Announced" or empty
-  // If addressTBA is false or undefined, address must meet normal requirements
-  if (data.addressTBA) {
-    return true;
-  }
-  return data.address && data.address.length >= 10;
-}, {
-  message: "Please enter a complete address or mark as 'To Be Announced'",
-  path: ["address"]
 });
 
 export type EventFormData = z.infer<typeof eventFormSchema>;

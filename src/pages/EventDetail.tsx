@@ -519,7 +519,7 @@ const EventDetail = () => {
                     <span>{event.date} {event.time}</span>
                     <span className="mx-2">•</span>
                     <MapPinIcon className="w-4 h-4 mr-2" />
-                    <span>{event.location}</span>
+                    <span>{event.location || "To Be Announced"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -618,7 +618,7 @@ const EventDetail = () => {
                 </div>
                 <div className="mt-2 flex items-center text-gray-600">
                   <MapPinIcon className="w-5 h-5 mr-2" />
-                  <span>{event.location}</span>
+                  <span>{event.location || "To Be Announced"}</span>
                 </div>
               </div>
 
