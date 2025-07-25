@@ -1,11 +1,10 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { waitForContainer, detectBrowserExtensions } from '@/utils/containerUtils';
 
 interface ImageUploadProps {
   value?: string;
@@ -212,14 +211,14 @@ export default function ImageUpload({
       <CardContent className="p-0">
         <div
           ref={containerRef}
-          id={containerId}
           {...getRootProps()}
+          onPaste={handlePaste}
           className={`
             border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
             ${isDragActive && !isDragReject ? 'border-primary bg-primary/10' : ''}
             ${isDragReject ? 'border-destructive bg-destructive/10' : ''}
             ${!isDragActive && !isDragReject ? 'border-muted-foreground/25 hover:border-primary hover:bg-primary/5' : ''}
-            ${disabled || uploading || !containerReady ? 'cursor-not-allowed opacity-50' : ''}
+            ${disabled || uploading ? 'cursor-not-allowed opacity-50' : ''}
           `}
         >
           <input {...getInputProps()} />
