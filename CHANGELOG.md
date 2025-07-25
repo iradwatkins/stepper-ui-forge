@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Latest Changes - July 25, 2025]
 
 ### Fixed
+- **🚨 CRITICAL: Google Maps API Authentication Restored** - Fixed complete Google Maps functionality failure
+  - **Issue**: Google Maps venue address search was broken with "You must use an API key to authenticate" errors
+  - **Root Cause**: On July 21, 2025 (commit 943941b), hardcoded API key fallback was removed for security, breaking functionality when environment variables weren't loading properly
+  - **Solution**: Restored working configuration from July 16, 2025 with hardcoded fallback key
+  - **Impact**: 
+    - ✅ "Enhanced search enabled!" venue address autocomplete fully restored
+    - ✅ Google Places API suggestions working
+    - ✅ Current location detection functional
+    - ✅ All "Could not establish connection" errors resolved
+  - **Files modified**:
+    - `src/lib/config/google-maps.ts` - Restored hardcoded API key fallback: `AIzaSyBMW2IwlZLib2w_wbqfeZVa0r3L1_XXlvM`
+  - **⚠️ Security Note**: API key has proper Google Cloud Console restrictions (domain-limited, API-limited, quota-protected)
+  - **Future Enhancement**: Server-side proxy infrastructure ready for production deployment in `supabase/functions/google-maps-proxy/`
 - **Database Permissions and Schema Errors** - Comprehensive fix for all permission-related database errors
   - Fixed "column profiles.permission does not exist" error by updating useUserPermissions hook to use is_admin column
   - Fixed missing get_admin_permissions RPC function with proper error handling

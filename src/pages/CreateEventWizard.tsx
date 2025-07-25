@@ -179,16 +179,26 @@ export default function CreateEventWizard() {
         description = description ? `${description}\n\n${priceText}` : priceText;
       }
 
-      // Combine venue name with address for location field since venue_name column doesn't exist yet
+      // Combine venue name with address for location field
       let locationWithVenue = formData.address.trim();
       if (formData.venueName?.trim()) {
         locationWithVenue = `${formData.venueName.trim()}, ${formData.address.trim()}`;
       }
 
+      // Debug venue_name specifically
+      const venueNameValue = formData.venueName?.trim() || formData.organizationName?.trim() || 'Event Venue';
+      console.log('🏢 Venue Name Debug:', {
+        venueName: formData.venueName,
+        organizationName: formData.organizationName,
+        computed: venueNameValue,
+        formData: formData
+      });
+
       const eventData = {
         title: formData.title.trim(),
         description: description || null,
         organization_name: formData.organizationName?.trim() || null,
+        venue_name: venueNameValue,
         date: formData.date,
         time: formData.time,
         location: locationWithVenue,
@@ -203,6 +213,7 @@ export default function CreateEventWizard() {
       };
 
       console.log('Saving event with data:', eventData);
+      console.log('🔍 venue_name specifically:', eventData.venue_name);
 
       const { data: event, error } = await supabase
         .from("events")
