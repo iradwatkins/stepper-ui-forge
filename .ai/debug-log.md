@@ -126,4 +126,5 @@
 | Magazine storage bucket | 20250125_magazine_images_bucket.sql | Create magazine-images bucket with proper RLS policies | No |
 | Admin nav flicker fix | DashboardSidebar.tsx | Add loading state handling and localStorage persistence for admin section | No |
 | Dashboard navigation redesign | DashboardSidebar.tsx | Complete restructure with better grouping, search, and visual improvements | No |
+| Admin-specific navigation | DashboardSidebar.tsx | Remove Browse Events, My Tickets, Liked Events from admin view | No |
 | Document login fix | URGENT_FIX_LOGIN.md | Emergency fix for broken authentication | No |

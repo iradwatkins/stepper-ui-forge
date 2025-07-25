@@ -146,7 +146,18 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
 
   // Build navigation based on user permissions - Progressive Enhancement System
   const getMainNavigation = (): NavigationItem[] => {
-    // Core navigation for all users
+    // Admin users get a simplified main navigation
+    if (isAdmin) {
+      return [
+        {
+          title: 'Dashboard',
+          href: '/dashboard',
+          icon: LayoutDashboard
+        }
+      ]
+    }
+    
+    // Core navigation for non-admin users
     const items: NavigationItem[] = [
       {
         title: 'Dashboard',
@@ -165,7 +176,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       }
     ]
 
-    // Add following/followers based on context
+    // Add following/followers based on context (non-admin only)
     if (isEventOwner || isOrganizer) {
       items.push({
         title: 'Followers',
@@ -185,16 +196,19 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
 
   // Events & Sales section
   const getEventsAndSalesNavigation = (): NavigationItem[] => {
-    const items: NavigationItem[] = [
-      {
+    const items: NavigationItem[] = []
+    
+    // Only show Browse Events for non-admin users
+    if (!isAdmin) {
+      items.push({
         title: 'Browse Events',
         href: '/events',
         icon: Calendar
-      }
-    ]
+      })
+    }
 
-    // Event management for organizers
-    if (isEventOwner || isOrganizer) {
+    // Event management for organizers and admins
+    if (isEventOwner || isOrganizer || isAdmin) {
       items.push({
         title: 'My Events',
         icon: Calendar,
@@ -230,8 +244,8 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       })
     }
 
-    // Sales tools for sellers
-    if (eventPermissions.canSellTickets) {
+    // Sales tools for sellers (not admins)
+    if (eventPermissions.canSellTickets && !isAdmin) {
       items.push({
         title: 'Sales Tools',
         icon: DollarSign,
@@ -263,8 +277,11 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     return items
   }
 
-  // Operations section for staff and organizers
+  // Operations section for staff and organizers (not admins)
   const getOperationsNavigation = (): NavigationItem[] => {
+    // Admins don't need operations section
+    if (isAdmin) return []
+    
     const items: NavigationItem[] = []
 
     // Staff operations
@@ -308,9 +325,9 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     return items
   }
 
-  // Analytics section for organizers
+  // Analytics section for organizers and admins
   const getAnalyticsNavigation = (): NavigationItem[] => {
-    if (!isEventOwner && !isOrganizer) return []
+    if (!isEventOwner && !isOrganizer && !isAdmin) return []
     
     return [
       {
@@ -331,9 +348,9 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     ]
   }
 
-  // Management section for organizers
+  // Management section for organizers and admins
   const getManagementNavigation = (): NavigationItem[] => {
-    if (!isEventOwner && !isOrganizer) return []
+    if (!isEventOwner && !isOrganizer && !isAdmin) return []
     
     return [
       {
