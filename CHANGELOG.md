@@ -5,9 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Latest Changes - July 25, 2025]
+
 ## [Unreleased]
 
 ### Added
+- **Enhanced Admin Dashboard Navigation** - Improved navigation with collapsible sections
+  - Removed separator lines for cleaner appearance
+  - Added collapsible sections: Events & Sales, Analytics, Management, Account, Administration
+  - Sections remember expanded/collapsed state using localStorage
+  - Auto-expand all sections when searching
+  - Clean arrow indicators (▶ collapsed, ▼ expanded) next to section names
+  - Files modified:
+    - `src/components/dashboard/DashboardSidebar.tsx` - Added collapsible sections and state persistence
+
+- **Simplified Venue Management Integration** - Streamlined venue selection for premium events
+  - Replaced complex inline venue creation with simple venue selection
+  - "Manage Venues" button opens venue management page in new tab
+  - Refresh button to load newly created venues without page reload
+  - Search functionality to quickly find venues
+  - Auto-selects venue when editing existing events
+  - Files created/modified:
+    - `src/components/create-event/VenueSelectionStep.tsx` - Simplified to use existing venue management
+    - `src/components/create-event/VenueCustomization.tsx` - Created for future event-specific price overrides
+    - Integration leverages existing `/dashboard/venues` functionality
+
+- **React Dropzone Dependency** - Fixed production build issue
+  - Added missing react-dropzone package required by ImageUpload component
+  - Resolved Vercel deployment failures
+  - Files modified:
+    - `package.json` - Added react-dropzone dependency
+    - `package-lock.json` - Updated with react-dropzone
+
 - **To Be Announced (TBA) Location Feature** - Event organizers can now create events without specifying a location upfront
   - Added "Location To Be Announced" checkbox in event creation form
   - Added same functionality to event editing page
