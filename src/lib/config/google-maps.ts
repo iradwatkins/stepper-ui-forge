@@ -1,6 +1,6 @@
 // Google Maps Configuration
 export const GOOGLE_MAPS_CONFIG = {
-  apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+  apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBMW2IwlZLib2w_wbqfeZVa0r3L1_XXlvM',
   libraries: ['places', 'marker'] as const,
   version: 'weekly'
 };
