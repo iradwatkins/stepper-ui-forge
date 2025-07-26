@@ -368,10 +368,20 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           // Track referral conversion if present
           if (referralCode) {
             try {
+              // Prepare seat details for commission calculation if available
+              const seatCommissionDetails = seatCheckoutMode && seatDetails ? 
+                seatDetails.map(seat => ({
+                  id: seat.id,
+                  category: seat.category,
+                  price: seat.price,
+                  isPremium: seat.isPremium || false
+                })) : undefined;
+
               const conversionResult = await ReferralService.trackReferralConversion(
                 referralCode,
                 orderResult.order.id,
-                seatCheckoutMode ? seatTotal : total
+                seatCheckoutMode ? seatTotal : total,
+                seatCommissionDetails
               );
               
               if (conversionResult.success) {

@@ -135,12 +135,18 @@ export class ReferralService {
   }
 
   /**
-   * Track referral conversion (when order is created)
+   * Track referral conversion with optional seat-category specific rates
    */
   static async trackReferralConversion(
     referralCode: string,
     orderId: string,
-    saleAmount: number
+    saleAmount: number,
+    seatDetails?: Array<{
+      id: string;
+      category: string;
+      price: number;
+      isPremium?: boolean;
+    }>
   ): Promise<ReferralTrackingResult> {
     try {
       // Get referral code details with promotion info
@@ -153,7 +159,9 @@ export class ReferralService {
           follower_promotions!promotion_id (
             follower_id,
             organizer_id,
-            commission_rate
+            commission_rate,
+            commission_type,
+            commission_fixed_amount
           )
         `)
         .eq('code', referralCode)
@@ -169,9 +177,39 @@ export class ReferralService {
         throw new Error('Promotion not found for referral code');
       }
 
-      // Calculate commission
-      const commissionRate = parseFloat(promotion.commission_rate);
-      const commissionAmount = Math.round(saleAmount * commissionRate * 100) / 100;
+      // Calculate commission using fixed dollar amounts
+      const commissionType = promotion.commission_type || 'fixed';
+      const baseCommissionAmount = parseFloat(promotion.commission_fixed_amount || promotion.commission_rate);
+      let totalCommissionAmount = 0;
+
+      if (commissionType === 'fixed') {
+        if (seatDetails && seatDetails.length > 0) {
+          // Calculate seat-specific fixed commission amounts
+          totalCommissionAmount = seatDetails.reduce((total, seat) => {
+            // Premium/VIP seats get enhanced fixed commission
+            const seatCommissionAmount = seat.isPremium || seat.category.toLowerCase().includes('vip') 
+              ? baseCommissionAmount * 1.5  // 50% higher fixed amount for premium seats
+              : baseCommissionAmount;
+            
+            const roundedCommission = Math.round(seatCommissionAmount * 100) / 100;
+            
+            console.log(`[ReferralService] Seat ${seat.id} (${seat.category}): $${seat.price} ticket → $${roundedCommission} commission (fixed)`);
+            
+            return total + roundedCommission;
+          }, 0);
+        } else {
+          // Fallback: use fixed amount per transaction for non-seat purchases
+          totalCommissionAmount = Math.round(baseCommissionAmount * 100) / 100;
+          console.log(`[ReferralService] Non-seat purchase: $${saleAmount} → $${totalCommissionAmount} commission (fixed)`);
+        }
+      } else {
+        // Legacy percentage calculation for backward compatibility
+        const commissionRate = parseFloat(promotion.commission_rate);
+        totalCommissionAmount = Math.round(saleAmount * commissionRate * 100) / 100;
+        console.log(`[ReferralService] Legacy percentage: $${saleAmount} @ ${(commissionRate * 100).toFixed(1)}% = $${totalCommissionAmount}`);
+      }
+
+      const commissionAmount = totalCommissionAmount;
 
       // Create commission earning record
       const commissionData: CommissionEarningInsert = {
@@ -181,7 +219,7 @@ export class ReferralService {
         organizer_id: promotion.organizer_id,
         event_id: referralData.event_id,
         sale_amount: saleAmount,
-        commission_rate: commissionRate,
+        commission_rate: commissionType === 'fixed' ? 0 : parseFloat(promotion.commission_rate),
         commission_amount: commissionAmount,
         status: 'pending'
       };
