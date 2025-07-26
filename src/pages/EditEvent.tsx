@@ -23,7 +23,6 @@ const eventSchema = z.object({
   date: z.string().min(1, "Event date is required"),
   time: z.string().min(1, "Event time is required"),
   location: z.string().min(1, "Event location is required"),
-  eventType: z.enum(["simple", "ticketed", "premium"]),
   maxAttendees: z.number().min(1).optional(),
   isPublic: z.boolean().default(true),
   status: z.enum(["draft", "published", "cancelled", "completed"]),
@@ -41,6 +40,7 @@ export default function EditEvent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [eventType, setEventType] = useState<"simple" | "ticketed" | "premium">("ticketed");
   
   // Use the original image upload system
   const {
@@ -61,7 +61,6 @@ export default function EditEvent() {
       date: "",
       time: "",
       location: "",
-      eventType: "ticketed",
       isPublic: true,
       status: "draft",
       displayPriceAmount: 0,
@@ -115,6 +114,9 @@ export default function EditEvent() {
       // Check if location is "To Be Announced"
       const isTBA = event.location.includes("To Be Announced");
       
+      // Set event type in state (not editable)
+      setEventType(event.event_type);
+      
       // Populate form with event data
       form.reset({
         title: event.title,
@@ -123,7 +125,6 @@ export default function EditEvent() {
         date: event.date,
         time: event.time,
         location: event.location,
-        eventType: event.event_type,
         maxAttendees: event.max_attendees || undefined,
         isPublic: event.is_public,
         status: event.status,
@@ -154,7 +155,7 @@ export default function EditEvent() {
     try {
       // Prepare display price data for simple events
       let displayPrice = null;
-      if (data.eventType === "simple" && (data.displayPriceAmount || data.displayPriceLabel)) {
+      if (eventType === "simple" && (data.displayPriceAmount || data.displayPriceLabel)) {
         displayPrice = {
           amount: data.displayPriceAmount || 0,
           label: data.displayPriceLabel?.trim() || ""
@@ -168,7 +169,7 @@ export default function EditEvent() {
         date: data.date,
         time: data.time,
         location: data.location,
-        event_type: data.eventType,
+        event_type: eventType,
         max_attendees: data.maxAttendees || null,
         is_public: data.isPublic,
         status: data.status,
@@ -510,24 +511,17 @@ export default function EditEvent() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="eventType">Event Type</Label>
-                  <Select
-                    value={form.watch("eventType")}
-                    onValueChange={(value: "simple" | "ticketed" | "premium") =>
-                      form.setValue("eventType", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select event type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="simple">Simple (Free)</SelectItem>
-                      <SelectItem value="ticketed">Ticketed</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Event Type</Label>
+                  <div className="px-3 py-2 border rounded-md bg-gray-50">
+                    {eventType === 'simple' ? 'Simple Event' : 
+                     eventType === 'ticketed' ? 'Ticketed Event' : 
+                     'Premium Event'}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Event type cannot be changed after creation
+                  </p>
                 </div>
 
                 <div>
@@ -562,7 +556,7 @@ export default function EditEvent() {
               </div>
 
               {/* Price Information for Simple Events */}
-              {form.watch("eventType") === "simple" && (
+              {eventType === "simple" && (
                 <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">

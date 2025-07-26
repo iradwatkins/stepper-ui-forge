@@ -446,21 +446,18 @@ const EventDetail = () => {
   // Get display price for Simple Events
   const getSimpleEventDisplayPrice = () => {
     if (event.event_type !== 'simple') return null;
-    // Extract price from description field (stored as [PRICE:amount|label])
-    if (event.description) {
-      const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
-      if (priceMatch && priceMatch[1]) {
-        const priceParts = priceMatch[1].split('|');
-        const amount = parseFloat(priceParts[0]) || 0;
-        const label = priceParts[1]?.trim() || '';
-        
-        if (amount > 0) {
-          return `$${amount.toFixed(2)}`;
-        } else if (label) {
-          return label;
-        }
+    
+    // Use modern display_price field for simple events
+    if (event.display_price) {
+      const { amount, label } = event.display_price;
+      
+      if (amount && amount > 0) {
+        return `$${amount.toFixed(2)}`;
+      } else if (amount === 0 && label && label.trim()) {
+        return label.trim();
       }
     }
+    // Only show "Free" when amount is 0 and no label provided
     return "Free";
   };
 
