@@ -361,6 +361,15 @@ export default function CustomerSeatingChart({
         ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y);
       }
 
+      // 'X' mark for sold seats
+      if (seat.status === 'sold') {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold ${14 / zoom}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('✗', canvasCoords.x, canvasCoords.y + 8 / zoom);
+      }
+
       // Premium indicator
       if (seat.isPremium) {
         ctx.fillStyle = '#FFD700';

@@ -656,6 +656,16 @@ export default function InteractiveSeatingChart({
         
         // Display seat number inside the seat
         ctx.fillText(seat.seatNumber, canvasCoords.x, canvasCoords.y - 2 / zoom);
+      }
+
+      // 'X' mark for sold seats
+      if (seat.status === 'sold') {
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${12 / zoom}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('✗', canvasCoords.x, canvasCoords.y + 6 / zoom);
+      }
         
         // Display row information above seat if hovered
         if (isHovered && seat.row) {
