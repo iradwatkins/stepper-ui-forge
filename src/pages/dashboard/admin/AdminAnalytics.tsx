@@ -22,7 +22,7 @@ export default function AdminAnalytics() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -36,46 +36,46 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+15% from last month</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+{stats.monthlyGrowth}% from last month</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium">Total Events</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.totalEvents.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+8% from last month</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium">Active Events</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.activeEvents}</div>
             <p className="text-xs text-muted-foreground">Currently running</p>
           </CardContent>
@@ -83,7 +83,7 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Charts and Analytics */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
         {/* Revenue Analytics */}
         <Card>
           <CardHeader>
@@ -91,7 +91,7 @@ export default function AdminAnalytics() {
             <CardDescription>Monthly revenue and growth trends</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
+            <div className="h-72 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
                 <p>Revenue chart would go here</p>
@@ -108,7 +108,7 @@ export default function AdminAnalytics() {
             <CardDescription>User registration and activity trends</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
+            <div className="h-72 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
                 <p>User growth chart would go here</p>
@@ -120,7 +120,7 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Additional Metrics */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Top Performing Events</CardTitle>
@@ -133,7 +133,7 @@ export default function AdminAnalytics() {
                 { name: 'Tech Conference 2024', sales: 890, revenue: 8900 },
                 { name: 'Art Gallery Opening', sales: 456, revenue: 2280 }
               ].map((event, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div key={i} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                   <div>
                     <p className="font-medium text-sm">{event.name}</p>
                     <p className="text-xs text-muted-foreground">{event.sales} tickets sold</p>

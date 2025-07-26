@@ -35,8 +35,10 @@ export default function Dashboard() {
         </DashboardHeader>
 
         {/* Page content */}
-        <main className="p-4 lg:p-8">
-          <Outlet />
+        <main className="p-6 lg:p-10">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

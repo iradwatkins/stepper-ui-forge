@@ -220,41 +220,41 @@ export default function UnifiedDashboardHome() {
     if (isAdmin) {
       cards.push(
         <Card key="total-users">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Total Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.totalUsers?.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+12% from last month</p>
           </CardContent>
         </Card>,
         <Card key="platform-revenue">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Platform Revenue</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Platform Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">${stats.platformRevenue?.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+15% from last month</p>
           </CardContent>
         </Card>,
         <Card key="active-events">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Events</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Active Events</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.activeEvents}</div>
             <p className="text-xs text-muted-foreground">Currently running</p>
           </CardContent>
         </Card>,
         <Card key="system-health">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Health</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">System Health</CardTitle>
             <Monitor className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.systemHealth}%</div>
             <p className="text-xs text-muted-foreground">All systems operational</p>
           </CardContent>
@@ -266,21 +266,21 @@ export default function UnifiedDashboardHome() {
     if (isEventOwner) {
       cards.push(
         <Card key="my-events">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Events</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">My Events</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.totalEvents}</div>
             <p className="text-xs text-muted-foreground">${stats.totalRevenue?.toFixed(0)} total revenue</p>
           </CardContent>
         </Card>,
         <Card key="followers">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Followers</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Followers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.totalFollowers}</div>
             <p className="text-xs text-muted-foreground">+3 this week</p>
           </CardContent>
@@ -292,21 +292,21 @@ export default function UnifiedDashboardHome() {
     if (canSellTickets) {
       cards.push(
         <Card key="earnings">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Total Earnings</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">${stats.totalEarnings?.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">+$15.50 from last month</p>
           </CardContent>
         </Card>,
         <Card key="sales">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tickets Sold</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Tickets Sold</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.totalSales}</div>
             <p className="text-xs text-muted-foreground">Via {stats.activeReferralCodes} referral codes</p>
           </CardContent>
@@ -318,21 +318,21 @@ export default function UnifiedDashboardHome() {
     if (canWorkEvents) {
       cards.push(
         <Card key="events-worked">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Events Worked</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Events Worked</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.eventsWorked}</div>
             <p className="text-xs text-muted-foreground">{stats.upcomingEvents} upcoming</p>
           </CardContent>
         </Card>,
         <Card key="tickets-scanned">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tickets Scanned</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Tickets Scanned</CardTitle>
             <QrCode className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">{stats.ticketsScanned}</div>
             <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
@@ -344,21 +344,21 @@ export default function UnifiedDashboardHome() {
     if (!canSellTickets && !canWorkEvents && !isEventOwner && !isAdmin) {
       cards.push(
         <Card key="events-attended">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Events Attended</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Events Attended</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">Start by browsing events</p>
           </CardContent>
         </Card>,
         <Card key="following">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Following</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium leading-relaxed">Following</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1">
             <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">Follow organizers to get promoted</p>
           </CardContent>
@@ -375,7 +375,7 @@ export default function UnifiedDashboardHome() {
 
     // Common actions
     actions.push(
-      <Button key="browse-events" variant="outline" className="h-20 flex-col gap-2">
+      <Button key="browse-events" variant="outline" className="h-24 flex-col gap-3 p-4">
         <Calendar className="h-6 w-6" />
         <span className="text-sm">Browse Events</span>
       </Button>
@@ -383,7 +383,7 @@ export default function UnifiedDashboardHome() {
 
     // Create Event available to all users
     actions.push(
-      <Button key="create-event" className="h-20 flex-col gap-2" asChild>
+      <Button key="create-event" className="h-24 flex-col gap-3 p-4" asChild>
         <Link to="/create-event">
           <Plus className="h-6 w-6" />
           <span className="text-sm">Create Event</span>
@@ -393,7 +393,7 @@ export default function UnifiedDashboardHome() {
 
     if (canSellTickets) {
       actions.push(
-        <Button key="generate-code" variant="outline" className="h-20 flex-col gap-2">
+        <Button key="generate-code" variant="outline" className="h-24 flex-col gap-3 p-4">
           <DollarSign className="h-6 w-6" />
           <span className="text-sm">Generate Code</span>
         </Button>
@@ -402,7 +402,7 @@ export default function UnifiedDashboardHome() {
 
     if (canWorkEvents) {
       actions.push(
-        <Button key="scan-tickets" variant="outline" className="h-20 flex-col gap-2">
+        <Button key="scan-tickets" variant="outline" className="h-24 flex-col gap-3 p-4">
           <QrCode className="h-6 w-6" />
           <span className="text-sm">Scan Tickets</span>
         </Button>
@@ -411,7 +411,7 @@ export default function UnifiedDashboardHome() {
 
     if (isEventOwner) {
       actions.push(
-        <Button key="manage-followers" variant="outline" className="h-20 flex-col gap-2">
+        <Button key="manage-followers" variant="outline" className="h-24 flex-col gap-3 p-4">
           <Users className="h-6 w-6" />
           <span className="text-sm">Manage Followers</span>
         </Button>
@@ -420,11 +420,11 @@ export default function UnifiedDashboardHome() {
 
     if (isAdmin) {
       actions.push(
-        <Button key="user-management" variant="outline" className="h-20 flex-col gap-2">
+        <Button key="user-management" variant="outline" className="h-24 flex-col gap-3 p-4">
           <Users className="h-6 w-6" />
           <span className="text-sm">User Management</span>
         </Button>,
-        <Button key="system-monitor" variant="outline" className="h-20 flex-col gap-2">
+        <Button key="system-monitor" variant="outline" className="h-24 flex-col gap-3 p-4">
           <Monitor className="h-6 w-6" />
           <span className="text-sm">System Monitor</span>
         </Button>
@@ -435,7 +435,7 @@ export default function UnifiedDashboardHome() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{getUserGreeting()}</h1>
@@ -450,12 +450,12 @@ export default function UnifiedDashboardHome() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         {getStatsCards()}
       </div>
 
       {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
         {/* Recent Activity */}
         <Card>
           <CardHeader>
@@ -472,7 +472,7 @@ export default function UnifiedDashboardHome() {
             ) : (
               <div className="space-y-4">
                 {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div key={activity.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 rounded-full bg-background">
                         {activity.icon && <activity.icon className="h-4 w-4" />}
@@ -518,18 +518,18 @@ export default function UnifiedDashboardHome() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-background rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center p-6 bg-background rounded-lg">
                 <Calendar className="h-8 w-8 text-primary mx-auto mb-2" />
                 <h3 className="font-medium mb-1">Browse Events</h3>
                 <p className="text-sm text-muted-foreground">Discover amazing events in your area</p>
               </div>
-              <div className="text-center p-4 bg-background rounded-lg">
+              <div className="text-center p-6 bg-background rounded-lg">
                 <Users className="h-8 w-8 text-primary mx-auto mb-2" />
                 <h3 className="font-medium mb-1">Follow Organizers</h3>
                 <p className="text-sm text-muted-foreground">Get updates and unlock selling opportunities</p>
               </div>
-              <div className="text-center p-4 bg-background rounded-lg">
+              <div className="text-center p-6 bg-background rounded-lg">
                 <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
                 <h3 className="font-medium mb-1">Start Earning</h3>
                 <p className="text-sm text-muted-foreground">Get promoted to sell tickets and earn commissions</p>

@@ -490,7 +490,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             variant="ghost"
             onClick={() => toggleExpanded(item.title)}
             className={cn(
-              'w-full justify-between px-3 py-2 text-left font-medium',
+              'w-full justify-between px-4 py-3 text-left font-medium',
               'hover:bg-accent hover:text-accent-foreground transition-colors',
               'text-muted-foreground'
             )}
@@ -513,13 +513,13 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             </div>
           </Button>
           {isExpanded && (
-            <div className="ml-6 mt-1 space-y-1">
+            <div className="ml-6 mt-2 space-y-2">
               {item.children?.map((child) => (
                 <Link key={child.title} to={child.href || '#'}>
                   <Button
                     variant="ghost"
                     className={cn(
-                      'w-full justify-start px-3 py-2 text-sm transition-colors',
+                      'w-full justify-start px-4 py-2.5 text-sm transition-colors',
                       'hover:bg-accent hover:text-accent-foreground',
                       isActive(child.href) 
                         ? 'bg-accent text-accent-foreground font-medium' 
@@ -547,7 +547,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         <Button
           variant="ghost"
           className={cn(
-            'w-full justify-start px-3 py-2 font-medium transition-colors',
+            'w-full justify-start px-4 py-3 font-medium transition-colors',
             'hover:bg-accent hover:text-accent-foreground',
             isItemActive 
               ? 'bg-accent text-accent-foreground' 
@@ -570,9 +570,9 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     const isExpanded = title ? expandedSections.includes(title) : true
     
     return (
-      <div className="space-y-1">
+      <div className="space-y-2">
         {title && (
-          <div className="px-3 py-2">
+          <div className="px-4 py-3">
             <button
               onClick={() => toggleSection(title)}
               className="w-full text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 hover:text-foreground transition-colors"
@@ -587,7 +587,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
           </div>
         )}
         {isExpanded && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {items.map((item) => (
               <NavigationItemComponent key={item.title} item={item} />
             ))}
@@ -623,7 +623,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         </div>
         
         {/* Search Bar */}
-        <div className="px-3 pb-3">
+        <div className="px-4 pb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -638,8 +638,8 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-6">
+      <ScrollArea className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="space-y-8">
           {/* Main Navigation */}
           <NavigationGroup items={filterNavigationItems(getMainNavigation())} />
           
