@@ -18,6 +18,8 @@ import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
 import { EmergencySquareCard, type EmergencySquareCardRef } from "@/components/payment/EmergencySquareCard";
 import { EmergencyCashApp } from "@/components/payment/EmergencyCashApp";
 import { SquareDiagnostic } from "@/components/payment/SquareDiagnostic";
+import { useReferralCode } from "@/components/tracking/ReferralTracker";
+import { ReferralService } from "@/lib/services/ReferralService";
 import { toast } from "sonner";
 
 interface SeatDetails {
@@ -50,6 +52,7 @@ interface CheckoutModalProps {
 export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDetails, eventTitle, eventDate, eventTime, eventLocation }: CheckoutModalProps) {
   const { items, total, subtotal, fees, clearCart, showThankYou } = useCart();
   const { user } = useAuth();
+  const { referralCode, clearReferralCode } = useReferralCode();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<string>('paypal');
@@ -361,6 +364,28 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           }
 
           console.log('Order created:', orderResult.order);
+
+          // Track referral conversion if present
+          if (referralCode) {
+            try {
+              const conversionResult = await ReferralService.trackReferralConversion(
+                referralCode,
+                orderResult.order.id,
+                seatCheckoutMode ? seatTotal : total
+              );
+              
+              if (conversionResult.success) {
+                console.log('Referral conversion tracked:', conversionResult);
+                // Clear referral code after successful tracking
+                clearReferralCode();
+              } else {
+                console.warn('Failed to track referral conversion:', conversionResult.error);
+              }
+            } catch (referralError) {
+              console.error('Referral tracking error:', referralError);
+              // Don't fail checkout for referral tracking errors
+            }
+          }
 
           // Generate tickets for the order
           const tickets = await TicketService.generateTicketsForOrder(orderResult.order.id);

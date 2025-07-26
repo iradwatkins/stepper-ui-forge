@@ -19,6 +19,8 @@ import {
 import { EventFormData } from '@/types/event-form';
 import { useAuth } from '@/contexts/AuthContext';
 import { VenueService, type VenueLayout } from '@/lib/services/VenueService';
+import { useEventCreation } from '@/contexts/EventCreationContext';
+import { SeatAdapterFacade } from '@/domain/seat';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -34,11 +36,23 @@ export const VenueSelectionStep = ({
   onProceedWithCustom 
 }: VenueSelectionStepProps) => {
   const { user } = useAuth();
+  const { 
+    claimFieldOwnership, 
+    releaseFieldOwnership, 
+    canUpdateField,
+    setVenueSelection,
+    updateSeatingData,
+    syncWithForm,
+    addDebugUpdate
+  } = useEventCreation();
+  
   const [venues, setVenues] = useState<VenueLayout[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueLayout | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [venueServiceAvailable, setVenueServiceAvailable] = useState(true);
+  
+  const COMPONENT_NAME = 'VenueSelectionStep';
 
   // Check venue service availability
   useEffect(() => {
@@ -81,34 +95,109 @@ export const VenueSelectionStep = ({
     loadVenues();
   }, [user?.id, venueServiceAvailable]);
 
-  const handleVenueSelect = (venue: VenueLayout) => {
-    setSelectedVenue(venue);
-    
-    // Update form with venue data
-    form.setValue('venueLayoutId', venue.id);
-    
-    // Pre-populate venue information
-    if (venue.name) {
-      form.setValue('venueName', venue.name);
-    }
-    
-    // Set venue image and seating data from layout_data
-    if (venue.layout_data) {
-      if (venue.layout_data.imageUrl) {
-        form.setValue('venueImageUrl', venue.layout_data.imageUrl);
-        form.setValue('hasVenueImage', true);
+  // Cleanup: Release field ownership when component unmounts
+  useEffect(() => {
+    return () => {
+      const fieldsToRelease = ['venueLayoutId', 'seats', 'seatCategories', 'venueImageUrl', 'hasVenueImage'] as const;
+      fieldsToRelease.forEach(field => {
+        releaseFieldOwnership(field, COMPONENT_NAME);
+      });
+      addDebugUpdate(COMPONENT_NAME, 'cleanup', 'Released all field ownership');
+    };
+  }, [releaseFieldOwnership, addDebugUpdate]);
+
+  const handleVenueSelect = async (venue: VenueLayout) => {
+    try {
+      // Step 1: Claim ownership of venue-related fields
+      const fieldsToOwn = ['venueLayoutId', 'seats', 'seatCategories', 'venueImageUrl', 'hasVenueImage'] as const;
+      const claimedFields: string[] = [];
+      
+      for (const field of fieldsToOwn) {
+        if (claimFieldOwnership(field, COMPONENT_NAME)) {
+          claimedFields.push(field);
+          addDebugUpdate(COMPONENT_NAME, field, `Claimed ownership for venue: ${venue.name}`);
+        } else {
+          console.warn(`Could not claim ownership of ${field} - may cause race condition`);
+        }
       }
       
-      if (venue.layout_data.seats) {
-        form.setValue('seats', venue.layout_data.seats);
+      // Step 2: Update local state
+      setSelectedVenue(venue);
+      
+      // Step 3: Update centralized state
+      setVenueSelection(venue.id, venue);
+      
+      // Step 4: Process venue data with type safety
+      if (venue.layout_data) {
+        // Convert venue seats to UI format using our unified adapter
+        const uiSeats = venue.layout_data.seats ? 
+          SeatAdapterFacade.venueToUI(venue.layout_data.seats) : [];
+        
+        const uiCategories = venue.layout_data.priceCategories || [];
+        
+        // Update centralized seating state
+        updateSeatingData({
+          seats: uiSeats,
+          categories: uiCategories
+        });
+        
+        addDebugUpdate(COMPONENT_NAME, 'seating', {
+          seatCount: uiSeats.length,
+          categoryCount: uiCategories.length
+        });
       }
       
-      if (venue.layout_data.priceCategories) {
-        form.setValue('seatCategories', venue.layout_data.priceCategories);
+      // Step 5: Synchronize with form (prevents race conditions)
+      const formUpdates: Partial<EventFormData> = {
+        venueLayoutId: venue.id,
+      };
+      
+      // Safe form updates with ownership validation
+      if (canUpdateField('venueLayoutId', COMPONENT_NAME)) {
+        formUpdates.venueLayoutId = venue.id;
       }
+      
+      if (venue.name && canUpdateField('venueLayoutId', COMPONENT_NAME)) {
+        formUpdates.venueName = venue.name;
+      }
+      
+      if (venue.layout_data?.imageUrl && canUpdateField('venueImageUrl', COMPONENT_NAME)) {
+        formUpdates.venueImageUrl = venue.layout_data.imageUrl;
+        formUpdates.hasVenueImage = true;
+      }
+      
+      if (venue.layout_data?.seats && canUpdateField('seats', COMPONENT_NAME)) {
+        formUpdates.seats = SeatAdapterFacade.venueToUI(venue.layout_data.seats);
+      }
+      
+      if (venue.layout_data?.priceCategories && canUpdateField('seatCategories', COMPONENT_NAME)) {
+        formUpdates.seatCategories = venue.layout_data.priceCategories;
+      }
+      
+      // Apply all form updates atomically
+      Object.entries(formUpdates).forEach(([key, value]) => {
+        form.setValue(key as keyof EventFormData, value as any);
+        addDebugUpdate(COMPONENT_NAME, key, value);
+      });
+      
+      // Step 6: Trigger validation and sync
+      await syncWithForm(form, ['venue', 'seating']);
+      
+      // Step 7: Notify parent component
+      onVenueSelected(venue.id, venue);
+      
+      toast.success(`Venue "${venue.name}" selected successfully`);
+      
+    } catch (error) {
+      console.error('Error selecting venue:', error);
+      toast.error('Failed to select venue. Please try again.');
+      
+      // Release claimed fields on error
+      const fieldsToRelease = ['venueLayoutId', 'seats', 'seatCategories', 'venueImageUrl', 'hasVenueImage'] as const;
+      fieldsToRelease.forEach(field => {
+        releaseFieldOwnership(field, COMPONENT_NAME);
+      });
     }
-    
-    onVenueSelected(venue.id, venue);
   };
 
   const handleManageVenues = () => {

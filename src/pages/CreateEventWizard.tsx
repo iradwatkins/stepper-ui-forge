@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWizardNavigation } from "@/hooks/useWizardNavigation";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { EventFormData, eventFormSchema } from "@/types/event-form";
+import { EventCreationProvider, useEventCreation } from "@/contexts/EventCreationContext";
 import { WizardNavigator } from "@/components/create-event/wizard/WizardNavigator";
 import { WizardControls } from "@/components/create-event/wizard/WizardControls";
 import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
@@ -14,24 +15,36 @@ import { TicketConfigurationWizard, TicketType } from "@/components/create-event
 import { VenueSelectionStep } from "@/components/create-event/VenueSelectionStep";
 import { SeatingChartWizard } from "@/components/create-event/SeatingChartWizard";
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
+import { EventCreationDebugPanelWrapper } from "@/components/debug/EventCreationDebugPanel";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-export default function CreateEventWizard() {
+// Internal wizard component that uses the context
+function CreateEventWizardInternal() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { 
+    state, 
+    setEventType: setContextEventType, 
+    setCurrentStep,
+    syncWithForm 
+  } = useEventCreation();
+  
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [eventType, setEventType] = useState<'simple' | 'ticketed' | 'premium' | ''>('');
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [seatingConfig, setSeatingConfig] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Debug eventType changes
-  useEffect(() => {
-    console.log('🔄 EventType changed to:', eventType);
-  }, [eventType]);
+  // Use centralized event type
+  const eventType = state.eventType;
+  
+  // Sync eventType changes with centralized state
+  const setEventType = (newEventType: typeof eventType) => {
+    setContextEventType(newEventType);
+    console.log('🔄 EventType changed to:', newEventType);
+  };
 
   // Initialize form with validation
   const form = useForm<EventFormData>({
@@ -506,6 +519,18 @@ export default function CreateEventWizard() {
           )}
         </div>
       </div>
+      
+      {/* Debug Panel (development only) */}
+      <EventCreationDebugPanelWrapper />
     </div>
+  );
+}
+
+// Main export component with provider wrapper
+export default function CreateEventWizard() {
+  return (
+    <EventCreationProvider>
+      <CreateEventWizardInternal />
+    </EventCreationProvider>
   );
 }
