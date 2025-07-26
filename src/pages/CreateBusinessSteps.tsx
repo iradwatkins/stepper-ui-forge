@@ -426,9 +426,9 @@ export default function CreateBusinessSteps() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="max-w-4xl mx-auto">
           {/* Form */}
-          <div className="lg:col-span-2 order-2 lg:order-1">
+          <div>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Step Indicator */}
               <StepIndicator
@@ -935,44 +935,6 @@ export default function CreateBusinessSteps() {
                 className="mt-8"
               />
             </form>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6 order-1 lg:order-2">
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                Your {selectedBusinessType === 'service_provider' ? 'service' : 'business'} listing will be reviewed before being published to ensure quality and relevance to our community.
-              </AlertDescription>
-            </Alert>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Tips for Success</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>Use clear, descriptive business names</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>Include relevant keywords in your description</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>Add multiple contact methods</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>Set accurate business hours</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>Use tags that customers might search for</span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
