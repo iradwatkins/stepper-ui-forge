@@ -620,7 +620,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-border">
+      <div className="border-b border-border relative">
         <div className={cn("flex h-16 items-center", isCollapsed ? "px-4" : "px-6")}>
           <Link to="/dashboard" className="flex items-center space-x-2 flex-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">

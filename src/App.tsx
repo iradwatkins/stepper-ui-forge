@@ -105,13 +105,14 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const isDashboardPage = location.pathname.startsWith('/dashboard');
   const { isCheckoutOpen, checkoutProps, setIsCheckoutOpen } = useCart();
   
   return (
     <div className="min-h-screen bg-background">
       <FaviconManager fallbackFavicon="/steppers-icon.svg" />
       <ReferralTracker />
-      {!isHomePage && <Navbar />}
+      {!isHomePage && !isDashboardPage && <Navbar />}
       <CheckoutModal 
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
