@@ -560,6 +560,65 @@ export default function EditEvent() {
                   </Select>
                 </div>
               </div>
+
+              {/* Price Information for Simple Events */}
+              {form.watch("eventType") === "simple" && (
+                <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      Price (Informational Only)
+                    </h3>
+                    <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">
+                      No payment processing
+                    </span>
+                  </div>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    For Simple Events, you can display a suggested price or cost information (no actual payment processing)
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="displayPriceAmount">Amount</Label>
+                      <Input
+                        id="displayPriceAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        {...form.register("displayPriceAmount", { valueAsNumber: true })}
+                        className={form.formState.errors.displayPriceAmount ? "border-destructive" : ""}
+                      />
+                      {form.formState.errors.displayPriceAmount && (
+                        <p className="text-sm text-destructive mt-1">
+                          {form.formState.errors.displayPriceAmount.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="displayPriceLabel">Label</Label>
+                      <Input
+                        id="displayPriceLabel"
+                        placeholder="e.g., Suggested donation, Entry fee"
+                        {...form.register("displayPriceLabel")}
+                        className={form.formState.errors.displayPriceLabel ? "border-destructive" : ""}
+                      />
+                      {form.formState.errors.displayPriceLabel && (
+                        <p className="text-sm text-destructive mt-1">
+                          {form.formState.errors.displayPriceLabel.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    <p><strong>Examples:</strong></p>
+                    <p>• "Suggested donation: $10"</p>
+                    <p>• "Entry fee: $5"</p>
+                    <p>• "Free (donations welcome)"</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

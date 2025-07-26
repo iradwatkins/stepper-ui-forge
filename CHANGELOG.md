@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Latest Changes - July 26, 2025]
 
 ### Added
+- **💰 Simple Event Price Information Display** - Added editable price fields to Simple Event creation and editing
+  - **Informational Only** - Price display for simple events without payment processing
+  - **Amount and Label Fields** - Customizable price amount ($0-∞) and descriptive label
+  - **Real-time Conditional Display** - Price section only appears when "Simple" event type is selected
+  - **Data Persistence** - Price information saves to database `display_price` JSONB field and loads correctly in edit mode
+  - **Validation Support** - Form validation for price amount (minimum 0) with error handling
+  - **Examples Provided** - Built-in examples like "Suggested donation: $10", "Entry fee: $5", "Free (donations welcome)"
+  - **Files Enhanced**:
+    - `src/pages/CreateEvent.tsx` - Added price fields with conditional rendering and database integration
+    - `src/pages/EditEvent.tsx` - Added price fields with data loading from existing events
+    - Both forms use consistent UI design with blue highlight section and proper form validation
+
 - **🏢 Step-Based Business Creation Wizard** - Complete redesign of business/service listing creation
   - **5-Step Progressive Flow** - Linear step-by-step process replacing complex tab interface
     - Step 1: Business Type Selection with dynamic requirements display
