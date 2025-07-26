@@ -26,7 +26,7 @@ const eventSchema = z.object({
     "Event date must be in the future"
   ),
   time: z.string().min(1, "Event time is required"),
-  location: z.string().min(1, "Event location is required"),
+  location: z.string(),
   eventType: z.enum(["simple", "ticketed", "premium"]).default("ticketed"),
   maxAttendees: z.number().min(1, "Must be at least 1").optional(),
   isPublic: z.boolean().default(true),
@@ -85,10 +85,7 @@ export default function CreateEvent() {
       return false;
     }
     
-    if (!values.location.trim()) {
-      toast.error("Event location is required");
-      return false;
-    }
+    // Location will default to "TO BE ANNOUNCED LATER" if empty
 
     // Validate date is in future
     const eventDate = new Date(`${values.date}T${values.time}`);
@@ -139,7 +136,7 @@ export default function CreateEvent() {
         organization_name: data.organizationName?.trim() || null,
         date: data.date,
         time: data.time,
-        location: data.location.trim(),
+        location: data.location.trim() || "TO BE ANNOUNCED LATER",
         event_type: data.eventType,
         max_attendees: data.maxAttendees || null,
         is_public: data.isPublic,
@@ -330,13 +327,16 @@ export default function CreateEvent() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="location">Event Location *</Label>
+                <Label htmlFor="location">Event Location</Label>
                 <Input
                   id="location"
-                  placeholder="Enter event location or address"
+                  placeholder="Enter address or leave blank (will show as 'TO BE ANNOUNCED LATER')"
                   {...form.register("location")}
                   className={form.formState.errors.location ? "border-destructive" : ""}
                 />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Leave blank if venue is not yet confirmed
+                </p>
                 {form.formState.errors.location && (
                   <p className="text-sm text-destructive mt-1">
                     {form.formState.errors.location.message}
