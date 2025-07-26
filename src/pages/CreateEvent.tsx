@@ -27,7 +27,10 @@ const eventSchema = z.object({
   location: z.string().min(1, "Event location is required"),
   eventType: z.enum(["simple", "ticketed", "premium"]).default("ticketed"),
   maxAttendees: z.number().min(1, "Must be at least 1").optional(),
-  isPublic: z.boolean().default(true)
+  isPublic: z.boolean().default(true),
+  // Price fields for simple events (informational only)
+  displayPriceAmount: z.number().min(0, "Amount must be 0 or greater").optional(),
+  displayPriceLabel: z.string().optional()
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -48,7 +51,9 @@ export default function CreateEvent() {
       time: "",
       location: "",
       eventType: "ticketed",
-      isPublic: true
+      isPublic: true,
+      displayPriceAmount: 0,
+      displayPriceLabel: ""
     }
   });
 
@@ -117,6 +122,15 @@ export default function CreateEvent() {
     setSaveError(null);
 
     try {
+      // Prepare display price data for simple events
+      let displayPrice = null;
+      if (data.eventType === "simple" && (data.displayPriceAmount || data.displayPriceLabel)) {
+        displayPrice = {
+          amount: data.displayPriceAmount || 0,
+          label: data.displayPriceLabel?.trim() || ""
+        };
+      }
+
       const eventData = {
         title: data.title.trim(),
         description: data.description?.trim() || null,
@@ -129,7 +143,8 @@ export default function CreateEvent() {
         is_public: data.isPublic,
         status: status,
         owner_id: user.id,
-        categories: [] // Add empty categories array
+        categories: [], // Add empty categories array
+        display_price: displayPrice
       };
 
       console.log("Inserting event data:", eventData);
@@ -365,6 +380,65 @@ export default function CreateEvent() {
                   )}
                 </div>
               </div>
+
+              {/* Price Information for Simple Events */}
+              {form.watch("eventType") === "simple" && (
+                <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      Price (Informational Only)
+                    </h3>
+                    <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">
+                      No payment processing
+                    </span>
+                  </div>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    For Simple Events, you can display a suggested price or cost information (no actual payment processing)
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="displayPriceAmount">Amount</Label>
+                      <Input
+                        id="displayPriceAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        {...form.register("displayPriceAmount", { valueAsNumber: true })}
+                        className={form.formState.errors.displayPriceAmount ? "border-destructive" : ""}
+                      />
+                      {form.formState.errors.displayPriceAmount && (
+                        <p className="text-sm text-destructive mt-1">
+                          {form.formState.errors.displayPriceAmount.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="displayPriceLabel">Label</Label>
+                      <Input
+                        id="displayPriceLabel"
+                        placeholder="e.g., Suggested donation, Entry fee"
+                        {...form.register("displayPriceLabel")}
+                        className={form.formState.errors.displayPriceLabel ? "border-destructive" : ""}
+                      />
+                      {form.formState.errors.displayPriceLabel && (
+                        <p className="text-sm text-destructive mt-1">
+                          {form.formState.errors.displayPriceLabel.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    <p><strong>Examples:</strong></p>
+                    <p>• "Suggested donation: $10"</p>
+                    <p>• "Entry fee: $5"</p>
+                    <p>• "Free (donations welcome)"</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

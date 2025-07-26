@@ -312,20 +312,23 @@ export default function CreateBusinessSteps() {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    if (!user?.id) {
+      toast.error('You must be logged in to upload images');
+      return;
+    }
+
     setUploading(true);
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        const result = await imageUploadService.uploadOptimizedImage(file, {
-          bucket: 'venue-images',
-          folder: `businesses/${user?.id}`,
-          maxSizeBytes: 5 * 1024 * 1024,
-          allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
-          userId: user?.id
-        });
+        console.log('Uploading file for user:', user.id);
+        
+        // Use the same pattern as magazine images which work
+        const result = await imageUploadService.uploadMagazineImage(file, 'content', user.id);
 
         if (result.success && result.url) {
           return result.url;
         } else {
+          console.error('Upload failed:', result.error);
           toast.error(`Failed to upload ${file.name}: ${result.error}`);
           return null;
         }

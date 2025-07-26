@@ -26,7 +26,10 @@ const eventSchema = z.object({
   eventType: z.enum(["simple", "ticketed", "premium"]),
   maxAttendees: z.number().min(1).optional(),
   isPublic: z.boolean().default(true),
-  status: z.enum(["draft", "published", "cancelled", "completed"])
+  status: z.enum(["draft", "published", "cancelled", "completed"]),
+  // Price fields for simple events (informational only)
+  displayPriceAmount: z.number().min(0, "Amount must be 0 or greater").optional(),
+  displayPriceLabel: z.string().optional()
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -60,7 +63,9 @@ export default function EditEvent() {
       location: "",
       eventType: "ticketed",
       isPublic: true,
-      status: "draft"
+      status: "draft",
+      displayPriceAmount: 0,
+      displayPriceLabel: ""
     }
   });
 
@@ -118,11 +123,12 @@ export default function EditEvent() {
         date: event.date,
         time: event.time,
         location: event.location,
-        addressTBA: isTBA,
         eventType: event.event_type,
         maxAttendees: event.max_attendees || undefined,
         isPublic: event.is_public,
-        status: event.status
+        status: event.status,
+        displayPriceAmount: event.display_price?.amount || 0,
+        displayPriceLabel: event.display_price?.label || ""
       });
 
       // Set existing images if they exist
@@ -146,6 +152,15 @@ export default function EditEvent() {
 
     setIsSaving(true);
     try {
+      // Prepare display price data for simple events
+      let displayPrice = null;
+      if (data.eventType === "simple" && (data.displayPriceAmount || data.displayPriceLabel)) {
+        displayPrice = {
+          amount: data.displayPriceAmount || 0,
+          label: data.displayPriceLabel?.trim() || ""
+        };
+      }
+
       const eventData = {
         title: data.title,
         description: data.description || null,
@@ -158,6 +173,7 @@ export default function EditEvent() {
         is_public: data.isPublic,
         status: data.status,
         images: uploadedImages,
+        display_price: displayPrice,
         updated_at: new Date().toISOString()
       };
 

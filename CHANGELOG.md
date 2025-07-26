@@ -5,7 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Latest Changes - July 25, 2025]
+## [Latest Changes - July 26, 2025]
+
+### Added
+- **🏢 Step-Based Business Creation Wizard** - Complete redesign of business/service listing creation
+  - **5-Step Progressive Flow** - Linear step-by-step process replacing complex tab interface
+    - Step 1: Business Type Selection with dynamic requirements display
+    - Step 2: Basic Information (name, category, description, photos)
+    - Step 3: Contact & Location (email, phone, social media, address)  
+    - Step 4: Details & Tags (specialties, service offerings, keywords)
+    - Step 5: Hours & Review (business hours, final review)
+  - **Visual Progress Tracking** - Step indicator with completion states and progress percentage
+  - **Step Validation** - Real-time validation prevents progression until required fields completed
+  - **Save as Draft** - Users can save progress and return later to complete listing
+  - **Mobile-First Responsive Design** - Optimized touch-friendly interface for all devices
+  - **Components Created**:
+    - `StepIndicator.tsx` - Visual progress tracking with step numbers and completion states
+    - `StepNavigation.tsx` - Previous/Next navigation with validation and draft saving
+    - `FormStep.tsx` - Consistent step presentation wrapper with icons and descriptions
+    - `CreateBusinessSteps.tsx` - Complete step-based business creation form
+
+### Changed
+- **📱 Business Creation UX Overhaul** - Simplified from overwhelming tabs to guided steps
+  - Replaced 5-tab interface with linear step progression
+  - Removed distracting sidebar with review notices and tips
+  - Enhanced mobile responsiveness with touch-friendly controls
+  - Improved form layouts with mobile-first grid systems
+  - Updated business hours interface for better small screen usability
+  - Centered single-column layout for better focus (max-width: 4xl)
+
+### Enhanced
+- **⚡ Business Form Experience** - Streamlined creation flow with preserved functionality
+  - **Linear Navigation** - Users focus on one section at a time, reducing cognitive load
+  - **Dynamic Validation** - Business type-specific field requirements and validation
+  - **Image Upload Preserved** - Full drag-and-drop, preview, and deletion functionality
+  - **Service-Specific Fields** - Conditional fields for different business types
+  - **Social Media Integration** - Support for Facebook, Instagram profiles
+  - **Comprehensive Hours** - Day-specific business hours with closed day handling
+  - **Real-time Feedback** - Validation messages and completion indicators
+
+### Fixed
+- **🔧 Business Image Upload Security** - Resolved RLS policy violation error (403 Unauthorized)
+  - Fixed "new row violates row-level security policy" error when uploading business images
+  - Updated image upload to use established magazine image service with proper permissions
+  - Added user authentication checks before attempting image uploads
+  - Enhanced error logging for better debugging of upload issues
+
+## [Previous Changes - July 25, 2025]
 
 ### Added
 - **🎨 Drag-and-Drop Magazine Editor** - Complete redesign of content block system
