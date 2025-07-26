@@ -17,7 +17,7 @@ interface RateLimitEntry {
 export class RateLimitService {
   private static memoryStore = new Map<string, RateLimitEntry>();
   
-  // Default configurations for different operations
+  // SECURITY ENHANCED: Configurations for different operations with progressive delays
   static readonly CONFIGS = {
     QR_VALIDATION: {
       maxAttempts: 10,
@@ -28,6 +28,26 @@ export class RateLimitService {
       maxAttempts: 5,
       windowMs: 15 * 60 * 1000, // 15 minutes
       blockDurationMs: 30 * 60 * 1000, // 30 minutes
+    },
+    TOTP_VERIFICATION: {
+      maxAttempts: 3,
+      windowMs: 5 * 60 * 1000, // 5 minutes
+      blockDurationMs: 10 * 60 * 1000, // 10 minutes
+    },
+    BIOMETRIC_ATTEMPT: {
+      maxAttempts: 5,
+      windowMs: 10 * 60 * 1000, // 10 minutes
+      blockDurationMs: 20 * 60 * 1000, // 20 minutes
+    },
+    PASSWORD_RESET: {
+      maxAttempts: 3,
+      windowMs: 60 * 60 * 1000, // 1 hour
+      blockDurationMs: 2 * 60 * 60 * 1000, // 2 hours
+    },
+    ADMIN_SETUP: {
+      maxAttempts: 3,
+      windowMs: 60 * 60 * 1000, // 1 hour
+      blockDurationMs: 24 * 60 * 60 * 1000, // 24 hours
     },
     API_GENERAL: {
       maxAttempts: 100,

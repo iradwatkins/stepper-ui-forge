@@ -1,16 +1,43 @@
 /**
- * Manual Admin Setup Utility
+ * SECURITY-HARDENED Admin Setup Utility
  * 
- * This utility can be used to manually set up the configured admin email as admin
- * when the automatic setup doesn't work due to database constraints.
+ * Secure admin setup that requires explicit authentication and authorization.
+ * Removes client-side environment variable exposure for better security.
  */
 
 import { supabase } from '@/lib/supabase'
 
-export const manualAdminSetup = async () => {
-  const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@example.com'
+/**
+ * SECURITY FIX: Secure admin setup that requires current user authentication
+ * and explicit email confirmation instead of using client-side env vars
+ */
+export const secureAdminSetup = async (targetAdminEmail: string, confirmPassword: string) => {
+  // Verify current user is authenticated
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
   
-  console.log('🔐 Manual admin setup for:', adminEmail)
+  if (authError || !user) {
+    return {
+      success: false,
+      message: 'Authentication required to perform admin setup',
+      requiresAuth: true
+    }
+  }
+
+  // Verify password confirmation
+  const { error: passwordError } = await supabase.auth.signInWithPassword({
+    email: user.email!,
+    password: confirmPassword
+  })
+  
+  if (passwordError) {
+    return {
+      success: false,
+      message: 'Password confirmation failed',
+      invalidCredentials: true
+    }
+  }
+  
+  console.log('🔐 Secure admin setup for:', targetAdminEmail)
   
   try {
     // First, check if admin columns exist
@@ -28,11 +55,11 @@ export const manualAdminSetup = async () => {
       }
     }
     
-    // Check if user exists in profiles
+    // Check if target user exists in profiles
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, email, is_admin, admin_level')
-      .eq('email', adminEmail)
+      .eq('email', targetAdminEmail)
       .single()
     
     if (profileError) {
@@ -131,8 +158,15 @@ export const manualAdminSetup = async () => {
   }
 }
 
-// Function to check admin status
-export const checkAdminStatus = async (email: string = import.meta.env.VITE_ADMIN_EMAIL || 'admin@example.com') => {
+// SECURITY FIX: Secure admin status check requiring explicit email parameter
+export const checkAdminStatus = async (email: string) => {
+  if (!email) {
+    return {
+      exists: false,
+      isAdmin: false,
+      error: 'Email parameter required'
+    }
+  }
   try {
     // First check if admin columns exist
     const { error: columnCheckError } = await supabase
@@ -184,11 +218,26 @@ export const checkAdminStatus = async (email: string = import.meta.env.VITE_ADMI
   }
 }
 
-// Console helper functions for browser debugging
-if (typeof window !== 'undefined') {
-  (window as Record<string, unknown>).setupAdmin = manualAdminSetup;
-  (window as Record<string, unknown>).checkAdmin = checkAdminStatus;
-  
-  // Don't run automatic checks to avoid console errors
-  // Users can manually run setupAdmin() or checkAdmin() if needed
+/**
+ * @deprecated SECURITY VULNERABILITY - Use secureAdminSetup instead
+ * This function exposes admin email through client-side environment variables
+ */
+export const manualAdminSetup = async () => {
+  console.warn('⚠️ DEPRECATED: manualAdminSetup() has security vulnerabilities. Use secureAdminSetup() instead.')
+  return {
+    success: false,
+    message: 'This function is deprecated for security reasons. Use secureAdminSetup() with proper authentication.',
+    deprecated: true
+  }
 }
+
+/**
+ * SECURITY NOTE: Browser console access has been removed for security.
+ * Admin setup must now be performed through authenticated UI components
+ * that properly validate user credentials and authorization.
+ * 
+ * This prevents potential security vulnerabilities from:
+ * - Client-side environment variable exposure
+ * - Unauthorized admin privilege escalation
+ * - Browser-based attack vectors
+ */

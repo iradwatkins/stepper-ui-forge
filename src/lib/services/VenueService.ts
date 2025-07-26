@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import type { VenueLayoutRow } from '@/types/database'
 
 export interface PriceCategory {
   id: string
@@ -268,21 +269,21 @@ export class VenueService {
   }
 
   // Map database record to VenueLayout interface
-  private static mapDbToVenueLayout(dbRecord: any, eventCount: number): VenueLayout {
-    const layoutData = dbRecord.layout_data || {}
+  private static mapDbToVenueLayout(dbRecord: VenueLayoutRow, eventCount: number): VenueLayout {
+    const layoutData = dbRecord.layout_data
     
     return {
       id: dbRecord.id,
       user_id: dbRecord.user_id,
       name: dbRecord.name,
       description: dbRecord.description || '',
-      venueType: layoutData.venueType || 'general-admission',
-      imageUrl: layoutData.imageUrl || '',
-      capacity: layoutData.capacity || 0,
-      priceCategories: layoutData.priceCategories || [],
-      seats: layoutData.seats || [],
-      isTemplate: layoutData.isTemplate || false,
-      tags: layoutData.tags || [],
+      venueType: layoutData.venueType as 'theater' | 'stadium' | 'arena' | 'table-service' | 'general-admission',
+      imageUrl: layoutData.imageUrl,
+      capacity: layoutData.capacity,
+      priceCategories: layoutData.priceCategories,
+      seats: layoutData.seats,
+      isTemplate: layoutData.isTemplate,
+      tags: layoutData.tags,
       createdAt: new Date(dbRecord.created_at),
       updatedAt: new Date(dbRecord.updated_at),
       eventCount

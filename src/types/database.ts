@@ -51,6 +51,11 @@ export interface Database {
             showPhone: boolean
             showEvents: boolean
           }
+          two_factor_enabled: boolean
+          two_factor_secret: string | null
+          biometric_credential_id: string | null
+          trusted_devices: string[]
+          backup_codes: string[]
           created_at: string
           updated_at: string
         }
@@ -78,6 +83,11 @@ export interface Database {
             showPhone?: boolean
             showEvents?: boolean
           }
+          two_factor_enabled?: boolean
+          two_factor_secret?: string | null
+          biometric_credential_id?: string | null
+          trusted_devices?: string[]
+          backup_codes?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -105,6 +115,11 @@ export interface Database {
             showPhone?: boolean
             showEvents?: boolean
           }
+          two_factor_enabled?: boolean
+          two_factor_secret?: string | null
+          biometric_credential_id?: string | null
+          trusted_devices?: string[]
+          backup_codes?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -1176,6 +1191,133 @@ export interface Database {
           created_at?: string
         }
       }
+      venue_layouts: {
+        Row: {
+          id: string
+          user_id: string | null
+          name: string
+          description: string | null
+          layout_data: {
+            venueType: string
+            imageUrl: string
+            capacity: number
+            priceCategories: Array<{
+              id: string
+              name: string
+              price: number
+              color: string
+            }>
+            seats: Array<{
+              id: string
+              x: number
+              y: number
+              seatNumber: string
+              priceCategory: string
+              isADA: boolean
+              price: number
+            }>
+            isTemplate: boolean
+            tags: string[]
+          }
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          name: string
+          description?: string | null
+          layout_data: {
+            venueType: string
+            imageUrl: string
+            capacity: number
+            priceCategories: Array<{
+              id: string
+              name: string
+              price: number
+              color: string
+            }>
+            seats: Array<{
+              id: string
+              x: number
+              y: number
+              seatNumber: string
+              priceCategory: string
+              isADA: boolean
+              price: number
+            }>
+            isTemplate: boolean
+            tags: string[]
+          }
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          name?: string
+          description?: string | null
+          layout_data?: {
+            venueType?: string
+            imageUrl?: string
+            capacity?: number
+            priceCategories?: Array<{
+              id: string
+              name: string
+              price: number
+              color: string
+            }>
+            seats?: Array<{
+              id: string
+              x: number
+              y: number
+              seatNumber: string
+              priceCategory: string
+              isADA: boolean
+              price: number
+            }>
+            isTemplate?: boolean
+            tags?: string[]
+          }
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      security_events: {
+        Row: {
+          id: string
+          user_id: string
+          event_type: string
+          details: Record<string, any>
+          risk_level: 'low' | 'medium' | 'high' | 'critical'
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          event_type: string
+          details: Record<string, any>
+          risk_level: 'low' | 'medium' | 'high' | 'critical'
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          event_type?: string
+          details?: Record<string, any>
+          risk_level?: 'low' | 'medium' | 'high' | 'critical'
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       seat_availability_summary: {
@@ -1412,3 +1554,7 @@ export type EventLikeUpdate = Database['public']['Tables']['event_likes']['Updat
 export type TicketEntryLog = Database['public']['Tables']['ticket_entry_logs']['Row']
 export type TicketEntryLogInsert = Database['public']['Tables']['ticket_entry_logs']['Insert']
 export type TicketEntryLogUpdate = Database['public']['Tables']['ticket_entry_logs']['Update']
+
+export type VenueLayoutRow = Database['public']['Tables']['venue_layouts']['Row']
+export type VenueLayoutInsert = Database['public']['Tables']['venue_layouts']['Insert']
+export type VenueLayoutUpdate = Database['public']['Tables']['venue_layouts']['Update']

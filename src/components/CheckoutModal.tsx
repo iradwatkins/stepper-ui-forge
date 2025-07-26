@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { productionPaymentService } from "@/lib/payments/ProductionPaymentService";
 import { OrderService } from "@/lib/services/OrderService";
 import { TicketService } from "@/lib/services/TicketService";
-import { EmailService } from "@/lib/services/EmailService";
+import { EmailService, type TicketEmailData } from "@/lib/services/EmailService";
 import { seatingService } from "@/lib/services/SeatingService";
 import { CheckoutAuthGuard } from "@/components/auth/CheckoutAuthGuard";
 import { EmergencySquareCard, type EmergencySquareCardRef } from "@/components/payment/EmergencySquareCard";
@@ -407,8 +407,7 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
 
           // Send email notification
           try {
-            // @ts-ignore - Email data structure
-            const emailData = {
+            const emailData: TicketEmailData = {
               customerName: orderResult.order.customer_name || 'Valued Customer',
               customerEmail: customerEmail,
               eventTitle: tickets[0]?.ticket_types?.events?.title || eventTitle || 'Event',
@@ -437,7 +436,6 @@ export function CheckoutModal({ isOpen, onClose, eventId, selectedSeats, seatDet
           if (seatCheckoutMode && sessionId && eventId) {
             // Complete seat purchase
             try {
-              // @ts-ignore - Seat purchase completion
               const completionResult = await seatingService.completeSeatPurchase(
                 sessionId,
                 eventId,
