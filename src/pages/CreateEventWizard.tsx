@@ -170,13 +170,13 @@ export default function CreateEventWizard() {
     try {
       const formData = form.getValues();
       
-      // For Simple Events, append display price to description
-      let description = formData.description?.trim() || '';
+      // Prepare display price data for simple events
+      let displayPrice = null;
       if (eventType === 'simple' && (formData.displayPrice?.amount !== undefined || formData.displayPrice?.label)) {
-        const amount = formData.displayPrice.amount || 0;
-        const label = formData.displayPrice.label?.trim() || '';
-        const priceText = `[PRICE:${amount}|${label}]`;
-        description = description ? `${description}\n\n${priceText}` : priceText;
+        displayPrice = {
+          amount: formData.displayPrice.amount || 0,
+          label: formData.displayPrice.label?.trim() || ""
+        };
       }
 
       // Combine venue name with address for location field
@@ -201,7 +201,7 @@ export default function CreateEventWizard() {
 
       const eventData = {
         title: formData.title.trim(),
-        description: description || null,
+        description: formData.description?.trim() || null,
         organization_name: formData.organizationName?.trim() || null,
         venue_name: venueNameValue,
         date: formData.date,
@@ -214,7 +214,8 @@ export default function CreateEventWizard() {
         status: status,
         owner_id: user!.id,
         categories: selectedCategories,
-        images: uploadedImages || {}
+        images: uploadedImages || {},
+        display_price: displayPrice
       };
 
       console.log('Saving event with data:', eventData);

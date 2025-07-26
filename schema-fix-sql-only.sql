@@ -141,6 +141,34 @@ BEGIN
         ALTER TABLE community_businesses 
         ADD COLUMN rating_average decimal(3,2) DEFAULT 0;
     END IF;
+
+    -- CRITICAL IMAGE COLUMNS (missing from previous fix)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'community_businesses' 
+        AND column_name = 'logo_url'
+    ) THEN
+        ALTER TABLE community_businesses 
+        ADD COLUMN logo_url varchar(500);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'community_businesses' 
+        AND column_name = 'cover_image_url'
+    ) THEN
+        ALTER TABLE community_businesses 
+        ADD COLUMN cover_image_url varchar(500);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'community_businesses' 
+        AND column_name = 'gallery_images'
+    ) THEN
+        ALTER TABLE community_businesses 
+        ADD COLUMN gallery_images text[] DEFAULT '{}';
+    END IF;
 END $$;
 
 -- Create performance indexes

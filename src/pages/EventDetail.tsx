@@ -69,13 +69,9 @@ const EventDetail = () => {
     if (event && event.event_type === 'simple') {
       const getSimpleEventPrice = (): number => {
         if (event.event_type !== 'simple') return 0;
-        if (event.description) {
-          const priceMatch = event.description.match(/\[PRICE:(.*?)\]/);
-          if (priceMatch && priceMatch[1]) {
-            const priceParts = priceMatch[1].split('|');
-            const amount = parseFloat(priceParts[0]) || 0;
-            return amount;
-          }
+        // Use display_price field instead of parsing description
+        if (event.display_price?.amount) {
+          return event.display_price.amount;
         }
         return 0;
       };
