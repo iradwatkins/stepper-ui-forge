@@ -637,21 +637,21 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
                 </button>
               </div>
             )}
-            {/* Icon-only section header when collapsed */}
+            {/* Icon-only section header when collapsed - non-clickable */}
             {isCollapsed && SectionIcon && (
               <div className="px-2 py-2">
-                <button
-                  onClick={() => toggleSection(title)}
-                  className="w-full flex justify-center items-center p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                <div
+                  className="w-full flex justify-center items-center p-2"
                   title={title}
                 >
-                  <SectionIcon className="h-4 w-4 text-muted-foreground" />
-                </button>
+                  <SectionIcon className="h-4 w-4 text-foreground" />
+                </div>
               </div>
             )}
           </>
         )}
-        {isExpanded && (
+        {/* Show items when expanded OR when collapsed (for icon navigation) */}
+        {(isExpanded || isCollapsed) && (
           <div className="space-y-2">
             {items.map((item) => (
               <NavigationItemComponent key={item.title} item={item} />
@@ -675,19 +675,6 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
               <span className="text-lg font-semibold text-foreground">Dashboard</span>
             )}
           </Link>
-          
-          {/* Collapse/Expand button - Desktop only (only shown when sidebar is expanded) */}
-          {!isCollapsed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleCollapsed}
-              className="hidden lg:flex"
-              title="Collapse sidebar"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          )}
           
           {/* Mobile close button */}
           {onClose && (
@@ -757,14 +744,35 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         </div>
       </ScrollArea>
 
-      {/* Footer */}
-      {!isCollapsed && (
-        <div className="border-t border-border p-4">
+      {/* Footer with collapse/expand button */}
+      <div className="border-t border-border p-4">
+        {/* Collapse/Expand button at bottom */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleCollapsed}
+          className={cn(
+            "w-full mb-3 hidden lg:flex items-center justify-center",
+            "hover:bg-accent hover:text-accent-foreground"
+          )}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              <span>Collapse</span>
+            </>
+          )}
+        </Button>
+        
+        {!isCollapsed && (
           <div className="text-xs text-center text-muted-foreground">
             © 2024 Steppers Platform
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 
@@ -806,18 +814,6 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       >
         {sidebarContent}
       </aside>
-      {/* Floating collapse button when sidebar is collapsed */}
-      {isCollapsed && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleCollapsed}
-          className="fixed left-[4.5rem] top-8 z-30 bg-background border border-border shadow-sm hover:shadow-md hidden lg:flex"
-          title="Expand sidebar"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      )}
     </>
   )
 }
