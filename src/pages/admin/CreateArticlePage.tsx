@@ -30,6 +30,8 @@ interface ContentBlockEditor extends ContentBlock {
   isEditing?: boolean;
 }
 
+const STORAGE_KEY = 'create-article-draft';
+
 export default function CreateArticlePage() {
   const navigate = useNavigate();
   const { isAdmin, loading: authLoading } = useIsAdmin();
@@ -41,6 +43,39 @@ export default function CreateArticlePage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [contentBlocks, setContentBlocks] = useState<ContentBlockEditor[]>([]);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Load saved draft from localStorage on component mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(STORAGE_KEY);
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        setTitle(parsed.title || '');
+        setExcerpt(parsed.excerpt || '');
+        setFeaturedImage(parsed.featuredImage || '');
+        setCategoryId(parsed.categoryId || null);
+        setContentBlocks(parsed.contentBlocks || []);
+      } catch (error) {
+        console.error('Failed to parse saved draft:', error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // Save draft to localStorage whenever form data changes
+  useEffect(() => {
+    const hasContent = title || excerpt || featuredImage || categoryId || contentBlocks.length > 0;
+    if (hasContent) {
+      const draftData = {
+        title,
+        excerpt,
+        featuredImage,
+        categoryId,
+        contentBlocks
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draftData));
+    }
+  }, [title, excerpt, featuredImage, categoryId, contentBlocks]);
 
   // Track changes
   useEffect(() => {
@@ -157,6 +192,7 @@ export default function CreateArticlePage() {
 
     const result = await createArticle(articleData);
     if (result) {
+      localStorage.removeItem(STORAGE_KEY);
       setIsDirty(false);
       navigate('/dashboard/admin/magazine');
     }
@@ -197,7 +233,7 @@ export default function CreateArticlePage() {
             size="sm"
             onClick={() => {
               if (isDirty) {
-                const confirmed = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+                const confirmed = window.confirm('You have unsaved changes. Are you sure you want to leave? Your progress will be automatically saved.');
                 if (!confirmed) return;
               }
               navigate('/dashboard/admin/magazine');
@@ -212,6 +248,26 @@ export default function CreateArticlePage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to clear all draft data? This cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                setTitle('');
+                setExcerpt('');
+                setFeaturedImage('');
+                setCategoryId(null);
+                setContentBlocks([]);
+                setIsDirty(false);
+                toast.success('Draft cleared');
+              }
+            }}
+            disabled={!isDirty}
+            className="text-destructive hover:text-destructive"
+          >
+            Clear Draft
+          </Button>
           <Button
             variant="outline"
             onClick={() => handleSave('draft')}
@@ -303,11 +359,11 @@ export default function CreateArticlePage() {
 
       {/* Status Summary */}
       {isDirty && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-green-200 bg-green-50">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-amber-800">
-              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-              <p className="text-sm font-medium">You have unsaved changes</p>
+            <div className="flex items-center gap-2 text-green-800">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <p className="text-sm font-medium">Draft auto-saved - your progress is protected from page refreshes</p>
             </div>
           </CardContent>
         </Card>

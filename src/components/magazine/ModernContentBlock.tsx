@@ -51,6 +51,8 @@ export default function ModernContentBlock({
   onToggleEdit
 }: ModernContentBlockProps) {
   const [localContent, setLocalContent] = useState(block.content);
+  const [localStartTime, setLocalStartTime] = useState(block.startTime || 0);
+  const [localEndTime, setLocalEndTime] = useState(block.endTime || 0);
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,13 +80,23 @@ export default function ModernContentBlock({
   }, [block.isEditing]);
 
   const handleSave = () => {
-    onUpdate(block.id, { content: localContent.trim() });
+    const updates: Partial<ContentBlock> = { content: localContent.trim() };
+    
+    // Add timing data for YouTube videos
+    if (block.type === 'youtube_video') {
+      updates.startTime = localStartTime > 0 ? localStartTime : undefined;
+      updates.endTime = localEndTime > 0 ? localEndTime : undefined;
+    }
+    
+    onUpdate(block.id, updates);
     onToggleEdit(block.id, false);
     toast.success('Block updated successfully');
   };
 
   const handleCancel = () => {
     setLocalContent(block.content);
+    setLocalStartTime(block.startTime || 0);
+    setLocalEndTime(block.endTime || 0);
     onToggleEdit(block.id, false);
   };
 
@@ -142,6 +154,40 @@ export default function ModernContentBlock({
       if (match) return match[1];
     }
     return null;
+  };
+
+  const formatTimeToMinutesSeconds = (seconds: number): string => {
+    if (seconds <= 0) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const parseTimeFromInput = (timeStr: string): number => {
+    if (!timeStr.trim()) return 0;
+    const parts = timeStr.split(':');
+    if (parts.length === 2) {
+      const mins = parseInt(parts[0]) || 0;
+      const secs = parseInt(parts[1]) || 0;
+      return mins * 60 + secs;
+    }
+    return parseInt(timeStr) || 0;
+  };
+
+  const buildYouTubeEmbedUrl = (videoId: string, startTime?: number, endTime?: number): string => {
+    let url = `https://www.youtube.com/embed/${videoId}`;
+    const params = new URLSearchParams();
+    
+    if (startTime && startTime > 0) {
+      params.set('start', startTime.toString());
+    }
+    
+    if (endTime && endTime > 0) {
+      params.set('end', endTime.toString());
+    }
+    
+    const paramString = params.toString();
+    return paramString ? `${url}?${paramString}` : url;
   };
 
   const renderEditingContent = () => {
@@ -216,10 +262,38 @@ export default function ModernContentBlock({
               {...commonProps}
               className="border border-input"
             />
+            
+            {block.type === 'youtube_video' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    Start Time (M:SS or seconds)
+                  </label>
+                  <Input
+                    placeholder="0:00 or 0"
+                    value={formatTimeToMinutesSeconds(localStartTime) || ''}
+                    onChange={(e) => setLocalStartTime(parseTimeFromInput(e.target.value))}
+                    className="border border-input text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                    End Time (M:SS or seconds)
+                  </label>
+                  <Input
+                    placeholder="Leave empty for full video"
+                    value={formatTimeToMinutesSeconds(localEndTime) || ''}
+                    onChange={(e) => setLocalEndTime(parseTimeFromInput(e.target.value))}
+                    className="border border-input text-sm"
+                  />
+                </div>
+              </div>
+            )}
+            
             {block.type === 'youtube_video' && localContent && extractYouTubeId(localContent) && (
               <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                 <iframe
-                  src={`https://www.youtube.com/embed/${extractYouTubeId(localContent)}`}
+                  src={buildYouTubeEmbedUrl(extractYouTubeId(localContent)!, localStartTime, localEndTime)}
                   className="w-full h-full"
                   allowFullScreen
                   title="YouTube video preview"
@@ -325,13 +399,23 @@ export default function ModernContentBlock({
       case 'youtube_video':
         const videoId = extractYouTubeId(block.content);
         return videoId ? (
-          <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-            <iframe
-              src={`https://www.youtube.com/embed/${videoId}`}
-              className="w-full h-full"
-              allowFullScreen
-              title="YouTube video"
-            />
+          <div className="space-y-2">
+            {(block.startTime || block.endTime) && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>⏱️</span>
+                {block.startTime && <span>Start: {formatTimeToMinutesSeconds(block.startTime)}</span>}
+                {block.startTime && block.endTime && <span>•</span>}
+                {block.endTime && <span>End: {formatTimeToMinutesSeconds(block.endTime)}</span>}
+              </div>
+            )}
+            <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+              <iframe
+                src={buildYouTubeEmbedUrl(videoId, block.startTime, block.endTime)}
+                className="w-full h-full"
+                allowFullScreen
+                title="YouTube video"
+              />
+            </div>
           </div>
         ) : (
           <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
