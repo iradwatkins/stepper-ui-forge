@@ -567,7 +567,7 @@ const EventDetail = () => {
             <div className="lg:col-span-1">
               <div className="relative bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden">
                 <div 
-                  className="w-full h-64 lg:h-80 cursor-pointer"
+                  className="w-full cursor-pointer"
                   onClick={() => {
                     if (!isEventPast7Days(event.date) || (user && event.owner_id === user.id)) {
                       setGalleryStartIndex(0);
@@ -579,7 +579,7 @@ const EventDetail = () => {
                     eventDate={event.date}
                     imageUrl={primaryImage}
                     alt={event.title}
-                    className="w-full h-full object-contain rounded-lg shadow-lg hover:opacity-90 transition-opacity"
+                    className="w-full h-auto max-h-96 object-contain rounded-lg shadow-lg hover:opacity-90 transition-opacity"
                     isOrganizer={user?.id === event.owner_id}
                   />
                 </div>

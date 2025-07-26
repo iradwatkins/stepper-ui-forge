@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, AlertCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { DateInputField } from "@/components/ui/date-input-field";
+import { TimeInputField } from "@/components/ui/time-input-field";
 
 const eventSchema = z.object({
   title: z.string().min(1, "Event title is required").max(100, "Title must be under 100 characters"),
@@ -288,12 +290,12 @@ export default function CreateEvent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="date">Event Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    {...form.register("date")}
+                  <DateInputField
+                    value={form.watch("date")}
+                    onChange={(value) => form.setValue("date", value)}
                     className={form.formState.errors.date ? "border-destructive" : ""}
+                    minDate={new Date().toISOString().split('T')[0]}
+                    defaultToToday={true}
                   />
                   {form.formState.errors.date && (
                     <p className="text-sm text-destructive mt-1">
@@ -304,10 +306,9 @@ export default function CreateEvent() {
 
                 <div>
                   <Label htmlFor="time">Event Time *</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    {...form.register("time")}
+                  <TimeInputField
+                    value={form.watch("time")}
+                    onChange={(value) => form.setValue("time", value)}
                     className={form.formState.errors.time ? "border-destructive" : ""}
                   />
                   {form.formState.errors.time && (

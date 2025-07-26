@@ -133,10 +133,14 @@ export interface Database {
           organization_name: string | null
           date: string
           time: string
+          end_date: string | null
+          end_time: string | null
+          timezone: string
           location: string
           venue_layout_id: string | null
           seat_overrides: any | null
           categories: string[]
+          tags: string[]
           event_type: EventType
           status: EventStatus
           images: Record<string, ImageMetadata>
@@ -155,10 +159,14 @@ export interface Database {
           organization_name?: string | null
           date: string
           time: string
+          end_date?: string | null
+          end_time?: string | null
+          timezone?: string
           location: string
           venue_layout_id?: string | null
           seat_overrides?: any | null
           categories?: string[]
+          tags?: string[]
           event_type?: EventType
           status?: EventStatus
           images?: Record<string, ImageMetadata>
@@ -177,10 +185,14 @@ export interface Database {
           organization_name?: string | null
           date?: string
           time?: string
+          end_date?: string | null
+          end_time?: string | null
+          timezone?: string
           location?: string
           venue_layout_id?: string | null
           seat_overrides?: any | null
           categories?: string[]
+          tags?: string[]
           event_type?: EventType
           status?: EventStatus
           images?: Record<string, ImageMetadata>

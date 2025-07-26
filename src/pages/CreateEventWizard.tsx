@@ -219,6 +219,9 @@ function CreateEventWizardInternal() {
         venue_name: venueNameValue,
         date: formData.date,
         time: formData.time,
+        end_date: formData.endDate || null,
+        end_time: formData.endTime || null,
+        timezone: formData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         location: locationWithVenue,
         venue_layout_id: formData.venueLayoutId || null,
         event_type: eventType,
@@ -227,6 +230,7 @@ function CreateEventWizardInternal() {
         status: status,
         owner_id: user!.id,
         categories: selectedCategories,
+        tags: formData.tags || [],
         images: uploadedImages || {},
         display_price: displayPrice
       };

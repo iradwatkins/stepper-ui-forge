@@ -9,6 +9,8 @@ import { CalendarIcon, ImageIcon, X, Upload, DollarSignIcon } from "lucide-react
 import { loadGoogleMapsAPI } from "@/lib/config/google-maps";
 import { useEffect, useState } from "react";
 import { EVENT_CATEGORIES } from "@/lib/constants/event-categories";
+import { DateInputField } from "@/components/ui/date-input-field";
+import { TimeInputField } from "@/components/ui/time-input-field";
 
 interface PlaceData {
   formatted_address?: string;
@@ -270,11 +272,12 @@ export const BasicInformation = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="date" className="text-sm font-medium">Start Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  {...form.register('date')}
+                <DateInputField
+                  value={form.watch('date')}
+                  onChange={(value) => form.setValue('date', value)}
                   className={`mt-1 ${form.formState.errors.date ? 'border-red-500' : ''}`}
+                  minDate={new Date().toISOString().split('T')[0]}
+                  defaultToToday={true}
                 />
                 {form.formState.errors.date && (
                   <p className="text-xs text-red-500 mt-1">{form.formState.errors.date.message}</p>
@@ -282,10 +285,9 @@ export const BasicInformation = ({
               </div>
               <div>
                 <Label htmlFor="time" className="text-sm font-medium">Start Time *</Label>
-                <Input
-                  id="time"
-                  type="time"
-                  {...form.register('time')}
+                <TimeInputField
+                  value={form.watch('time')}
+                  onChange={(value) => form.setValue('time', value)}
                   className={`mt-1 ${form.formState.errors.time ? 'border-red-500' : ''}`}
                 />
                 {form.formState.errors.time && (
@@ -297,19 +299,19 @@ export const BasicInformation = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  {...form.register('endDate')}
+                <DateInputField
+                  value={form.watch('endDate')}
+                  onChange={(value) => form.setValue('endDate', value)}
+                  minDate={form.watch('date')}
                   className="mt-1"
+                  defaultToToday={false}
                 />
               </div>
               <div>
                 <Label htmlFor="endTime" className="text-sm font-medium">End Time</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  {...form.register('endTime')}
+                <TimeInputField
+                  value={form.watch('endTime')}
+                  onChange={(value) => form.setValue('endTime', value)}
                   className="mt-1"
                 />
               </div>
@@ -430,11 +432,14 @@ export const BasicInformation = ({
                   </div>
                 ) : (
                   <div className="relative group">
-                    <img
-                      src={uploadedImages.banner.medium || uploadedImages.banner.original}
-                      alt="Main event image"
-                      className="w-full h-32 object-cover rounded-lg border"
-                    />
+                    <div className="border rounded-lg overflow-hidden bg-gray-50">
+                      <img
+                        src={uploadedImages.banner.medium || uploadedImages.banner.original}
+                        alt="Main event image"
+                        className="w-full max-w-md mx-auto h-auto object-contain"
+                        style={{ maxHeight: '300px' }}
+                      />
+                    </div>
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                       <div className="text-white text-center text-xs space-y-1">
                         <p>Dimensions: {uploadedImages.banner.metadata.dimensions.width}×{uploadedImages.banner.metadata.dimensions.height}</p>
@@ -493,11 +498,14 @@ export const BasicInformation = ({
                   </div>
                 ) : (
                   <div className="relative group">
-                    <img
-                      src={uploadedImages.postcard.medium || uploadedImages.postcard.original}
-                      alt="Additional event image"
-                      className="w-full h-24 object-cover rounded-lg border"
-                    />
+                    <div className="border rounded-lg overflow-hidden bg-gray-50">
+                      <img
+                        src={uploadedImages.postcard.medium || uploadedImages.postcard.original}
+                        alt="Additional event image"
+                        className="w-full max-w-sm mx-auto h-auto object-contain"
+                        style={{ maxHeight: '250px' }}
+                      />
+                    </div>
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                       <div className="text-white text-center text-xs space-y-1">
                         <p>Dimensions: {uploadedImages.postcard.metadata.dimensions.width}×{uploadedImages.postcard.metadata.dimensions.height}</p>

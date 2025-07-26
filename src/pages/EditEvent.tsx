@@ -12,9 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, ArrowLeft, LoaderIcon, AlertCircle, ImageIcon, UploadIcon, XIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, ArrowLeft, LoaderIcon, AlertCircle, ImageIcon, UploadIcon, XIcon, TagIcon, GlobeIcon } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { toast } from "sonner";
+import { EVENT_CATEGORIES } from "@/lib/constants/event-categories";
+import { Badge } from "@/components/ui/badge";
+import { DateInputField } from "@/components/ui/date-input-field";
+import { TimeInputField } from "@/components/ui/time-input-field";
 
 const eventSchema = z.object({
   title: z.string().min(1, "Event title is required").max(100, "Title must be under 100 characters"),
@@ -22,13 +26,29 @@ const eventSchema = z.object({
   organizationName: z.string().optional(),
   date: z.string().min(1, "Event date is required"),
   time: z.string().min(1, "Event time is required"),
+  endDate: z.string().optional(),
+  endTime: z.string().optional(),
   location: z.string().min(1, "Event location is required"),
   maxAttendees: z.number().min(1).optional(),
   isPublic: z.boolean().default(true),
   status: z.enum(["draft", "published", "cancelled", "completed"]),
+  categories: z.array(z.string()).min(1, "Please select at least one category"),
+  tags: z.array(z.string()).optional(),
+  timezone: z.string().optional(),
   // Price fields for simple events (informational only)
   displayPriceAmount: z.number().min(0, "Amount must be 0 or greater").optional(),
   displayPriceLabel: z.string().optional()
+}).refine((data) => {
+  // Validate end date/time if provided
+  if (data.endDate && data.endTime) {
+    const startDateTime = new Date(`${data.date}T${data.time}`);
+    const endDateTime = new Date(`${data.endDate}T${data.endTime}`);
+    return endDateTime > startDateTime;
+  }
+  return true;
+}, {
+  message: "End date/time must be after start date/time",
+  path: ["endTime"]
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -41,6 +61,9 @@ export default function EditEvent() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventType, setEventType] = useState<"simple" | "ticketed" | "premium">("ticketed");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   
   // Use the original image upload system
   const {
@@ -60,9 +83,14 @@ export default function EditEvent() {
       organizationName: "",
       date: "",
       time: "",
+      endDate: "",
+      endTime: "",
       location: "",
       isPublic: true,
       status: "draft",
+      categories: [],
+      tags: [],
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       displayPriceAmount: 0,
       displayPriceLabel: ""
     }
@@ -117,6 +145,14 @@ export default function EditEvent() {
       // Set event type in state (not editable)
       setEventType(event.event_type);
       
+      // Set categories and tags
+      if (event.categories && Array.isArray(event.categories)) {
+        setSelectedCategories(event.categories);
+      }
+      if (event.tags && Array.isArray(event.tags)) {
+        setTags(event.tags);
+      }
+      
       // Populate form with event data
       form.reset({
         title: event.title,
@@ -124,10 +160,15 @@ export default function EditEvent() {
         organizationName: event.organization_name || "",
         date: event.date,
         time: event.time,
+        endDate: event.end_date || "",
+        endTime: event.end_time || "",
         location: event.location,
         maxAttendees: event.max_attendees || undefined,
         isPublic: event.is_public,
         status: event.status,
+        categories: event.categories || [],
+        tags: event.tags || [],
+        timezone: event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         displayPriceAmount: event.display_price?.amount || 0,
         displayPriceLabel: event.display_price?.label || ""
       });
@@ -144,10 +185,55 @@ export default function EditEvent() {
     }
   };
 
+  const handleCategoryToggle = (categoryId: string) => {
+    const newCategories = selectedCategories.includes(categoryId)
+      ? selectedCategories.filter(id => id !== categoryId)
+      : [...selectedCategories, categoryId];
+    
+    setSelectedCategories(newCategories);
+    form.setValue('categories', newCategories);
+  };
+
+  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      if (!tags.includes(newTag)) {
+        const newTags = [...tags, newTag];
+        setTags(newTags);
+        form.setValue('tags', newTags);
+      }
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const newTags = tags.filter(tag => tag !== tagToRemove);
+    setTags(newTags);
+    form.setValue('tags', newTags);
+  };
+
+  const validateDates = (data: EventFormData): boolean => {
+    if (data.endDate && data.endTime) {
+      const startDateTime = new Date(`${data.date}T${data.time}`);
+      const endDateTime = new Date(`${data.endDate}T${data.endTime}`);
+      
+      if (endDateTime <= startDateTime) {
+        toast.error("End date/time must be after start date/time");
+        return false;
+      }
+    }
+    return true;
+  };
 
   const saveEvent = async (data: EventFormData) => {
     if (!user || !id) {
       toast.error("Cannot save event: missing user or event ID");
+      return;
+    }
+
+    // Validate dates if end date/time is provided
+    if (!validateDates(data)) {
       return;
     }
 
@@ -168,11 +254,16 @@ export default function EditEvent() {
         organization_name: data.organizationName || null,
         date: data.date,
         time: data.time,
+        end_date: data.endDate || null,
+        end_time: data.endTime || null,
         location: data.location,
         event_type: eventType,
         max_attendees: data.maxAttendees || null,
         is_public: data.isPublic,
         status: data.status,
+        categories: selectedCategories,
+        tags: tags.length > 0 ? tags : null,
+        timezone: data.timezone || null,
         images: uploadedImages,
         display_price: displayPrice,
         updated_at: new Date().toISOString()
@@ -348,11 +439,14 @@ export default function EditEvent() {
                   </div>
                 ) : (
                   <div className="relative group">
-                    <img
-                      src={uploadedImages.banner.thumbnail}
-                      alt="Event banner"
-                      className="w-full h-32 object-cover rounded-lg border"
-                    />
+                    <div className="border rounded-lg overflow-hidden bg-gray-50">
+                      <img
+                        src={uploadedImages.banner.medium || uploadedImages.banner.thumbnail}
+                        alt="Event banner"
+                        className="w-full max-w-md mx-auto h-auto object-contain"
+                        style={{ maxHeight: '300px' }}
+                      />
+                    </div>
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                       <div className="text-white text-center text-xs space-y-1">
                         <p>Compression: {uploadedImages.banner.metadata.compressionRatio}%</p>
@@ -409,11 +503,14 @@ export default function EditEvent() {
                   </div>
                 ) : (
                   <div className="relative group">
-                    <img
-                      src={uploadedImages.postcard.thumbnail}
-                      alt="Event postcard"
-                      className="w-full h-24 object-cover rounded-lg border"
-                    />
+                    <div className="border rounded-lg overflow-hidden bg-gray-50">
+                      <img
+                        src={uploadedImages.postcard.medium || uploadedImages.postcard.thumbnail}
+                        alt="Event postcard"
+                        className="w-full max-w-sm mx-auto h-auto object-contain"
+                        style={{ maxHeight: '250px' }}
+                      />
+                    </div>
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                       <div className="text-white text-center text-xs space-y-1">
                         <p>Compression: {uploadedImages.postcard.metadata.compressionRatio}%</p>
@@ -456,12 +553,12 @@ export default function EditEvent() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">Event Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    {...form.register("date")}
+                  <Label htmlFor="date">Start Date *</Label>
+                  <DateInputField
+                    value={form.watch("date")}
+                    onChange={(value) => form.setValue("date", value)}
                     className={form.formState.errors.date ? "border-destructive" : ""}
+                    defaultToToday={false}
                   />
                   {form.formState.errors.date && (
                     <p className="text-sm text-destructive mt-1">
@@ -471,11 +568,10 @@ export default function EditEvent() {
                 </div>
 
                 <div>
-                  <Label htmlFor="time">Event Time *</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    {...form.register("time")}
+                  <Label htmlFor="time">Start Time *</Label>
+                  <TimeInputField
+                    value={form.watch("time")}
+                    onChange={(value) => form.setValue("time", value)}
                     className={form.formState.errors.time ? "border-destructive" : ""}
                   />
                   {form.formState.errors.time && (
@@ -484,6 +580,62 @@ export default function EditEvent() {
                     </p>
                   )}
                 </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="endDate">End Date</Label>
+                  <DateInputField
+                    value={form.watch("endDate")}
+                    onChange={(value) => form.setValue("endDate", value)}
+                    minDate={form.watch("date")}
+                    className={form.formState.errors.endDate ? "border-destructive" : ""}
+                    defaultToToday={false}
+                  />
+                  {form.formState.errors.endDate && (
+                    <p className="text-sm text-destructive mt-1">
+                      {form.formState.errors.endDate.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="endTime">End Time</Label>
+                  <TimeInputField
+                    value={form.watch("endTime")}
+                    onChange={(value) => form.setValue("endTime", value)}
+                    className={form.formState.errors.endTime ? "border-destructive" : ""}
+                  />
+                  {form.formState.errors.endTime && (
+                    <p className="text-sm text-destructive mt-1">
+                      {form.formState.errors.endTime.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="timezone">Timezone</Label>
+                <Select
+                  value={form.watch("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                  onValueChange={(value) => form.setValue("timezone", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
+                    <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
+                    <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
+                    <SelectItem value="America/Phoenix">Arizona Time</SelectItem>
+                    <SelectItem value="Pacific/Honolulu">Hawaii Time</SelectItem>
+                    <SelectItem value="America/Anchorage">Alaska Time</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Event times will be displayed in this timezone
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -611,6 +763,99 @@ export default function EditEvent() {
                     <p>• "Entry fee: $5"</p>
                     <p>• "Free (donations welcome)"</p>
                   </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TagIcon className="h-5 w-5" />
+                Event Categories
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {EVENT_CATEGORIES.map((category) => {
+                  const isSelected = selectedCategories.includes(category.id);
+                  return (
+                    <div
+                      key={category.id}
+                      className={`border rounded-lg p-3 cursor-pointer transition-all text-center ${
+                        isSelected
+                          ? 'border-primary bg-primary/10 shadow-sm'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                      onClick={() => handleCategoryToggle(category.id)}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                          isSelected 
+                            ? 'bg-primary border-primary' 
+                            : 'border-muted-foreground'
+                        }`}>
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <p className={`text-sm font-medium ${isSelected ? 'text-primary' : ''}`}>
+                          {category.label}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {form.formState.errors.categories && (
+                <p className="text-sm text-destructive mt-2">
+                  {form.formState.errors.categories.message}
+                </p>
+              )}
+              {selectedCategories.length === 0 && (
+                <p className="text-sm text-amber-600 mt-2">Please select at least one category</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TagIcon className="h-5 w-5" />
+                Event Tags
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="tagInput">Add Tags</Label>
+                <Input
+                  id="tagInput"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleAddTag}
+                  placeholder="Type a tag and press Enter"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tags help people find your event
+                </p>
+              </div>
+              
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag, index) => (
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="px-3 py-1 text-sm cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => handleRemoveTag(tag)}
+                    >
+                      {tag}
+                      <XIcon className="ml-1 h-3 w-3" />
+                    </Badge>
+                  ))}
                 </div>
               )}
             </CardContent>
