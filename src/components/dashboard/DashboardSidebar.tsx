@@ -16,6 +16,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Plus,
   Edit3,
   Trash2,
@@ -62,7 +63,19 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     const stored = localStorage.getItem('expandedSections')
     return stored ? JSON.parse(stored) : []
   })
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const stored = localStorage.getItem('sidebarCollapsed')
+    return stored ? JSON.parse(stored) : false
+  })
   const [searchQuery, setSearchQuery] = useState('')
+  
+  const toggleCollapsed = () => {
+    const newCollapsed = !isCollapsed
+    setIsCollapsed(newCollapsed)
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed))
+    // Dispatch custom event for same-window updates
+    window.dispatchEvent(new Event('sidebarCollapsedChanged'))
+  }
   // Initialize from localStorage to prevent flicker
   const [showAdminSection, setShowAdminSection] = useState(() => {
     const stored = localStorage.getItem('showAdminSection')
@@ -483,7 +496,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     const isExpanded = expandedItems.includes(item.title)
     const isItemActive = isActive(item.href)
 
-    if (hasChildren) {
+    if (hasChildren && !isCollapsed) {
       return (
         <div>
           <Button
@@ -547,19 +560,26 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         <Button
           variant="ghost"
           className={cn(
-            'w-full justify-start px-4 py-3 font-medium transition-colors',
+            'w-full transition-colors',
+            isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-4 py-3',
             'hover:bg-accent hover:text-accent-foreground',
             isItemActive 
               ? 'bg-accent text-accent-foreground' 
-              : 'text-muted-foreground'
+              : 'text-muted-foreground',
+            'font-medium'
           )}
+          title={isCollapsed ? item.title : undefined}
         >
-          <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
-          <span className="truncate">{item.title}</span>
-          {item.badge && (
-            <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-xs">
-              {item.badge}
-            </Badge>
+          <item.icon className={cn("h-4 w-4 flex-shrink-0", !isCollapsed && "mr-3")} />
+          {!isCollapsed && (
+            <>
+              <span className="truncate">{item.title}</span>
+              {item.badge && (
+                <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-xs">
+                  {item.badge}
+                </Badge>
+              )}
+            </>
           )}
         </Button>
       </Link>
@@ -571,7 +591,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     
     return (
       <div className="space-y-2">
-        {title && (
+        {title && !isCollapsed && (
           <div className="px-4 py-3">
             <button
               onClick={() => toggleSection(title)}
@@ -601,13 +621,29 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="border-b border-border">
-        <div className="flex h-16 items-center justify-between px-6">
-          <Link to="/dashboard" className="flex items-center space-x-2">
+        <div className={cn("flex h-16 items-center", isCollapsed ? "px-4" : "px-6")}>
+          <Link to="/dashboard" className="flex items-center space-x-2 flex-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Calendar className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-semibold text-foreground">Dashboard</span>
+            {!isCollapsed && (
+              <span className="text-lg font-semibold text-foreground">Dashboard</span>
+            )}
           </Link>
+          
+          {/* Collapse/Expand button - Desktop only */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleCollapsed}
+            className="hidden lg:flex"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
           
           {/* Mobile close button */}
           {onClose && (
@@ -623,18 +659,20 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         </div>
         
         {/* Search Bar */}
-        <div className="px-4 pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search navigation..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
-            />
+        {!isCollapsed && (
+          <div className="px-4 pb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search navigation..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Navigation */}
@@ -676,11 +714,13 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t border-border p-4">
-        <div className="text-xs text-center text-muted-foreground">
-          © 2024 Steppers Platform
+      {!isCollapsed && (
+        <div className="border-t border-border p-4">
+          <div className="text-xs text-center text-muted-foreground">
+            © 2024 Steppers Platform
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
@@ -714,7 +754,8 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-30 h-full w-80 border-r border-border bg-background',
+        'fixed left-0 top-0 z-30 h-full border-r border-border bg-background transition-all duration-300',
+        isCollapsed ? 'w-16' : 'w-80',
         className
       )}
     >

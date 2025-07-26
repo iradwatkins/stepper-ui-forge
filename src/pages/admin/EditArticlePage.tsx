@@ -306,9 +306,48 @@ export default function EditArticlePage() {
         </div>
       </div>
 
-      <div className={`grid gap-8 ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 lg:grid-cols-3'}`}>
+      {/* Compact Publishing Bar */}
+      <div className="flex flex-wrap items-center gap-4 p-3 mb-6 bg-muted/50 rounded-lg border">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="header-category" className="text-sm font-medium">Category:</Label>
+          <Select
+            value={categoryId?.toString() || ''}
+            onValueChange={(value) => setCategoryId(value ? parseInt(value) : null)}
+          >
+            <SelectTrigger className="w-[180px] h-8">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id.toString()}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <Separator orientation="vertical" className="h-5" />
+        
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span><strong>Blocks:</strong> {contentBlocks.length}</span>
+          <span><strong>Read time:</strong> {Math.max(1, Math.ceil(contentBlocks.length * 1.5))} min</span>
+          {title && <span><strong>Title:</strong> {title.length > 30 ? title.substring(0, 30) + '...' : title}</span>}
+        </div>
+        
+        {isDirty && (
+          <>
+            <Separator orientation="vertical" className="h-5" />
+            <Badge variant="outline" className="text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-400">
+              Unsaved changes
+            </Badge>
+          </>
+        )}
+      </div>
+
+      <div className={`grid gap-8 ${showPreview ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
         {/* Main Content */}
-        <div className={`space-y-6 ${showPreview ? '' : 'lg:col-span-2'}`}>
+        <div className="space-y-6">
           {/* Article Details */}
           <Card>
             <CardHeader>
@@ -397,77 +436,7 @@ export default function EditArticlePage() {
               onViewModeChange={setPreviewMode}
             />
           </div>
-        ) : (
-          <div className="space-y-6">
-          {/* Publishing Options */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Publishing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="category">Category *</Label>
-                <Select
-                  value={categoryId?.toString() || ''}
-                  onValueChange={(value) => setCategoryId(value ? parseInt(value) : null)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id.toString()}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {isDirty && (
-                <div className="bg-orange-50 dark:bg-orange-950 p-3 rounded border border-orange-200 dark:border-orange-800">
-                  <p className="text-sm text-orange-700 dark:text-orange-300">
-                    You have unsaved changes
-                  </p>
-                </div>
-              )}
-              <Separator />
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Draft:</strong> Save your work without publishing
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <strong>Publish:</strong> Make article visible to readers
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Article Preview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Article Preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <strong>Title:</strong> {title || 'Untitled Article'}
-                </div>
-                <div className="text-sm">
-                  <strong>Content Blocks:</strong> {contentBlocks.length}
-                </div>
-                <div className="text-sm">
-                  <strong>Estimated Read Time:</strong> {Math.max(1, Math.ceil(contentBlocks.length * 1.5))} min
-                </div>
-                {categoryId && (
-                  <div className="text-sm">
-                    <strong>Category:</strong> {categories.find(c => c.id === categoryId)?.name}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
