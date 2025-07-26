@@ -15,7 +15,7 @@ export interface UploadResult {
 }
 
 export interface UploadOptions {
-  bucket: 'venue-images' | 'seating-charts';
+  bucket: 'venue-images' | 'seating-charts' | 'magazine-images';
   folder?: string;
   filename?: string;
   maxSizeBytes?: number;
@@ -151,8 +151,8 @@ export class ImageUploadService {
     }
 
     return this.uploadImage(file, {
-      bucket: 'venue-images',
-      folder: `${currentUser}/magazine/${type}-images`,
+      bucket: 'magazine-images',
+      folder: `${currentUser}/${type}`,
       maxSizeBytes: 10 * 1024 * 1024, // 10MB
       allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
       userId: currentUser

@@ -217,13 +217,23 @@ export default function DraggableContentBlock({
 
       case 'image':
         return (
-          <SimpleImageUpload
-            value={localContent}
-            onChange={(url) => setLocalContent(url || '')}
-            placeholder="Upload, paste, or drop an image"
-            className="min-h-[100px]"
-            type="content"
-          />
+          <div className="space-y-3">
+            <SimpleImageUpload
+              value={localContent}
+              onChange={(url) => {
+                console.log('Image URL changed:', url);
+                setLocalContent(url || '');
+              }}
+              placeholder="Upload, paste, or drop an image"
+              className="min-h-[100px]"
+              type="content"
+            />
+            {localContent && (
+              <div className="text-xs text-muted-foreground">
+                <p>Image URL: {localContent}</p>
+              </div>
+            )}
+          </div>
         );
 
       case 'youtube_video':

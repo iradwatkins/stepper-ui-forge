@@ -735,6 +735,18 @@ class MagazineService {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
+        // Ensure content blocks are properly formatted
+        const contentBlocks = Array.isArray(data.contentBlocks) 
+          ? data.contentBlocks.map((block: any, index: number) => ({
+              id: block.id || Date.now() + index,
+              type: block.type,
+              content: block.content || '',
+              order: block.order !== undefined ? block.order : index
+            }))
+          : [];
+
+        console.log('Creating article with content blocks:', contentBlocks);
+
         const { data: article, error } = await supabase
           .from('magazine_articles')
           .insert({
@@ -744,7 +756,7 @@ class MagazineService {
             author_id: user.id,
             category_id: data.magazineCategoryId as number,
             status: data.status as string,
-            content_blocks: data.contentBlocks || []
+            content_blocks: contentBlocks
           })
           .select(`
             *,
@@ -752,7 +764,12 @@ class MagazineService {
           `)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating article:', error);
+          throw error;
+        }
+
+        console.log('Created article with content_blocks:', article.content_blocks);
 
         return {
           id: article.id,
