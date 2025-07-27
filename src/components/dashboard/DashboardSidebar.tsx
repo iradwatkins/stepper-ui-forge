@@ -650,7 +650,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     )
   }
 
-  const NavigationGroup = ({ items, title }: { items: NavigationItem[], title?: string }) => {
+  const NavigationGroup = ({ items, title, isCollapsed }: { items: NavigationItem[], title?: string, isCollapsed: boolean }) => {
     const isExpanded = title ? expandedSections.includes(title) : true
     
     // Get icon for each section
@@ -774,36 +774,36 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       <ScrollArea className="flex-1 overflow-y-auto px-4 py-6">
         <div className={cn("space-y-8", isCollapsed && "space-y-4")}>
           {/* Main Navigation */}
-          <NavigationGroup items={filterNavigationItems(getMainNavigation())} title="Main" />
+          <NavigationGroup items={filterNavigationItems(getMainNavigation())} title="Main" isCollapsed={isCollapsed} />
           
           {/* Events & Sales Section */}
           {getEventsAndSalesNavigation().length > 0 && filterNavigationItems(getEventsAndSalesNavigation()).length > 0 && (
-            <NavigationGroup items={filterNavigationItems(getEventsAndSalesNavigation())} title="Events & Sales" />
+            <NavigationGroup items={filterNavigationItems(getEventsAndSalesNavigation())} title="Events & Sales" isCollapsed={isCollapsed} />
           )}
           
           {/* Operations Section */}
           {getOperationsNavigation().length > 0 && filterNavigationItems(getOperationsNavigation()).length > 0 && (
-            <NavigationGroup items={filterNavigationItems(getOperationsNavigation())} title="Operations" />
+            <NavigationGroup items={filterNavigationItems(getOperationsNavigation())} title="Operations" isCollapsed={isCollapsed} />
           )}
           
           {/* Analytics Section */}
           {getAnalyticsNavigation().length > 0 && filterNavigationItems(getAnalyticsNavigation()).length > 0 && (
-            <NavigationGroup items={filterNavigationItems(getAnalyticsNavigation())} title="Analytics" />
+            <NavigationGroup items={filterNavigationItems(getAnalyticsNavigation())} title="Analytics" isCollapsed={isCollapsed} />
           )}
           
           {/* Management Section */}
           {getManagementNavigation().length > 0 && filterNavigationItems(getManagementNavigation()).length > 0 && (
-            <NavigationGroup items={filterNavigationItems(getManagementNavigation())} title="Management" />
+            <NavigationGroup items={filterNavigationItems(getManagementNavigation())} title="Management" isCollapsed={isCollapsed} />
           )}
           
           {/* Account Section */}
           {filterNavigationItems(getAccountNavigation()).length > 0 && (
-            <NavigationGroup items={filterNavigationItems(getAccountNavigation())} title="Account" />
+            <NavigationGroup items={filterNavigationItems(getAccountNavigation())} title="Account" isCollapsed={isCollapsed} />
           )}
           
           {/* Admin Section */}
           {showAdminSection && filterNavigationItems(getAdminNavigation()).length > 0 && (
-            <NavigationGroup items={filterNavigationItems(getAdminNavigation())} title="Administration" />
+            <NavigationGroup items={filterNavigationItems(getAdminNavigation())} title="Administration" isCollapsed={isCollapsed} />
           )}
         </div>
       </ScrollArea>
