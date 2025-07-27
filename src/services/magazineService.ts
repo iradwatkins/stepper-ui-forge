@@ -831,39 +831,108 @@ class MagazineService {
   }
 
   async updateArticle(id: number, data: Record<string, unknown>): Promise<MagazineArticle> {
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API delay
-    
-    const articleIndex = mockArticles.findIndex(article => article.id === id);
-    if (articleIndex === -1) {
-      throw new Error('Article not found');
-    }
-    
-    const category = data.magazineCategoryId ? 
-      mockCategories.find(cat => cat.id === data.magazineCategoryId) : 
-      mockArticles[articleIndex].category;
-    
-    const updatedArticle = {
-      ...mockArticles[articleIndex],
-      ...data,
-      category: category,
-      updatedAt: new Date().toISOString()
-    };
-    
-    if (data.title) {
-      updatedArticle.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    }
-    
-    if (data.contentBlocks) {
-      updatedArticle.contentBlocks = (data.contentBlocks as unknown[]).map((block: Record<string, unknown>, index: number) => ({
-        id: block.id || Date.now() + index,
-        type: block.type,
-        content: block.content,
-        order: block.order
-      }));
-    }
-    
-    mockArticles[articleIndex] = updatedArticle;
-    return updatedArticle;
+    return this.withFallback(
+      async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        // Ensure content blocks are properly formatted
+        const contentBlocks = Array.isArray(data.contentBlocks) 
+          ? data.contentBlocks.map((block: any, index: number) => ({
+              id: block.id || Date.now() + index,
+              type: block.type,
+              content: block.content || '',
+              order: block.order !== undefined ? block.order : index,
+              // Include timing fields for YouTube videos
+              ...(block.type === 'youtube_video' && {
+                startTime: block.startTime,
+                endTime: block.endTime
+              })
+            }))
+          : [];
+
+        const updateData: Record<string, any> = {
+          ...data,
+          content_blocks: contentBlocks,
+          updated_at: new Date().toISOString()
+        };
+
+        // Remove fields that shouldn't be sent to database
+        delete updateData.contentBlocks;
+        delete updateData.category;
+
+        // Rename fields to match database columns
+        if (updateData.magazineCategoryId) {
+          updateData.magazine_category_id = updateData.magazineCategoryId;
+          delete updateData.magazineCategoryId;
+        }
+
+        console.log('Updating article:', id, updateData);
+
+        const { data: article, error } = await supabase
+          .from('magazine_articles')
+          .update(updateData)
+          .eq('id', id)
+          .select(`
+            *,
+            magazine_categories(*)
+          `)
+          .single();
+
+        if (error) {
+          console.error('Update article error:', error);
+          if (error.code === '42501') {
+            throw new Error('You do not have permission to update articles. Please ensure you are logged in as an admin.');
+          }
+          throw error;
+        }
+
+        if (!article) {
+          throw new Error('Article not found');
+        }
+
+        return this.transformArticleFromDB(article);
+      },
+      (async () => {
+        // Fallback to mock data
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const articleIndex = mockArticles.findIndex(article => article.id === id);
+        if (articleIndex === -1) {
+          throw new Error('Article not found');
+        }
+        
+        const category = data.magazineCategoryId ? 
+          mockCategories.find(cat => cat.id === data.magazineCategoryId) : 
+          mockArticles[articleIndex].category;
+        
+        const updatedArticle = {
+          ...mockArticles[articleIndex],
+          ...data,
+          category: category,
+          updatedAt: new Date().toISOString()
+        };
+        
+        if (data.title) {
+          updatedArticle.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        }
+        
+        if (data.contentBlocks) {
+          updatedArticle.contentBlocks = (data.contentBlocks as unknown[]).map((block: Record<string, unknown>, index: number) => ({
+            id: block.id || Date.now() + index,
+            type: block.type,
+            content: block.content,
+            order: block.order,
+            startTime: block.startTime,
+            endTime: block.endTime
+          }));
+        }
+        
+        mockArticles[articleIndex] = updatedArticle;
+        return updatedArticle;
+      })(),
+      'updateArticle'
+    );
   }
 
   async deleteArticle(id: number): Promise<void> {

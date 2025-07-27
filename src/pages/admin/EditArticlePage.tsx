@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import SimpleImageUpload from '@/components/ui/SimpleImageUpload';
-import EnhancedContentBlock from '@/components/magazine/EnhancedContentBlock';
+import ModernContentBlock from '@/components/magazine/ModernContentBlock';
 import QuickInsertToolbar from '@/components/magazine/QuickInsertToolbar';
 import ArticlePreview from '@/components/magazine/ArticlePreview';
 
@@ -405,7 +405,7 @@ export default function EditArticlePage() {
                   {contentBlocks
                     .sort((a, b) => a.order - b.order)
                     .map((block, index) => (
-                      <EnhancedContentBlock
+                      <ModernContentBlock
                         key={block.id}
                         block={block}
                         index={index}
