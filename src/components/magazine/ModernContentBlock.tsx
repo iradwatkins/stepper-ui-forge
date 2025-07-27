@@ -57,6 +57,13 @@ export default function ModernContentBlock({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Sync local state when block changes
+  useEffect(() => {
+    setLocalContent(block.content);
+    setLocalStartTime(block.startTime || 0);
+    setLocalEndTime(block.endTime || 0);
+  }, [block.content, block.startTime, block.endTime]);
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current && block.isEditing) {
