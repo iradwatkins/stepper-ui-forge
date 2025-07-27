@@ -171,7 +171,8 @@ export default function ModernContentBlock({
       const secs = parseInt(parts[1]) || 0;
       return mins * 60 + secs;
     }
-    return parseInt(timeStr) || 0;
+    // Only accept M:SS format, not plain seconds
+    return 0;
   };
 
   const buildYouTubeEmbedUrl = (videoId: string, startTime?: number, endTime?: number): string => {
@@ -267,10 +268,10 @@ export default function ModernContentBlock({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                    Start Time (M:SS or seconds)
+                    Start Time (M:SS)
                   </label>
                   <Input
-                    placeholder="0:00 or 0"
+                    placeholder="0:00"
                     value={formatTimeToMinutesSeconds(localStartTime) || ''}
                     onChange={(e) => setLocalStartTime(parseTimeFromInput(e.target.value))}
                     className="border border-input text-sm"
@@ -278,7 +279,7 @@ export default function ModernContentBlock({
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                    End Time (M:SS or seconds)
+                    End Time (M:SS)
                   </label>
                   <Input
                     placeholder="Leave empty for full video"

@@ -263,6 +263,36 @@ const mockArticles: MagazineArticle[] = [
 class MagazineService {
   private hasConnectionIssues = false;
   
+  private transformArticleFromDB(article: any): MagazineArticle {
+    return {
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt,
+      featuredImage: article.featured_image,
+      authorId: article.author_id,
+      authorName: 'Author', // TODO: Join with profiles table
+      authorAvatar: undefined,
+      status: article.status as 'draft' | 'published',
+      createdAt: article.created_at,
+      updatedAt: article.updated_at,
+      readTimeMinutes: article.read_time_minutes,
+      viewCount: article.view_count,
+      category: article.magazine_categories ? {
+        id: article.magazine_categories.id,
+        name: article.magazine_categories.name,
+        slug: article.magazine_categories.slug,
+        description: article.magazine_categories.description,
+        articleCount: 0, // Not computed here
+        createdAt: article.magazine_categories.created_at,
+        updatedAt: article.magazine_categories.updated_at
+      } : undefined,
+      contentBlocks: Array.isArray(article.content_blocks) 
+        ? article.content_blocks 
+        : []
+    };
+  }
+  
   private async withFallback<T>(
     supabaseOperation: () => Promise<T>,
     mockData: T,
