@@ -877,7 +877,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     <>
       <aside
         className={cn(
-          'fixed left-0 top-0 z-30 h-full border-r border-border bg-background transition-all duration-300',
+          'fixed left-0 top-0 z-20 h-full border-r border-border bg-background transition-all duration-300',
           isCollapsed ? 'w-16' : 'w-80',
           className
         )}

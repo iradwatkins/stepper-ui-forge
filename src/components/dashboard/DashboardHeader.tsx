@@ -46,13 +46,13 @@ export function DashboardHeader({ children }: DashboardHeaderProps) {
   const pageTitle = breadcrumbs[breadcrumbs.length - 1]?.label || 'Dashboard'
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
-      <div className="flex h-16 items-center gap-4 px-4 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-border bg-background shadow-sm">
+      <div className="flex h-16 items-center gap-4 px-4 lg:px-8 bg-background">
         {/* Mobile menu trigger */}
         {children}
 
         {/* Breadcrumbs */}
-        <div className="flex-1">
+        <div className="flex-1 min-h-[4rem] flex flex-col justify-center">
           <Breadcrumb>
             <BreadcrumbList>
               {breadcrumbs.map((breadcrumb, index) => (

@@ -42,7 +42,7 @@ export default function Dashboard() {
       <DashboardSidebar className="hidden lg:block" />
 
       {/* Main content */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-80'}`}>
+      <div className={`relative transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-80'}`}>
         {/* Header */}
         <DashboardHeader>
           <Button
