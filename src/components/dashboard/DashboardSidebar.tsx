@@ -72,7 +72,12 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [expandedSections, setExpandedSections] = useState<string[]>(() => {
     const stored = localStorage.getItem('expandedSections')
-    return stored ? JSON.parse(stored) : []
+    const sections = stored ? JSON.parse(stored) : []
+    // Always include Main in expanded sections
+    if (!sections.includes('Main')) {
+      sections.push('Main')
+    }
+    return sections
   })
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const stored = localStorage.getItem('sidebarCollapsed')
@@ -120,6 +125,9 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   }
 
   const toggleSection = (section: string) => {
+    // Don't allow toggling the Main section
+    if (section === 'Main') return
+    
     setExpandedSections(prev => {
       const newSections = prev.includes(section)
         ? prev.filter(item => item !== section)
@@ -163,7 +171,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   useEffect(() => {
     if (searchQuery) {
       // Expand all sections when searching
-      setExpandedSections(['Events & Sales', 'Operations', 'Analytics', 'Management', 'Account', 'Administration'])
+      setExpandedSections(['Main', 'Events & Sales', 'Operations', 'Analytics', 'Management', 'Account', 'Administration'])
       
       // Expand all items with children when searching
       const allNavItems = [
@@ -651,6 +659,8 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     // Get icon for each section
     const getSectionIcon = (sectionTitle: string) => {
       switch (sectionTitle) {
+        case 'Main':
+          return LayoutDashboard
         case 'Events & Sales':
           return ShoppingBag
         case 'Operations':
@@ -675,7 +685,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
         {title && (
           <>
             {/* Full section header when expanded */}
-            {!isCollapsed && (
+            {!isCollapsed && title !== 'Main' && (
               <div className="px-4 py-3">
                 <button
                   onClick={() => toggleSection(title)}
@@ -696,13 +706,15 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
                 <Tooltip delayDuration={0}>
                   <TooltipTrigger asChild>
                     <div className="w-full flex justify-center items-center p-2 cursor-default">
-                      <SectionIcon className="h-4 w-4 text-foreground" />
+                      <SectionIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p>{title}</p>
+                    <p>{title === 'Main' ? 'Main Navigation' : title}</p>
                   </TooltipContent>
                 </Tooltip>
+                {/* Add visual separator below section icon */}
+                <div className="mt-2 mx-2 border-b border-border/50" />
               </div>
             )}
           </>
@@ -767,7 +779,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       <ScrollArea className="flex-1 overflow-y-auto px-4 py-6">
         <div className="space-y-8">
           {/* Main Navigation */}
-          <NavigationGroup items={filterNavigationItems(getMainNavigation())} />
+          <NavigationGroup items={filterNavigationItems(getMainNavigation())} title="Main" />
           
           {/* Events & Sales Section */}
           {getEventsAndSalesNavigation().length > 0 && filterNavigationItems(getEventsAndSalesNavigation()).length > 0 && (
