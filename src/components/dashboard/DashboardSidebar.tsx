@@ -679,10 +679,10 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     
     return (
       <div className="space-y-2">
-        {title && title !== 'Main' && (
+        {title && (
           <>
             {/* Full section header when expanded */}
-            {!isCollapsed && (
+            {!isCollapsed && title !== 'Main' && (
               <div className="px-4 py-3">
                 <button
                   onClick={() => toggleSection(title)}
@@ -699,11 +699,11 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             )}
             {/* Icon-only section header when collapsed with tooltip */}
             {isCollapsed && SectionIcon && (
-              <div className="px-2 py-2">
+              <div className="px-2 py-2 border-b border-border/50">
                 <Tooltip delayDuration={0}>
                   <TooltipTrigger asChild>
-                    <div className="w-full flex justify-center items-center p-2 cursor-default">
-                      <SectionIcon className="h-4 w-4 text-muted-foreground" />
+                    <div className="w-full flex justify-center items-center p-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer">
+                      <SectionIcon className="h-5 w-5 text-foreground" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -772,7 +772,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
 
       {/* Navigation */}
       <ScrollArea className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="space-y-8">
+        <div className={cn("space-y-8", isCollapsed && "space-y-4")}>
           {/* Main Navigation */}
           <NavigationGroup items={filterNavigationItems(getMainNavigation())} title="Main" />
           
