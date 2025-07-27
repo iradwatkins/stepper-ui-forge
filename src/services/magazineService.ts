@@ -442,6 +442,38 @@ class MagazineService {
     return this.getArticles({ categorySlug, page, limit });
   }
 
+  async getArticle(id: number): Promise<MagazineArticle | null> {
+    console.log('🔍 Fetching article with id:', id);
+    
+    return this.withFallback(
+      async () => {
+        const { data: article, error } = await supabase
+          .from('magazine_articles')
+          .select(`
+            *,
+            magazine_categories(*)
+          `)
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          console.error('Get article error:', error);
+          if (error.code === 'PGRST116') {
+            return null; // Article not found
+          }
+          throw error;
+        }
+
+        return this.transformArticleFromDB(article);
+      },
+      (() => {
+        const mockArticle = mockArticles.find(article => article.id === id);
+        return mockArticle || null;
+      })(),
+      'getArticle'
+    );
+  }
+
   async getArticleBySlug(slug: string): Promise<MagazineArticle | null> {
     console.log('🔍 Fetching article with slug:', slug);
     
@@ -882,20 +914,16 @@ class MagazineService {
           : [];
 
         const updateData: Record<string, any> = {
-          ...data,
           content_blocks: contentBlocks,
           updated_at: new Date().toISOString()
         };
 
-        // Remove fields that shouldn't be sent to database
-        delete updateData.contentBlocks;
-        delete updateData.category;
-
-        // Rename fields to match database columns
-        if (updateData.magazineCategoryId) {
-          updateData.magazine_category_id = updateData.magazineCategoryId;
-          delete updateData.magazineCategoryId;
-        }
+        // Map camelCase fields to snake_case database columns
+        if (data.title !== undefined) updateData.title = data.title;
+        if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
+        if (data.featuredImage !== undefined) updateData.featured_image = data.featuredImage;
+        if (data.status !== undefined) updateData.status = data.status;
+        if (data.magazineCategoryId !== undefined) updateData.category_id = data.magazineCategoryId;
 
         console.log('Updating article:', id, updateData);
 

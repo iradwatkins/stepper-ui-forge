@@ -75,9 +75,7 @@ export default function EditArticlePage() {
 
       try {
         setLoading(true);
-        // For now, use mock data to get the article (in real app, would have getArticleById method)
-        const articles = await magazineService.getAdminArticles();
-        const article = articles.articles.find(a => a.id === parseInt(id));
+        const article = await magazineService.getArticle(parseInt(id));
         
         if (!article) {
           setNotFound(true);
