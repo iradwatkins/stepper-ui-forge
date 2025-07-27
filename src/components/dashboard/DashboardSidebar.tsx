@@ -72,12 +72,9 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [expandedSections, setExpandedSections] = useState<string[]>(() => {
     const stored = localStorage.getItem('expandedSections')
-    const sections = stored ? JSON.parse(stored) : []
-    // Always include Main in expanded sections
-    if (!sections.includes('Main')) {
-      sections.push('Main')
-    }
-    return sections
+    // Default all sections to expanded
+    const defaultSections = ['Main', 'Events & Sales', 'Operations', 'Analytics', 'Management', 'Account', 'Administration']
+    return stored ? JSON.parse(stored) : defaultSections
   })
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const stored = localStorage.getItem('sidebarCollapsed')
@@ -682,10 +679,10 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     
     return (
       <div className="space-y-2">
-        {title && (
+        {title && title !== 'Main' && (
           <>
             {/* Full section header when expanded */}
-            {!isCollapsed && title !== 'Main' && (
+            {!isCollapsed && (
               <div className="px-4 py-3">
                 <button
                   onClick={() => toggleSection(title)}
@@ -713,8 +710,6 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
                     <p>{title === 'Main' ? 'Main Navigation' : title}</p>
                   </TooltipContent>
                 </Tooltip>
-                {/* Add visual separator below section icon */}
-                <div className="mt-2 mx-2 border-b border-border/50" />
               </div>
             )}
           </>
