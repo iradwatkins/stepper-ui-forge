@@ -10,6 +10,11 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   User,
   Calendar,
   Users,
@@ -502,6 +507,36 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
     const isExpanded = expandedItems.includes(item.title)
     const isItemActive = isActive(item.href)
 
+    // When collapsed and item has children, show tooltip with parent name
+    if (hasChildren && isCollapsed && item.children && item.children.length > 0) {
+      // Use first child's href for navigation when collapsed
+      const firstChild = item.children[0]
+      return (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Link to={firstChild.href || '#'}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  'w-full justify-center px-2 py-3',
+                  'hover:bg-accent hover:text-accent-foreground transition-colors',
+                  isActive(firstChild.href) 
+                    ? 'bg-accent text-accent-foreground' 
+                    : 'text-muted-foreground',
+                  'font-medium'
+                )}
+              >
+                <item.icon className="h-4 w-4 flex-shrink-0" />
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{item.title}</p>
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+
     if (hasChildren && !isCollapsed) {
       return (
         <div>
@@ -561,33 +596,51 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       )
     }
 
+    const buttonContent = (
+      <Button
+        variant="ghost"
+        className={cn(
+          'w-full transition-colors',
+          isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-4 py-3',
+          'hover:bg-accent hover:text-accent-foreground',
+          isItemActive 
+            ? 'bg-accent text-accent-foreground' 
+            : 'text-muted-foreground',
+          'font-medium'
+        )}
+      >
+        <item.icon className={cn("h-4 w-4 flex-shrink-0", !isCollapsed && "mr-3")} />
+        {!isCollapsed && (
+          <>
+            <span className="truncate">{item.title}</span>
+            {item.badge && (
+              <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-xs">
+                {item.badge}
+              </Badge>
+            )}
+          </>
+        )}
+      </Button>
+    )
+
+    if (isCollapsed) {
+      return (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Link to={item.href || '#'}>
+              {buttonContent}
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{item.title}</p>
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+
     return (
       <Link to={item.href || '#'}>
-        <Button
-          variant="ghost"
-          className={cn(
-            'w-full transition-colors',
-            isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-4 py-3',
-            'hover:bg-accent hover:text-accent-foreground',
-            isItemActive 
-              ? 'bg-accent text-accent-foreground' 
-              : 'text-muted-foreground',
-            'font-medium'
-          )}
-          title={isCollapsed ? item.title : undefined}
-        >
-          <item.icon className={cn("h-4 w-4 flex-shrink-0", !isCollapsed && "mr-3")} />
-          {!isCollapsed && (
-            <>
-              <span className="truncate">{item.title}</span>
-              {item.badge && (
-                <Badge variant="secondary" className="ml-auto h-4 px-1.5 text-xs">
-                  {item.badge}
-                </Badge>
-              )}
-            </>
-          )}
-        </Button>
+        {buttonContent}
       </Link>
     )
   }
@@ -637,15 +690,19 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
                 </button>
               </div>
             )}
-            {/* Icon-only section header when collapsed - non-clickable */}
+            {/* Icon-only section header when collapsed with tooltip */}
             {isCollapsed && SectionIcon && (
               <div className="px-2 py-2">
-                <div
-                  className="w-full flex justify-center items-center p-2"
-                  title={title}
-                >
-                  <SectionIcon className="h-4 w-4 text-foreground" />
-                </div>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <div className="w-full flex justify-center items-center p-2 cursor-default">
+                      <SectionIcon className="h-4 w-4 text-foreground" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{title}</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             )}
           </>
@@ -747,25 +804,31 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       {/* Footer with collapse/expand button */}
       <div className="border-t border-border p-4">
         {/* Collapse/Expand button at bottom */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleCollapsed}
-          className={cn(
-            "w-full mb-3 hidden lg:flex items-center justify-center",
-            "hover:bg-accent hover:text-accent-foreground"
-          )}
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              <span>Collapse</span>
-            </>
-          )}
-        </Button>
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleCollapsed}
+              className={cn(
+                "w-full mb-3 hidden lg:flex items-center justify-center",
+                "hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <span>Collapse</span>
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side={isCollapsed ? "right" : "top"}>
+            <p>{isCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
+          </TooltipContent>
+        </Tooltip>
         
         {!isCollapsed && (
           <div className="text-xs text-center text-muted-foreground">
