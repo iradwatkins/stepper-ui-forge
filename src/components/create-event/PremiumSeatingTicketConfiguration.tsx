@@ -27,6 +27,7 @@ import { SeatData, SeatCategory as EnhancedSeatCategory } from '@/types/seating'
 import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 import { TicketType } from './TicketConfigurationWizard';
+import { useEventCreation } from '@/contexts/EventCreationContext';
 
 interface PremiumSeatingTicketConfigurationProps {
   form: UseFormReturn<EventFormData>;
@@ -39,12 +40,36 @@ export const PremiumSeatingTicketConfiguration = ({
   onSeatingConfigured,
   onStepAdvance
 }: PremiumSeatingTicketConfigurationProps) => {
+  const { 
+    claimFieldOwnership, 
+    releaseFieldOwnership,
+    addDebugUpdate 
+  } = useEventCreation();
+  
   const [activeTab, setActiveTab] = useState<'venue' | 'seating' | 'tickets' | 'review'>('venue');
   const [venueImage, setVenueImage] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [seats, setSeats] = useState<SeatData[]>([]);
   const [categories, setCategories] = useState<EnhancedSeatCategory[]>([]);
   const [generatedTickets, setGeneratedTickets] = useState<TicketType[]>([]);
+  
+  const COMPONENT_NAME = 'PremiumSeatingTicketConfiguration';
+  
+  // Claim field ownership on mount
+  useEffect(() => {
+    const fields = ['venueLayoutId', 'seats', 'seatCategories', 'venueImageUrl', 'hasVenueImage'] as const;
+    fields.forEach(field => {
+      claimFieldOwnership(field, COMPONENT_NAME);
+      addDebugUpdate(COMPONENT_NAME, field, `Claimed ownership`);
+    });
+    
+    // Cleanup: Release ownership on unmount
+    return () => {
+      fields.forEach(field => {
+        releaseFieldOwnership(field, COMPONENT_NAME);
+      });
+    };
+  }, [claimFieldOwnership, releaseFieldOwnership, addDebugUpdate]);
   
   // Load existing venue image if available
   useEffect(() => {
@@ -111,6 +136,8 @@ export const PremiumSeatingTicketConfiguration = ({
       setVenueImage(imageUrl);
       form.setValue('venueImageUrl', imageUrl);
       form.setValue('hasVenueImage', true);
+      addDebugUpdate(COMPONENT_NAME, 'venueImageUrl', imageUrl);
+      addDebugUpdate(COMPONENT_NAME, 'hasVenueImage', true);
       toast.success('Venue image uploaded successfully');
       setActiveTab('seating');
     } catch (error) {
@@ -132,6 +159,10 @@ export const PremiumSeatingTicketConfiguration = ({
     // Update form with seating data
     form.setValue('seats', newSeats);
     form.setValue('seatCategories', newCategories);
+    
+    // Update debug info
+    addDebugUpdate(COMPONENT_NAME, 'seats', `${newSeats.length} seats`);
+    addDebugUpdate(COMPONENT_NAME, 'seatCategories', `${newCategories.length} categories`);
     
     if (onSeatingConfigured) {
       onSeatingConfigured({
