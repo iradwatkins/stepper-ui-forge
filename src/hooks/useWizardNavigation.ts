@@ -105,15 +105,6 @@ export const useWizardNavigation = ({
         canNavigateBackward: () => true
       },
       {
-        id: 'ticketing',
-        title: 'Ticketing',
-        description: 'Configure ticket sales',
-        icon: 'Ticket',
-        isRequired: (eventType) => eventType !== 'simple',
-        canNavigateForward: () => true, // Will be validated by TicketConfiguration component
-        canNavigateBackward: () => true
-      },
-      {
         id: 'venue-selection',
         title: 'Venue Selection',
         description: 'Choose or create venue layout',
@@ -126,9 +117,18 @@ export const useWizardNavigation = ({
         canNavigateBackward: () => true
       },
       {
+        id: 'ticketing',
+        title: 'Ticketing',
+        description: 'Configure ticket sales',
+        icon: 'Ticket',
+        isRequired: (eventType) => eventType !== 'simple',
+        canNavigateForward: () => true, // Will be validated by TicketConfiguration component
+        canNavigateBackward: () => true
+      },
+      {
         id: 'seating-setup',
-        title: 'Seating Configuration',
-        description: 'Configure seating and pricing',
+        title: 'Seating & Tickets',
+        description: 'Configure seating and generate tickets',
         icon: 'MousePointer',
         isRequired: (eventType) => eventType === 'premium',
         canNavigateForward: (data) => {

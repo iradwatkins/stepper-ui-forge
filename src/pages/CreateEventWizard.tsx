@@ -14,6 +14,7 @@ import { BasicInformation } from "@/components/create-event/BasicInformation";
 import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
 import { VenueSelectionStep } from "@/components/create-event/VenueSelectionStep";
 import { SeatingChartWizard } from "@/components/create-event/SeatingChartWizard";
+import { PremiumSeatingTicketConfiguration } from "@/components/create-event/PremiumSeatingTicketConfiguration";
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
 import { EventCreationDebugPanelWrapper } from "@/components/debug/EventCreationDebugPanel";
 import { Button } from "@/components/ui/button";
@@ -371,6 +372,12 @@ function CreateEventWizardInternal() {
         );
         
       case 'ticketing':
+        // For Premium events, this step is skipped as tickets are created in seating configuration
+        if (eventType === 'premium') {
+          // This should not be reached due to step filtering, but as a safety measure
+          nextStep();
+          return null;
+        }
         return (
           <TicketConfigurationWizard
             form={form}
@@ -386,17 +393,44 @@ function CreateEventWizardInternal() {
             onVenueSelected={(venueLayoutId, venueData) => {
               console.log('Venue selected:', venueLayoutId, venueData);
               // Venue data is already set in the form by the component
-              // Just advance to next step
+              // Advance directly to seating configuration for Premium events
+              // Ticketing will be handled within the seating configuration
               nextStep();
             }}
             onProceedWithCustom={() => {
               console.log('Proceeding with custom layout');
+              // For custom layouts, we'll go to seating configuration
+              // where they can upload an image and create tickets
               nextStep();
             }}
           />
         );
         
       case 'seating-setup':
+        // For Premium events, use the combined seating and ticket configuration
+        if (eventType === 'premium') {
+          return (
+            <PremiumSeatingTicketConfiguration
+              form={form}
+              onSeatingConfigured={(seatingData) => {
+                console.log('Premium seating and tickets configured:', seatingData);
+                setSeatingConfig(seatingData);
+                // Set the generated tickets from seating configuration
+                if (seatingData.tickets) {
+                  setTicketTypes(seatingData.tickets);
+                }
+              }}
+              onStepAdvance={() => {
+                console.log('🚀 Advancing from Premium seating configuration');
+                const result = nextStep();
+                console.log('📈 nextStep result:', result);
+                return result;
+              }}
+            />
+          );
+        }
+        
+        // For non-premium events, use the regular seating chart wizard
         return (
           <SeatingChartWizard
             form={form}
