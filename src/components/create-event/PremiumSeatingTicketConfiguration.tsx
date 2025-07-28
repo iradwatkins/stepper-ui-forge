@@ -19,7 +19,8 @@ import {
   CheckCircle,
   MapPin,
   Plus,
-  Trash2
+  Trash2,
+  Building2
 } from 'lucide-react';
 import { seatingService } from '@/lib/services/SeatingService';
 import PremiumSeatingManager from '@/components/seating/PremiumSeatingManager';
@@ -28,6 +29,7 @@ import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 import { TicketType } from './TicketConfigurationWizard';
 import { useEventCreation } from '@/contexts/EventCreationContext';
+import { cn } from '@/lib/utils';
 
 interface PremiumSeatingTicketConfigurationProps {
   form: UseFormReturn<EventFormData>;
@@ -47,6 +49,8 @@ export const PremiumSeatingTicketConfiguration = ({
   } = useEventCreation();
   
   const [activeTab, setActiveTab] = useState<'venue' | 'seating' | 'tickets' | 'review'>('venue');
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [venueImage, setVenueImage] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [seats, setSeats] = useState<SeatData[]>([]);
@@ -71,12 +75,27 @@ export const PremiumSeatingTicketConfiguration = ({
     };
   }, [claimFieldOwnership, releaseFieldOwnership, addDebugUpdate]);
   
-  // Load existing venue image if available
+  // Initialize state based on what's already completed
   useEffect(() => {
     const existingImage = form.watch('venueImageUrl');
+    const hasSelectedVenue = form.watch('venueLayoutId');
+    const proceedWithCustom = form.watch('proceedWithCustomVenue');
+    const basicInfoCompleted = form.watch('title') && form.watch('date');
+    const eventImagesUploaded = form.watch('images')?.banner || form.watch('images')?.postcard;
+    
+    // Set initial step based on what's completed
+    if (basicInfoCompleted && eventImagesUploaded) {
+      setCurrentStep(3); // Start at venue management
+    }
+    
     if (existingImage) {
       setVenueImage(existingImage);
-      setActiveTab('seating');
+      if (hasSelectedVenue) {
+        setCurrentStep(4); // Move to tickets if venue is selected
+        setActiveTab('tickets');
+      }
+    } else if (proceedWithCustom || !hasSelectedVenue) {
+      setActiveTab('venue');
     }
   }, [form]);
 
@@ -174,13 +193,19 @@ export const PremiumSeatingTicketConfiguration = ({
   };
 
   const handleAdvanceToNext = () => {
-    if (activeTab === 'venue' && venueImage) {
-      setActiveTab('seating');
-    } else if (activeTab === 'seating' && seats.length > 0) {
+    // Sequential step progression
+    if (currentStep === 3 && activeTab === 'venue' && venueImage) {
+      setCurrentStep(4);
       setActiveTab('tickets');
-    } else if (activeTab === 'tickets') {
+    } else if (currentStep === 4 && activeTab === 'tickets' && generatedTickets.length > 0) {
+      setCurrentStep(5);
+      setActiveTab('seating');
+    } else if (currentStep === 5 && activeTab === 'seating' && seats.length > 0) {
+      setIsCompleted(true);
       setActiveTab('review');
     } else if (activeTab === 'review' && onStepAdvance) {
+      // Clear the proceedWithCustomVenue flag when advancing
+      form.setValue('proceedWithCustomVenue', false);
       onStepAdvance();
     }
   };
@@ -203,27 +228,122 @@ export const PremiumSeatingTicketConfiguration = ({
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold mb-2">Premium Event Setup</h2>
-        <p className="text-muted-foreground">
-          Upload venue, configure seating, and tickets will be created automatically
+        <h2 className="text-2xl font-bold mb-2">Premium Event Venue Configuration</h2>
+        <p className="text-muted-foreground mb-4">
+          Complete the venue setup process step by step
         </p>
+        
+        {/* Step indicators */}
+        <div className="flex justify-center items-center space-x-4 text-sm">
+          <div className={cn(
+            "flex items-center",
+            currentStep >= 3 ? "text-primary font-medium" : "text-muted-foreground"
+          )}>
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
+              currentStep >= 3 ? "bg-primary text-white" : "bg-gray-200"
+            )}>
+              3
+            </div>
+            Venue
+          </div>
+          <div className="text-muted-foreground">→</div>
+          <div className={cn(
+            "flex items-center",
+            currentStep >= 4 ? "text-primary font-medium" : "text-muted-foreground"
+          )}>
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
+              currentStep >= 4 ? "bg-primary text-white" : "bg-gray-200"
+            )}>
+              4
+            </div>
+            Tickets
+          </div>
+          <div className="text-muted-foreground">→</div>
+          <div className={cn(
+            "flex items-center",
+            currentStep >= 5 ? "text-primary font-medium" : "text-muted-foreground"
+          )}>
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
+              currentStep >= 5 ? "bg-primary text-white" : "bg-gray-200"
+            )}>
+              5
+            </div>
+            Seating
+          </div>
+          <div className="text-muted-foreground">→</div>
+          <div className={cn(
+            "flex items-center",
+            isCompleted ? "text-green-600 font-medium" : "text-muted-foreground"
+          )}>
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
+              isCompleted ? "bg-green-600 text-white" : "bg-gray-200"
+            )}>
+              ✓
+            </div>
+            Ready
+          </div>
+        </div>
       </div>
+
+      {/* Progress Indicator */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium">Progress</span>
+          <span className="text-sm text-muted-foreground">{Math.round((currentStep / 5) * 100)}% Complete</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-primary h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(currentStep / 5) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Show completion message when all steps are done */}
+      {isCompleted && (
+        <Alert className="mb-6 border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>Ready to Go!</strong> Your premium event setup is complete. Review the configuration below and proceed to publish your event.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="venue" disabled={activeTab !== 'venue' && !venueImage}>
+          <TabsTrigger 
+            value="venue" 
+            disabled={currentStep < 3}
+            className={currentStep === 3 ? "ring-2 ring-primary" : ""}
+          >
             <FileImage className="h-4 w-4 mr-2" />
-            Venue
+            3. Venue
           </TabsTrigger>
-          <TabsTrigger value="seating" disabled={!venueImage}>
-            <MapPin className="h-4 w-4 mr-2" />
-            Seating
-          </TabsTrigger>
-          <TabsTrigger value="tickets" disabled={seats.length === 0}>
+          <TabsTrigger 
+            value="tickets" 
+            disabled={currentStep < 4 || !venueImage}
+            className={currentStep === 4 ? "ring-2 ring-primary" : ""}
+          >
             <DollarSign className="h-4 w-4 mr-2" />
-            Tickets
+            4. Tickets
           </TabsTrigger>
-          <TabsTrigger value="review" disabled={generatedTickets.length === 0}>
+          <TabsTrigger 
+            value="seating" 
+            disabled={currentStep < 5 || generatedTickets.length === 0}
+            className={currentStep === 5 ? "ring-2 ring-primary" : ""}
+          >
+            <MapPin className="h-4 w-4 mr-2" />
+            5. Seating
+          </TabsTrigger>
+          <TabsTrigger 
+            value="review" 
+            disabled={!isCompleted}
+            className={isCompleted ? "ring-2 ring-green-500" : ""}
+          >
             <CheckCircle className="h-4 w-4 mr-2" />
             Review
           </TabsTrigger>
@@ -232,9 +352,9 @@ export const PremiumSeatingTicketConfiguration = ({
         <TabsContent value="venue" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Upload Venue Layout</CardTitle>
+              <CardTitle>Step 3: Venue Management</CardTitle>
               <CardDescription>
-                Upload an image of your venue floor plan or seating chart
+                Upload your venue layout image or select from existing venues. This will be used to place seats and tables.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -255,6 +375,19 @@ export const PremiumSeatingTicketConfiguration = ({
                   <p className="text-sm text-gray-500 mt-2">
                     Supports JPG, PNG, SVG up to 10MB
                   </p>
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Want to use a saved venue instead?
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/dashboard/venues', '_blank')}
+                    >
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Manage Venues
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -284,50 +417,109 @@ export const PremiumSeatingTicketConfiguration = ({
         </TabsContent>
 
         <TabsContent value="seating" className="space-y-4">
-          {venueImage && (
-            <PremiumSeatingManager
-              venueImageUrl={venueImage}
-              onImageUpload={(file) => {}}
-              onSeatingConfigurationChange={handleSeatingConfigurationChange}
-              initialSeats={seats}
-              initialCategories={categories}
-              startingTab="configure"
-            />
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 5: Place Tickets on Seating Chart</CardTitle>
+              <CardDescription>
+                Now place your ticket types on the venue layout. Click on the image to add seats and assign them to ticket categories.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {form.watch('venueLayoutId') && (
+                <Alert className="mb-4">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Using the selected venue layout. Place seats for each ticket type on the image below.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {venueImage && generatedTickets.length > 0 && (
+                <PremiumSeatingManager
+                  venueImageUrl={venueImage}
+                  onImageUpload={(file) => {}}
+                  onSeatingConfigurationChange={handleSeatingConfigurationChange}
+                  initialSeats={seats}
+                  initialCategories={categories}
+                  startingTab="configure"
+                />
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="tickets" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Generated Ticket Types</CardTitle>
+              <CardTitle>Step 4: Create Ticket Types</CardTitle>
               <CardDescription>
-                Tickets have been automatically created based on your seating configuration
+                Define your ticket categories including regular, VIP, accessible (handicap), and early bird pricing options
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {generatedTickets.map((ticket) => (
-                <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: ticket.color }}
-                      />
-                      <h4 className="font-medium">{ticket.name}</h4>
-                    </div>
-                    <Badge variant="secondary">
-                      {ticket.quantity} seats
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {ticket.description}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Price per ticket:</span>
-                    <span className="text-lg font-bold">${ticket.price}</span>
-                  </div>
+              {/* Add ticket creation form here */}
+              <div className="space-y-4 mb-6">
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Create different ticket types for your event. Consider adding:
+                    <ul className="list-disc list-inside mt-2">
+                      <li>VIP or Premium tickets with special amenities</li>
+                      <li>Accessible seating for guests with disabilities</li>
+                      <li>Early bird pricing for advance purchases</li>
+                      <li>General admission tickets</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+                
+                {/* Ticket creation form would go here - for now showing generated tickets */}
+                <div className="text-sm text-muted-foreground">
+                  Note: In the full implementation, you would create custom ticket types here. 
+                  For now, tickets are auto-generated based on your seating configuration.
                 </div>
-              ))}
+              </div>
+              
+              <Separator />
+              
+              <h4 className="font-medium mb-3">Current Ticket Types:</h4>
+              {generatedTickets.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p>No tickets created yet. Complete the seating configuration first.</p>
+                </div>
+              ) : (
+                generatedTickets.map((ticket) => (
+                  <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-4 h-4 rounded-full" 
+                          style={{ backgroundColor: ticket.color }}
+                        />
+                        <h4 className="font-medium">{ticket.name}</h4>
+                      </div>
+                      <Badge variant="secondary">
+                        {ticket.quantity} seats
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {ticket.description}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Price per ticket:</span>
+                      <span className="text-lg font-bold">${ticket.price}</span>
+                    </div>
+                    {/* Add early bird option */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <Badge variant="outline" className="text-green-600">
+                        Early Bird Available
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        ${ticket.price * 0.8} until 30 days before event
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
               
               <Separator />
               
@@ -433,38 +625,68 @@ export const PremiumSeatingTicketConfiguration = ({
                 </div>
               </div>
               
-              <Alert className="mt-4">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Your premium event is configured with {seats.length} seats across {categories.length} categories, 
-                  generating {generatedTickets.length} ticket types.
+              <Alert className="mt-4 border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  <strong>Configuration Complete!</strong> Your premium event is set up with:
+                  <ul className="list-disc list-inside mt-2">
+                    <li>{seats.length} total seats available</li>
+                    <li>{categories.length} different seating categories</li>
+                    <li>{generatedTickets.length} ticket types created</li>
+                    <li>{seats.filter(s => s.isAccessible).length} accessible seats included</li>
+                  </ul>
                 </AlertDescription>
               </Alert>
+              
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">Next Steps:</h4>
+                <p className="text-sm text-blue-800">
+                  Click "Proceed to Final Review" to review all event details and publish your event. 
+                  You can always come back to edit the venue configuration later.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      <div className="flex justify-between">
+      <div className="flex justify-between items-center">
         <Button
           variant="outline"
           onClick={() => {
-            const tabOrder = ['venue', 'seating', 'tickets', 'review'] as const;
-            const currentIndex = tabOrder.indexOf(activeTab);
-            if (currentIndex > 0) {
-              setActiveTab(tabOrder[currentIndex - 1]);
+            if (currentStep === 4 && activeTab === 'tickets') {
+              setCurrentStep(3);
+              setActiveTab('venue');
+            } else if (currentStep === 5 && activeTab === 'seating') {
+              setCurrentStep(4);
+              setActiveTab('tickets');
+            } else if (activeTab === 'review') {
+              setCurrentStep(5);
+              setActiveTab('seating');
+              setIsCompleted(false);
             }
           }}
-          disabled={activeTab === 'venue'}
+          disabled={currentStep === 3 && activeTab === 'venue'}
         >
           Previous
         </Button>
         
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            {currentStep === 3 && "Upload your venue layout to continue"}
+            {currentStep === 4 && "Create ticket types for your event"}
+            {currentStep === 5 && "Place seats on the venue layout"}
+            {isCompleted && "Review your configuration"}
+          </p>
+        </div>
+        
         <Button
           onClick={handleAdvanceToNext}
           disabled={!canAdvance()}
+          className={isCompleted && activeTab === 'review' ? 'bg-green-600 hover:bg-green-700' : ''}
         >
-          {activeTab === 'review' ? 'Continue to Review' : 'Next'}
+          {activeTab === 'review' ? 'Proceed to Final Review' : 
+           currentStep === 5 ? 'Complete Setup' : 'Next Step'}
         </Button>
       </div>
     </div>

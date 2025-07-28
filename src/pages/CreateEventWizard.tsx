@@ -18,7 +18,8 @@ import { PremiumSeatingTicketConfiguration } from "@/components/create-event/Pre
 import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
 import { EventCreationDebugPanelWrapper } from "@/components/debug/EventCreationDebugPanel";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -70,7 +71,8 @@ function CreateEventWizardInternal() {
       isPublic: true,
       tags: [],
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      images: {}
+      images: {},
+      proceedWithCustomVenue: false
     }
   });
 
@@ -392,41 +394,67 @@ function CreateEventWizardInternal() {
             form={form}
             onVenueSelected={(venueLayoutId, venueData) => {
               console.log('Venue selected:', venueLayoutId, venueData);
-              // Venue data is already set in the form by the component
-              // Advance directly to seating configuration for Premium events
-              // Ticketing will be handled within the seating configuration
+              // Store venue selection in form
+              if (venueLayoutId) {
+                form.setValue('venueLayoutId', venueLayoutId);
+                // If venue has layout data with image, set it
+                if (venueData?.layout_data?.imageUrl) {
+                  form.setValue('venueImageUrl', venueData.layout_data.imageUrl);
+                  form.setValue('hasVenueImage', true);
+                }
+              }
+              // Advance to seating configuration
               nextStep();
             }}
             onProceedWithCustom={() => {
               console.log('Proceeding with custom layout');
-              // For custom layouts, we'll go to seating configuration
-              // where they can upload an image and create tickets
+              // Clear any venue selection
+              form.setValue('venueLayoutId', null);
+              form.setValue('proceedWithCustomVenue', true);
+              // Go to seating configuration where they'll upload custom image
               nextStep();
             }}
           />
         );
         
       case 'seating-setup':
-        // For Premium events, use the combined seating and ticket configuration
+        // For Premium events, use the enhanced configuration component
         if (eventType === 'premium') {
           return (
-            <PremiumSeatingTicketConfiguration
-              form={form}
-              onSeatingConfigured={(seatingData) => {
-                console.log('Premium seating and tickets configured:', seatingData);
-                setSeatingConfig(seatingData);
-                // Set the generated tickets from seating configuration
-                if (seatingData.tickets) {
-                  setTicketTypes(seatingData.tickets);
-                }
-              }}
-              onStepAdvance={() => {
-                console.log('🚀 Advancing from Premium seating configuration');
-                const result = nextStep();
-                console.log('📈 nextStep result:', result);
-                return result;
-              }}
-            />
+            <div className="space-y-4">
+              {/* Add guidance text */}
+              <Alert className="mb-6">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Premium Event Venue Configuration:</strong>
+                  <p className="mt-2">Complete these steps in order:</p>
+                  <ol className="list-decimal list-inside mt-2 space-y-1">
+                    <li>Upload your venue layout image or select from saved venues</li>
+                    <li>Review automatically generated ticket types</li>
+                    <li>Place seats on the venue layout and assign ticket categories</li>
+                    <li>Confirm configuration when ready</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+              
+              <PremiumSeatingTicketConfiguration
+                form={form}
+                onSeatingConfigured={(seatingData) => {
+                  console.log('Premium seating and tickets configured:', seatingData);
+                  setSeatingConfig(seatingData);
+                  // Set the generated tickets from seating configuration
+                  if (seatingData.tickets) {
+                    setTicketTypes(seatingData.tickets);
+                  }
+                }}
+                onStepAdvance={() => {
+                  console.log('🚀 Advancing from Premium seating configuration');
+                  const result = nextStep();
+                  console.log('📈 nextStep result:', result);
+                  return result;
+                }}
+              />
+            </div>
           );
         }
         

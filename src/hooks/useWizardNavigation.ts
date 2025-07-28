@@ -111,8 +111,8 @@ export const useWizardNavigation = ({
         icon: 'Building',
         isRequired: (eventType) => eventType === 'premium',
         canNavigateForward: (data) => {
-          // Can proceed if they selected a venue OR chose custom
-          return !!(data.venueLayoutId) || !!(data.venueImageUrl || data.hasVenueImage);
+          // Can proceed if they selected a venue OR chose to proceed with custom
+          return !!(data.venueLayoutId) || !!(data.proceedWithCustomVenue) || !!(data.venueImageUrl || data.hasVenueImage);
         },
         canNavigateBackward: () => true
       },
@@ -127,18 +127,27 @@ export const useWizardNavigation = ({
       },
       {
         id: 'seating-setup',
-        title: 'Seating & Tickets',
-        description: 'Configure seating and generate tickets',
-        icon: 'MousePointer',
+        title: 'Venue Configuration',
+        description: 'Upload venue, create tickets, and configure seating',
+        icon: 'Building',
         isRequired: (eventType) => eventType === 'premium',
         canNavigateForward: (data) => {
-          // More lenient validation - just require venue image OR some progress
+          // For Premium events, require all three steps to be completed
           const hasVenueImage = !!(data.venueImageUrl || data.hasVenueImage);
           const hasSeats = !!(data.seats && data.seats.length > 0);
           const hasCategories = !!(data.seatCategories && data.seatCategories.length > 0);
           
-          // Allow forward if at least venue image is uploaded, even without seats
-          return hasVenueImage || hasSeats || hasCategories;
+          // All must be complete for Premium events
+          const canAdvance = hasVenueImage && hasSeats && hasCategories;
+          
+          console.log('Premium venue configuration validation:', {
+            hasVenueImage,
+            hasSeats,
+            hasCategories,
+            canAdvance
+          });
+          
+          return canAdvance;
         },
         canNavigateBackward: () => true
       },

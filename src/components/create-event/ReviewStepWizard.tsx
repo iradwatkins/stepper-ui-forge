@@ -100,6 +100,12 @@ export const ReviewStepWizard = ({
     onSave('published');
   };
 
+  // Check if Premium event has all requirements
+  const isPremiumReady = eventType === 'premium' && 
+    formData.venueImageUrl && 
+    formData.seats && formData.seats.length > 0 &&
+    formData.seatCategories && formData.seatCategories.length > 0;
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
@@ -108,6 +114,28 @@ export const ReviewStepWizard = ({
           Review your event details and publish when ready
         </p>
       </div>
+
+      {/* Ready to Go Alert for Premium Events */}
+      {eventType === 'premium' && isPremiumReady && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircleIcon className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>🎉 Ready to Go!</strong> Your premium event is fully configured with venue layout, 
+            ticket types, and seating chart. You can now publish your event or save it as a draft.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Warning if Premium event is missing requirements */}
+      {eventType === 'premium' && !isPremiumReady && (
+        <Alert className="border-orange-200 bg-orange-50">
+          <AlertCircleIcon className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <strong>Configuration Incomplete:</strong> Please complete the venue configuration step 
+            (upload venue, create tickets, and place seats) before publishing.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Event Summary Card */}
       <Card>
@@ -232,6 +260,56 @@ export const ReviewStepWizard = ({
         </Card>
       )}
 
+      {/* Premium Event Configuration Summary */}
+      {eventType === 'premium' && formData.seats && formData.seatCategories && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BuildingIcon className="w-5 h-5" />
+              Premium Venue Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Seats</p>
+                <p className="text-lg font-medium">{formData.seats.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Ticket Categories</p>
+                <p className="text-lg font-medium">{formData.seatCategories.length}</p>
+              </div>
+              {formData.seats.some((s: any) => s.isAccessible) && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Accessible Seats</p>
+                  <p className="text-lg font-medium">
+                    {formData.seats.filter((s: any) => s.isAccessible).length}
+                  </p>
+                </div>
+              )}
+              {formData.seats.some((s: any) => s.tableId) && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Tables</p>
+                  <p className="text-lg font-medium">
+                    {new Set(formData.seats.filter((s: any) => s.tableId).map((s: any) => s.tableId)).size}
+                  </p>
+                </div>
+              )}
+            </div>
+            {formData.venueImageUrl && (
+              <div className="mt-4">
+                <p className="text-sm text-muted-foreground mb-2">Venue Layout</p>
+                <img
+                  src={formData.venueImageUrl}
+                  alt="Venue layout"
+                  className="w-full max-h-48 object-contain rounded-lg border"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Display Price for Simple Events */}
       {eventType === 'simple' && formData.displayPrice && formData.displayPrice.amount > 0 && (
         <Card>
@@ -277,14 +355,35 @@ export const ReviewStepWizard = ({
         </CardContent>
       </Card>
 
-      {/* Validation Check */}
-      <Alert>
-        <CheckCircleIcon className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Ready to publish!</strong> All required information has been provided. 
-          You can save as draft to continue editing later, or publish to make your event live.
-        </AlertDescription>
-      </Alert>
+      {/* Validation Check - Different message for Premium events */}
+      {eventType === 'premium' && isPremiumReady ? (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader>
+            <CardTitle className="text-green-800 flex items-center gap-2">
+              <CheckCircleIcon className="h-5 w-5" />
+              Premium Event Ready!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-green-700">
+            <p className="mb-3">Your premium event is fully configured and ready to go live. You have:</p>
+            <ul className="list-disc list-inside space-y-1 mb-4">
+              <li>Uploaded venue layout image</li>
+              <li>Created {formData.seatCategories?.length || 0} ticket categories</li>
+              <li>Placed {formData.seats?.length || 0} seats on the seating chart</li>
+              <li>Configured accessible seating options</li>
+            </ul>
+            <p className="font-medium">You can now publish your event or save it as a draft to make changes later.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Alert>
+          <CheckCircleIcon className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Ready to publish!</strong> All required information has been provided. 
+            You can save as draft to continue editing later, or publish to make your event live.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-end">
@@ -311,8 +410,10 @@ export const ReviewStepWizard = ({
         <Button
           type="button"
           onClick={handlePublish}
-          disabled={isSaving}
-          className="flex items-center gap-2 min-w-[140px]"
+          disabled={isSaving || (eventType === 'premium' && !isPremiumReady)}
+          className={`flex items-center gap-2 min-w-[140px] ${
+            eventType === 'premium' && isPremiumReady ? 'bg-green-600 hover:bg-green-700' : ''
+          }`}
         >
           {isSaving ? (
             <>

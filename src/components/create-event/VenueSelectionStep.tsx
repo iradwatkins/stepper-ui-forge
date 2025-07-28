@@ -357,10 +357,30 @@ export const VenueSelectionStep = ({
             <strong>Selected venue:</strong> {selectedVenue.name} ({selectedVenue.capacity} seats)
             <br />
             <span className="text-sm text-muted-foreground">
-              The venue layout and pricing will be used for this event.
+              The venue layout and pricing will be used for this event. You'll configure seating in the next step.
             </span>
           </AlertDescription>
         </Alert>
+      )}
+      
+      {/* Option to proceed without venue */}
+      {!selectedVenue && (
+        <Card className="mt-4">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <h3 className="text-lg font-medium">
+                {venues.length === 0 ? "Don't have a venue layout yet?" : "Prefer to upload a custom layout?"}
+              </h3>
+              <p className="text-muted-foreground">
+                You can upload a custom venue image and configure seating in the next step.
+              </p>
+              <Button onClick={onProceedWithCustom} variant="secondary" className="w-full max-w-xs">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Custom Venue Layout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
