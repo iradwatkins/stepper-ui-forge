@@ -5,25 +5,29 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, ArrowLeft, LoaderIcon, AlertCircle, ImageIcon, UploadIcon, XIcon, TagIcon, GlobeIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, MapPinIcon, SaveIcon, EyeIcon, ArrowLeft, LoaderIcon, AlertCircle, ImageIcon, Upload as UploadIcon, X as XIcon, TagIcon, GlobeIcon, TicketIcon } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { toast } from "sonner";
 import { EVENT_CATEGORIES } from "@/lib/constants/event-categories";
 import { Badge } from "@/components/ui/badge";
 import { DateInputField } from "@/components/ui/date-input-field";
 import { TimeInputField } from "@/components/ui/time-input-field";
+import { GooglePlacesInput } from "@/components/ui/GooglePlacesInput";
+import { loadGoogleMapsAPI } from "@/lib/config/google-maps";
+import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
 
 const eventSchema = z.object({
   title: z.string().min(1, "Event title is required").max(100, "Title must be under 100 characters"),
   description: z.string().optional(),
   organizationName: z.string().optional(),
+  venueName: z.string().optional(),
   date: z.string().min(1, "Event date is required"),
   time: z.string().min(1, "Event time is required"),
   endDate: z.string().optional(),
@@ -64,6 +68,8 @@ export default function EditEvent() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
   
   // Use the original image upload system
   const {
@@ -81,6 +87,7 @@ export default function EditEvent() {
       title: "",
       description: "",
       organizationName: "",
+      venueName: "",
       date: "",
       time: "",
       endDate: "",
@@ -95,6 +102,19 @@ export default function EditEvent() {
       displayPriceLabel: ""
     }
   });
+
+  // Load Google Maps API
+  useEffect(() => {
+    const initGoogleMaps = async () => {
+      try {
+        await loadGoogleMapsAPI();
+        setIsGoogleMapsLoaded(true);
+      } catch (error) {
+        console.warn('Google Maps API failed to load:', error);
+      }
+    };
+    initGoogleMaps();
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -158,6 +178,7 @@ export default function EditEvent() {
         title: event.title,
         description: event.description || "",
         organizationName: event.organization_name || "",
+        venueName: event.venue_name || "",
         date: event.date,
         time: event.time,
         endDate: event.end_date || "",
@@ -176,6 +197,29 @@ export default function EditEvent() {
       // Set existing images if they exist
       if (event.images) {
         setUploadedImages(event.images);
+      }
+
+      // Load ticket types for ticketed events
+      if (event.event_type === 'ticketed' || event.event_type === 'premium') {
+        const { data: tickets, error: ticketError } = await supabase
+          .from('ticket_types')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('price', { ascending: true });
+
+        if (!ticketError && tickets) {
+          const formattedTickets: TicketType[] = tickets.map(ticket => ({
+            id: ticket.id,
+            name: ticket.name,
+            description: ticket.description || '',
+            price: ticket.price,
+            earlyBirdPrice: ticket.early_bird_price || undefined,
+            earlyBirdUntil: ticket.early_bird_until || undefined,
+            quantity: ticket.quantity,
+            hasEarlyBird: !!ticket.early_bird_price
+          }));
+          setTicketTypes(formattedTickets);
+        }
       }
     } catch (error) {
       console.error("Error loading event:", error);
@@ -252,6 +296,7 @@ export default function EditEvent() {
         title: data.title,
         description: data.description || null,
         organization_name: data.organizationName || null,
+        venue_name: data.venueName || null,
         date: data.date,
         time: data.time,
         end_date: data.endDate || null,
@@ -281,6 +326,53 @@ export default function EditEvent() {
         return;
       }
 
+      // Save ticket types for ticketed events
+      if ((eventType === 'ticketed' || eventType === 'premium') && ticketTypes.length > 0) {
+        // First, delete existing ticket types
+        const { error: deleteError } = await supabase
+          .from('ticket_types')
+          .delete()
+          .eq('event_id', id);
+
+        if (deleteError) {
+          console.error("Error deleting existing tickets:", deleteError);
+          toast.error("Failed to update tickets");
+          return;
+        }
+
+        // Then insert new ticket types
+        const ticketPromises = ticketTypes.map(async (ticket) => {
+          const ticketData = {
+            event_id: id,
+            name: ticket.name.trim(),
+            description: ticket.description?.trim() || null,
+            price: ticket.price,
+            early_bird_price: ticket.hasEarlyBird && ticket.earlyBirdPrice ? ticket.earlyBirdPrice : null,
+            early_bird_until: ticket.hasEarlyBird && ticket.earlyBirdUntil ? ticket.earlyBirdUntil : null,
+            quantity: ticket.quantity,
+            max_per_person: 10,
+            is_active: true
+          };
+
+          const { error: ticketError } = await supabase
+            .from('ticket_types')
+            .insert(ticketData);
+
+          if (ticketError) {
+            console.error("Error creating ticket type:", ticketError);
+            throw new Error(`Failed to create ticket type "${ticket.name}": ${ticketError.message}`);
+          }
+        });
+
+        try {
+          await Promise.all(ticketPromises);
+        } catch (ticketError) {
+          console.error('Error saving ticket types:', ticketError);
+          toast.error(`Failed to save ticket types: ${ticketError instanceof Error ? ticketError.message : 'Unknown error'}`);
+          return;
+        }
+      }
+
       toast.success("Event updated successfully!");
       navigate("/dashboard/events");
     } catch (error) {
@@ -299,6 +391,14 @@ export default function EditEvent() {
   const unpublishEvent = async () => {
     const currentData = form.getValues();
     await saveEvent({ ...currentData, status: "draft" });
+  };
+
+  const handleTicketsChange = (tickets: TicketType[]) => {
+    setTicketTypes(tickets);
+  };
+
+  const handleAddressChange = (value: string) => {
+    form.setValue('location', value);
   };
 
   if (!user) {
@@ -649,13 +749,30 @@ export default function EditEvent() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="location">Event Location *</Label>
+                <Label htmlFor="venueName">Venue Name</Label>
                 <Input
-                  id="location"
-                  placeholder="Enter event location or address"
-                  {...form.register("location")}
-                  className={form.formState.errors.location ? "border-destructive" : ""}
+                  id="venueName"
+                  placeholder="Enter venue or location name"
+                  {...form.register("venueName")}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="location">Event Address *</Label>
+                <GooglePlacesInput
+                  value={form.watch('location') || ''}
+                  onChange={handleAddressChange}
+                  placeholder="Search for venue, address, or landmark..."
+                  error={!!form.formState.errors.location}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isGoogleMapsLoaded ? (
+                    <>🌍 Enhanced search enabled! Search for venues, addresses, or use current location.</>
+                  ) : (
+                    <>Include city and state/region for better search results.</>
+                  )}
+                </p>
                 {form.formState.errors.location && (
                   <p className="text-sm text-destructive mt-1">
                     {form.formState.errors.location.message}
@@ -767,6 +884,29 @@ export default function EditEvent() {
               )}
             </CardContent>
           </Card>
+
+          {/* Ticket Configuration for Ticketed Events */}
+          {eventType === "ticketed" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TicketIcon className="h-5 w-5" />
+                  Ticket Types & Pricing
+                </CardTitle>
+                <CardDescription>
+                  Configure your ticket tiers, pricing, and availability
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TicketConfigurationWizard
+                  form={form}
+                  eventType={eventType}
+                  onTicketsChange={handleTicketsChange}
+                  initialTickets={ticketTypes}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

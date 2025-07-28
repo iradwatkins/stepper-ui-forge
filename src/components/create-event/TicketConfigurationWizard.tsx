@@ -25,19 +25,24 @@ interface TicketConfigurationWizardProps {
   form: UseFormReturn<EventFormData>;
   eventType: 'simple' | 'ticketed' | 'premium' | '';
   onTicketsChange?: (tickets: TicketType[]) => void;
+  initialTickets?: TicketType[];
 }
 
-export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange }: TicketConfigurationWizardProps) => {
-  const [tickets, setTickets] = useState<TicketType[]>([
-    {
-      id: 'general',
-      name: 'General Admission',
-      description: 'Standard access to the event',
-      price: 25,
-      quantity: 100,
-      hasEarlyBird: false
-    }
-  ]);
+export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, initialTickets }: TicketConfigurationWizardProps) => {
+  const [tickets, setTickets] = useState<TicketType[]>(
+    initialTickets && initialTickets.length > 0 
+      ? initialTickets 
+      : [
+          {
+            id: 'general',
+            name: 'General Admission',
+            description: 'Standard access to the event',
+            price: 25,
+            quantity: 100,
+            hasEarlyBird: false
+          }
+        ]
+  );
 
   // Notify parent component when tickets change
   useEffect(() => {
