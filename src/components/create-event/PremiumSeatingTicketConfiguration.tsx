@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Upload, 
+  Upload as UploadIcon, 
   FileImage,
   Palette, 
   DollarSign,
@@ -360,7 +360,7 @@ export const PremiumSeatingTicketConfiguration = ({
             <CardContent className="space-y-4">
               {!venueImage ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <UploadIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                   <Label htmlFor="venue-upload" className="cursor-pointer">
                     <span className="text-lg font-medium">Click to upload venue image</span>
                     <Input

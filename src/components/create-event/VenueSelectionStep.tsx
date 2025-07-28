@@ -14,7 +14,8 @@ import {
   Users, 
   Eye, 
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Upload as UploadIcon
 } from 'lucide-react';
 import { EventFormData } from '@/types/event-form';
 import { useAuth } from '@/contexts/AuthContext';
@@ -375,7 +376,7 @@ export const VenueSelectionStep = ({
                 You can upload a custom venue image and configure seating in the next step.
               </p>
               <Button onClick={onProceedWithCustom} variant="secondary" className="w-full max-w-xs">
-                <Upload className="h-4 w-4 mr-2" />
+                <UploadIcon className="h-4 w-4 mr-2" />
                 Upload Custom Venue Layout
               </Button>
             </div>

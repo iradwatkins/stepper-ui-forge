@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { GooglePlacesInput } from "@/components/ui/GooglePlacesInput";
-import { CalendarIcon, ImageIcon, X, Upload, DollarSignIcon } from "lucide-react";
+import { CalendarIcon, ImageIcon, X, Upload as UploadIcon, DollarSignIcon } from "lucide-react";
 import { loadGoogleMapsAPI } from "@/lib/config/google-maps";
 import { useEffect, useState } from "react";
 import { EVENT_CATEGORIES } from "@/lib/constants/event-categories";
@@ -416,7 +416,7 @@ export const BasicInformation = ({
                       htmlFor="banner-upload"
                       className="cursor-pointer flex flex-col items-center gap-2"
                     >
-                      <Upload className="w-8 h-8 text-muted-foreground" />
+                      <UploadIcon className="w-8 h-8 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">
                           {isProcessingImage ? "Processing event image..." : "Upload event image"}
@@ -482,7 +482,7 @@ export const BasicInformation = ({
                       htmlFor="postcard-upload"
                       className="cursor-pointer flex flex-col items-center gap-2"
                     >
-                      <Upload className="w-6 h-6 text-muted-foreground" />
+                      <UploadIcon className="w-6 h-6 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">
                           {isProcessingImage ? "Processing additional image..." : "Upload additional image"}

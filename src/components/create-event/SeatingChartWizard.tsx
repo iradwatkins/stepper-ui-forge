@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { 
-  Upload, 
+  Upload as UploadIcon, 
   FileImage,
   Palette, 
   DollarSign,
@@ -610,7 +610,7 @@ export const SeatingChartWizard = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5" />
+                  <UploadIcon className="w-5 h-5" />
                   Upload Venue Floor Plan
                 </CardTitle>
                 <CardDescription>
@@ -632,7 +632,7 @@ export const SeatingChartWizard = ({
                             💡 This should be your venue's layout diagram, not marketing images
                           </div>
                           <Button variant="outline" className="pointer-events-none">
-                            <Upload className="w-4 h-4 mr-2" />
+                            <UploadIcon className="w-4 h-4 mr-2" />
                             Choose File
                           </Button>
                         </Label>
