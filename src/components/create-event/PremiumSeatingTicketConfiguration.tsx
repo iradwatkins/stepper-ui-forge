@@ -151,17 +151,28 @@ export const PremiumSeatingTicketConfiguration = ({
 
     setUploadingImage(true);
     try {
-      const imageUrl = await imageUploadService.uploadVenueImage(file);
+      // Generate a temporary venue ID for the upload
+      const tempVenueId = `temp-${Date.now()}`;
+      const uploadResult = await imageUploadService.uploadVenueImage(file, tempVenueId);
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload failed');
+      }
+      
+      const imageUrl = uploadResult.url!; // We know it exists after success check
       setVenueImage(imageUrl);
       form.setValue('venueImageUrl', imageUrl);
       form.setValue('hasVenueImage', true);
       addDebugUpdate(COMPONENT_NAME, 'venueImageUrl', imageUrl);
       addDebugUpdate(COMPONENT_NAME, 'hasVenueImage', true);
       toast.success('Venue image uploaded successfully');
-      setActiveTab('seating');
+      // Move to the next step (tickets) after successful upload
+      setCurrentStep(4);
+      setActiveTab('tickets');
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to upload venue image');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to upload venue image: ${errorMessage}`);
     } finally {
       setUploadingImage(false);
     }
