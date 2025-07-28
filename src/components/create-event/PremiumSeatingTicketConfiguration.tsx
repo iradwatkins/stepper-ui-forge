@@ -59,6 +59,17 @@ export const PremiumSeatingTicketConfiguration = ({
   const generateTicketsFromCategories = (categories: EnhancedSeatCategory[], seats: SeatData[]) => {
     const tickets: TicketType[] = [];
     
+    // For table-based venues, group by table
+    const seatsByTable = seats.reduce((acc, seat) => {
+      if (seat.tableId) {
+        if (!acc[seat.tableId]) {
+          acc[seat.tableId] = [];
+        }
+        acc[seat.tableId].push(seat);
+      }
+      return acc;
+    }, {} as Record<string, SeatData[]>);
+    
     // Count seats per category
     const seatCountByCategory = seats.reduce((acc, seat) => {
       acc[seat.categoryId] = (acc[seat.categoryId] || 0) + 1;
@@ -69,10 +80,17 @@ export const PremiumSeatingTicketConfiguration = ({
     categories.forEach(category => {
       const seatCount = seatCountByCategory[category.id] || 0;
       if (seatCount > 0) {
+        // Check if this category has tables
+        const categoryHasTables = seats.some(seat => 
+          seat.categoryId === category.id && seat.tableId
+        );
+        
         tickets.push({
           id: category.id,
           name: category.name,
-          description: `${category.name} seating with ${category.amenities.join(', ')}`,
+          description: categoryHasTables 
+            ? `${category.name} table seating with ${category.amenities.join(', ')}`
+            : `${category.name} seating with ${category.amenities.join(', ')}`,
           price: category.basePrice,
           quantity: seatCount,
           color: category.color
@@ -290,8 +308,19 @@ export const PremiumSeatingTicketConfiguration = ({
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  Each seat placed on the venue layout will generate an individual ticket. 
-                  Tickets are grouped by the seat category for easier management.
+                  {seats.some(seat => seat.tableId) ? (
+                    <>
+                      <strong>Table Service Venue:</strong> Customers must book entire tables. 
+                      Each seat generates a ticket, but they're sold as complete table units. 
+                      For example, a 10-seat table priced at $200 will generate 10 individual tickets 
+                      when purchased.
+                    </>
+                  ) : (
+                    <>
+                      Each seat placed on the venue layout will generate an individual ticket. 
+                      Tickets are grouped by the seat category for easier management.
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -333,6 +362,20 @@ export const PremiumSeatingTicketConfiguration = ({
                     <p className="text-sm text-muted-foreground">Seat Categories</p>
                     <p className="text-lg font-medium">{categories.length}</p>
                   </div>
+                  {seats.some(seat => seat.tableId) && (
+                    <>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Tables</p>
+                        <p className="text-lg font-medium">
+                          {new Set(seats.filter(s => s.tableId).map(s => s.tableId)).size}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Venue Type</p>
+                        <p className="text-lg font-medium">Table Service</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               
