@@ -125,8 +125,12 @@ export const BasicInformation = ({
   });
 
   const handleImageInputChange = (e: React.ChangeEvent<HTMLInputElement>, imageType: 'banner' | 'postcard' = 'banner') => {
+    console.log(`Image input change triggered for ${imageType}`);
     if (e.target.files && e.target.files.length > 0) {
+      console.log(`File selected:`, e.target.files[0].name, `Size: ${(e.target.files[0].size / 1024 / 1024).toFixed(2)}MB`);
       onImageUpload(e.target.files, imageType);
+    } else {
+      console.warn(`No file selected for ${imageType} upload`);
     }
   };
 
@@ -414,7 +418,7 @@ export const BasicInformation = ({
                     />
                     <label
                       htmlFor="banner-upload"
-                      className="cursor-pointer flex flex-col items-center gap-2"
+                      className={`${isProcessingImage ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} flex flex-col items-center gap-2`}
                     >
                       <UploadIcon className="w-8 h-8 text-muted-foreground" />
                       <div>
@@ -429,6 +433,24 @@ export const BasicInformation = ({
                         </div>
                       </div>
                     </label>
+                    
+                    {/* Fallback button for better accessibility */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('Button clicked - triggering file input');
+                        const input = document.getElementById('banner-upload') as HTMLInputElement;
+                        if (input) {
+                          input.click();
+                        } else {
+                          console.error('File input not found');
+                        }
+                      }}
+                      className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isProcessingImage}
+                    >
+                      Select Image File
+                    </button>
                   </div>
                 ) : (
                   <div className="relative group">
@@ -480,7 +502,7 @@ export const BasicInformation = ({
                     />
                     <label
                       htmlFor="postcard-upload"
-                      className="cursor-pointer flex flex-col items-center gap-2"
+                      className={`${isProcessingImage ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} flex flex-col items-center gap-2`}
                     >
                       <UploadIcon className="w-6 h-6 text-muted-foreground" />
                       <div>

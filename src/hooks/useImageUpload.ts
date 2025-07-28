@@ -84,7 +84,15 @@ export const useImageUpload = () => {
         initialQuality: 0.92,
         fileType: 'image/jpeg',
         useWebWorker: true
-      }),
+      }).catch(() => 
+        // Fallback without web worker
+        imageCompression(file, {
+          maxWidthOrHeight: config.original,
+          initialQuality: 0.92,
+          fileType: 'image/jpeg',
+          useWebWorker: false
+        })
+      ),
       // Medium
       imageCompression(file, {
         maxWidthOrHeight: config.medium,
@@ -184,6 +192,17 @@ export const useImageUpload = () => {
     try {
       const file = files[0]; // Process only the first file for the specified type
       
+      // Check file size before processing
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        throw new Error(`File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size of 10MB`);
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please select a valid image file (JPG, PNG, or WebP)');
+      }
+      
       setProcessingProgress({ current: 1, total: 1, stage: `Processing ${imageType}...` });
       
       const optimizedImage = await processImageWithSizes(file, imageType);
@@ -201,6 +220,8 @@ export const useImageUpload = () => {
       });
     } catch (error) {
       console.error(`Error in ${imageType} upload process:`, error);
+      // Re-throw the error so it can be caught by the caller
+      throw error;
     } finally {
       setIsProcessingImage(false);
       setProcessingProgress({ current: 0, total: 0, stage: '' });

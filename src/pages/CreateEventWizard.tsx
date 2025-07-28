@@ -153,13 +153,22 @@ function CreateEventWizardInternal() {
   // Image upload handlers
   const handleImageUploadWrapper = async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {
     if (files.length > 0) {
+      console.log(`Starting ${imageType} upload for file:`, files[0].name, `Size: ${(files[0].size / 1024 / 1024).toFixed(2)}MB`);
       try {
         await handleImageUpload(files, imageType);
+        console.log(`${imageType} upload completed successfully`);
         toast.success(`${imageType} image uploaded successfully!`);
+        
+        // Force form update to ensure the image is registered
+        const currentImages = form.getValues('images');
+        console.log('Current form images after upload:', currentImages);
       } catch (error) {
         console.error('Image upload error:', error);
-        toast.error(`Failed to upload ${imageType} image. Please try again.`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        toast.error(`Failed to upload ${imageType} image: ${errorMessage}`);
       }
+    } else {
+      console.warn('No files selected for upload');
     }
   };
 
