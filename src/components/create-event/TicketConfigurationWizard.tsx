@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { AlertCircle, Plus, Trash2, Info, TicketIcon, DollarSignIcon } from "lucide-react";
+import { AlertCircle, Plus, Trash2, Info, TicketIcon, DollarSignIcon, Wheelchair, Palette } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect } from "react";
 
@@ -19,6 +19,8 @@ export interface TicketType {
   earlyBirdUntil?: string;
   quantity: number;
   hasEarlyBird: boolean;
+  isAccessible?: boolean;
+  color?: string;
 }
 
 interface TicketConfigurationWizardProps {
@@ -39,10 +41,43 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
             description: 'Standard access to the event',
             price: 25,
             quantity: 100,
-            hasEarlyBird: false
+            hasEarlyBird: false,
+            isAccessible: false
           }
         ]
   );
+  
+  // Pre-configured ticket templates
+  const ticketTemplates = [
+    {
+      name: 'VIP Experience',
+      description: 'Premium seating with exclusive amenities and meet & greet',
+      price: 150,
+      quantity: 20,
+      hasEarlyBird: true,
+      earlyBirdPrice: 120,
+      isAccessible: false,
+      color: '#FFD700'
+    },
+    {
+      name: 'Accessible Seating',
+      description: 'Wheelchair accessible seating with companion option',
+      price: 25,
+      quantity: 10,
+      hasEarlyBird: false,
+      isAccessible: true,
+      color: '#4A90E2'
+    },
+    {
+      name: 'Group Package',
+      description: 'Special pricing for groups of 10 or more',
+      price: 20,
+      quantity: 50,
+      hasEarlyBird: false,
+      isAccessible: false,
+      color: '#50E3C2'
+    }
+  ];
 
   // Notify parent component when tickets change
   useEffect(() => {
@@ -58,7 +93,8 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
       description: '',
       price: 0,
       quantity: 50,
-      hasEarlyBird: false
+      hasEarlyBird: false,
+      isAccessible: false
     };
     setTickets(prev => [...prev, newTicket]);
   };
@@ -139,7 +175,15 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
           <Card key={ticket.id}>
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Ticket Type {index + 1}</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                {ticket.color && (
+                  <div 
+                    className="w-4 h-4 rounded-full border" 
+                    style={{ backgroundColor: ticket.color }}
+                  />
+                )}
+                Ticket Type {index + 1}
+              </CardTitle>
                 {tickets.length > 1 && (
                   <Button
                     variant="ghost"
@@ -200,13 +244,26 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
                     placeholder="100"
                   />
                 </div>
-                <div className="flex items-center space-x-2 pt-6">
-                  <Switch
-                    id={`early-bird-${index}`}
-                    checked={ticket.hasEarlyBird}
-                    onCheckedChange={(checked) => updateTicketTier(index, 'hasEarlyBird', checked)}
-                  />
-                  <Label htmlFor={`early-bird-${index}`}>Early Bird Pricing</Label>
+                <div>
+                  <div className="flex items-center space-x-2 pt-6">
+                    <Switch
+                      id={`early-bird-${index}`}
+                      checked={ticket.hasEarlyBird}
+                      onCheckedChange={(checked) => updateTicketTier(index, 'hasEarlyBird', checked)}
+                    />
+                    <Label htmlFor={`early-bird-${index}`}>Early Bird Pricing</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 pt-4">
+                    <Switch
+                      id={`accessible-${index}`}
+                      checked={ticket.isAccessible || false}
+                      onCheckedChange={(checked) => updateTicketTier(index, 'isAccessible', checked)}
+                    />
+                    <Label htmlFor={`accessible-${index}`} className="flex items-center gap-2">
+                      <Wheelchair className="w-4 h-4" />
+                      Accessible Seating
+                    </Label>
+                  </div>
                 </div>
               </div>
 
@@ -235,12 +292,21 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
                   </div>
                 </div>
               )}
+              
+              {ticket.isAccessible && (
+                <Alert className="border-blue-200 bg-blue-50">
+                  <Wheelchair className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    This ticket type includes accessible seating with wheelchair access and companion seating options.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-2">
         <Button
           type="button"
           variant="outline"
@@ -248,8 +314,52 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
           className="flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add Ticket Type
+          Add Custom Ticket
         </Button>
+        
+        {/* Dropdown for ticket templates */}
+        <div className="relative group">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Palette className="w-4 h-4" />
+            Use Template
+          </Button>
+          <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+            <div className="p-2 space-y-1">
+              <p className="text-xs text-muted-foreground px-2 py-1">Quick Templates</p>
+              {ticketTemplates.map((template, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    const newTicket: TicketType = {
+                      id: `ticket-${Date.now()}`,
+                      ...template
+                    };
+                    setTickets(prev => [...prev, newTicket]);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {template.color && (
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: template.color }}
+                      />
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">{template.name}</p>
+                      <p className="text-xs text-muted-foreground">${template.price}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Pricing Summary */}

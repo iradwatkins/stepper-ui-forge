@@ -1,0 +1,64 @@
+/* Pulsing animation for venue upload button */
+@keyframes pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Blinking border animation */
+@keyframes blink-border {
+  0%, 100% {
+    border-color: rgb(209, 213, 219);
+  }
+  50% {
+    border-color: rgb(59, 130, 246);
+  }
+}
+
+/* Upload icon bounce with glow */
+@keyframes bounce-glow {
+  0%, 100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    transform: translateY(-10px);
+    filter: drop-shadow(0 4px 10px rgba(59, 130, 246, 0.4));
+  }
+}
+
+/* Ripple effect for upload area */
+@keyframes ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.venue-upload-container {
+  animation: blink-border 2s ease-in-out infinite;
+}
+
+.venue-upload-button {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.venue-upload-icon {
+  animation: bounce-glow 2s ease-in-out infinite;
+}
+
+.venue-upload-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.3);
+  animation: ripple 3s ease-out infinite;
+}

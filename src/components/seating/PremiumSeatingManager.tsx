@@ -83,7 +83,8 @@ export default function PremiumSeatingManager({
   });
   
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [tool, setTool] = useState<'pan' | 'place'>('place');
+  const [tool, setTool] = useState<'pan' | 'place' | 'table'>('place');
+  const [tableSize, setTableSize] = useState<number>(8); // Default table size
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -221,7 +222,49 @@ export default function PremiumSeatingManager({
       imageDrawInfo.drawHeight
     );
     
-    // Draw seats
+    // Group seats by table
+    const tableGroups = new Map<string, SeatData[]>();
+    const individualSeats: SeatData[] = [];
+    
+    seats.forEach(seat => {
+      if (seat.tableId) {
+        if (!tableGroups.has(seat.tableId)) {
+          tableGroups.set(seat.tableId, []);
+        }
+        tableGroups.get(seat.tableId)!.push(seat);
+      } else {
+        individualSeats.push(seat);
+      }
+    });
+    
+    // Draw tables first
+    tableGroups.forEach((tableSeats, tableId) => {
+      if (tableSeats.length < 2) return;
+      
+      // Calculate center of table
+      const centerX = tableSeats.reduce((sum, seat) => sum + seat.x, 0) / tableSeats.length;
+      const centerY = tableSeats.reduce((sum, seat) => sum + seat.y, 0) / tableSeats.length;
+      const centerPos = percentageToCanvasCoordinates(centerX, centerY, imageDrawInfo);
+      
+      // Draw table circle/shape
+      const tableRadius = 30;
+      ctx.beginPath();
+      ctx.arc(centerPos.x, centerPos.y, tableRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fill();
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Draw table number
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`Table ${tableSeats.length}`, centerPos.x, centerPos.y);
+    });
+
+    // Draw all seats (including table seats)
     seats.forEach((seat, index) => {
       // Convert percentage coordinates to canvas coordinates using utility
       const seatPos = percentageToCanvasCoordinates(
@@ -230,7 +273,7 @@ export default function PremiumSeatingManager({
         imageDrawInfo
       );
       
-      const radius = 8;
+      const radius = seat.tableId ? 6 : 8; // Smaller radius for table seats
       const isSelected = selectedCategory === seat.category;
 
       // Draw seat circle
@@ -244,20 +287,13 @@ export default function PremiumSeatingManager({
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.stroke();
 
-      // Draw seat number
-      if (seat.seatNumber) {
+      // Draw seat number (only for individual seats)
+      if (seat.seatNumber && !seat.tableId) {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(seat.seatNumber, seatPos.x, seatPos.y);
-      }
-      
-      // Draw placement order for first 10 seats
-      if (index < 10) {
-        ctx.fillStyle = '#333';
-        ctx.font = 'bold 8px Arial';
-        ctx.fillText((index + 1).toString(), seatPos.x + radius + 5, seatPos.y - radius);
       }
     });
 
@@ -272,7 +308,7 @@ export default function PremiumSeatingManager({
 
   // Canvas event handlers
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || tool !== 'place' || !loadedImage || !imageDrawInfo) return;
+    if (!canvasRef.current || (tool !== 'place' && tool !== 'table') || !loadedImage || !imageDrawInfo) return;
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -326,30 +362,95 @@ export default function PremiumSeatingManager({
         }
         return;
       }
-
-      const newSeat: SeatData = {
-        id: `seat_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-        x: percentageCoords.x,
-        y: percentageCoords.y,
-        seatNumber: `${category.name.charAt(0)}${seats.length + 1}`,
-        category: selectedCategory,
-        categoryColor: category.color,
-        price: category.basePrice,
-        isADA: false,
-        status: 'available',
-        section: category.name,
-        viewQuality: category.viewQuality
-      };
-
-      const newSeats = [...seats, newSeat];
-      setSeats(newSeats);
-      onSeatingConfigurationChange(newSeats, categories);
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Placed seat: ${newSeat.seatNumber} at (${percentageCoords.x.toFixed(1)}%, ${percentageCoords.y.toFixed(1)}%)`);
+      // Check category-specific seat limit
+      const categorySeats = seats.filter(s => s.category === selectedCategory);
+      if (category.maxCapacity && categorySeats.length >= category.maxCapacity) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`⚠️ Cannot place more ${category.name} seats. Maximum ${category.maxCapacity} seats allowed for this category.`);
+        }
+        return;
+      }
+
+      // Check if placing a table or individual seat
+      if (tool === 'table') {
+        // Check if we have enough remaining capacity for a table
+        const categorySeatsCount = seats.filter(s => s.category === selectedCategory).length;
+        const remainingCapacity = (category.maxCapacity || 0) - categorySeatsCount;
+        
+        if (remainingCapacity < tableSize) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`⚠️ Not enough ${category.name} capacity for a ${tableSize}-seat table. Only ${remainingCapacity} seats remaining.`);
+          }
+          return;
+        }
+        
+        // Create a table with multiple seats
+        const tableId = `table_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+        const newSeats: SeatData[] = [];
+        
+        // Create seats in a circular pattern around the clicked point
+        for (let i = 0; i < tableSize; i++) {
+          const angle = (i / tableSize) * 2 * Math.PI;
+          const radius = 3; // 3% radius for seat placement around table center
+          
+          const seatX = percentageCoords.x + radius * Math.cos(angle);
+          const seatY = percentageCoords.y + radius * Math.sin(angle);
+          
+          const seat: SeatData = {
+            id: `seat_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 11)}`,
+            x: seatX,
+            y: seatY,
+            seatNumber: `${category.name.charAt(0)}T${seats.length + i + 1}`,
+            category: selectedCategory,
+            categoryColor: category.color,
+            price: category.basePrice,
+            isADA: false,
+            status: 'available',
+            section: category.name,
+            viewQuality: category.viewQuality,
+            tableId: tableId,
+            tableType: 'round',
+            tableCapacity: tableSize,
+            groupSize: tableSize
+          };
+          
+          newSeats.push(seat);
+        }
+        
+        const updatedSeats = [...seats, ...newSeats];
+        setSeats(updatedSeats);
+        onSeatingConfigurationChange(updatedSeats, categories);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ Placed ${tableSize}-seat table at (${percentageCoords.x.toFixed(1)}%, ${percentageCoords.y.toFixed(1)}%)`);
+        }
+      } else {
+        // Place individual seat
+        const newSeat: SeatData = {
+          id: `seat_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+          x: percentageCoords.x,
+          y: percentageCoords.y,
+          seatNumber: `${category.name.charAt(0)}${seats.length + 1}`,
+          category: selectedCategory,
+          categoryColor: category.color,
+          price: category.basePrice,
+          isADA: false,
+          status: 'available',
+          section: category.name,
+          viewQuality: category.viewQuality
+        };
+
+        const newSeats = [...seats, newSeat];
+        setSeats(newSeats);
+        onSeatingConfigurationChange(newSeats, categories);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ Placed seat: ${newSeat.seatNumber} at (${percentageCoords.x.toFixed(1)}%, ${percentageCoords.y.toFixed(1)}%)`);
+        }
       }
     }
-  }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, loadedImage, imageDrawInfo, totalSeatsNeeded]);
+  }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, loadedImage, imageDrawInfo, totalSeatsNeeded, tableSize]);
 
   const handleCanvasMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === 'pan') {
@@ -529,7 +630,7 @@ export default function PremiumSeatingManager({
                     <CardTitle className="text-sm">Tools</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <Button
                         size="sm"
                         variant={tool === 'pan' ? 'default' : 'outline'}
@@ -544,9 +645,36 @@ export default function PremiumSeatingManager({
                         onClick={() => setTool('place')}
                       >
                         <MousePointer className="h-3 w-3 mr-1" />
-                        Place
+                        Seat
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={tool === 'table' ? 'default' : 'outline'}
+                        onClick={() => setTool('table')}
+                      >
+                        <Users className="h-3 w-3 mr-1" />
+                        Table
                       </Button>
                     </div>
+                    
+                    {/* Table size selector */}
+                    {tool === 'table' && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Table Size</Label>
+                        <Select value={tableSize.toString()} onValueChange={(v) => setTableSize(parseInt(v))}>
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="4">4 seats</SelectItem>
+                            <SelectItem value="6">6 seats</SelectItem>
+                            <SelectItem value="8">8 seats</SelectItem>
+                            <SelectItem value="10">10 seats</SelectItem>
+                            <SelectItem value="12">12 seats</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     <Separator />
 
@@ -586,19 +714,53 @@ export default function PremiumSeatingManager({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-3 h-3 rounded"
-                                  style={{ backgroundColor: cat.color }}
-                                />
-                                {cat.name}
-                              </div>
-                            </SelectItem>
-                          ))}
+                          {categories.map((cat) => {
+                            const categorySeats = seats.filter(s => s.category === cat.id);
+                            const remaining = (cat.maxCapacity || 0) - categorySeats.length;
+                            return (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                <div className="flex items-center justify-between w-full gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-3 h-3 rounded"
+                                      style={{ backgroundColor: cat.color }}
+                                    />
+                                    {cat.name}
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {categorySeats.length}/{cat.maxCapacity || 0}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
+                      
+                      {/* Category inventory status */}
+                      {categories.length > 0 && (
+                        <div className="space-y-1 mt-2">
+                          {categories.map((cat) => {
+                            const categorySeats = seats.filter(s => s.category === cat.id);
+                            const remaining = (cat.maxCapacity || 0) - categorySeats.length;
+                            return (
+                              <div key={cat.id} className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-1">
+                                  <div 
+                                    className="w-2 h-2 rounded"
+                                    style={{ backgroundColor: cat.color }}
+                                  />
+                                  <span>{cat.name}</span>
+                                </div>
+                                <span className={remaining === 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                                  {categorySeats.length}/{cat.maxCapacity || 0}
+                                  {remaining === 0 && ' (Full)'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     <Separator />
@@ -648,7 +810,7 @@ export default function PremiumSeatingManager({
                         onMouseUp={handleCanvasMouseUp}
                         onMouseLeave={handleCanvasMouseUp}
                         style={{ 
-                          cursor: tool === 'place' ? 'crosshair' : 
+                          cursor: tool === 'place' || tool === 'table' ? 'crosshair' : 
                                  tool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : 'default' 
                         }}
                       />
@@ -657,12 +819,24 @@ export default function PremiumSeatingManager({
                     <div className="mt-4 space-y-2">
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <span>
-                          {tool === 'place' ? (
-                            totalSeatsNeeded > 0 && seats.length >= totalSeatsNeeded ? 
-                              '⚠️ Maximum seats reached' : 
-                              selectedCategory ? 
-                                `🎯 Click to place ${categories.find(c => c.id === selectedCategory)?.name} seats` :
-                                '🎯 Select a category first'
+                          {tool === 'place' || tool === 'table' ? (
+                            (() => {
+                              const selectedCat = categories.find(c => c.id === selectedCategory);
+                              const categorySeats = seats.filter(s => s.category === selectedCategory);
+                              const remainingCapacity = (selectedCat?.maxCapacity || 0) - categorySeats.length;
+                              const isCategoryFull = selectedCat && selectedCat.maxCapacity && categorySeats.length >= selectedCat.maxCapacity;
+                              
+                              if (!selectedCategory) return '🎯 Select a category first';
+                              
+                              if (tool === 'table') {
+                                if (remainingCapacity < tableSize) return `⚠️ Not enough capacity for ${tableSize}-seat table (${remainingCapacity} seats left)`;
+                                return `🍽️ Click to place ${tableSize}-seat ${selectedCat?.name} table`;
+                              }
+                              
+                              if (isCategoryFull) return `⚠️ ${selectedCat.name} is full (${selectedCat.maxCapacity}/${selectedCat.maxCapacity})`;
+                              if (totalSeatsNeeded > 0 && seats.length >= totalSeatsNeeded) return '⚠️ Maximum seats reached';
+                              return `🎯 Click to place ${selectedCat?.name} seats`;
+                            })()
                           ) : 'Drag to pan around'}
                         </span>
                         <span>

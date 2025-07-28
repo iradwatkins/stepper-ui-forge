@@ -28,8 +28,10 @@ import { SeatData, SeatCategory as EnhancedSeatCategory } from '@/types/seating'
 import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 import { TicketType } from './TicketConfigurationWizard';
+import { TicketConfigurationWizard } from './TicketConfigurationWizard';
 import { useEventCreation } from '@/contexts/EventCreationContext';
 import { cn } from '@/lib/utils';
+import { TicketInventoryTracker } from './TicketInventoryTracker';
 
 interface PremiumSeatingTicketConfigurationProps {
   form: UseFormReturn<EventFormData>;
@@ -48,7 +50,7 @@ export const PremiumSeatingTicketConfiguration = ({
     addDebugUpdate 
   } = useEventCreation();
   
-  const [activeTab, setActiveTab] = useState<'venue' | 'seating' | 'tickets' | 'review'>('venue');
+  const [activeTab, setActiveTab] = useState<'venue' | 'tickets' | 'seating' | 'review'>('venue');
   const [currentStep, setCurrentStep] = useState(1);
   const [isCompleted, setIsCompleted] = useState(false);
   const [venueImage, setVenueImage] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export const PremiumSeatingTicketConfiguration = ({
   const [seats, setSeats] = useState<SeatData[]>([]);
   const [categories, setCategories] = useState<EnhancedSeatCategory[]>([]);
   const [generatedTickets, setGeneratedTickets] = useState<TicketType[]>([]);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   
   const COMPONENT_NAME = 'PremiumSeatingTicketConfiguration';
   
@@ -208,7 +211,7 @@ export const PremiumSeatingTicketConfiguration = ({
     if (currentStep === 3 && activeTab === 'venue' && venueImage) {
       setCurrentStep(4);
       setActiveTab('tickets');
-    } else if (currentStep === 4 && activeTab === 'tickets' && generatedTickets.length > 0) {
+    } else if (currentStep === 4 && activeTab === 'tickets' && ticketTypes.length > 0) {
       setCurrentStep(5);
       setActiveTab('seating');
     } else if (currentStep === 5 && activeTab === 'seating' && seats.length > 0) {
@@ -225,10 +228,10 @@ export const PremiumSeatingTicketConfiguration = ({
     switch (activeTab) {
       case 'venue':
         return !!venueImage;
+      case 'tickets':
+        return ticketTypes.length > 0;
       case 'seating':
         return seats.length > 0;
-      case 'tickets':
-        return generatedTickets.length > 0;
       case 'review':
         return true;
       default:
@@ -344,7 +347,7 @@ export const PremiumSeatingTicketConfiguration = ({
           </TabsTrigger>
           <TabsTrigger 
             value="seating" 
-            disabled={currentStep < 5 || generatedTickets.length === 0}
+            disabled={currentStep < 5 || ticketTypes.length === 0}
             className={currentStep === 5 ? "ring-2 ring-primary" : ""}
           >
             <MapPin className="h-4 w-4 mr-2" />
@@ -370,23 +373,42 @@ export const PremiumSeatingTicketConfiguration = ({
             </CardHeader>
             <CardContent className="space-y-4">
               {!venueImage ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <UploadIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <Label htmlFor="venue-upload" className="cursor-pointer">
-                    <span className="text-lg font-medium">Click to upload venue image</span>
-                    <Input
-                      id="venue-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                      disabled={uploadingImage}
-                    />
-                  </Label>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Supports JPG, PNG, SVG up to 10MB
-                  </p>
-                  <div className="mt-4 pt-4 border-t">
+                <div className="venue-upload-container border-2 border-dashed border-gray-300 rounded-lg p-8 text-center relative overflow-hidden group hover:border-primary transition-colors">
+                  {/* Animated background gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 animate-pulse" />
+                  {/* Ripple effect */}
+                  <div className="venue-upload-ripple absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20" />
+                  
+                  <div className="relative z-10">
+                    <div className="relative inline-block">
+                      <UploadIcon className="venue-upload-icon h-16 w-16 mx-auto text-primary mb-4" />
+                      <div className="absolute -inset-2 bg-primary/20 rounded-full animate-ping" />
+                    </div>
+                    
+                    <Label htmlFor="venue-upload" className="cursor-pointer block">
+                      <div className="venue-upload-button inline-flex items-center justify-center px-8 py-4 mb-4 text-lg font-semibold text-white bg-primary rounded-lg hover:bg-primary/90 transform transition-all hover:scale-105 shadow-lg">
+                        <UploadIcon className="mr-2 h-5 w-5" />
+                        Upload Venue Image
+                      </div>
+                      <Input
+                        id="venue-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                      />
+                    </Label>
+                    
+                    <p className="text-lg font-medium text-foreground mb-2">
+                      Click the button above to upload your venue layout
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Supports JPG, PNG, SVG up to 10MB
+                    </p>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t relative z-10">
                     <p className="text-sm text-muted-foreground mb-2">
                       Want to use a saved venue instead?
                     </p>
@@ -427,78 +449,49 @@ export const PremiumSeatingTicketConfiguration = ({
           </Card>
         </TabsContent>
 
-        <TabsContent value="seating" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 5: Place Tickets on Seating Chart</CardTitle>
-              <CardDescription>
-                Now place your ticket types on the venue layout. Click on the image to add seats and assign them to ticket categories.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {form.watch('venueLayoutId') && (
-                <Alert className="mb-4">
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Using the selected venue layout. Place seats for each ticket type on the image below.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {venueImage && generatedTickets.length > 0 && (
-                <PremiumSeatingManager
-                  venueImageUrl={venueImage}
-                  onImageUpload={(file) => {}}
-                  onSeatingConfigurationChange={handleSeatingConfigurationChange}
-                  initialSeats={seats}
-                  initialCategories={categories}
-                  startingTab="configure"
-                />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="tickets" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Step 4: Create Ticket Types</CardTitle>
               <CardDescription>
-                Define your ticket categories including regular, VIP, accessible (handicap), and early bird pricing options
+                Define your ticket types and quantities. You'll place these tickets on the venue layout in the next step.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Add ticket creation form here */}
+              {/* Ticket creation form */}
               <div className="space-y-4 mb-6">
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Create different ticket types for your event. Consider adding:
-                    <ul className="list-disc list-inside mt-2">
-                      <li>VIP or Premium tickets with special amenities</li>
-                      <li>Accessible seating for guests with disabilities</li>
-                      <li>Early bird pricing for advance purchases</li>
-                      <li>General admission tickets</li>
-                    </ul>
+                    Create ticket types with specific quantities. In the next step, you'll place these tickets 
+                    on the venue layout to create a visual seating arrangement.
                   </AlertDescription>
                 </Alert>
                 
-                {/* Ticket creation form would go here - for now showing generated tickets */}
-                <div className="text-sm text-muted-foreground">
-                  Note: In the full implementation, you would create custom ticket types here. 
-                  For now, tickets are auto-generated based on your seating configuration.
+                {/* Use TicketConfigurationWizard for manual ticket creation */}
+                <div className="border rounded-lg p-4 bg-muted/50">
+                  <h4 className="font-medium mb-3">Create Ticket Types</h4>
+                  <TicketConfigurationWizard 
+                    form={form}
+                    eventType="premium"
+                    initialTickets={ticketTypes}
+                    onTicketsChange={(tickets) => {
+                      setTicketTypes(tickets);
+                    }}
+                  />
                 </div>
               </div>
               
               <Separator />
               
               <h4 className="font-medium mb-3">Current Ticket Types:</h4>
-              {generatedTickets.length === 0 ? (
+              {ticketTypes.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p>No tickets created yet. Complete the seating configuration first.</p>
+                  <p>No tickets created yet. Add at least one ticket type to continue.</p>
                 </div>
               ) : (
-                generatedTickets.map((ticket) => (
+                ticketTypes.map((ticket) => (
                   <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -536,27 +529,61 @@ export const PremiumSeatingTicketConfiguration = ({
               
               <div className="flex items-center justify-between text-lg font-medium">
                 <span>Total Capacity:</span>
-                <span>{seats.length} seats</span>
+                <span>{ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} tickets</span>
               </div>
               
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  {seats.some(seat => seat.tableId) ? (
-                    <>
-                      <strong>Table Service Venue:</strong> Customers must book entire tables. 
-                      Each seat generates a ticket, but they're sold as complete table units. 
-                      For example, a 10-seat table priced at $200 will generate 10 individual tickets 
-                      when purchased.
-                    </>
-                  ) : (
-                    <>
-                      Each seat placed on the venue layout will generate an individual ticket. 
-                      Tickets are grouped by the seat category for easier management.
-                    </>
-                  )}
+                  <strong>Next Step:</strong> After creating your ticket types, you'll place them on the venue layout 
+                  to create a visual seating arrangement. You can group tickets into tables or assign them to 
+                  individual seats.
                 </AlertDescription>
               </Alert>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="seating" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 5: Configure Seating Layout</CardTitle>
+              <CardDescription>
+                Place your tickets on the venue layout. Click to add individual seats or group tickets into tables. 
+                You can place up to {ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} seats based on your ticket quantities.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {form.watch('venueLayoutId') && (
+                <Alert className="mb-4">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Using the selected venue layout. Place seats for each ticket type on the image below.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Show inventory tracker if tickets are created */}
+              {ticketTypes.length > 0 && (
+                <div className="mb-6">
+                  <TicketInventoryTracker 
+                    tickets={ticketTypes}
+                    placedSeats={seats}
+                  />
+                </div>
+              )}
+              
+              {venueImage && (
+                <PremiumSeatingManager
+                  venueImageUrl={venueImage}
+                  onImageUpload={(file) => {}}
+                  onSeatingConfigurationChange={handleSeatingConfigurationChange}
+                  initialSeats={seats}
+                  initialCategories={categories}
+                  ticketTypes={ticketTypes}
+                  startingTab="configure"
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

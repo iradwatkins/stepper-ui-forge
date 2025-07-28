@@ -31,7 +31,7 @@ import {
   Copy,
   Share
 } from 'lucide-react';
-import { referralService } from '@/lib/services/referralService';
+import { ReferralService } from '@/lib/services/ReferralService';
 
 const referralCodeSchema = z.object({
   code: z.string()
@@ -131,7 +131,7 @@ export function EditReferralCodeModal({
     setIsSaving(true);
     try {
       // Update referral code via service
-      const result = await referralService.updateReferralCode(referralCode.id, {
+      const result = await ReferralService.updateReferralCode(referralCode.id, {
         code: data.code,
         description: data.description,
         commission_rate: data.commissionRate,
