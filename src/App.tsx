@@ -36,6 +36,8 @@ const EventDetail = lazy(() => import("./pages/EventDetail"));
 const Magazine = lazy(() => import("./pages/Magazine"));
 const Classes = lazy(() => import("./pages/Classes"));
 const CreateClass = lazy(() => import("./pages/CreateClass"));
+const EditClass = lazy(() => import("./pages/EditClass"));
+const EditBusiness = lazy(() => import("./pages/EditBusiness"));
 const Community = lazy(() => import("./pages/Community"));
 const CreateEvent = lazy(() => import("./pages/CreateEvent"));
 const CreateEventWizard = lazy(() => import("./pages/CreateEventWizard"));
@@ -131,6 +133,11 @@ const AppContent = () => {
             <CreateClass />
           </ProtectedRoute>
         } />
+        <Route path="/edit-class/:id" element={
+          <ProtectedRoute>
+            <EditClass />
+          </ProtectedRoute>
+        } />
         <Route path="/community" element={<Community />} />
         <Route path="/create-business" element={
           <ProtectedRoute>
@@ -210,6 +217,7 @@ const AppContent = () => {
           <Route path="scanner" element={<QRScanner />} />
           <Route path="businesses" element={<MyBusinesses />} />
           <Route path="businesses/create" element={<CreateBusiness />} />
+          <Route path="businesses/edit/:id" element={<EditBusiness />} />
           {/* Admin routes within dashboard */}
           <Route path="admin" element={
             <AdminRoute>

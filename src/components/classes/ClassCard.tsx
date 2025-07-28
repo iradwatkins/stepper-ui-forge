@@ -12,12 +12,15 @@ import {
   User,
   Globe,
   Heart,
-  Eye
+  Eye,
+  Edit
 } from 'lucide-react';
 import { SteppingClass } from '@/services/classService';
 import { ClassDetailModal } from './ClassDetailModal';
 import { ClassRegistrationButton } from './ClassRegistrationButton';
 import { getDistanceText, LocationCoordinates } from '@/services/locationSearchService';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface ClassCardProps {
   classItem: SteppingClass;
@@ -33,6 +36,10 @@ export function ClassCard({
   showRegistration = true 
 }: ClassCardProps) {
   const [showDetail, setShowDetail] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  const canEdit = user?.id === classItem.instructorId || user?.email?.includes('admin');
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
@@ -91,7 +98,7 @@ export function ClassCard({
           </div>
 
           {/* Quick action overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center gap-2">
             <Button 
               onClick={() => setShowDetail(true)}
               variant="secondary"
@@ -101,6 +108,17 @@ export function ClassCard({
               <Eye className="w-4 h-4 mr-2" />
               View Details
             </Button>
+            {canEdit && (
+              <Button 
+                onClick={() => navigate(`/edit-class/${classItem.id}`)}
+                variant="secondary"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
           </div>
         </div>
 
