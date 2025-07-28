@@ -216,7 +216,7 @@ export default function MyBusinesses() {
                   
                   {/* Actions */}
                   <div className="flex gap-2 pt-2">
-                    <Link to={`/dashboard/businesses/${business.id}/edit`} className="flex-1">
+                    <Link to={`/dashboard/businesses/edit/${business.id}`} className="flex-1">
                       <Button variant="outline" size="sm" className="w-full">
                         <Edit className="w-4 h-4 mr-2" />
                         Edit

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Users, UserCheck, Clock, AlertCircle, MoreVertical, Shield, Headphones, Building, UserX } from 'lucide-react'
+import { Plus, Users, UserCheck, Clock, AlertCircle, MoreVertical, Shield, Headphones, Building, UserX, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dialog'
 import { TeamService, TeamMember, TeamRole, TeamStats, CheckInSession, ServiceResult } from '@/lib/services/TeamService'
 import { TeamMemberInvite } from './TeamMemberInvite'
+import { EditTeamMemberModal } from './EditTeamMemberModal'
 
 interface TeamManagementDashboardProps {
   eventId: string
@@ -45,6 +46,7 @@ export function TeamManagementDashboard({ eventId, onInviteMember }: TeamManagem
   const [error, setError] = useState<string | null>(null)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   useEffect(() => {
     loadTeamData()
@@ -128,6 +130,17 @@ export function TeamManagementDashboard({ eventId, onInviteMember }: TeamManagem
       setError('Failed to update team member role')
       console.error('TeamManagementDashboard.handleUpdateRole failed:', err)
     }
+  }
+
+  const handleEditMember = (member: TeamMember) => {
+    setSelectedMember(member)
+    setShowEditDialog(true)
+  }
+
+  const handleUpdateMember = (updatedMember: TeamMember) => {
+    setTeamMembers(prev => prev.map(member => 
+      member.user_id === updatedMember.user_id ? updatedMember : member
+    ))
   }
 
   const getRoleIcon = (role: TeamRole) => {
@@ -427,6 +440,13 @@ export function TeamManagementDashboard({ eventId, onInviteMember }: TeamManagem
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
+                                onClick={() => handleEditMember(member)}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Member
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
                                 onClick={() => handleUpdateRole(member.user_id, 'event_manager')}
                                 disabled={member.role_type === 'event_manager'}
                               >
@@ -523,6 +543,18 @@ export function TeamManagementDashboard({ eventId, onInviteMember }: TeamManagem
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Team Member Modal */}
+      <EditTeamMemberModal
+        isOpen={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false)
+          setSelectedMember(null)
+        }}
+        teamMember={selectedMember}
+        eventId={eventId}
+        onUpdate={handleUpdateMember}
+      />
     </div>
   )
 }

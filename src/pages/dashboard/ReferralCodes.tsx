@@ -44,6 +44,7 @@ import {
   DollarSign,
   Users
 } from 'lucide-react'
+import { EditReferralCodeModal } from '@/components/dashboard/EditReferralCodeModal'
 
 interface ReferralCode {
   id: string
@@ -79,6 +80,8 @@ export default function ReferralCodes() {
     usageLimit: undefined as number | undefined,
     expiryDate: ''
   })
+  const [editingCode, setEditingCode] = useState<ReferralCode | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   // Load referral codes from API
   useEffect(() => {
@@ -141,6 +144,23 @@ export default function ReferralCodes() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     // Could add toast notification here
+  }
+
+  const handleEditCode = (code: ReferralCode) => {
+    setEditingCode(code)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdateCode = (updatedCode: any) => {
+    setCodes(prev => prev.map(code => 
+      code.id === updatedCode.id ? {
+        ...code,
+        code: updatedCode.code,
+        commissionRate: updatedCode.commission_rate,
+        isActive: updatedCode.is_active,
+        // Map other fields as needed
+      } : code
+    ))
   }
 
   const toggleCodeStatus = (id: string) => {
@@ -377,7 +397,7 @@ export default function ReferralCodes() {
                           Generate QR
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditCode(code)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit Code
                         </DropdownMenuItem>
@@ -394,6 +414,25 @@ export default function ReferralCodes() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit Referral Code Modal */}
+      <EditReferralCodeModal
+        isOpen={isEditDialogOpen}
+        onClose={() => {
+          setIsEditDialogOpen(false)
+          setEditingCode(null)
+        }}
+        referralCode={editingCode ? {
+          ...editingCode,
+          commission_rate: editingCode.commissionRate,
+          is_active: editingCode.isActive,
+          event_ids: editingCode.eventId ? [editingCode.eventId] : [],
+          uses_count: editingCode.usageCount,
+          total_sales: editingCode.totalEarnings,
+          total_commission: editingCode.totalEarnings * editingCode.commissionRate / 100
+        } : null}
+        onUpdate={handleUpdateCode}
+      />
     </div>
   )
 }

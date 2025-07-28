@@ -17,11 +17,14 @@ import {
   Car,
   Laptop,
   Building,
-  Clock
+  Clock,
+  Edit
 } from 'lucide-react';
 import { CommunityBusiness, CommunityBusinessService } from '@/lib/services/CommunityBusinessService';
 import { BusinessDetailModal } from './BusinessDetailModal';
 import { getDistanceText, LocationCoordinates } from '@/services/locationSearchService';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface BusinessCardProps {
   business: CommunityBusiness;
@@ -37,6 +40,10 @@ export function BusinessCard({
   showContactButton = true 
 }: BusinessCardProps) {
   const [showDetail, setShowDetail] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  const canEdit = user?.id === business.user_id || user?.email?.includes('admin');
 
   const categoryLabels = CommunityBusinessService.getBusinessCategories();
   const categoryInfo = categoryLabels.find(cat => cat.value === business.category);
@@ -114,7 +121,7 @@ export function BusinessCard({
           </div>
 
           {/* Quick action overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center gap-2">
             <Button 
               onClick={() => setShowDetail(true)}
               variant="secondary"
@@ -124,6 +131,17 @@ export function BusinessCard({
               <Eye className="w-4 h-4 mr-2" />
               View Details
             </Button>
+            {canEdit && (
+              <Button 
+                onClick={() => navigate(`/dashboard/businesses/edit/${business.id}`)}
+                variant="secondary"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
           </div>
         </div>
 
