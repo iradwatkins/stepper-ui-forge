@@ -14,137 +14,121 @@ import {
   Clock,
   HardDrive,
   Cpu,
-  Wifi
+  Wifi,
+  Zap
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { 
+  SystemMonitoringService, 
+  type SystemMetric as ServiceMetric,
+  type ServiceStatus as ServiceStatusType,
+  type ActivityLog 
+} from '@/lib/services/SystemMonitoringService'
+import { toast } from 'sonner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PerformanceAudit } from '@/components/admin/PerformanceAudit'
 
-interface SystemMetric {
-  name: string
-  value: string | number
-  status: 'healthy' | 'warning' | 'critical'
+// Map icon names to components
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Activity,
+  Database,
+  HardDrive,
+  Wifi,
+  Clock,
+  Cpu
+}
+
+interface SystemMetric extends ServiceMetric {
   icon: React.ComponentType<{ className?: string }>
-  description: string
 }
 
-interface ServiceStatus {
-  name: string
-  status: 'online' | 'offline' | 'degraded'
-  uptime: string
-  lastCheck: string
-  responseTime?: string
-}
+interface ServiceStatus extends ServiceStatusType {}
 
 export default function AdminMonitor() {
   const [metrics, setMetrics] = useState<SystemMetric[]>([])
   const [services, setServices] = useState<ServiceStatus[]>([])
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [performanceScore, setPerformanceScore] = useState<number>(0)
 
   useEffect(() => {
+    // Start performance monitoring
+    SystemMonitoringService.startPerformanceMonitoring()
+    
     loadSystemData()
     
     if (autoRefresh) {
       const interval = setInterval(loadSystemData, 30000) // Refresh every 30 seconds
-      return () => clearInterval(interval)
+      return () => {
+        clearInterval(interval)
+        SystemMonitoringService.stopPerformanceMonitoring()
+      }
+    }
+
+    return () => {
+      SystemMonitoringService.stopPerformanceMonitoring()
     }
   }, [autoRefresh])
 
-  const loadSystemData = () => {
-    // Mock system metrics
-    const mockMetrics: SystemMetric[] = [
-      {
-        name: 'CPU Usage',
-        value: '23%',
-        status: 'healthy',
-        icon: Cpu,
-        description: 'Current CPU utilization'
-      },
-      {
-        name: 'Memory Usage',
-        value: '67%',
-        status: 'warning',
-        icon: HardDrive,
-        description: 'RAM utilization'
-      },
-      {
-        name: 'Disk Space',
-        value: '45%',
-        status: 'healthy',
-        icon: Database,
-        description: 'Storage usage'
-      },
-      {
-        name: 'Network I/O',
-        value: '1.2 MB/s',
-        status: 'healthy',
-        icon: Wifi,
-        description: 'Network throughput'
-      },
-      {
-        name: 'Active Users',
-        value: 1247,
-        status: 'healthy',
-        icon: Activity,
-        description: 'Currently online users'
-      },
-      {
-        name: 'Database Connections',
-        value: 23,
-        status: 'healthy',
-        icon: Database,
-        description: 'Active DB connections'
-      }
-    ]
+  const loadSystemData = async () => {
+    setLoading(true)
+    try {
+      // Fetch real metrics
+      const [metricsData, servicesData, logsData, perfAnalysis] = await Promise.all([
+        SystemMonitoringService.getSystemMetrics(),
+        SystemMonitoringService.getServiceStatuses(),
+        SystemMonitoringService.getActivityLogs(),
+        SystemMonitoringService.analyzePerformance()
+      ])
 
-    // Mock service statuses
-    const mockServices: ServiceStatus[] = [
-      {
-        name: 'Web Server',
-        status: 'online',
-        uptime: '99.98%',
-        lastCheck: '30 seconds ago',
-        responseTime: '142ms'
-      },
-      {
-        name: 'Database',
-        status: 'online',
-        uptime: '99.95%',
-        lastCheck: '30 seconds ago',
-        responseTime: '8ms'
-      },
-      {
-        name: 'Payment Gateway',
-        status: 'online',
-        uptime: '99.99%',
-        lastCheck: '1 minute ago',
-        responseTime: '234ms'
-      },
-      {
-        name: 'Email Service',
-        status: 'degraded',
-        uptime: '98.5%',
-        lastCheck: '2 minutes ago',
-        responseTime: '1.2s'
-      },
-      {
-        name: 'File Storage',
-        status: 'online',
-        uptime: '99.97%',
-        lastCheck: '45 seconds ago',
-        responseTime: '89ms'
-      },
-      {
-        name: 'Analytics Service',
-        status: 'online',
-        uptime: '99.92%',
-        lastCheck: '1 minute ago',
-        responseTime: '456ms'
-      }
-    ]
+      // Map metrics with icon components
+      const mappedMetrics = metricsData.map(metric => ({
+        ...metric,
+        icon: iconMap[metric.icon] || Activity
+      }))
 
-    setMetrics(mockMetrics)
-    setServices(mockServices)
-    setLastUpdated(new Date())
+      setMetrics(mappedMetrics)
+      setServices(servicesData)
+      setActivityLogs(logsData)
+      setPerformanceScore(perfAnalysis.scores.overall || 0)
+      setLastUpdated(new Date())
+    } catch (error) {
+      console.error('Error loading system data:', error)
+      toast.error('Failed to load monitoring data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const exportLogs = async () => {
+    try {
+      const detailedMetrics = await SystemMonitoringService.getDetailedMetrics()
+      const perfAnalysis = await SystemMonitoringService.analyzePerformance()
+      
+      const report = {
+        timestamp: new Date().toISOString(),
+        metrics,
+        services,
+        activityLogs,
+        performance: perfAnalysis,
+        resources: detailedMetrics
+      }
+
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `system-monitor-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      toast.success('System report exported successfully')
+    } catch (error) {
+      console.error('Error exporting logs:', error)
+      toast.error('Failed to export system report')
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -188,6 +172,13 @@ export default function AdminMonitor() {
     return 'healthy'
   }
 
+  const getOverallScore = () => {
+    if (performanceScore >= 90) return { status: 'healthy', label: 'Excellent' }
+    if (performanceScore >= 70) return { status: 'warning', label: 'Good' }
+    if (performanceScore >= 50) return { status: 'warning', label: 'Needs Improvement' }
+    return { status: 'critical', label: 'Poor' }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -197,19 +188,27 @@ export default function AdminMonitor() {
           <p className="text-muted-foreground">Real-time system health and performance monitoring</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={loadSystemData}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={loadSystemData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={exportLogs}>
             <Download className="h-4 w-4 mr-2" />
-            Export Log
+            Export Report
           </Button>
         </div>
       </div>
 
+      <Tabs defaultValue="monitoring" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="monitoring">System Monitoring</TabsTrigger>
+          <TabsTrigger value="performance">Performance Audit</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="monitoring" className="space-y-6">
+
       {/* System Status Overview */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">System Health</CardTitle>
@@ -218,22 +217,45 @@ export default function AdminMonitor() {
           <CardContent>
             <div className="flex items-center gap-2">
               <div className={`text-2xl font-bold ${getStatusColor(overallHealth())}`}>
-                {overallHealth() === 'healthy' ? '98%' : overallHealth() === 'warning' ? '85%' : '45%'}
+                {overallHealth() === 'healthy' ? 'Operational' : overallHealth() === 'warning' ? 'Degraded' : 'Critical'}
               </div>
-              {getStatusBadge(overallHealth())}
             </div>
-            <p className="text-xs text-muted-foreground">Overall system performance</p>
+            <p className="text-xs text-muted-foreground">{metrics.length} metrics monitored</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Performance Score</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">99.8%</div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
+            <div className="flex items-center gap-2">
+              <div className={`text-2xl font-bold ${getStatusColor(getOverallScore().status)}`}>
+                {performanceScore}%
+              </div>
+              <Badge className={`${
+                getOverallScore().status === 'healthy' ? 'bg-green-100 text-green-800' :
+                getOverallScore().status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {getOverallScore().label}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">Website speed score</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Services Online</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {services.filter(s => s.status === 'online').length}/{services.length}
+            </div>
+            <p className="text-xs text-muted-foreground">All critical services</p>
           </CardContent>
         </Card>
 
@@ -340,28 +362,34 @@ export default function AdminMonitor() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[
-              { time: '2 minutes ago', event: 'Database backup completed successfully', type: 'info' },
-              { time: '15 minutes ago', event: 'High memory usage detected on server-02', type: 'warning' },
-              { time: '1 hour ago', event: 'Email service experiencing delays', type: 'warning' },
-              { time: '2 hours ago', event: 'Security scan completed - no issues found', type: 'success' },
-              { time: '4 hours ago', event: 'System update applied successfully', type: 'info' }
-            ].map((log, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className={`w-2 h-2 rounded-full mt-2 ${
-                  log.type === 'success' ? 'bg-green-500' :
-                  log.type === 'warning' ? 'bg-yellow-500' :
-                  log.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-                }`} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{log.event}</p>
-                  <p className="text-xs text-muted-foreground">{log.time}</p>
+            {activityLogs.length > 0 ? (
+              activityLogs.map((log, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className={`w-2 h-2 rounded-full mt-2 ${
+                    log.type === 'success' ? 'bg-green-500' :
+                    log.type === 'warning' ? 'bg-yellow-500' :
+                    log.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+                  }`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{log.event}</p>
+                    <p className="text-xs text-muted-foreground">{log.time}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {loading ? 'Loading activity logs...' : 'No recent activity'}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="performance">
+          <PerformanceAudit />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
