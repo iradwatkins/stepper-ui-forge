@@ -200,9 +200,25 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
           icon: LayoutDashboard
         },
         {
-          title: 'Magazine',
-          href: '/dashboard/admin/magazine',
-          icon: BookOpen
+          title: 'Magazine & Articles',
+          icon: BookOpen,
+          children: [
+            {
+              title: 'All Articles',
+              href: '/dashboard/admin/magazine',
+              icon: BookOpen
+            },
+            {
+              title: 'Create Article',
+              href: '/dashboard/admin/magazine/create',
+              icon: Plus
+            },
+            {
+              title: 'Categories',
+              href: '/dashboard/admin/magazine/categories',
+              icon: Settings
+            }
+          ]
         }
       ]
     }
