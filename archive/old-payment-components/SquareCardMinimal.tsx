@@ -173,7 +173,7 @@ export function SquareCardMinimal() {
         <div className="text-xs space-y-1 p-2 bg-muted rounded">
           <div>Square loaded: {window.Square ? 'Yes' : 'No'}</div>
           <div>Environment: {import.meta.env.VITE_SQUARE_ENVIRONMENT || 'sandbox'}</div>
-          <div>Container exists: {!!document.getElementById('square-minimal-container') ? 'Yes' : 'No'}</div>
+          <div>Container exists: {document.getElementById('square-minimal-container') ? 'Yes' : 'No'}</div>
           <div>
             Check console for logs (filter by "[Minimal]")
           </div>

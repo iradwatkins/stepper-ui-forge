@@ -46,7 +46,8 @@ const Events = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentOffset, setCurrentOffset] = useState(0);
-  const EVENTS_PER_PAGE = 20;
+  const INITIAL_EVENTS_LOAD = 50; // Load more initially to show 2026/2027 events
+  const EVENTS_PER_PAGE = 20; // Subsequent loads
 
   // Helper function to get state name from abbreviation
   const getStateName = (abbreviation: string): string => {
@@ -94,17 +95,19 @@ const Events = () => {
       setLoading(true);
       try {
         console.log('🔍 Loading initial events from Events page...');
-        const publicEvents = await EventsService.getPublicEvents(EVENTS_PER_PAGE, 0, showPastEvents);
-        console.log('📊 Loaded initial events:', publicEvents);
+        const publicEvents = await EventsService.getPublicEvents(INITIAL_EVENTS_LOAD, 0, showPastEvents);
+        console.log('📊 Loaded initial events:', publicEvents.length, 'events');
         
-        // Debug: Log category data for each event
-        publicEvents.forEach((event, index) => {
-          console.log(`📝 Event ${index + 1}: "${event.title}" categories:`, event.categories);
-        });
+        // Debug: Log date range of loaded events
+        if (publicEvents.length > 0) {
+          const firstDate = publicEvents[0].date;
+          const lastDate = publicEvents[publicEvents.length - 1].date;
+          console.log(`📅 Date range: ${firstDate} to ${lastDate}`);
+        }
         
         setEvents(publicEvents);
-        setCurrentOffset(EVENTS_PER_PAGE);
-        setHasMore(publicEvents.length === EVENTS_PER_PAGE);
+        setCurrentOffset(INITIAL_EVENTS_LOAD);
+        setHasMore(publicEvents.length === INITIAL_EVENTS_LOAD);
         
         // Set featured event (first event, static - won't change with filters)
         if (publicEvents.length > 0) {
@@ -730,6 +733,9 @@ const Events = () => {
         {/* Load More Button */}
         {sortedEvents.length > 0 && hasMore && (
           <div className="text-center py-8">
+            <div className="mb-4 text-sm text-muted-foreground">
+              Showing events from {sortedEvents.length > 0 ? sortedEvents[0].date : 'today'} onwards • More events available
+            </div>
             <Button 
               onClick={loadMoreEvents}
               disabled={loadingMore}
@@ -738,10 +744,10 @@ const Events = () => {
               {loadingMore ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2"></div>
-                  Loading...
+                  Loading more events...
                 </>
               ) : (
-                `Load More Events (${events.length} loaded)`
+                `Load More Events (${events.length} loaded so far)`
               )}
             </Button>
           </div>

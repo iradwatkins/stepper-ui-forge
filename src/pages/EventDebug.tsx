@@ -15,33 +15,70 @@ const EventDebug = () => {
         const { data: { user } } = await supabase.auth.getUser();
         console.log("Current user:", user);
         
-        // Test 2: Direct database query
-        setStatus("Testing direct database query...");
-        const { data: directData, error: directError } = await supabase
+        // Test 2: Check current date filtering logic
+        setStatus("Testing current date filtering...");
+        const currentDate = new Date().toISOString().split('T')[0];
+        console.log("🗓️ Current date for filtering:", currentDate);
+        console.log("🗓️ Current date object:", new Date());
+        console.log("🗓️ Test date 2026-10-23 comparison:", currentDate, "<=", "2026-10-23", "result:", currentDate <= "2026-10-23");
+        
+        // Test 3: Direct database query for ALL events (no date filter)
+        setStatus("Testing direct database query (all events)...");
+        const { data: allEvents, error: allError } = await supabase
           .from('events')
-          .select('id, title, date, status, is_public')
+          .select('id, title, date, status, is_public, created_at')
           .eq('is_public', true)
           .eq('status', 'published')
-          .limit(5);
+          .order('date', { ascending: true });
           
-        if (directError) {
-          throw directError;
+        if (allError) {
+          throw allError;
         }
         
-        console.log("Direct query results:", directData);
+        console.log("📊 All published events:", allEvents);
+        console.log("📊 Events with 2026 dates:", allEvents?.filter(e => e.date?.includes('2026')));
         
-        // Test 3: EventsService.getPublicEvents
-        setStatus("Testing EventsService.getPublicEvents...");
-        const publicEvents = await EventsService.getPublicEvents(5, 0, false);
-        console.log("EventsService results:", publicEvents);
+        // Test 4: Direct database query with date filter (like getPublicEvents)
+        setStatus("Testing direct database query (with date filter)...");
+        const { data: filteredEvents, error: filteredError } = await supabase
+          .from('events')
+          .select('id, title, date, status, is_public, created_at')
+          .eq('is_public', true)
+          .eq('status', 'published')
+          .gte('date', currentDate)
+          .order('date', { ascending: true });
+          
+        if (filteredError) {
+          throw filteredError;
+        }
+        
+        console.log("📊 Date-filtered events:", filteredEvents);
+        console.log("📊 Date-filtered events with 2026:", filteredEvents?.filter(e => e.date?.includes('2026')));
+        
+        // Test 5: EventsService.getPublicEvents without date filter
+        setStatus("Testing EventsService.getPublicEvents (include past)...");
+        const publicEventsWithPast = await EventsService.getPublicEvents(50, 0, true);
+        console.log("📊 EventsService results (with past):", publicEventsWithPast);
+        console.log("📊 EventsService 2026 events (with past):", publicEventsWithPast?.filter(e => e.date?.includes('2026')));
+        
+        // Test 6: EventsService.getPublicEvents with date filter (default)
+        setStatus("Testing EventsService.getPublicEvents (exclude past)...");
+        const publicEventsNoPast = await EventsService.getPublicEvents(50, 0, false);
+        console.log("📊 EventsService results (no past):", publicEventsNoPast);
+        console.log("📊 EventsService 2026 events (no past):", publicEventsNoPast?.filter(e => e.date?.includes('2026')));
         
         setStatus("All tests completed successfully!");
         setResults({
           user: user?.email || "Not authenticated",
-          directQueryCount: directData?.length || 0,
-          directQueryData: directData,
-          serviceEventCount: publicEvents?.length || 0,
-          serviceEventData: publicEvents
+          currentDate: currentDate,
+          allEventsCount: allEvents?.length || 0,
+          allEvents2026: allEvents?.filter(e => e.date?.includes('2026')) || [],
+          filteredEventsCount: filteredEvents?.length || 0,
+          filteredEvents2026: filteredEvents?.filter(e => e.date?.includes('2026')) || [],
+          serviceEventsWithPastCount: publicEventsWithPast?.length || 0,
+          serviceEvents2026WithPast: publicEventsWithPast?.filter(e => e.date?.includes('2026')) || [],
+          serviceEventsNoPastCount: publicEventsNoPast?.length || 0,
+          serviceEvents2026NoPast: publicEventsNoPast?.filter(e => e.date?.includes('2026')) || []
         });
         
       } catch (err: any) {

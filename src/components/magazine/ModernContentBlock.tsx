@@ -183,7 +183,7 @@ export default function ModernContentBlock({
   };
 
   const buildYouTubeEmbedUrl = (videoId: string, startTime?: number, endTime?: number): string => {
-    let url = `https://www.youtube.com/embed/${videoId}`;
+    const url = `https://www.youtube.com/embed/${videoId}`;
     const params = new URLSearchParams();
     
     if (startTime && startTime > 0) {

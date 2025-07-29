@@ -177,10 +177,15 @@ export class EventsService {
   }
 
   static async getPublicEvents(limit = 20, offset = 0, includePastEvents = false): Promise<EventWithStats[]> {
-    console.log('getPublicEvents called with limit:', limit, 'offset:', offset, 'includePastEvents:', includePastEvents)
+    console.log('🔍 getPublicEvents called with limit:', limit, 'offset:', offset, 'includePastEvents:', includePastEvents)
     
     try {
-      console.log('Attempting to fetch public events from database...')
+      console.log('🔍 Attempting to fetch public events from database...')
+      
+      // Debug: Log current date calculation
+      const currentDate = new Date().toISOString().split('T')[0]
+      console.log('📅 Current date for filtering:', currentDate)
+      console.log('📅 Will include events >= currentDate:', !includePastEvents)
       
       // Build query - use specific fields to avoid issues with missing columns
       let query = supabase
@@ -228,20 +233,31 @@ export class EventsService {
         .eq('is_public', true)
         .eq('status', 'published')
       
+      console.log('🔍 Base query conditions: is_public=true, status=published')
+      
       // Show all future events (including 2026, 2027, etc.) unless explicitly requested to include past events
       if (!includePastEvents) {
-        const currentDate = new Date().toISOString().split('T')[0]
+        console.log('🔍 Adding date filter: date >=', currentDate)
         query = query.gte('date', currentDate)
+      } else {
+        console.log('🔍 No date filter applied (includePastEvents=true)')
       }
       
+      console.log('🔍 Adding order and pagination: order by date ASC, range:', offset, 'to', offset + limit - 1)
       const { data, error } = await query
         .order('date', { ascending: true })
         .range(offset, offset + limit - 1)
 
-      console.log('Database response - data:', data?.length || 0, 'events, error:', error)
+      console.log('📊 Database response - data:', data?.length || 0, 'events, error:', error)
+      
+      if (data) {
+        console.log('📊 Event dates returned:', data.map(e => ({ id: e.id, title: e.title, date: e.date })))
+        const events2026 = data.filter(e => e.date?.includes('2026'))
+        console.log('📊 2026 events found:', events2026.length, events2026.map(e => ({ id: e.id, title: e.title, date: e.date })))
+      }
       
       if (error) {
-        console.error('Error fetching public events:', error)
+        console.error('❌ Error fetching public events:', error)
         throw error
       }
 
@@ -274,9 +290,12 @@ export class EventsService {
         }
       }))
 
+      console.log('✅ Final results - returning', eventsWithStats.length, 'events with stats')
+      console.log('✅ Final 2026 events:', eventsWithStats.filter(e => e.date?.includes('2026')).map(e => ({ id: e.id, title: e.title, date: e.date })))
+      
       return eventsWithStats
     } catch (error) {
-      console.error('Error in getPublicEvents:', error)
+      console.error('❌ Error in getPublicEvents:', error)
       throw error
     }
   }
