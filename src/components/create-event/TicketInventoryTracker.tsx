@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { TicketIcon, Users, Wheelchair, AlertCircle, CheckCircle } from 'lucide-react';
+import { TicketIcon, Users, Accessibility, AlertCircle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TicketType {
@@ -85,7 +85,7 @@ export function TicketInventoryTracker({ tickets, placedSeats, className }: Tick
                   )}
                   <span className="font-medium text-sm">{ticket.name}</span>
                   {ticket.isAccessible && (
-                    <Wheelchair className="h-3 w-3 text-blue-600" />
+                    <Accessibility className="h-3 w-3 text-blue-600" />
                   )}
                 </div>
                 <div className="flex items-center gap-2">

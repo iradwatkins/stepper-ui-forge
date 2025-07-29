@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { AlertCircle, Plus, Trash2, Info, TicketIcon, DollarSignIcon, Wheelchair, Palette } from "lucide-react";
+import { AlertCircle, Plus, Trash2, Info, TicketIcon, DollarSignIcon, Accessibility, Palette } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect } from "react";
 
@@ -268,7 +268,7 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
                       onCheckedChange={(checked) => updateTicketTier(index, 'isAccessible', checked)}
                     />
                     <Label htmlFor={`accessible-${index}`} className="flex items-center gap-2">
-                      <Wheelchair className="w-4 h-4" />
+                      <Accessibility className="w-4 h-4" />
                       Accessible Seating
                     </Label>
                   </div>
@@ -303,7 +303,7 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
               
               {ticket.isAccessible && (
                 <Alert className="border-blue-200 bg-blue-50">
-                  <Wheelchair className="h-4 w-4 text-blue-600" />
+                  <Accessibility className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
                     This ticket type includes accessible seating with wheelchair access and companion seating options.
                   </AlertDescription>

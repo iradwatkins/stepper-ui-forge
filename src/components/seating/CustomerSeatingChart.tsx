@@ -946,7 +946,7 @@ export default function CustomerSeatingChart({
                   )}
                   {selectedSeatInfo.isADA && (
                     <div className="text-xs text-blue-600 mt-1">
-                      Wheelchair Accessible
+                      Accessibility Features Available
                     </div>
                   )}
                 </div>
