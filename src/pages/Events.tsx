@@ -41,6 +41,12 @@ const Events = () => {
   const [timeOfDay, setTimeOfDay] = useState("any");
   const [advancedEventType, setAdvancedEventType] = useState("any");
   const [showPastEvents, setShowPastEvents] = useState(false);
+  
+  // Lazy loading state
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const EVENTS_PER_PAGE = 20;
 
   // Helper function to get state name from abbreviation
   const getStateName = (abbreviation: string): string => {
@@ -82,14 +88,14 @@ const Events = () => {
     return 0;
   };
 
-  // Load events on component mount
+  // Load initial events on component mount
   useEffect(() => {
-    const loadEvents = async () => {
+    const loadInitialEvents = async () => {
       setLoading(true);
       try {
-        console.log('🔍 Loading events from Events page...');
-        const publicEvents = await EventsService.getPublicEvents(50, 0, showPastEvents);
-        console.log('📊 Loaded events:', publicEvents);
+        console.log('🔍 Loading initial events from Events page...');
+        const publicEvents = await EventsService.getPublicEvents(EVENTS_PER_PAGE, 0, showPastEvents);
+        console.log('📊 Loaded initial events:', publicEvents);
         
         // Debug: Log category data for each event
         publicEvents.forEach((event, index) => {
@@ -97,6 +103,8 @@ const Events = () => {
         });
         
         setEvents(publicEvents);
+        setCurrentOffset(EVENTS_PER_PAGE);
+        setHasMore(publicEvents.length === EVENTS_PER_PAGE);
         
         // Set featured event (first event, static - won't change with filters)
         if (publicEvents.length > 0) {
@@ -105,14 +113,42 @@ const Events = () => {
       } catch (error) {
         console.error('❌ Error loading events:', error);
         setEvents([]);
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
     };
 
-    loadEvents();
+    // Reset pagination when showPastEvents changes
+    setCurrentOffset(0);
+    setHasMore(true);
+    loadInitialEvents();
   }, [showPastEvents]);
 
+  // Load more events function
+  const loadMoreEvents = async () => {
+    if (loadingMore || !hasMore) return;
+    
+    setLoadingMore(true);
+    try {
+      console.log(`🔍 Loading more events from offset ${currentOffset}...`);
+      const moreEvents = await EventsService.getPublicEvents(EVENTS_PER_PAGE, currentOffset, showPastEvents);
+      console.log(`📊 Loaded ${moreEvents.length} more events`);
+      
+      if (moreEvents.length > 0) {
+        setEvents(prevEvents => [...prevEvents, ...moreEvents]);
+        setCurrentOffset(prev => prev + EVENTS_PER_PAGE);
+        setHasMore(moreEvents.length === EVENTS_PER_PAGE);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('❌ Error loading more events:', error);
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const filteredEvents = events.filter(event => {
     // Enhanced search logic with fuzzy matching and priority scoring
@@ -690,6 +726,26 @@ const Events = () => {
 
         {/* Events Display */}
         {renderEventsView()}
+
+        {/* Load More Button */}
+        {sortedEvents.length > 0 && hasMore && (
+          <div className="text-center py-8">
+            <Button 
+              onClick={loadMoreEvents}
+              disabled={loadingMore}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-semibold transition-all duration-200"
+            >
+              {loadingMore ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-2"></div>
+                  Loading...
+                </>
+              ) : (
+                `Load More Events (${events.length} loaded)`
+              )}
+            </Button>
+          </div>
+        )}
 
         {sortedEvents.length === 0 && (
           <div className="text-center py-8 sm:py-12 px-4">
