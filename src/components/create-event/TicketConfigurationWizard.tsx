@@ -85,6 +85,14 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
       onTicketsChange(tickets);
     }
   }, [tickets, onTicketsChange, eventType]);
+  
+  // Notify parent of initial tickets on mount
+  useEffect(() => {
+    if (onTicketsChange && eventType !== 'simple' && (!initialTickets || initialTickets.length === 0)) {
+      // Send the default ticket to parent on mount if no initial tickets provided
+      onTicketsChange(tickets);
+    }
+  }, []);
 
   const addTicketTier = () => {
     const newTicket: TicketType = {
@@ -162,10 +170,10 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
       </div>
 
       {tickets.length === 0 && (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            You need at least one ticket type. Click "Add Ticket Type" to get started.
+        <Alert className="border-primary bg-primary/5">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-primary">
+            <strong>Get Started:</strong> You need at least one ticket type. Use the buttons below to add a custom ticket or select from pre-made templates.
           </AlertDescription>
         </Alert>
       )}
@@ -306,12 +314,13 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
         ))}
       </div>
 
-      <div className="flex justify-center gap-2">
+      <div className={`flex justify-center gap-2 ${tickets.length === 0 ? 'animate-pulse' : ''}`}>
         <Button
           type="button"
-          variant="outline"
+          variant={tickets.length === 0 ? "default" : "outline"}
           onClick={addTicketTier}
           className="flex items-center gap-2"
+          size={tickets.length === 0 ? "lg" : "default"}
         >
           <Plus className="w-4 h-4" />
           Add Custom Ticket
@@ -321,8 +330,9 @@ export const TicketConfigurationWizard = ({ form, eventType, onTicketsChange, in
         <div className="relative group">
           <Button
             type="button"
-            variant="outline"
+            variant={tickets.length === 0 ? "secondary" : "outline"}
             className="flex items-center gap-2"
+            size={tickets.length === 0 ? "lg" : "default"}
           >
             <Palette className="w-4 h-4" />
             Use Template

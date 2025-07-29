@@ -59,6 +59,7 @@ export const PremiumSeatingTicketConfiguration = ({
   const [categories, setCategories] = useState<EnhancedSeatCategory[]>([]);
   const [generatedTickets, setGeneratedTickets] = useState<TicketType[]>([]);
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [isTicketFormVisible, setIsTicketFormVisible] = useState(true);
   
   const COMPONENT_NAME = 'PremiumSeatingTicketConfiguration';
   
@@ -457,20 +458,28 @@ export const PremiumSeatingTicketConfiguration = ({
                 Define your ticket types and quantities. You'll place these tickets on the venue layout in the next step.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {/* Ticket creation form */}
-              <div className="space-y-4 mb-6">
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Create ticket types with specific quantities. In the next step, you'll place these tickets 
-                    on the venue layout to create a visual seating arrangement.
-                  </AlertDescription>
-                </Alert>
+              <Alert className="border-blue-200 bg-blue-50">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  <strong>Step 4 Instructions:</strong> Create your ticket types below. Each ticket type represents a different 
+                  pricing tier or seating category (e.g., VIP, Regular, Accessible). In the next step, you'll visually 
+                  place these tickets on your venue layout.
+                </AlertDescription>
+              </Alert>
+              
+              {/* Main ticket configuration section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-lg font-semibold">Configure Ticket Types</h4>
+                  <Badge variant="outline" className="text-sm">
+                    {ticketTypes.length} type{ticketTypes.length !== 1 ? 's' : ''} created
+                  </Badge>
+                </div>
                 
                 {/* Use TicketConfigurationWizard for manual ticket creation */}
-                <div className="border rounded-lg p-4 bg-muted/50">
-                  <h4 className="font-medium mb-3">Create Ticket Types</h4>
+                <div className="border-2 border-dashed border-primary/20 rounded-lg p-6 bg-primary/5">
                   <TicketConfigurationWizard 
                     form={form}
                     eventType="premium"
@@ -482,62 +491,75 @@ export const PremiumSeatingTicketConfiguration = ({
                 </div>
               </div>
               
-              <Separator />
-              
-              <h4 className="font-medium mb-3">Current Ticket Types:</h4>
-              {ticketTypes.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p>No tickets created yet. Add at least one ticket type to continue.</p>
-                </div>
-              ) : (
-                ticketTypes.map((ticket) => (
-                  <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-4 h-4 rounded-full" 
-                          style={{ backgroundColor: ticket.color }}
-                        />
-                        <h4 className="font-medium">{ticket.name}</h4>
+              {ticketTypes.length > 0 && (
+                <>
+                  <Separator />
+                  
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-lg">Created Ticket Types Summary:</h4>
+                    {ticketTypes.map((ticket) => (
+                      <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-4 h-4 rounded-full" 
+                              style={{ backgroundColor: ticket.color }}
+                            />
+                            <h4 className="font-medium">{ticket.name}</h4>
+                          </div>
+                          <Badge variant="secondary">
+                            {ticket.quantity} seats
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {ticket.description}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Price per ticket:</span>
+                          <span className="text-lg font-bold">${ticket.price}</span>
+                        </div>
+                        {ticket.hasEarlyBird && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Badge variant="outline" className="text-green-600">
+                              Early Bird Available
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              ${ticket.earlyBirdPrice || ticket.price * 0.8} until early bird deadline
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <Badge variant="secondary">
-                        {ticket.quantity} seats
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {ticket.description}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Price per ticket:</span>
-                      <span className="text-lg font-bold">${ticket.price}</span>
-                    </div>
-                    {/* Add early bird option */}
-                    <div className="flex items-center gap-2 text-sm">
-                      <Badge variant="outline" className="text-green-600">
-                        Early Bird Available
-                      </Badge>
-                      <span className="text-muted-foreground">
-                        ${ticket.price * 0.8} until 30 days before event
-                      </span>
-                    </div>
+                    ))}
                   </div>
-                ))
+                </>
               )}
               
-              <Separator />
+              {ticketTypes.length > 0 && (
+                <>
+                  <Separator />
+                  
+                  <div className="flex items-center justify-between text-lg font-medium">
+                    <span>Total Capacity:</span>
+                    <span>{ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} tickets</span>
+                  </div>
+                </>
+              )}
               
-              <div className="flex items-center justify-between text-lg font-medium">
-                <span>Total Capacity:</span>
-                <span>{ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} tickets</span>
-              </div>
-              
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Next Step:</strong> After creating your ticket types, you'll place them on the venue layout 
-                  to create a visual seating arrangement. You can group tickets into tables or assign them to 
-                  individual seats.
+              <Alert className={ticketTypes.length > 0 ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}>
+                <Info className={`h-4 w-4 ${ticketTypes.length > 0 ? "text-green-600" : "text-amber-600"}`} />
+                <AlertDescription className={ticketTypes.length > 0 ? "text-green-800" : "text-amber-800"}>
+                  {ticketTypes.length > 0 ? (
+                    <>
+                      <strong>Ready for Next Step:</strong> You've created {ticketTypes.length} ticket type{ticketTypes.length !== 1 ? 's' : ''} 
+                      with a total capacity of {ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} seats. 
+                      Click "Next Step" to place these tickets on your venue layout.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Action Required:</strong> You need to create at least one ticket type before proceeding. 
+                      Use the form above to add ticket types like VIP, Regular, or Accessible seating.
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             </CardContent>
