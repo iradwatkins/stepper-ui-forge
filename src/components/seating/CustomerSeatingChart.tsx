@@ -98,6 +98,9 @@ export default function CustomerSeatingChart({
   // Hold timer state
   const [holdTimer, setHoldTimer] = useState(0);
   const [holdActive, setHoldActive] = useState(false);
+  
+  // Table selection mode
+  const [selectionMode, setSelectionMode] = useState<'individual' | 'table'>('individual');
   const [holdExpiresAt, setHoldExpiresAt] = useState<Date | null>(null);
 
   // Load image
@@ -322,7 +325,17 @@ export default function CustomerSeatingChart({
       const seatHeight = 16 / zoom; // Seat height  
       const cornerRadius = 4 / zoom; // Rounded corners
       const isSelected = selectedSeats.includes(seat.id);
-      const isHovered = hoveredSeat === seat.id;
+      
+      // Check if seat is hovered (considering table mode)
+      let isHovered = false;
+      if (selectionMode === 'table' && seat.tableId && hoveredSeat) {
+        // In table mode, highlight all seats in the same table
+        const hoveredSeatData = sortedSeats.find(s => s.id === hoveredSeat);
+        isHovered = hoveredSeatData?.tableId === seat.tableId;
+      } else {
+        // In individual mode, only highlight the specific seat
+        isHovered = hoveredSeat === seat.id;
+      }
 
       // Draw seat with rounded rectangle
       ctx.beginPath();
@@ -390,7 +403,7 @@ export default function CustomerSeatingChart({
     // Restore context
     ctx.restore();
     console.log('✅ Canvas drawing complete');
-  }, [imageDrawInfo, sortedSeats, selectedSeats, hoveredSeat, zoom, pan]);
+  }, [imageDrawInfo, sortedSeats, selectedSeats, hoveredSeat, zoom, pan, selectionMode]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -401,37 +414,62 @@ export default function CustomerSeatingChart({
   const handleSeatClick = useCallback(async (seat: SeatData) => {
     if (disabled || seat.status !== 'available') return;
 
-    const isSelected = selectedSeats.includes(seat.id);
     let newSelection: string[];
 
-    if (isSelected) {
-      // Deselect seat
-      newSelection = selectedSeats.filter(id => id !== seat.id);
-    } else {
-      // Select seat (respect max limit)
-      if (selectedSeats.length >= maxSelectableSeats) {
-        return; // Can't select more
-      }
-      newSelection = [...selectedSeats, seat.id];
+    // Handle table selection mode
+    if (selectionMode === 'table' && seat.tableId) {
+      // Find all seats with the same tableId
+      const tableSeats = sortedSeats
+        .filter(s => s.tableId === seat.tableId && s.status === 'available')
+        .map(s => s.id);
       
-      // Hold the seat if eventId is provided
-      if (eventId && enableHoldTimer) {
-        try {
-          console.log('🔒 Holding seat:', seat.id);
-          const seatingService = new SeatingService();
-          const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          await seatingService.holdSeats([seat.id], eventId, sessionId, {
-            holdDurationMinutes
-          });
-        } catch (error) {
-          console.error('Failed to hold seat:', error);
-          // Continue with selection even if hold fails
+      // Check if any seat from this table is already selected
+      const tableSelected = tableSeats.some(id => selectedSeats.includes(id));
+      
+      if (tableSelected) {
+        // Deselect entire table
+        newSelection = selectedSeats.filter(id => !tableSeats.includes(id));
+      } else {
+        // Select entire table (check max limit)
+        const remainingCapacity = maxSelectableSeats - selectedSeats.length;
+        if (tableSeats.length > remainingCapacity) {
+          return; // Can't select entire table
         }
+        newSelection = [...selectedSeats, ...tableSeats];
+      }
+    } else {
+      // Individual seat selection
+      const isSelected = selectedSeats.includes(seat.id);
+      
+      if (isSelected) {
+        // Deselect seat
+        newSelection = selectedSeats.filter(id => id !== seat.id);
+      } else {
+        // Select seat (respect max limit)
+        if (selectedSeats.length >= maxSelectableSeats) {
+          return; // Can't select more
+        }
+        newSelection = [...selectedSeats, seat.id];
+      }
+    }
+      
+    // Hold the seat if eventId is provided
+    if (eventId && enableHoldTimer && newSelection.length > selectedSeats.length) {
+      try {
+        console.log('🔒 Holding seats:', newSelection);
+        const seatingService = new SeatingService();
+        const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await seatingService.holdSeats(newSelection, eventId, sessionId, {
+          holdDurationMinutes
+        });
+      } catch (error) {
+        console.error('Failed to hold seats:', error);
+        // Continue with selection even if hold fails
       }
     }
 
     onSeatSelection?.(newSelection);
-  }, [selectedSeats, onSeatSelection, disabled, maxSelectableSeats, eventId, enableHoldTimer, holdDurationMinutes]);
+  }, [selectedSeats, onSeatSelection, disabled, maxSelectableSeats, eventId, enableHoldTimer, holdDurationMinutes, selectionMode, sortedSeats]);
 
   // Canvas event handlers
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -726,6 +764,28 @@ export default function CustomerSeatingChart({
             <div className="text-xs text-gray-600">
               Zoom: {Math.round(zoom * 100)}%
             </div>
+            
+            {/* Table selection mode toggle */}
+            {sortedSeats.some(s => s.tableId) && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Selection Mode</label>
+                  <Select value={selectionMode} onValueChange={(value: 'individual' | 'table') => setSelectionMode(value)}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="individual">Individual Seats</SelectItem>
+                      <SelectItem value="table">Entire Tables</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-gray-600">
+                    {selectionMode === 'table' ? 'Click any seat to select the entire table' : 'Select seats individually'}
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

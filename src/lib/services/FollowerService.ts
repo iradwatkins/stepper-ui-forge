@@ -286,6 +286,7 @@ export class FollowerService {
           follower_id,
           profiles:follower_id (
             id,
+            email,
             full_name,
             avatar_url,
             bio,

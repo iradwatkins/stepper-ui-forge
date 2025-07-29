@@ -83,12 +83,15 @@ export default function PremiumSeatingManager({
   });
   
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [tool, setTool] = useState<'pan' | 'place' | 'table'>('place');
+  const [tool, setTool] = useState<'pan' | 'place' | 'table' | 'group'>('place');
   const [tableSize, setTableSize] = useState<number>(8); // Default table size
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
   
   // Canvas refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -275,31 +278,60 @@ export default function PremiumSeatingManager({
       
       const radius = seat.tableId ? 6 : 8; // Smaller radius for table seats
       const isSelected = selectedCategory === seat.category;
+      const isGroupSelected = selectedSeats.has(seat.id);
 
       // Draw seat circle
       ctx.beginPath();
       ctx.arc(seatPos.x, seatPos.y, radius, 0, 2 * Math.PI);
-      ctx.fillStyle = seat.categoryColor;
+      ctx.fillStyle = isGroupSelected ? '#FFC107' : seat.categoryColor;
       ctx.fill();
       
       // Draw border
-      ctx.strokeStyle = isSelected ? '#000' : '#fff';
-      ctx.lineWidth = isSelected ? 3 : 2;
+      ctx.strokeStyle = isGroupSelected ? '#F57C00' : (isSelected ? '#000' : '#fff');
+      ctx.lineWidth = isGroupSelected ? 4 : (isSelected ? 3 : 2);
       ctx.stroke();
 
       // Draw seat number (only for individual seats)
       if (seat.seatNumber && !seat.tableId) {
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = isGroupSelected ? '#000' : '#fff';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(seat.seatNumber, seatPos.x, seatPos.y);
       }
     });
+    
+    // Draw selection rectangle when in group mode
+    if (tool === 'group' && selectionStart && selectionEnd && !isDragging) {
+      ctx.strokeStyle = '#2196F3';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.fillStyle = 'rgba(33, 150, 243, 0.1)';
+      
+      const startPos = percentageToCanvasCoordinates(
+        selectionStart.x,
+        selectionStart.y,
+        imageDrawInfo
+      );
+      const endPos = percentageToCanvasCoordinates(
+        selectionEnd.x,
+        selectionEnd.y,
+        imageDrawInfo
+      );
+      
+      const x = Math.min(startPos.x, endPos.x);
+      const y = Math.min(startPos.y, endPos.y);
+      const width = Math.abs(endPos.x - startPos.x);
+      const height = Math.abs(endPos.y - startPos.y);
+      
+      ctx.fillRect(x, y, width, height);
+      ctx.strokeRect(x, y, width, height);
+      ctx.setLineDash([]);
+    }
 
     // Restore context
     ctx.restore();
-  }, [loadedImage, imageDrawInfo, seats, zoom, pan, selectedCategory]);
+  }, [loadedImage, imageDrawInfo, seats, zoom, pan, selectedCategory, selectedSeats, tool, selectionStart, selectionEnd, isDragging]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -308,7 +340,40 @@ export default function PremiumSeatingManager({
 
   // Canvas event handlers
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || (tool !== 'place' && tool !== 'table') || !loadedImage || !imageDrawInfo) return;
+    if (!canvasRef.current || !loadedImage || !imageDrawInfo) return;
+    
+    // Handle group tool separately
+    if (tool === 'group') {
+      const canvas = canvasRef.current;
+      const percentageCoords = clientToPercentageCoordinates(
+        event.clientX,
+        event.clientY,
+        canvas,
+        imageDrawInfo,
+        { zoom, pan }
+      );
+      
+      // Check if clicking on a seat
+      const clickedSeat = seats.find(seat => {
+        const dx = Math.abs(seat.x - percentageCoords.x);
+        const dy = Math.abs(seat.y - percentageCoords.y);
+        return dx < 3 && dy < 3; // 3% tolerance
+      });
+      
+      if (clickedSeat) {
+        // Toggle seat selection
+        const newSelection = new Set(selectedSeats);
+        if (newSelection.has(clickedSeat.id)) {
+          newSelection.delete(clickedSeat.id);
+        } else {
+          newSelection.add(clickedSeat.id);
+        }
+        setSelectedSeats(newSelection);
+      }
+      return;
+    }
+    
+    if (tool !== 'place' && tool !== 'table') return;
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -453,25 +518,72 @@ export default function PremiumSeatingManager({
   }, [tool, pan, zoom, seats, categories, selectedCategory, onSeatingConfigurationChange, loadedImage, imageDrawInfo, totalSeatsNeeded, tableSize]);
 
   const handleCanvasMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !imageDrawInfo) return;
+    
     if (tool === 'pan') {
       setIsDragging(true);
       setLastMousePos({ x: event.clientX, y: event.clientY });
+    } else if (tool === 'group') {
+      const canvas = canvasRef.current;
+      const percentageCoords = clientToPercentageCoordinates(
+        event.clientX,
+        event.clientY,
+        canvas,
+        imageDrawInfo,
+        { zoom, pan }
+      );
+      
+      setIsDragging(true);
+      setSelectionStart(percentageCoords);
+      setSelectionEnd(percentageCoords);
     }
-  }, [tool]);
+  }, [tool, imageDrawInfo, zoom, pan]);
 
   const handleCanvasMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !imageDrawInfo) return;
+    
     if (isDragging && tool === 'pan') {
       const deltaX = event.clientX - lastMousePos.x;
       const deltaY = event.clientY - lastMousePos.y;
       
       setPan(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
       setLastMousePos({ x: event.clientX, y: event.clientY });
+    } else if (isDragging && tool === 'group' && selectionStart) {
+      const canvas = canvasRef.current;
+      const percentageCoords = clientToPercentageCoordinates(
+        event.clientX,
+        event.clientY,
+        canvas,
+        imageDrawInfo,
+        { zoom, pan }
+      );
+      
+      setSelectionEnd(percentageCoords);
+      
+      // Calculate which seats are within selection rectangle
+      const minX = Math.min(selectionStart.x, percentageCoords.x);
+      const maxX = Math.max(selectionStart.x, percentageCoords.x);
+      const minY = Math.min(selectionStart.y, percentageCoords.y);
+      const maxY = Math.max(selectionStart.y, percentageCoords.y);
+      
+      const selected = new Set<string>();
+      seats.forEach(seat => {
+        if (seat.x >= minX && seat.x <= maxX && seat.y >= minY && seat.y <= maxY) {
+          selected.add(seat.id);
+        }
+      });
+      
+      setSelectedSeats(selected);
     }
-  }, [isDragging, tool, lastMousePos]);
+  }, [isDragging, tool, lastMousePos, imageDrawInfo, zoom, pan, selectionStart, seats]);
 
   const handleCanvasMouseUp = useCallback(() => {
     setIsDragging(false);
-  }, []);
+    if (tool === 'group') {
+      setSelectionStart(null);
+      setSelectionEnd(null);
+    }
+  }, [tool]);
 
   // File upload handler
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -655,6 +767,17 @@ export default function PremiumSeatingManager({
                         <Users className="h-3 w-3 mr-1" />
                         Table
                       </Button>
+                      <Button
+                        size="sm"
+                        variant={tool === 'group' ? 'default' : 'outline'}
+                        onClick={() => {
+                          setTool('group');
+                          setSelectedSeats(new Set());
+                        }}
+                      >
+                        <Users className="h-3 w-3 mr-1" />
+                        Group
+                      </Button>
                     </div>
                     
                     {/* Table size selector */}
@@ -673,6 +796,48 @@ export default function PremiumSeatingManager({
                             <SelectItem value="12">12 seats</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+                    
+                    {/* Group tool controls */}
+                    {tool === 'group' && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Group Seats</Label>
+                        <div className="text-xs text-gray-600">
+                          {selectedSeats.size === 0 ? (
+                            'Click and drag to select seats'
+                          ) : (
+                            `${selectedSeats.size} seats selected`
+                          )}
+                        </div>
+                        {selectedSeats.size >= 2 && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              // Group selected seats into a table
+                              const tableId = `table_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                              const updatedSeats = seats.map(seat => {
+                                if (selectedSeats.has(seat.id)) {
+                                  return {
+                                    ...seat,
+                                    tableId,
+                                    tableType: 'round' as const,
+                                    tableCapacity: selectedSeats.size,
+                                    groupSize: selectedSeats.size
+                                  };
+                                }
+                                return seat;
+                              });
+                              setSeats(updatedSeats);
+                              onSeatingConfigurationChange(updatedSeats, categories);
+                              setSelectedSeats(new Set());
+                              setTool('pan');
+                            }}
+                            className="w-full"
+                          >
+                            Create Table ({selectedSeats.size} seats)
+                          </Button>
+                        )}
                       </div>
                     )}
 
@@ -811,7 +976,8 @@ export default function PremiumSeatingManager({
                         onMouseLeave={handleCanvasMouseUp}
                         style={{ 
                           cursor: tool === 'place' || tool === 'table' ? 'crosshair' : 
-                                 tool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : 'default' 
+                                 tool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : 
+                                 tool === 'group' ? 'crosshair' : 'default' 
                         }}
                       />
                     </div>
