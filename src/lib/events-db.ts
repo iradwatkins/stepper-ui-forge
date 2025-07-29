@@ -209,6 +209,8 @@ export class EventsService {
           tags,
           display_price,
           registration_deadline,
+          venue_layout_id,
+          seat_overrides,
           ticket_types (
             id,
             name,
@@ -226,7 +228,7 @@ export class EventsService {
         .eq('is_public', true)
         .eq('status', 'published')
       
-      // Only show future events unless explicitly requested to include past events
+      // Show all future events (including 2026, 2027, etc.) unless explicitly requested to include past events
       if (!includePastEvents) {
         const currentDate = new Date().toISOString().split('T')[0]
         query = query.gte('date', currentDate)
