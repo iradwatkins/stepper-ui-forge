@@ -79,14 +79,13 @@ export const useWizardNavigation = ({
         isRequired: () => true,
         canNavigateForward: (data) => {
           // Check required fields for basic information
+          // Note: venueName and address are optional - will default to "To Be Announced"
           const isValid = !!(
             data.title?.trim() &&
             data.description?.trim() &&
             data.organizationName?.trim() &&
-            data.venueName?.trim() &&
             data.date &&
             data.time &&
-            data.address?.trim() &&
             selectedCategories.length > 0
           );
           console.log("Basic info validation:", {
@@ -210,7 +209,7 @@ export const useWizardNavigation = ({
         if (errors.organizationName) basicErrors.push('Organization name is required');
         if (errors.date) basicErrors.push('Event date is required');
         if (errors.time) basicErrors.push('Event time is required');
-        if (errors.address) basicErrors.push('Event address is required');
+        // Address is optional - don't validate it as required
         if (errors.categories || selectedCategories.length === 0) {
           basicErrors.push('At least one category must be selected');
         }

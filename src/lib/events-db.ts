@@ -228,7 +228,7 @@ export class EventsService {
       
       // Only show future events unless explicitly requested to include past events
       if (!includePastEvents) {
-        const currentDate = new Date().toISOString()
+        const currentDate = new Date().toISOString().split('T')[0]
         query = query.gte('date', currentDate)
       }
       

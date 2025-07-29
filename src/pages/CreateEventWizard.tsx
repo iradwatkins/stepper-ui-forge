@@ -208,7 +208,8 @@ function CreateEventWizardInternal() {
       const trimmedAddress = formData.address?.trim() || '';
       const trimmedVenueName = formData.venueName?.trim() || '';
       
-      let locationWithVenue = 'TO BE ANNOUNCED';
+      // For simple events, default to "To Be Announced" if no location provided
+      let locationWithVenue = 'To Be Announced';
       if (trimmedAddress) {
         locationWithVenue = trimmedVenueName ? `${trimmedVenueName}, ${trimmedAddress}` : trimmedAddress;
       } else if (trimmedVenueName) {
@@ -216,7 +217,7 @@ function CreateEventWizardInternal() {
       }
 
       // Debug venue_name specifically
-      const venueNameValue = formData.venueName?.trim() || formData.organizationName?.trim() || 'Event Venue';
+      const venueNameValue = formData.venueName?.trim() || 'To Be Announced';
       console.log('🏢 Venue Name Debug:', {
         venueName: formData.venueName,
         organizationName: formData.organizationName,

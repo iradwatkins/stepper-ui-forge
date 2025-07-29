@@ -137,6 +137,7 @@ export interface Database {
           end_time: string | null
           timezone: string
           location: string
+          venue_name: string
           venue_layout_id: string | null
           seat_overrides: any | null
           categories: string[]
@@ -163,6 +164,7 @@ export interface Database {
           end_time?: string | null
           timezone?: string
           location: string
+          venue_name?: string
           venue_layout_id?: string | null
           seat_overrides?: any | null
           categories?: string[]
@@ -189,6 +191,7 @@ export interface Database {
           end_time?: string | null
           timezone?: string
           location?: string
+          venue_name?: string
           venue_layout_id?: string | null
           seat_overrides?: any | null
           categories?: string[]

@@ -225,6 +225,9 @@ export const BasicInformation = ({
               {form.formState.errors.venueName && (
                 <p className="text-xs text-red-500 mt-1">{form.formState.errors.venueName.message}</p>
               )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave empty to use "To Be Announced"
+              </p>
             </div>
 
             <div>
@@ -250,6 +253,9 @@ export const BasicInformation = ({
                     <>
                       <strong>Include city and state/region for better search results.</strong> Can be venue name, street address, or area.
                     </>
+                  )}
+                  {eventType === 'simple' && (
+                    <> Leave empty to use "To Be Announced"</>
                   )}
                 </p>
                 {selectedPlaceData && (
