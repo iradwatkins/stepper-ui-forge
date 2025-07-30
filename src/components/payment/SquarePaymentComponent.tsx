@@ -156,12 +156,20 @@ export function SquarePaymentComponent({
       console.log('VITE_CASHAPP_ENVIRONMENT:', cashAppEnvironment);
 
       // Validate required environment variables
-      if (!squareApplicationId || squareApplicationId.includes('XXXXX')) {
-        throw new Error('Square Application ID not configured. Please set VITE_SQUARE_APP_ID in your environment variables.');
+      const isPlaceholder = squareApplicationId?.includes('your_') || squareApplicationId?.includes('placeholder');
+      
+      if (!squareApplicationId || squareApplicationId.includes('XXXXX') || isPlaceholder) {
+        console.warn('Square Application ID not configured. Payment functionality disabled.');
+        setError('Square payments are not configured. Other payment methods may be available.');
+        setIsLoading(false);
+        return;
       }
 
       if (!squareLocationId || squareLocationId.includes('XXXXX')) {
-        throw new Error('Square Location ID not configured. Please set VITE_SQUARE_LOCATION_ID in your environment variables.');
+        console.warn('Square Location ID not configured. Payment functionality disabled.');
+        setError('Square payments are not configured. Other payment methods may be available.');
+        setIsLoading(false);
+        return;
       }
 
       // Dynamic Square SDK URL based on environment

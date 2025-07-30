@@ -5,14 +5,7 @@
   "installCommand": "npm ci",
   "env": {
     "VITE_SUPABASE_URL": "https://aszzhlgwfbijaotfddsh.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzenpobGd3ZmJpamFvdGZkZHNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExNDMwODgsImV4cCI6MjA2NjcxOTA4OH0.ilfdDmbwme7oACe4TxsAJVko3O-DgPl-QWIHKbfZop0",
-    "VITE_PAYPAL_CLIENT_ID": "your_paypal_client_id_here",
-    "VITE_PAYPAL_ENVIRONMENT": "production",
-    "VITE_SQUARE_APP_ID": "your_square_application_id_here", 
-    "VITE_SQUARE_ENVIRONMENT": "production",
-    "VITE_CASHAPP_CLIENT_ID": "your_cashapp_client_id_here",
-    "VITE_CASHAPP_ENVIRONMENT": "production",
-    "VITE_PAYMENT_WEBHOOK_URL": "your_webhook_url_here"
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzenpobGd3ZmJpamFvdGZkZHNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExNDMwODgsImV4cCI6MjA2NjcxOTA4OH0.ilfdDmbwme7oACe4TxsAJVko3O-DgPl-QWIHKbfZop0"
   },
   "headers": [
     {
