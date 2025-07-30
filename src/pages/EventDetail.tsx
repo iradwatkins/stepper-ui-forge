@@ -28,6 +28,7 @@ import { PastEventImage } from "@/components/event/PastEventImage";
 import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getEventImageUrl, getAllEventImages } from "@/lib/utils/imageUtils";
+import { formatEventDate, formatEventTime, formatEventDateTime } from "@/lib/utils/dateUtils";
 
 interface EventImageData {
   original?: string;
@@ -509,7 +510,7 @@ const EventDetail = () => {
                   <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
                   <div className="mt-2 flex items-center text-gray-600 text-sm">
                     <CalendarIcon className="w-4 h-4 mr-2" />
-                    <span>{event.date} {event.time}</span>
+                    <span>{formatEventDateTime(event.date, event.time)}</span>
                     <span className="mx-2">•</span>
                     <MapPinIcon className="w-4 h-4 mr-2" />
                     <span>{event.location || "To Be Announced"}</span>
@@ -607,7 +608,7 @@ const EventDetail = () => {
                 <h1 className="text-4xl font-bold text-gray-900">{event.title}</h1>
                 <div className="mt-4 flex items-center text-gray-600">
                   <CalendarIcon className="w-5 h-5 mr-2" />
-                  <span>{event.date} {event.time}</span>
+                  <span>{formatEventDateTime(event.date, event.time)}</span>
                 </div>
                 <div className="mt-2 flex items-center text-gray-600">
                   <MapPinIcon className="w-5 h-5 mr-2" />

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { QuantitySelector } from './QuantitySelector';
 import { TicketType } from '@/types/database';
 import { Clock, Users, AlertTriangle } from 'lucide-react';
+import { formatEventDateTime } from '@/lib/utils/dateUtils';
 
 interface TicketCardProps {
   ticketType: TicketType;
@@ -29,13 +30,10 @@ export const TicketCard = ({
   
   // Format early bird end date
   const formatEarlyBirdEnd = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+    // Extract date and time from ISO string if needed
+    const date = dateString.split('T')[0];
+    const time = dateString.includes('T') ? dateString.split('T')[1].substring(0, 5) : '00:00';
+    return formatEventDateTime(date, time);
   };
 
   // Calculate savings if early bird is active

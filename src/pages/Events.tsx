@@ -11,6 +11,7 @@ import { SearchResult } from "@/lib/services/CategorySearchService";
 import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
 import { PastEventImage } from "@/components/event/PastEventImage";
 import { getEventImageUrl } from "@/lib/utils/imageUtils";
+import { formatEventDate, formatEventTime } from "@/lib/utils/dateUtils";
 
 interface EventImageData {
   original?: string;
@@ -339,22 +340,7 @@ const Events = () => {
     return true;
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  const formatTime = (time: string) => {
-    // Convert 24-hour time (e.g., "14:30") to 12-hour format (e.g., "2:30 PM")
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours, 10);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+  // Date formatting functions moved to dateUtils.ts for proper timezone handling
 
   // Advanced filters handlers
   const handleApplyAdvancedFilters = () => {
@@ -414,7 +400,7 @@ const Events = () => {
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
             </svg>
-            <span className="font-medium">{formatDate(event.date)} {formatTime(event.time)}</span>
+            <span className="font-medium">{formatEventDate(event.date)} {formatEventTime(event.time)}</span>
           </div>
 
           {/* Location */}
@@ -486,7 +472,7 @@ const Events = () => {
               
               {/* Date - Bottom Left */}
               <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1 rounded-full text-white text-sm font-medium">
-                {formatDate(event.date)}
+                {formatEventDate(event.date)}
               </div>
               
               {/* Price - Bottom Right */}
@@ -563,7 +549,7 @@ const Events = () => {
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
                           </svg>
-                          <span className="text-sm">{formatDate(event.date)} {formatTime(event.time)}</span>
+                          <span className="text-sm">{formatEventDate(event.date)} {formatEventTime(event.time)}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-muted-foreground">
@@ -677,7 +663,7 @@ const Events = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
                         </svg>
-                        <span className="text-lg font-medium">{formatDate(featuredEvent.date)} {formatTime(featuredEvent.time)}</span>
+                        <span className="text-lg font-medium">{formatEventDate(featuredEvent.date)} {formatEventTime(featuredEvent.time)}</span>
                       </div>
 
                       {/* Location */}
