@@ -14,6 +14,7 @@ import { AdminRoute } from "@/components/auth/AdminRoute";
 import { ReferralTracker } from "@/components/tracking/ReferralTracker";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Load admin setup utilities for browser console access
 import "@/utils/setupAdmin";
@@ -316,6 +317,7 @@ const App = () => {
                 <BrowserRouter>
                   <AppContent />
                 </BrowserRouter>
+                <SpeedInsights />
               </CartProvider>
             </AuthProvider>
           </TooltipProvider>
