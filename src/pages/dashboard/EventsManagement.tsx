@@ -52,6 +52,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { getEventImageUrl } from '@/lib/utils/imageUtils'
+import { formatEventDate } from '@/lib/utils/dateUtils'
 
 export default function EventsManagement() {
   const { user } = useAuth()
@@ -407,11 +408,11 @@ export default function EventsManagement() {
                       <TableCell>
                         <div className="font-medium">{event.title}</div>
                         <div className="text-sm text-gray-500">
-                          Created {new Date(event.created_at).toLocaleDateString()}
+                          Created {formatEventDate(event.created_at)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(event.date).toLocaleDateString()}
+                        {formatEventDate(event.date)}
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(event.status)}>

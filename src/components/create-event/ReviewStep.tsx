@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, MapPinIcon, UsersIcon, DollarSignIcon, BuildingIcon } from "lucide-react";
+import { formatEventDate, formatEventTime } from "@/lib/utils/dateUtils";
 
 interface EventType {
   id: 'simple' | 'ticketed' | 'premium';
@@ -41,22 +42,7 @@ interface ReviewStepProps {
 export const ReviewStep = ({ eventData, eventType, eventTypes }: ReviewStepProps) => {
   console.log("ReviewStep rendering with eventData:", eventData);
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  // Use timezone-aware date formatting from dateUtils
 
   return (
     <div className="space-y-6">
@@ -136,11 +122,11 @@ export const ReviewStep = ({ eventData, eventType, eventTypes }: ReviewStepProps
               <h4 className="font-medium text-sm text-muted-foreground mb-1">Date & Time</h4>
               <div className="space-y-1">
                 <p className="text-sm">
-                  <strong>Start:</strong> {formatDate(eventData.date)} at {formatTime(eventData.time)}
+                  <strong>Start:</strong> {formatEventDate(eventData.date)} at {formatEventTime(eventData.time)}
                 </p>
                 {eventData.endDate && eventData.endTime && (
                   <p className="text-sm">
-                    <strong>End:</strong> {formatDate(eventData.endDate)} at {formatTime(eventData.endTime)}
+                    <strong>End:</strong> {formatEventDate(eventData.endDate)} at {formatEventTime(eventData.endTime)}
                   </p>
                 )}
               </div>

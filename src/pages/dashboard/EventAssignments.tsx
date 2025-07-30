@@ -24,6 +24,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { formatEventDate } from '@/lib/utils/dateUtils'
 
 interface EventAssignment {
   id: string
@@ -356,7 +357,7 @@ export default function EventAssignments() {
                       <TableCell>
                         <div>
                           <div className="font-medium">
-                            {new Date(assignment.date).toLocaleDateString()}
+                            {formatEventDate(assignment.date)}
                           </div>
                           <div className="text-sm text-gray-500">
                             {assignment.startTime} - {assignment.endTime}
@@ -434,7 +435,7 @@ export default function EventAssignments() {
                   
                   return nextAssignment ? (
                     <p className="text-sm text-muted-foreground">
-                      {nextAssignment.eventTitle} on {new Date(nextAssignment.date).toLocaleDateString()} 
+                      {nextAssignment.eventTitle} on {formatEventDate(nextAssignment.date)} 
                       at {nextAssignment.startTime} as {getRoleName(nextAssignment.role)}
                     </p>
                   ) : null

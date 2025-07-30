@@ -7,6 +7,7 @@ import { Loader2, Ticket, AlertCircle, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { TicketService } from '@/lib/services/TicketService'
 import TicketView from '@/components/tickets/TicketView'
+import { formatEventDate, formatEventTime } from '@/lib/utils/dateUtils'
 
 interface TicketData {
   id: string
@@ -81,12 +82,12 @@ export default function MyTickets() {
     if (navigator.share) {
       navigator.share({
         title: `Ticket for ${ticket.ticket_types.events.title}`,
-        text: `I'm attending ${ticket.ticket_types.events.title} on ${new Date(ticket.ticket_types.events.date).toLocaleDateString()}`,
+        text: `I'm attending ${ticket.ticket_types.events.title} on ${formatEventDate(ticket.ticket_types.events.date)}`,
         url: window.location.href
       })
     } else {
       // Fallback to clipboard
-      const shareText = `I'm attending ${ticket.ticket_types.events.title} on ${new Date(ticket.ticket_types.events.date).toLocaleDateString()}`
+      const shareText = `I'm attending ${ticket.ticket_types.events.title} on ${formatEventDate(ticket.ticket_types.events.date)}`
       navigator.clipboard.writeText(shareText)
     }
   }
@@ -101,8 +102,8 @@ export default function MyTickets() {
       qrCode: ticket.qr_code || '',
       event: {
         title: ticket.ticket_types.events.title,
-        date: new Date(ticket.ticket_types.events.date).toLocaleDateString(),
-        time: new Date(ticket.ticket_types.events.date).toLocaleTimeString(),
+        date: formatEventDate(ticket.ticket_types.events.date),
+        time: formatEventTime(ticket.ticket_types.events.date.split('T')[1] || ''),
         location: ticket.ticket_types.events.venue || ticket.ticket_types.events.location || 'TBD',
         organizationName: undefined
       },

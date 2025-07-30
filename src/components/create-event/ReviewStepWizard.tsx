@@ -17,6 +17,7 @@ import {
   AlertCircleIcon
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatEventDate, formatEventTime } from "@/lib/utils/dateUtils";
 
 interface ProcessedImages {
   banner?: {
@@ -72,25 +73,7 @@ export const ReviewStepWizard = ({
 }: ReviewStepWizardProps) => {
   const formData = form.getValues();
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes));
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  // Use timezone-aware date formatting from dateUtils
 
   const handleSaveDraft = () => {
     onSave('draft');
@@ -154,11 +137,11 @@ export const ReviewStepWizard = ({
             <div className="flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-muted-foreground" />
               <div>
-                <div className="font-medium">{formatDate(formData.date)}</div>
+                <div className="font-medium">{formatEventDate(formData.date)}</div>
                 <div className="text-sm text-muted-foreground">
-                  {formatTime(formData.time)}
+                  {formatEventTime(formData.time)}
                   {formData.endDate && formData.endTime && (
-                    <span> - {formData.endDate === formData.date ? formatTime(formData.endTime) : `${formatDate(formData.endDate)} ${formatTime(formData.endTime)}`}</span>
+                    <span> - {formData.endDate === formData.date ? formatEventTime(formData.endTime) : `${formatEventDate(formData.endDate)} ${formatEventTime(formData.endTime)}`}</span>
                   )}
                 </div>
               </div>
