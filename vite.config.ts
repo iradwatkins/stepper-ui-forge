@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from 'vite-plugin-pwa';
+import viteCompression from 'vite-plugin-compression';
+import { visualizer } from 'rollup-plugin-visualizer';
+import { imagetools } from 'vite-imagetools';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -22,6 +25,33 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
+    // Image optimization
+    imagetools({
+      defaultDirectives: new URLSearchParams({
+        format: 'webp',
+        quality: '80',
+        w: '1920;1280;640;320',
+        as: 'picture'
+      })
+    }),
+    // Compression plugin for better performance
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 10240, // Only compress files larger than 10kb
+    }),
+    viteCompression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 10240,
+    }),
+    // Bundle analyzer
+    mode === 'production' && visualizer({
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+      filename: 'dist/bundle-analysis.html'
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
@@ -81,22 +111,46 @@ export default defineConfig(({ mode }) => ({
     target: 'esnext',
     minify: 'terser',
     sourcemap: false,
-    // Simplified chunking strategy to fix loading issues
+    // Optimized chunking strategy for better performance
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Keep React in the main bundle to ensure it's always available
-          if (id.includes('react') || id.includes('react-dom')) {
-            return undefined; // Don't split React - include in main bundle
+          // Payment SDKs - separate chunk for payment flows
+          if (id.includes('@square/web-sdk') || id.includes('@paypal')) {
+            return 'payment-vendor';
           }
           
-          // Split other vendors
-          if (id.includes('@radix-ui')) {
+          // Icons - separate chunk to optimize loading
+          if (id.includes('lucide-react')) {
+            return 'icons';
+          }
+          
+          // Date utilities
+          if (id.includes('date-fns') || id.includes('react-day-picker')) {
+            return 'date-vendor';
+          }
+          
+          // Charts and visualizations
+          if (id.includes('recharts') || id.includes('d3')) {
+            return 'charts-vendor';
+          }
+          
+          // UI components
+          if (id.includes('@radix-ui') || id.includes('@dnd-kit')) {
             return 'ui-vendor';
           }
+          
+          // Data layer
           if (id.includes('@supabase') || id.includes('@tanstack/react-query')) {
             return 'data-vendor';
           }
+          
+          // Keep React in main bundle for immediate availability
+          if (id.includes('react') || id.includes('react-dom')) {
+            return undefined;
+          }
+          
+          // All other node_modules
           if (id.includes('node_modules')) {
             return 'vendor';
           }
@@ -104,6 +158,12 @@ export default defineConfig(({ mode }) => ({
       }
     },
     // Chunk size warnings
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    // Enable CSS code splitting
+    cssCodeSplit: true,
+    // Optimize deps
+    commonjsOptions: {
+      transformMixedEsModules: true
+    }
   }
 }));

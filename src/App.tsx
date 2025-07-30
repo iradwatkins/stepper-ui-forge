@@ -18,6 +18,12 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Load admin setup utilities for browser console access
 import "@/utils/setupAdmin";
+// Performance monitoring in development
+import { initPerformanceMonitoring } from "@/lib/utils/performance";
+
+if (import.meta.env.DEV) {
+  initPerformanceMonitoring();
+}
 
 
 // Loading component for lazy loaded routes

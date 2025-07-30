@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,17 +11,51 @@ import { WizardNavigator } from "@/components/create-event/wizard/WizardNavigato
 import { WizardControls } from "@/components/create-event/wizard/WizardControls";
 import { EventTypeSelection } from "@/components/create-event/EventTypeSelection";
 import { BasicInformation } from "@/components/create-event/BasicInformation";
-import { TicketConfigurationWizard, TicketType } from "@/components/create-event/TicketConfigurationWizard";
-import { VenueSelectionStep } from "@/components/create-event/VenueSelectionStep";
-import { SeatingChartWizard } from "@/components/create-event/SeatingChartWizard";
-import { PremiumSeatingTicketConfiguration } from "@/components/create-event/PremiumSeatingTicketConfiguration";
-import { ReviewStepWizard } from "@/components/create-event/ReviewStepWizard";
-import { EventCreationDebugPanelWrapper } from "@/components/debug/EventCreationDebugPanel";
+import { TicketType } from "@/components/create-event/TicketConfigurationWizard";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+
+// Lazy load heavy components
+const TicketConfigurationWizard = lazy(() => 
+  import("@/components/create-event/TicketConfigurationWizard").then(mod => ({ 
+    default: mod.TicketConfigurationWizard 
+  }))
+);
+const VenueSelectionStep = lazy(() => 
+  import("@/components/create-event/VenueSelectionStep").then(mod => ({ 
+    default: mod.VenueSelectionStep 
+  }))
+);
+const SeatingChartWizard = lazy(() => 
+  import("@/components/create-event/SeatingChartWizard").then(mod => ({ 
+    default: mod.SeatingChartWizard 
+  }))
+);
+const PremiumSeatingTicketConfiguration = lazy(() => 
+  import("@/components/create-event/PremiumSeatingTicketConfiguration").then(mod => ({ 
+    default: mod.PremiumSeatingTicketConfiguration 
+  }))
+);
+const ReviewStepWizard = lazy(() => 
+  import("@/components/create-event/ReviewStepWizard").then(mod => ({ 
+    default: mod.ReviewStepWizard 
+  }))
+);
+const EventCreationDebugPanelWrapper = lazy(() => 
+  import("@/components/debug/EventCreationDebugPanel").then(mod => ({ 
+    default: mod.EventCreationDebugPanelWrapper 
+  }))
+);
+
+// Loading component for lazy loaded components
+const ComponentLoader = () => (
+  <div className="flex items-center justify-center p-8">
+    <Loader2 className="w-8 h-8 animate-spin" />
+  </div>
+);
 
 // Internal wizard component that uses the context
 function CreateEventWizardInternal() {
@@ -391,40 +425,44 @@ function CreateEventWizardInternal() {
           return null;
         }
         return (
-          <TicketConfigurationWizard
-            form={form}
-            eventType={eventType}
-            onTicketsChange={handleTicketsChange}
-          />
+          <Suspense fallback={<ComponentLoader />}>
+            <TicketConfigurationWizard
+              form={form}
+              eventType={eventType}
+              onTicketsChange={handleTicketsChange}
+            />
+          </Suspense>
         );
         
       case 'venue-selection':
         return (
-          <VenueSelectionStep
-            form={form}
-            onVenueSelected={(venueLayoutId, venueData) => {
-              console.log('Venue selected:', venueLayoutId, venueData);
-              // Store venue selection in form
-              if (venueLayoutId) {
-                form.setValue('venueLayoutId', venueLayoutId);
-                // If venue has layout data with image, set it
-                if (venueData?.layout_data?.imageUrl) {
-                  form.setValue('venueImageUrl', venueData.layout_data.imageUrl);
-                  form.setValue('hasVenueImage', true);
+          <Suspense fallback={<ComponentLoader />}>
+            <VenueSelectionStep
+              form={form}
+              onVenueSelected={(venueLayoutId, venueData) => {
+                console.log('Venue selected:', venueLayoutId, venueData);
+                // Store venue selection in form
+                if (venueLayoutId) {
+                  form.setValue('venueLayoutId', venueLayoutId);
+                  // If venue has layout data with image, set it
+                  if (venueData?.layout_data?.imageUrl) {
+                    form.setValue('venueImageUrl', venueData.layout_data.imageUrl);
+                    form.setValue('hasVenueImage', true);
+                  }
                 }
-              }
-              // Advance to seating configuration
-              nextStep();
-            }}
-            onProceedWithCustom={() => {
-              console.log('Proceeding with custom layout');
-              // Clear any venue selection
-              form.setValue('venueLayoutId', null);
-              form.setValue('proceedWithCustomVenue', true);
-              // Go to seating configuration where they'll upload custom image
-              nextStep();
-            }}
-          />
+                // Advance to seating configuration
+                nextStep();
+              }}
+              onProceedWithCustom={() => {
+                console.log('Proceeding with custom layout');
+                // Clear any venue selection
+                form.setValue('venueLayoutId', null);
+                form.setValue('proceedWithCustomVenue', true);
+                // Go to seating configuration where they'll upload custom image
+                nextStep();
+              }}
+            />
+          </Suspense>
         );
         
       case 'seating-setup':
@@ -447,82 +485,90 @@ function CreateEventWizardInternal() {
                 </AlertDescription>
               </Alert>
               
-              <PremiumSeatingTicketConfiguration
-                form={form}
-                onSeatingConfigured={(seatingData) => {
-                  console.log('Premium seating and tickets configured:', seatingData);
-                  setSeatingConfig(seatingData);
-                  // Set the generated tickets from seating configuration
-                  if (seatingData.tickets) {
-                    setTicketTypes(seatingData.tickets);
-                  }
-                }}
-                onStepAdvance={() => {
-                  console.log('🚀 Advancing from Premium seating configuration');
-                  const result = nextStep();
-                  console.log('📈 nextStep result:', result);
-                  return result;
-                }}
-              />
+              <Suspense fallback={<ComponentLoader />}>
+                <PremiumSeatingTicketConfiguration
+                  form={form}
+                  onSeatingConfigured={(seatingData) => {
+                    console.log('Premium seating and tickets configured:', seatingData);
+                    setSeatingConfig(seatingData);
+                    // Set the generated tickets from seating configuration
+                    if (seatingData.tickets) {
+                      setTicketTypes(seatingData.tickets);
+                    }
+                  }}
+                  onStepAdvance={() => {
+                    console.log('🚀 Advancing from Premium seating configuration');
+                    const result = nextStep();
+                    console.log('📈 nextStep result:', result);
+                    return result;
+                  }}
+                />
+              </Suspense>
             </div>
           );
         }
         
         // For non-premium events, use the regular seating chart wizard
         return (
-          <SeatingChartWizard
-            form={form}
-            eventType={eventType}
-            ticketTypes={ticketTypes}
-            onSeatingConfigured={(seatingData) => {
-              console.log('Seating configured:', seatingData);
-              setSeatingConfig(seatingData);
-            }}
-            startingTab="setup"
-            // No showOnlyTab - allow full workflow in one step
-            onStepAdvance={() => {
-              console.log('🚀 onStepAdvance called from combined SeatingChartWizard');
-              const formData = form.getValues();
-              console.log('📊 Combined seating step validation data:', {
-                venueImageUrl: formData.venueImageUrl ? 'SET' : 'NOT_SET',
-                hasVenueImage: formData.hasVenueImage,
-                seats: formData.seats ? `${formData.seats.length} seats` : 'NO_SEATS',
-                seatCategories: formData.seatCategories ? `${formData.seatCategories.length} categories` : 'NO_CATEGORIES',
-                canGoForward: canGoForward,
-                currentStep: currentStep
-              });
-              const result = nextStep();
-              console.log('📈 nextStep result:', result);
-              return result;
-            }}
-          />
+          <Suspense fallback={<ComponentLoader />}>
+            <SeatingChartWizard
+              form={form}
+              eventType={eventType}
+              ticketTypes={ticketTypes}
+              onSeatingConfigured={(seatingData) => {
+                console.log('Seating configured:', seatingData);
+                setSeatingConfig(seatingData);
+              }}
+              startingTab="setup"
+              // No showOnlyTab - allow full workflow in one step
+              onStepAdvance={() => {
+                console.log('🚀 onStepAdvance called from combined SeatingChartWizard');
+                const formData = form.getValues();
+                console.log('📊 Combined seating step validation data:', {
+                  venueImageUrl: formData.venueImageUrl ? 'SET' : 'NOT_SET',
+                  hasVenueImage: formData.hasVenueImage,
+                  seats: formData.seats ? `${formData.seats.length} seats` : 'NO_SEATS',
+                  seatCategories: formData.seatCategories ? `${formData.seatCategories.length} categories` : 'NO_CATEGORIES',
+                  canGoForward: canGoForward,
+                  currentStep: currentStep
+                });
+                const result = nextStep();
+                console.log('📈 nextStep result:', result);
+                return result;
+              }}
+            />
+          </Suspense>
         );
         
       case 'seating-finalize':
         return (
-          <SeatingChartWizard
-            form={form}
-            eventType={eventType}
-            ticketTypes={ticketTypes}
-            onSeatingConfigured={(seatingData) => {
-              console.log('Seating configured:', seatingData);
-              setSeatingConfig(seatingData);
-            }}
-            startingTab="info"
-            showOnlyTab="info"
-          />
+          <Suspense fallback={<ComponentLoader />}>
+            <SeatingChartWizard
+              form={form}
+              eventType={eventType}
+              ticketTypes={ticketTypes}
+              onSeatingConfigured={(seatingData) => {
+                console.log('Seating configured:', seatingData);
+                setSeatingConfig(seatingData);
+              }}
+              startingTab="info"
+              showOnlyTab="info"
+            />
+          </Suspense>
         );
         
       case 'review':
         return (
-          <ReviewStepWizard
-            form={form}
-            eventType={eventType}
-            selectedCategories={selectedCategories}
-            uploadedImages={uploadedImages}
-            onSave={(status) => saveEvent(status)}
-            isSaving={isSaving}
-          />
+          <Suspense fallback={<ComponentLoader />}>
+            <ReviewStepWizard
+              form={form}
+              eventType={eventType}
+              selectedCategories={selectedCategories}
+              uploadedImages={uploadedImages}
+              onSave={(status) => saveEvent(status)}
+              isSaving={isSaving}
+            />
+          </Suspense>
         );
         
       default:
@@ -597,7 +643,9 @@ function CreateEventWizardInternal() {
       </div>
       
       {/* Debug Panel (development only) */}
-      <EventCreationDebugPanelWrapper />
+      <Suspense fallback={null}>
+        <EventCreationDebugPanelWrapper />
+      </Suspense>
     </div>
   );
 }
