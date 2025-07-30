@@ -1,5 +1,6 @@
 import { isEventPast7Days, isEventPast } from '@/lib/utils/eventDateUtils';
 import { cn } from '@/lib/utils';
+import { LazyImage } from '@/components/ui/LazyImage';
 
 interface PastEventImageProps {
   eventDate: string;
@@ -8,6 +9,9 @@ interface PastEventImageProps {
   className?: string;
   isOrganizer?: boolean;
   showPlaceholder?: boolean;
+  priority?: boolean;
+  width?: number;
+  height?: number;
 }
 
 export const PastEventImage = ({ 
@@ -16,7 +20,10 @@ export const PastEventImage = ({
   alt, 
   className, 
   isOrganizer = false,
-  showPlaceholder = true 
+  showPlaceholder = true,
+  priority = false,
+  width,
+  height
 }: PastEventImageProps) => {
   const shouldHideImage = isEventPast7Days(eventDate) && !isOrganizer;
   const isPastEvent = isEventPast(eventDate);
@@ -52,14 +59,16 @@ export const PastEventImage = ({
   
   return (
     <div className="relative">
-      <img
+      <LazyImage
         src={imageUrl}
         alt={alt}
         className={cn(
           isPastEvent && !isOrganizer ? "opacity-75" : "",
           className
         )}
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
+        width={width}
+        height={height}
       />
       {isPastEvent && !isOrganizer && (
         <div className="absolute top-2 right-2 bg-yellow-500/90 text-yellow-900 px-3 py-1 rounded-full text-xs font-medium">

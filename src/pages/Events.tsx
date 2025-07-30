@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
@@ -12,6 +12,8 @@ import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
 import { PastEventImage } from "@/components/event/PastEventImage";
 import { getEventImageUrl } from "@/lib/utils/imageUtils";
 import { formatEventDate, formatEventTime } from "@/lib/utils/dateUtils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { EventCardSkeleton } from "@/components/ui/EventCardSkeleton";
 
 interface EventImageData {
   original?: string;
@@ -26,11 +28,30 @@ interface EventImages {
   postcard?: EventImageData;
 }
 
+// SVG Icon Constants for better performance
+const CalendarIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
+</svg>;
+
+const LocationIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
+</svg>;
+
+const UserIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+</svg>;
+
+const UsersIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+</svg>;
+
 const Events = () => {
+  const isMobile = useIsMobile();
   const [events, setEvents] = useState<EventWithStats[]>([]);
   const [featuredEvent, setFeaturedEvent] = useState<EventWithStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Events");
   const [activeView, setActiveView] = useState("Masonry");
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -47,8 +68,10 @@ const Events = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentOffset, setCurrentOffset] = useState(0);
-  const INITIAL_EVENTS_LOAD = 50; // Load more initially to show 2026/2027 events
-  const EVENTS_PER_PAGE = 20; // Subsequent loads
+  
+  // Calculate these values once based on isMobile
+  const initialEventsLoad = useMemo(() => isMobile ? 12 : 20, [isMobile]);
+  const eventsPerPage = useMemo(() => isMobile ? 10 : 20, [isMobile]);
 
   // Helper function to get state name from abbreviation
   const getStateName = (abbreviation: string): string => {
@@ -90,25 +113,38 @@ const Events = () => {
     return 0;
   };
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Load initial events on component mount
   useEffect(() => {
     const loadInitialEvents = async () => {
       setLoading(true);
       try {
-        console.log('🔍 Loading initial events from Events page...');
-        const publicEvents = await EventsService.getPublicEvents(INITIAL_EVENTS_LOAD, 0, showPastEvents);
-        console.log('📊 Loaded initial events:', publicEvents.length, 'events');
-        
-        // Debug: Log date range of loaded events
-        if (publicEvents.length > 0) {
-          const firstDate = publicEvents[0].date;
-          const lastDate = publicEvents[publicEvents.length - 1].date;
-          console.log(`📅 Date range: ${firstDate} to ${lastDate}`);
+        if (import.meta.env.DEV) {
+          console.log('🔍 Loading initial events from Events page...');
+        }
+        const publicEvents = await EventsService.getPublicEvents(initialEventsLoad, 0, showPastEvents);
+        if (import.meta.env.DEV) {
+          console.log('📊 Loaded initial events:', publicEvents.length, 'events');
+          
+          // Debug: Log date range of loaded events
+          if (publicEvents.length > 0) {
+            const firstDate = publicEvents[0].date;
+            const lastDate = publicEvents[publicEvents.length - 1].date;
+            console.log(`📅 Date range: ${firstDate} to ${lastDate}`);
+          }
         }
         
         setEvents(publicEvents);
-        setCurrentOffset(INITIAL_EVENTS_LOAD);
-        setHasMore(publicEvents.length === INITIAL_EVENTS_LOAD);
+        setCurrentOffset(initialEventsLoad);
+        setHasMore(publicEvents.length === initialEventsLoad);
         
         // Set featured event (first event, static - won't change with filters)
         if (publicEvents.length > 0) {
@@ -127,7 +163,7 @@ const Events = () => {
     setCurrentOffset(0);
     setHasMore(true);
     loadInitialEvents();
-  }, [showPastEvents]);
+  }, [showPastEvents, initialEventsLoad]);
 
   // Load more events function
   const loadMoreEvents = async () => {
@@ -135,14 +171,18 @@ const Events = () => {
     
     setLoadingMore(true);
     try {
-      console.log(`🔍 Loading more events from offset ${currentOffset}...`);
-      const moreEvents = await EventsService.getPublicEvents(EVENTS_PER_PAGE, currentOffset, showPastEvents);
-      console.log(`📊 Loaded ${moreEvents.length} more events`);
+      if (import.meta.env.DEV) {
+        console.log(`🔍 Loading more events from offset ${currentOffset}...`);
+      }
+      const moreEvents = await EventsService.getPublicEvents(eventsPerPage, currentOffset, showPastEvents);
+      if (import.meta.env.DEV) {
+        console.log(`📊 Loaded ${moreEvents.length} more events`);
+      }
       
       if (moreEvents.length > 0) {
         setEvents(prevEvents => [...prevEvents, ...moreEvents]);
-        setCurrentOffset(prev => prev + EVENTS_PER_PAGE);
-        setHasMore(moreEvents.length === EVENTS_PER_PAGE);
+        setCurrentOffset(prev => prev + eventsPerPage);
+        setHasMore(moreEvents.length === eventsPerPage);
       } else {
         setHasMore(false);
       }
@@ -154,127 +194,98 @@ const Events = () => {
     }
   };
 
-  const filteredEvents = events.filter(event => {
-    // Enhanced search logic with fuzzy matching and priority scoring
-    const searchTerms = searchQuery.toLowerCase().trim().split(/\s+/);
-    const matchesSearch = searchQuery === "" || searchTerms.every(term => {
-      const searchFields = [
-        event.title?.toLowerCase() || '',
-        event.description?.toLowerCase() || '',
-        event.organization_name?.toLowerCase() || '',
-        event.location?.toLowerCase() || '',
-        ...(event.categories?.map(cat => cat.toLowerCase()) || [])
-      ].join(' ');
+  const filteredEvents = useMemo(() => {
+    return events.filter(event => {
+      // Enhanced search logic with fuzzy matching and priority scoring
+      const searchTerms = debouncedSearchQuery.toLowerCase().trim().split(/\s+/);
+      const matchesSearch = debouncedSearchQuery === "" || searchTerms.every(term => {
+        const searchFields = [
+          event.title?.toLowerCase() || '',
+          event.description?.toLowerCase() || '',
+          event.organization_name?.toLowerCase() || '',
+          event.location?.toLowerCase() || '',
+          ...(event.categories?.map(cat => cat.toLowerCase()) || [])
+        ].join(' ');
+        
+        // Check for exact matches first, then partial matches
+        return searchFields.includes(term) || 
+               searchFields.split(' ').some(word => word.startsWith(term));
+      });
       
-      // Check for exact matches first, then partial matches
-      return searchFields.includes(term) || 
-             searchFields.split(' ').some(word => word.startsWith(term));
+      const matchesCategory = activeCategory === "All Events" || 
+                             (() => {
+                               const categoryId = getCategoryId(activeCategory);
+                               // Check both ID format and label format for robustness
+                               return categoryId && (
+                                 event.categories?.includes(categoryId) ||
+                                 event.categories?.includes(activeCategory) ||
+                                 event.categories?.some(cat => cat.toLowerCase() === categoryId.toLowerCase()) ||
+                                 event.categories?.some(cat => cat.toLowerCase() === activeCategory.toLowerCase())
+                               );
+                             })();
+      
+      // Location filtering - check if event location contains the selected state
+      const matchesLocation = !selectedLocation || 
+                             event.location?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
+                             event.location?.toLowerCase().includes(getStateName(selectedLocation).toLowerCase());
+      
+      // Date range filtering
+      const matchesDateRange = (!selectedDateRange.start || event.date >= selectedDateRange.start) &&
+                              (!selectedDateRange.end || event.date <= selectedDateRange.end);
+
+      // Advanced filters
+      const eventPrice = getEventPriceValue(event);
+      const matchesPriceRange = (priceRange.min === 0 || eventPrice >= priceRange.min) &&
+                               (priceRange.max === 0 || eventPrice <= priceRange.max);
+
+      const eventCapacity = event.max_attendees || Infinity;
+      const matchesCapacityRange = (capacityRange.min === 0 || eventCapacity >= capacityRange.min) &&
+                                  (capacityRange.max === 0 || eventCapacity <= capacityRange.max);
+
+      const matchesTimeOfDay = timeOfDay === "any" || (() => {
+        if (!event.time) return true;
+        const hour = parseInt(event.time.split(':')[0]);
+        switch (timeOfDay) {
+          case "morning": return hour >= 6 && hour < 12;
+          case "afternoon": return hour >= 12 && hour < 17;
+          case "evening": return hour >= 17 && hour < 21;
+          case "night": return hour >= 21 || hour < 6;
+          default: return true;
+        }
+      })();
+
+      const matchesAdvancedEventType = advancedEventType === "any" || event.event_type === advancedEventType;
+      
+      return matchesSearch && matchesCategory && matchesLocation && matchesDateRange && 
+             matchesPriceRange && matchesCapacityRange && matchesTimeOfDay && matchesAdvancedEventType;
     });
-    
-    // Debug category filtering
-    if (activeCategory !== "All Events") {
-      console.log('🔍 Category Filter Debug:', {
-        activeCategory,
-        eventTitle: event.title,
-        eventCategories: event.categories,
-        categoryId: getCategoryId(activeCategory),
-        eventId: event.id
-      });
-    }
-    
-    const matchesCategory = activeCategory === "All Events" || 
-                           (() => {
-                             const categoryId = getCategoryId(activeCategory);
-                             // Check both ID format and label format for robustness
-                             return categoryId && (
-                               event.categories?.includes(categoryId) ||
-                               event.categories?.includes(activeCategory) ||
-                               event.categories?.some(cat => cat.toLowerCase() === categoryId.toLowerCase()) ||
-                               event.categories?.some(cat => cat.toLowerCase() === activeCategory.toLowerCase())
-                             );
-                           })();
-    
-    // Location filtering - check if event location contains the selected state
-    const matchesLocation = !selectedLocation || 
-                           event.location?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-                           event.location?.toLowerCase().includes(getStateName(selectedLocation).toLowerCase());
-    
-    // Date range filtering
-    const matchesDateRange = (!selectedDateRange.start || event.date >= selectedDateRange.start) &&
-                            (!selectedDateRange.end || event.date <= selectedDateRange.end);
-
-    // Advanced filters
-    const eventPrice = getEventPriceValue(event);
-    const matchesPriceRange = (priceRange.min === 0 || eventPrice >= priceRange.min) &&
-                             (priceRange.max === 0 || eventPrice <= priceRange.max);
-
-    const eventCapacity = event.max_attendees || Infinity;
-    const matchesCapacityRange = (capacityRange.min === 0 || eventCapacity >= capacityRange.min) &&
-                                (capacityRange.max === 0 || eventCapacity <= capacityRange.max);
-
-    const matchesTimeOfDay = timeOfDay === "any" || (() => {
-      if (!event.time) return true;
-      const hour = parseInt(event.time.split(':')[0]);
-      switch (timeOfDay) {
-        case "morning": return hour >= 6 && hour < 12;
-        case "afternoon": return hour >= 12 && hour < 17;
-        case "evening": return hour >= 17 && hour < 21;
-        case "night": return hour >= 21 || hour < 6;
-        default: return true;
-      }
-    })();
-
-    const matchesAdvancedEventType = advancedEventType === "any" || event.event_type === advancedEventType;
-    
-    const finalResult = matchesSearch && matchesCategory && matchesLocation && matchesDateRange && 
-           matchesPriceRange && matchesCapacityRange && matchesTimeOfDay && matchesAdvancedEventType;
-           
-    // Debug: Log final filtering result for non-All Events categories
-    if (activeCategory !== "All Events") {
-      console.log('🎯 Filter Result:', {
-        eventTitle: event.title,
-        finalResult,
-        matchesCategory,
-        matchesSearch,
-        matchesLocation,
-        matchesDateRange
-      });
-    }
-    
-    return finalResult;
-  });
-
-  // Debug: Summary of filtering results
-  console.log('📈 Filtering Summary:', {
-    totalEvents: events.length,
-    filteredEvents: filteredEvents.length,
-    activeCategory,
-    selectedLocation,
-    searchQuery
-  });
+  }, [events, debouncedSearchQuery, activeCategory, selectedLocation, selectedDateRange, priceRange, capacityRange, timeOfDay, advancedEventType]);
 
   // Sort filtered events
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    switch (sortBy) {
-      case "date_asc":
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      case "date_desc":
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      case "title_asc":
-        return a.title.localeCompare(b.title);
-      case "price_asc":
-        return getEventPriceValue(a) - getEventPriceValue(b);
-      case "price_desc":
-        return getEventPriceValue(b) - getEventPriceValue(a);
-      case "popularity":
-        // Sort by total tickets sold if available, otherwise by created date
-        const aPopularity = a.total_tickets_sold || 0;
-        const bPopularity = b.total_tickets_sold || 0;
-        return bPopularity - aPopularity;
-      default:
-        return 0;
-    }
-  });
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a, b) => {
+      switch (sortBy) {
+        case "date_asc":
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case "date_desc":
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case "title_asc":
+          return a.title.localeCompare(b.title);
+        case "price_asc":
+          return getEventPriceValue(a) - getEventPriceValue(b);
+        case "price_desc":
+          return getEventPriceValue(b) - getEventPriceValue(a);
+        case "popularity": {
+          // Sort by total tickets sold if available, otherwise by created date
+          const aPopularity = a.total_tickets_sold || 0;
+          const bPopularity = b.total_tickets_sold || 0;
+          return bPopularity - aPopularity;
+        }
+        default:
+          return 0;
+      }
+    });
+  }, [filteredEvents, sortBy]);
 
   const getEventPrice = (event: EventWithStats) => {
     if (event.event_type === 'simple') {
@@ -300,10 +311,14 @@ const Events = () => {
         .map(t => t.price)
         .filter(price => typeof price === 'number' && price >= 0);
       
-      console.log(`🎫 Ticketed event valid prices:`, validPrices);
+      if (import.meta.env.DEV) {
+        console.log(`🎫 Ticketed event valid prices:`, validPrices);
+      }
       
       if (validPrices.length === 0) {
-        console.log(`⚠️ Ticketed event showing: Free (no valid prices)`);
+        if (import.meta.env.DEV) {
+          console.log(`⚠️ Ticketed event showing: Free (no valid prices)`);
+        }
         return "Free";
       }
       
@@ -313,20 +328,28 @@ const Events = () => {
       // Format price display based on price range
       if (minPrice === 0) {
         const result = maxPrice > 0 ? `Free - $${maxPrice.toFixed(2)}` : "Free";
-        console.log(`✅ Ticketed event showing: ${result}`);
+        if (import.meta.env.DEV) {
+          console.log(`✅ Ticketed event showing: ${result}`);
+        }
         return result;
       } else if (minPrice === maxPrice) {
         const result = `$${minPrice.toFixed(2)}`;
-        console.log(`✅ Ticketed event showing: ${result}`);
+        if (import.meta.env.DEV) {
+          console.log(`✅ Ticketed event showing: ${result}`);
+        }
         return result;
       } else {
         const result = `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
-        console.log(`✅ Ticketed event showing: ${result}`);
+        if (import.meta.env.DEV) {
+          console.log(`✅ Ticketed event showing: ${result}`);
+        }
         return result;
       }
     }
     
-    console.log(`ℹ️ Event showing: Free (fallback)`);
+    if (import.meta.env.DEV) {
+      console.log(`ℹ️ Event showing: Free (fallback)`);
+    }
     return "Free";
   };
 
@@ -345,12 +368,14 @@ const Events = () => {
   // Advanced filters handlers
   const handleApplyAdvancedFilters = () => {
     // Filters are applied automatically through state updates
-    console.log('Applied advanced filters:', {
-      priceRange,
-      capacityRange,
-      timeOfDay,
-      advancedEventType
-    });
+    if (import.meta.env.DEV) {
+      console.log('Applied advanced filters:', {
+        priceRange,
+        capacityRange,
+        timeOfDay,
+        advancedEventType
+      });
+    }
   };
 
   const handleClearAdvancedFilters = () => {
@@ -360,33 +385,34 @@ const Events = () => {
     setAdvancedEventType("any");
   };
 
-  // Render event card component
-  const renderEventCard = (event: EventWithStats) => {
+  // Memoized Event Card Component
+  const EventCard = memo(({ event, eventPrice }: { event: EventWithStats; eventPrice: string }) => {
     // Get thumbnail for card view (faster loading)
-    const imageUrl = getEventImageUrl(event, 'small');
+    const imageUrl = getEventImageUrl(event, 'thumbnail');
 
     return (
-      <Link key={event.id} to={`/events/${event.id}`}>
-        <div className="bg-card rounded-xl border-2 border-border overflow-hidden hover:shadow-lg transition-shadow duration-200">
-          {/* Image Container */}
-          <div className="relative">
-            <div className="w-full h-56">
-              <PastEventImage
-                eventDate={event.date}
-                imageUrl={imageUrl}
-                alt={event.title}
-                className="w-full h-full object-cover"
-                showPlaceholder={true}
-              />
-            </div>
-            
-            {/* Price Badge - only show if not past 7 days */}
-            {!isEventPast7Days(event.date) && (
-              <div className="absolute top-3 left-3 bg-card/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-foreground border border-border">
-                {getEventPrice(event)}
-              </div>
-            )}
+      <div className="bg-card rounded-xl border-2 border-border overflow-hidden hover:shadow-lg transition-shadow duration-200">
+        {/* Image Container */}
+        <div className="relative">
+          <div className="w-full h-56">
+            <PastEventImage
+              eventDate={event.date}
+              imageUrl={imageUrl}
+              alt={event.title}
+              className="w-full h-full object-cover"
+              showPlaceholder={true}
+              width={400}
+              height={224}
+            />
           </div>
+          
+          {/* Price Badge - only show if not past 7 days */}
+          {!isEventPast7Days(event.date) && (
+            <div className="absolute top-3 left-3 bg-card/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-foreground border border-border">
+              {eventPrice}
+            </div>
+          )}
+        </div>
 
         {/* Content Container */}
         <div className="p-6 flex flex-col gap-4">
@@ -397,33 +423,25 @@ const Events = () => {
           
           {/* Date */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
-            </svg>
+            {CalendarIcon}
             <span className="font-medium">{formatEventDate(event.date)} {formatEventTime(event.time)}</span>
           </div>
 
           {/* Location */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
-            </svg>
+            {LocationIcon}
             <span className="font-medium">{event.location}</span>
           </div>
 
           {/* Organizer */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
-            </svg>
+            {UserIcon}
             <span className="font-medium">{event.organization_name || 'Event Organizer'}</span>
           </div>
 
           {/* Followers */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
+            {UsersIcon}
             <span className="font-medium">{event.follower_count || 0} followers</span>
           </div>
 
@@ -439,9 +457,20 @@ const Events = () => {
           )}
         </div>
       </div>
-    </Link>
-  );
-};
+    );
+  });
+
+  EventCard.displayName = 'EventCard';
+
+  // Render event card component
+  const renderEventCard = (event: EventWithStats) => {
+    const eventPrice = getEventPrice(event);
+    return (
+      <Link key={event.id} to={`/events/${event.id}`}>
+        <EventCard event={event} eventPrice={eventPrice} />
+      </Link>
+    );
+  };
 
   // Masonry layout helper functions
   const distributeMasonryEvents = (events: EventWithStats[]) => {
@@ -453,8 +482,8 @@ const Events = () => {
   };
 
   const renderMasonryCard = (event: EventWithStats, index: number) => {
-    // Get medium size for masonry view (good balance of quality and performance)
-    const imageUrl = getEventImageUrl(event, 'medium');
+    // Get small size for masonry view (better performance)
+    const imageUrl = getEventImageUrl(event, 'small');
 
     return (
       <Link key={event.id} to={`/events/${event.id}`}>
@@ -546,30 +575,22 @@ const Events = () => {
                       
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
-                          </svg>
+                          <div className="w-4 h-4">{CalendarIcon}</div>
                           <span className="text-sm">{formatEventDate(event.date)} {formatEventTime(event.time)}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
-                          </svg>
+                          <div className="w-4 h-4">{LocationIcon}</div>
                           <span className="text-sm">{event.location}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
-                          </svg>
+                          <div className="w-4 h-4">{UserIcon}</div>
                           <span className="text-sm">{event.organization_name || 'Event Organizer'}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                          </svg>
+                          <div className="w-4 h-4">{UsersIcon}</div>
                           <span className="text-sm">{event.follower_count || 0} followers</span>
                         </div>
                       </div>
@@ -581,7 +602,7 @@ const Events = () => {
           </div>
         );
       
-      case "Masonry":
+      case "Masonry": {
         const eventColumns = distributeMasonryEvents(eventsToShow);
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -594,6 +615,7 @@ const Events = () => {
             ))}
           </div>
         );
+      }
       
       default:
         return (
@@ -607,10 +629,31 @@ const Events = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 sm:mb-4 text-foreground">Discover Events</h1>
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground">Loading events...</p>
+        <div className="container mx-auto px-4 py-12 events-container">
+          {/* Skeleton for featured event */}
+          <div className="mb-12">
+            <div className="bg-card rounded-3xl border-2 border-border overflow-hidden shadow-lg">
+              <div className="relative h-96 md:h-[500px] bg-muted animate-pulse" />
+            </div>
+          </div>
+
+          {/* Skeleton for filters */}
+          <div className="mb-8">
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-2xl p-8 shadow-sm border border-purple-100 dark:border-purple-800/30">
+              <div className="h-12 bg-muted animate-pulse rounded-xl max-w-2xl mx-auto mb-6" />
+              <div className="flex justify-center gap-4">
+                <div className="h-10 bg-muted animate-pulse rounded-lg w-32" />
+                <div className="h-10 bg-muted animate-pulse rounded-lg w-32" />
+                <div className="h-10 bg-muted animate-pulse rounded-lg w-32" />
+              </div>
+            </div>
+          </div>
+
+          {/* Skeleton for event grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {Array.from({ length: isMobile ? 6 : 12 }).map((_, index) => (
+              <EventCardSkeleton key={index} view="grid" />
+            ))}
           </div>
         </div>
       </div>
@@ -630,10 +673,13 @@ const Events = () => {
                 <div className="relative h-96 md:h-[500px]">
                   <PastEventImage
                     eventDate={featuredEvent.date}
-                    imageUrl={getEventImageUrl(featuredEvent, 'original')}
+                    imageUrl={getEventImageUrl(featuredEvent, 'medium')}
                     alt={featuredEvent.title}
                     className="w-full h-full object-cover"
                     showPlaceholder={true}
+                    priority={true}
+                    width={1920}
+                    height={500}
                   />
                   
                   {/* Gradient Overlay */}
@@ -660,17 +706,13 @@ const Events = () => {
                     <div className="flex flex-wrap gap-6 mb-6">
                       {/* Date */}
                       <div className="flex items-center gap-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
-                        </svg>
+                        {CalendarIcon}
                         <span className="text-lg font-medium">{formatEventDate(featuredEvent.date)} {formatEventTime(featuredEvent.time)}</span>
                       </div>
 
                       {/* Location */}
                       <div className="flex items-center gap-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
-                        </svg>
+                        {LocationIcon}
                         <span className="text-lg font-medium">{featuredEvent.location}</span>
                       </div>
                     </div>
