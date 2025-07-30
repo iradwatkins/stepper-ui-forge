@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime'],
+    exclude: [],
+    force: true,
   },
   plugins: [
     react(),
@@ -104,11 +106,13 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "react": path.resolve(__dirname, "./node_modules/react"),
+      "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
     },
   },
   // Production optimizations
   build: {
-    target: 'esnext',
+    target: 'es2020',
     minify: 'terser',
     sourcemap: false,
     // Optimized chunking strategy for better performance
@@ -145,9 +149,12 @@ export default defineConfig(({ mode }) => ({
             return 'data-vendor';
           }
           
-          // Keep React in main bundle for immediate availability
-          if (id.includes('react') || id.includes('react-dom')) {
-            return undefined;
+          // Keep core React in its own chunk to prevent duplication
+          if (id.includes('react-dom')) {
+            return 'react-dom';
+          }
+          if (id.includes('react') && !id.includes('react-dom')) {
+            return 'react';
           }
           
           // All other node_modules
