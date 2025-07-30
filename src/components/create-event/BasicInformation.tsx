@@ -215,10 +215,13 @@ export const BasicInformation = ({
             </div>
 
             <div>
-              <Label htmlFor="venueName" className="text-sm font-medium">Venue Name</Label>
+              <Label htmlFor="venueName" className="text-sm font-medium">
+                Venue Name {eventType !== 'simple' && <span className="text-red-500">*</span>}
+                {eventType === 'simple' && <span className="text-green-600">(Optional)</span>}
+              </Label>
               <Input
                 id="venueName"
-                placeholder="Enter venue or location name..."
+                placeholder={eventType === 'simple' ? "Optional - Leave empty for 'To Be Announced'" : "Enter venue or location name..."}
                 {...form.register('venueName')}
                 className={`mt-1 ${form.formState.errors.venueName ? 'border-red-500' : ''}`}
               />
@@ -226,18 +229,24 @@ export const BasicInformation = ({
                 <p className="text-xs text-red-500 mt-1">{form.formState.errors.venueName.message}</p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Leave empty to use "To Be Announced"
+                {eventType === 'simple' 
+                  ? <><strong>For Simple Events:</strong> Venue name is completely optional - leave empty to use "To Be Announced"</>
+                  : <>Leave empty to use "To Be Announced"</>
+                }
               </p>
             </div>
 
             <div>
-              <Label htmlFor="address" className="text-sm font-medium">Venue Address</Label>
+              <Label htmlFor="address" className="text-sm font-medium">
+                Venue Address {eventType !== 'simple' && <span className="text-red-500">*</span>}
+                {eventType === 'simple' && <span className="text-green-600">(Optional)</span>}
+              </Label>
               <div className="mt-1">
                 <GooglePlacesInput
                   value={form.watch('address') || ''}
                   onChange={handleAddressChange}
                   onPlaceSelected={handlePlaceSelected}
-                  placeholder="Search for venue, address, or landmark..."
+                  placeholder={eventType === 'simple' ? "Optional - Leave empty for 'To Be Announced'" : "Search for venue, address, or landmark..."}
                   error={!!form.formState.errors.address}
                   className="w-full"
                 />
@@ -255,7 +264,7 @@ export const BasicInformation = ({
                     </>
                   )}
                   {eventType === 'simple' && (
-                    <> Leave empty to use "To Be Announced"</>
+                    <> <strong>For Simple Events:</strong> Address is completely optional - leave empty to use "To Be Announced"</>
                   )}
                 </p>
                 {selectedPlaceData && (
