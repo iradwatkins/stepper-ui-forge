@@ -28,22 +28,30 @@ interface EventImages {
   postcard?: EventImageData;
 }
 
-// SVG Icon Constants for better performance
-const CalendarIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-  <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
-</svg>;
+// SVG Icon Components for better performance
+const CalendarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path>
+  </svg>
+);
 
-const LocationIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
-</svg>;
+const LocationIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle>
+  </svg>
+);
 
-const UserIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
-</svg>;
+const UserIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+  </svg>
+);
 
-const UsersIcon = <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-</svg>;
+const UsersIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+  </svg>
+);
 
 const Events = () => {
   const isMobile = useIsMobile();
@@ -423,25 +431,25 @@ const Events = () => {
           
           {/* Date */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            {CalendarIcon}
+            <CalendarIcon />
             <span className="font-medium">{formatEventDate(event.date)} {formatEventTime(event.time)}</span>
           </div>
 
           {/* Location */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            {LocationIcon}
+            <LocationIcon />
             <span className="font-medium">{event.location}</span>
           </div>
 
           {/* Organizer */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            {UserIcon}
+            <UserIcon />
             <span className="font-medium">{event.organization_name || 'Event Organizer'}</span>
           </div>
 
           {/* Followers */}
           <div className="flex items-center gap-3 text-muted-foreground">
-            {UsersIcon}
+            <UsersIcon />
             <span className="font-medium">{event.follower_count || 0} followers</span>
           </div>
 
@@ -575,22 +583,22 @@ const Events = () => {
                       
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <div className="w-4 h-4">{CalendarIcon}</div>
+                          <div className="w-4 h-4"><CalendarIcon /></div>
                           <span className="text-sm">{formatEventDate(event.date)} {formatEventTime(event.time)}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <div className="w-4 h-4">{LocationIcon}</div>
+                          <div className="w-4 h-4"><LocationIcon /></div>
                           <span className="text-sm">{event.location}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <div className="w-4 h-4">{UserIcon}</div>
+                          <div className="w-4 h-4"><UserIcon /></div>
                           <span className="text-sm">{event.organization_name || 'Event Organizer'}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <div className="w-4 h-4">{UsersIcon}</div>
+                          <div className="w-4 h-4"><UsersIcon /></div>
                           <span className="text-sm">{event.follower_count || 0} followers</span>
                         </div>
                       </div>
@@ -706,13 +714,13 @@ const Events = () => {
                     <div className="flex flex-wrap gap-6 mb-6">
                       {/* Date */}
                       <div className="flex items-center gap-3">
-                        {CalendarIcon}
+                        <CalendarIcon />
                         <span className="text-lg font-medium">{formatEventDate(featuredEvent.date)} {formatEventTime(featuredEvent.time)}</span>
                       </div>
 
                       {/* Location */}
                       <div className="flex items-center gap-3">
-                        {LocationIcon}
+                        <LocationIcon />
                         <span className="text-lg font-medium">{featuredEvent.location}</span>
                       </div>
                     </div>
