@@ -52,7 +52,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
           {/* Navigation Links */}
           <nav className="flex-1 px-6 py-4">
             <div className="space-y-2">
-              <Link to="/events" onClick={handleLinkClick}>
+              <Link to="/events" onClick={handleLinkClick} className="block">
                 <Button 
                   variant={isActiveRoute("/events") ? "default" : "ghost"}
                   className="w-full justify-start text-left font-medium"
@@ -61,7 +61,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
                 </Button>
               </Link>
 
-              <Link to="/magazine" onClick={handleLinkClick}>
+              <Link to="/magazine" onClick={handleLinkClick} className="block">
                 <Button 
                   variant={isActiveRoute("/magazine") ? "default" : "ghost"}
                   className="w-full justify-start text-left font-medium"
@@ -70,7 +70,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
                 </Button>
               </Link>
 
-              <Link to="/classes" onClick={handleLinkClick}>
+              <Link to="/classes" onClick={handleLinkClick} className="block">
                 <Button 
                   variant={isActiveRoute("/classes") ? "default" : "ghost"}
                   className="w-full justify-start text-left font-medium"
@@ -79,7 +79,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
                 </Button>
               </Link>
 
-              <Link to="/community" onClick={handleLinkClick}>
+              <Link to="/community" onClick={handleLinkClick} className="block">
                 <Button 
                   variant={isActiveRoute("/community") ? "default" : "ghost"}
                   className="w-full justify-start text-left font-medium"
@@ -89,7 +89,7 @@ export const MobileMenu = ({ isOpen, onOpenChange }: MobileMenuProps) => {
               </Link>
 
               {user && (
-                <Link to="/create-event" onClick={handleLinkClick}>
+                <Link to="/create-event" onClick={handleLinkClick} className="block">
                   <Button 
                     variant={isActiveRoute("/create-event") ? "default" : "outline"}
                     className="w-full justify-start text-left font-medium"

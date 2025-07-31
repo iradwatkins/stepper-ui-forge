@@ -747,7 +747,7 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
       {/* Header */}
       <div className="border-b border-border relative overflow-visible">
         <div className={cn("flex h-16 items-center", isCollapsed ? "px-4" : "px-6")}>
-          <Link to="/dashboard" className="flex items-center space-x-2 flex-1">
+          <Link to="/dashboard" className="flex items-center gap-2 flex-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Calendar className="h-4 w-4 text-primary-foreground" />
             </div>

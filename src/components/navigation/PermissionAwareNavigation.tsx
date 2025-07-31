@@ -118,18 +118,18 @@ export const DashboardNavigation: React.FC = () => {
   })
 
   return (
-    <nav className="flex space-x-4">
+    <nav className="flex flex-col sm:flex-row gap-2 sm:gap-4">
       {filteredItems.map((item) => (
         <Button
           key={item.href}
           variant={location.pathname === item.href ? 'default' : 'ghost'}
           onClick={() => navigate(item.href)}
-          className="flex items-center space-x-2"
+          className="flex items-center gap-2 justify-start w-full sm:w-auto"
         >
           {item.icon}
           <span>{item.label}</span>
           {item.badge && (
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="ml-auto sm:ml-2">
               {item.badge}
             </Badge>
           )}
