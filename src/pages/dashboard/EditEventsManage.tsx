@@ -363,7 +363,7 @@ export default function EditEventsManage() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex gap-2">
-                      <Link to={`/dashboard/events/edit/${event.id}`} className="flex-1">
+                      <Link to={event.event_type === 'premium' ? `/dashboard/events/premium/edit/${event.id}` : `/dashboard/events/edit/${event.id}`} className="flex-1">
                         <Button size="sm" className="w-full">
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
@@ -465,7 +465,7 @@ export default function EditEventsManage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Link to={`/dashboard/events/edit/${event.id}`}>
+                        <Link to={event.event_type === 'premium' ? `/dashboard/events/premium/edit/${event.id}` : `/dashboard/events/edit/${event.id}`}>
                           <Button size="sm">
                             <Edit className="mr-2 h-4 w-4" />
                             Edit

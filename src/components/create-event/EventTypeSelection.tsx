@@ -2,7 +2,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckIcon, UsersIcon, TrendingUpIcon, CrownIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckIcon, UsersIcon, TrendingUpIcon, CrownIcon, ArrowRight, Info } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface EventType {
   id: 'simple' | 'ticketed' | 'premium';
@@ -109,7 +111,18 @@ const eventTypes: EventType[] = [
 ];
 
 export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelectionProps) => {
+  const navigate = useNavigate();
   console.log("EventTypeSelection rendering with eventType:", eventType);
+
+  const handleTypeSelection = (type: EventType) => {
+    if (type.id === 'premium') {
+      // Don't set the event type, just navigate
+      navigate('/dashboard/events/premium/create');
+    } else {
+      console.log("Selected event type:", type.id);
+      setEventType(type.id);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -120,9 +133,21 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
         </p>
       </div>
 
+      {/* Premium Event Redirect Notice */}
+      {eventType === '' && (
+        <Alert className="max-w-2xl mx-auto">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Note:</strong> Premium events with table seating are managed through your dashboard for a better experience.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
         {eventTypes.map((type) => {
           const isSelected = eventType === type.id;
+          const isPremium = type.id === 'premium';
+          
           return (
             <Card
               key={type.id}
@@ -131,10 +156,7 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
                   ? 'ring-2 ring-primary shadow-lg scale-105 bg-primary/5' 
                   : 'hover:shadow-lg border-border'
               }`}
-              onClick={() => {
-                console.log("Selected event type:", type.id);
-                setEventType(type.id);
-              }}
+              onClick={() => handleTypeSelection(type)}
             >
               {isSelected && (
                 <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center z-10">
@@ -176,7 +198,7 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
                     </ul>
                   </div>
 
-                  {isSelected && (
+                  {isSelected && !isPremium && (
                     <div className="pt-2 border-t border-border">
                       <p className="text-xs font-medium text-foreground mb-1">Next steps:</p>
                       <div className="flex flex-wrap gap-1">
@@ -186,6 +208,15 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
                           </Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  
+                  {isPremium && (
+                    <div className="pt-2 border-t border-border">
+                      <Button className="w-full" size="sm">
+                        Go to Dashboard
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
                     </div>
                   )}
                 </div>

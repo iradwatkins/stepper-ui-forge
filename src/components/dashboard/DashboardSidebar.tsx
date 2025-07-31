@@ -47,7 +47,8 @@ import {
   LineChart,
   UserCog,
   UserCircle,
-  ShieldCheck
+  ShieldCheck,
+  Crown
 } from 'lucide-react'
 
 interface NavigationItem {
@@ -297,6 +298,12 @@ export function DashboardSidebar({ open = true, onClose, className }: DashboardS
             icon: Trash2
           }
         ]
+      })
+      
+      items.push({
+        title: 'Premium Events',
+        href: '/dashboard/events/premium',
+        icon: Crown
       })
       
       items.push({

@@ -97,6 +97,9 @@ const LikedEvents = lazy(() => import("./pages/LikedEvents"));
 const QRScanner = lazy(() => import("./pages/QRScanner"));
 const EventDebug = lazy(() => import("./pages/EventDebug"));
 const MyBusinesses = lazy(() => import("./pages/dashboard/MyBusinesses"));
+const PremiumEvents = lazy(() => import("./pages/dashboard/PremiumEvents"));
+const CreatePremiumEvent = lazy(() => import("./pages/dashboard/CreatePremiumEvent"));
+const EditPremiumEvent = lazy(() => import("./pages/dashboard/EditPremiumEvent"));
 
 // Keep Navbar as synchronous since it's always needed
 import Navbar from "./components/Navbar";
@@ -201,6 +204,9 @@ const AppContent = () => {
           <Route path="events/edit/:id" element={<EditEvent />} />
           <Route path="events/drafts" element={<DraftEvents />} />
           <Route path="events/archived" element={<ArchivedEvents />} />
+          <Route path="events/premium" element={<PremiumEvents />} />
+          <Route path="events/premium/create" element={<CreatePremiumEvent />} />
+          <Route path="events/premium/edit/:id" element={<EditPremiumEvent />} />
           <Route path="venues" element={<VenueManagement />} />
           <Route path="tickets" element={<TicketsOverview />} />
           <Route path="tickets/:id" element={<TicketsOverview />} />
