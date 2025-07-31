@@ -209,8 +209,8 @@ const AppContent = () => {
           <Route path="events/premium/create" element={<CreatePremiumEvent />} />
           <Route path="events/premium/edit/:id" element={<EditPremiumEvent />} />
           <Route path="venues" element={<VenueManagement />} />
-          <Route path="venue-management/create-premium-event" element={<VenueManagementPremiumEvent mode="create" />} />
-          <Route path="venue-management/edit-premium-event/:id" element={<VenueManagementPremiumEvent mode="edit" />} />
+          <Route path="venues/create-premium-event" element={<VenueManagementPremiumEvent mode="create" />} />
+          <Route path="venues/edit-premium-event/:id" element={<VenueManagementPremiumEvent mode="edit" />} />
           <Route path="tickets" element={<TicketsOverview />} />
           <Route path="tickets/:id" element={<TicketsOverview />} />
           <Route path="tickets/analytics" element={<TicketAnalytics />} />

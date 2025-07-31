@@ -156,7 +156,8 @@ export class ReferralService {
           id,
           promotion_id,
           event_id,
-          follower_promotions!promotion_id (
+          is_active,
+          follower_promotions:promotion_id (
             follower_id,
             organizer_id,
             commission_rate,
@@ -513,7 +514,7 @@ Best regards`,
           promotion_id,
           event_id,
           is_active,
-          follower_promotions!promotion_id (
+          follower_promotions:promotion_id (
             follower_id,
             organizer_id
           )

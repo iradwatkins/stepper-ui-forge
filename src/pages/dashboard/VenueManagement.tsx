@@ -372,7 +372,7 @@ const VenueManagement: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <Button 
-            onClick={() => navigate('/dashboard/venue-management/create-premium-event')} 
+            onClick={() => navigate('/dashboard/venues/create-premium-event')} 
             className="bg-purple-600 hover:bg-purple-700"
           >
             <Crown className="w-4 h-4 mr-2" />
