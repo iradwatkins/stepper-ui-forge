@@ -96,6 +96,7 @@ export class ImageUploadService {
   async uploadVenueImage(
     file: File, 
     venueId: string, 
+    venueName?: string,
     userId?: string
   ): Promise<UploadResult> {
     const currentUser = userId || (await supabase.auth.getUser()).data.user?.id;
@@ -103,10 +104,24 @@ export class ImageUploadService {
       return { success: false, error: 'User not authenticated' };
     }
 
+    // Sanitize venue name for filename if provided
+    let filename = 'floor-plan';
+    if (venueName) {
+      const sanitizedName = sanitizeFilename(venueName)
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .slice(0, 50); // Limit length to avoid excessively long filenames
+      
+      if (sanitizedName) {
+        filename = `${sanitizedName}-floor-plan`;
+      }
+    }
+
     return this.uploadImage(file, {
       bucket: 'venue-images',
       folder: `${currentUser}/venues/${venueId}`,
-      filename: 'floor-plan',
+      filename: filename,
       maxSizeBytes: 10 * 1024 * 1024, // 10MB
       allowedTypes: ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/avif'],
       userId: currentUser

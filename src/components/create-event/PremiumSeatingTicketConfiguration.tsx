@@ -10,22 +10,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Upload as UploadIcon, 
-  FileImage,
-  Palette, 
   DollarSign,
-  Users,
   Info,
   CheckCircle,
-  MapPin,
-  Plus,
-  Trash2,
-  Building2
+  MapPin
 } from 'lucide-react';
 import { seatingService } from '@/lib/services/SeatingService';
 import PremiumSeatingManager from '@/components/seating/PremiumSeatingManager';
 import { SeatData, SeatCategory as EnhancedSeatCategory } from '@/types/seating';
-import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 import { TicketType } from './TicketConfigurationWizard';
 import { TicketConfigurationWizard } from './TicketConfigurationWizard';
@@ -50,11 +42,9 @@ export const PremiumSeatingTicketConfiguration = ({
     addDebugUpdate 
   } = useEventCreation();
   
-  const [activeTab, setActiveTab] = useState<'venue' | 'tickets' | 'seating' | 'review'>('venue');
-  const [currentStep, setCurrentStep] = useState(1);
+  const [activeTab, setActiveTab] = useState<'tickets' | 'seating' | 'review'>('tickets');
   const [isCompleted, setIsCompleted] = useState(false);
   const [venueImage, setVenueImage] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [seats, setSeats] = useState<SeatData[]>([]);
   const [categories, setCategories] = useState<EnhancedSeatCategory[]>([]);
   const [generatedTickets, setGeneratedTickets] = useState<TicketType[]>([]);
@@ -79,27 +69,11 @@ export const PremiumSeatingTicketConfiguration = ({
     };
   }, [claimFieldOwnership, releaseFieldOwnership, addDebugUpdate]);
   
-  // Initialize state based on what's already completed
+  // Initialize venue image from form data
   useEffect(() => {
     const existingImage = form.watch('venueImageUrl');
-    const hasSelectedVenue = form.watch('venueLayoutId');
-    const proceedWithCustom = form.watch('proceedWithCustomVenue');
-    const basicInfoCompleted = form.watch('title') && form.watch('date');
-    const eventImagesUploaded = form.watch('images')?.banner || form.watch('images')?.postcard;
-    
-    // Set initial step based on what's completed
-    if (basicInfoCompleted && eventImagesUploaded) {
-      setCurrentStep(3); // Start at venue management
-    }
-    
     if (existingImage) {
       setVenueImage(existingImage);
-      if (hasSelectedVenue) {
-        setCurrentStep(4); // Move to tickets if venue is selected
-        setActiveTab('tickets');
-      }
-    } else if (proceedWithCustom || !hasSelectedVenue) {
-      setActiveTab('venue');
     }
   }, [form]);
 
@@ -149,38 +123,6 @@ export const PremiumSeatingTicketConfiguration = ({
     return tickets;
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploadingImage(true);
-    try {
-      // Generate a temporary venue ID for the upload
-      const tempVenueId = `temp-${Date.now()}`;
-      const uploadResult = await imageUploadService.uploadVenueImage(file, tempVenueId);
-      
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'Upload failed');
-      }
-      
-      const imageUrl = uploadResult.url!; // We know it exists after success check
-      setVenueImage(imageUrl);
-      form.setValue('venueImageUrl', imageUrl);
-      form.setValue('hasVenueImage', true);
-      addDebugUpdate(COMPONENT_NAME, 'venueImageUrl', imageUrl);
-      addDebugUpdate(COMPONENT_NAME, 'hasVenueImage', true);
-      toast.success('Venue image uploaded successfully');
-      // Move to the next step (tickets) after successful upload
-      setCurrentStep(4);
-      setActiveTab('tickets');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast.error(`Failed to upload venue image: ${errorMessage}`);
-    } finally {
-      setUploadingImage(false);
-    }
-  };
 
   const handleSeatingConfigurationChange = (newSeats: SeatData[], newCategories: EnhancedSeatCategory[]) => {
     setSeats(newSeats);
@@ -208,27 +150,19 @@ export const PremiumSeatingTicketConfiguration = ({
   };
 
   const handleAdvanceToNext = () => {
-    // Sequential step progression
-    if (currentStep === 3 && activeTab === 'venue' && venueImage) {
-      setCurrentStep(4);
-      setActiveTab('tickets');
-    } else if (currentStep === 4 && activeTab === 'tickets' && ticketTypes.length > 0) {
-      setCurrentStep(5);
+    // Sequential tab progression
+    if (activeTab === 'tickets' && ticketTypes.length > 0) {
       setActiveTab('seating');
-    } else if (currentStep === 5 && activeTab === 'seating' && seats.length > 0) {
+    } else if (activeTab === 'seating' && seats.length > 0) {
       setIsCompleted(true);
       setActiveTab('review');
     } else if (activeTab === 'review' && onStepAdvance) {
-      // Clear the proceedWithCustomVenue flag when advancing
-      form.setValue('proceedWithCustomVenue', false);
       onStepAdvance();
     }
   };
 
   const canAdvance = () => {
     switch (activeTab) {
-      case 'venue':
-        return !!venueImage;
       case 'tickets':
         return ticketTypes.length > 0;
       case 'seating':
@@ -243,80 +177,22 @@ export const PremiumSeatingTicketConfiguration = ({
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold mb-2">Premium Event Venue Configuration</h2>
-        <p className="text-muted-foreground mb-4">
-          Complete the venue setup process step by step
+        <h2 className="text-2xl font-bold mb-2">Ticket & Seating Configuration</h2>
+        <p className="text-muted-foreground">
+          Configure tickets and seating for your premium event
         </p>
-        
-        {/* Step indicators */}
-        <div className="flex justify-center items-center space-x-4 text-sm">
-          <div className={cn(
-            "flex items-center",
-            currentStep >= 3 ? "text-primary font-medium" : "text-muted-foreground"
-          )}>
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
-              currentStep >= 3 ? "bg-primary text-white" : "bg-gray-200"
-            )}>
-              3
-            </div>
-            Venue
-          </div>
-          <div className="text-muted-foreground">→</div>
-          <div className={cn(
-            "flex items-center",
-            currentStep >= 4 ? "text-primary font-medium" : "text-muted-foreground"
-          )}>
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
-              currentStep >= 4 ? "bg-primary text-white" : "bg-gray-200"
-            )}>
-              4
-            </div>
-            Tickets
-          </div>
-          <div className="text-muted-foreground">→</div>
-          <div className={cn(
-            "flex items-center",
-            currentStep >= 5 ? "text-primary font-medium" : "text-muted-foreground"
-          )}>
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
-              currentStep >= 5 ? "bg-primary text-white" : "bg-gray-200"
-            )}>
-              5
-            </div>
-            Seating
-          </div>
-          <div className="text-muted-foreground">→</div>
-          <div className={cn(
-            "flex items-center",
-            isCompleted ? "text-green-600 font-medium" : "text-muted-foreground"
-          )}>
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center mr-2",
-              isCompleted ? "bg-green-600 text-white" : "bg-gray-200"
-            )}>
-              ✓
-            </div>
-            Ready
-          </div>
-        </div>
       </div>
 
-      {/* Progress Indicator */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">Progress</span>
-          <span className="text-sm text-muted-foreground">{Math.round((currentStep / 5) * 100)}% Complete</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-primary h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(currentStep / 5) * 100}%` }}
-          />
-        </div>
-      </div>
+      {/* Show alert if no venue image */}
+      {!venueImage && (
+        <Alert className="mb-6 border-amber-200 bg-amber-50">
+          <Info className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            <strong>Venue Required:</strong> Please select or create a venue in the previous step before configuring tickets and seating.
+          </AlertDescription>
+        </Alert>
+      )}
+
 
       {/* Show completion message when all steps are done */}
       {isCompleted && (
@@ -329,131 +205,35 @@ export const PremiumSeatingTicketConfiguration = ({
       )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger 
-            value="venue" 
-            disabled={currentStep < 3}
-            className={currentStep === 3 ? "ring-2 ring-primary" : ""}
-          >
-            <FileImage className="h-4 w-4 mr-2" />
-            3. Venue
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger 
             value="tickets" 
-            disabled={currentStep < 4 || !venueImage}
-            className={currentStep === 4 ? "ring-2 ring-primary" : ""}
+            disabled={!venueImage}
           >
             <DollarSign className="h-4 w-4 mr-2" />
-            4. Tickets
+            Tickets
           </TabsTrigger>
           <TabsTrigger 
             value="seating" 
-            disabled={currentStep < 5 || ticketTypes.length === 0}
-            className={currentStep === 5 ? "ring-2 ring-primary" : ""}
+            disabled={ticketTypes.length === 0}
           >
             <MapPin className="h-4 w-4 mr-2" />
-            5. Seating
+            Seating
           </TabsTrigger>
           <TabsTrigger 
             value="review" 
             disabled={!isCompleted}
-            className={isCompleted ? "ring-2 ring-green-500" : ""}
           >
             <CheckCircle className="h-4 w-4 mr-2" />
             Review
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="venue" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 3: Venue Management</CardTitle>
-              <CardDescription>
-                Upload your venue layout image or select from existing venues. This will be used to place seats and tables.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!venueImage ? (
-                <div className="venue-upload-container border-2 border-dashed border-gray-300 rounded-lg p-8 text-center relative overflow-hidden group hover:border-primary transition-colors">
-                  {/* Animated background gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 animate-pulse" />
-                  {/* Ripple effect */}
-                  <div className="venue-upload-ripple absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20" />
-                  
-                  <div className="relative z-10">
-                    <div className="relative inline-block">
-                      <UploadIcon className="venue-upload-icon h-16 w-16 mx-auto text-primary mb-4" />
-                      <div className="absolute -inset-2 bg-primary/20 rounded-full animate-ping" />
-                    </div>
-                    
-                    <Label htmlFor="venue-upload" className="cursor-pointer block">
-                      <div className="venue-upload-button inline-flex items-center justify-center px-8 py-4 mb-4 text-lg font-semibold text-white bg-primary rounded-lg hover:bg-primary/90 transform transition-all hover:scale-105 shadow-lg">
-                        <UploadIcon className="mr-2 h-5 w-5" />
-                        Upload Venue Image
-                      </div>
-                      <Input
-                        id="venue-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                        disabled={uploadingImage}
-                      />
-                    </Label>
-                    
-                    <p className="text-lg font-medium text-foreground mb-2">
-                      Click the button above to upload your venue layout
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Supports JPG, PNG, SVG up to 10MB
-                    </p>
-                  </div>
-                  
-                  <div className="mt-4 pt-4 border-t relative z-10">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Want to use a saved venue instead?
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open('/dashboard/venues', '_blank')}
-                    >
-                      <Building2 className="h-4 w-4 mr-2" />
-                      Manage Venues
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <img 
-                    src={venueImage} 
-                    alt="Venue layout" 
-                    className="w-full max-h-96 object-contain rounded-lg border"
-                  />
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setVenueImage(null);
-                      form.setValue('venueImageUrl', '');
-                      form.setValue('hasVenueImage', false);
-                      setSeats([]);
-                      setCategories([]);
-                      setGeneratedTickets([]);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Remove and upload different image
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="tickets" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Step 4: Create Ticket Types</CardTitle>
+              <CardTitle>Create Ticket Types</CardTitle>
               <CardDescription>
                 Define your ticket types and quantities. You'll place these tickets on the venue layout in the next step.
               </CardDescription>
@@ -463,7 +243,7 @@ export const PremiumSeatingTicketConfiguration = ({
               <Alert className="border-blue-200 bg-blue-50">
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
-                  <strong>Step 4 Instructions:</strong> Create your ticket types below. Each ticket type represents a different 
+                  <strong>Instructions:</strong> Create your ticket types below. Each ticket type represents a different 
                   pricing tier or seating category (e.g., VIP, Regular, Accessible). In the next step, you'll visually 
                   place these tickets on your venue layout.
                 </AlertDescription>
@@ -569,7 +349,7 @@ export const PremiumSeatingTicketConfiguration = ({
         <TabsContent value="seating" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Step 5: Configure Seating Layout</CardTitle>
+              <CardTitle>Configure Seating Layout</CardTitle>
               <CardDescription>
                 Place your tickets on the venue layout. Click to add individual seats or group tickets into tables. 
                 You can place up to {ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} seats based on your ticket quantities.
@@ -714,29 +494,23 @@ export const PremiumSeatingTicketConfiguration = ({
         <Button
           variant="outline"
           onClick={() => {
-            if (currentStep === 4 && activeTab === 'tickets') {
-              setCurrentStep(3);
-              setActiveTab('venue');
-            } else if (currentStep === 5 && activeTab === 'seating') {
-              setCurrentStep(4);
+            if (activeTab === 'seating') {
               setActiveTab('tickets');
             } else if (activeTab === 'review') {
-              setCurrentStep(5);
               setActiveTab('seating');
               setIsCompleted(false);
             }
           }}
-          disabled={currentStep === 3 && activeTab === 'venue'}
+          disabled={activeTab === 'tickets'}
         >
           Previous
         </Button>
         
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
-            {currentStep === 3 && "Upload your venue layout to continue"}
-            {currentStep === 4 && "Create ticket types for your event"}
-            {currentStep === 5 && "Place seats on the venue layout"}
-            {isCompleted && "Review your configuration"}
+            {activeTab === 'tickets' && "Create ticket types for your event"}
+            {activeTab === 'seating' && "Place seats on the venue layout"}
+            {activeTab === 'review' && "Review your configuration"}
           </p>
         </div>
         
@@ -746,7 +520,7 @@ export const PremiumSeatingTicketConfiguration = ({
           className={isCompleted && activeTab === 'review' ? 'bg-green-600 hover:bg-green-700' : ''}
         >
           {activeTab === 'review' ? 'Proceed to Final Review' : 
-           currentStep === 5 ? 'Complete Setup' : 'Next Step'}
+           activeTab === 'seating' ? 'Complete Setup' : 'Next Step'}
         </Button>
       </div>
     </div>

@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from 'sonner';
+import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { 
   Plus, 
   Save, 
@@ -68,16 +70,20 @@ interface PriceCategory {
 
 interface SeatingLayoutManagerProps {
   eventId?: string;
-  onLayoutSaved?: (layout: SeatingLayout) => void;
+  onLayoutSaved?: (layout: SeatingLayout, imageFile?: File) => void;
   initialLayout?: SeatingLayout;
   mode?: 'create' | 'edit' | 'template';
+  venueId?: string;
+  venueName?: string;
 }
 
 const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
   eventId,
   onLayoutSaved,
   initialLayout,
-  mode = 'create'
+  mode = 'create',
+  venueId,
+  venueName
 }) => {
   const [layout, setLayout] = useState<SeatingLayout>(
     initialLayout || {
@@ -110,6 +116,7 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -124,24 +131,69 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
     }));
   }, [layout.seats]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        setLayout(prev => ({
-          ...prev,
-          imageUrl: e.target?.result as string,
-          imageWidth: img.width,
-          imageHeight: img.height
-        }));
+    // Store the file for later upload
+    setImageFile(file);
+
+    // If we have a venueId (edit mode), upload to Supabase storage immediately
+    if (venueId) {
+      try {
+        toast.loading('Uploading venue image...');
+        
+        // Upload the image with the venue name
+        const result = await imageUploadService.uploadVenueImage(
+          file, 
+          venueId,
+          venueName || layout.name || undefined
+        );
+
+        if (result.success && result.url) {
+          // Get image dimensions
+          const img = new Image();
+          img.onload = () => {
+            setLayout(prev => ({
+              ...prev,
+              imageUrl: result.url!,
+              imageWidth: img.width,
+              imageHeight: img.height
+            }));
+            toast.dismiss();
+            toast.success('Venue image uploaded successfully');
+          };
+          img.onerror = () => {
+            toast.dismiss();
+            toast.error('Failed to load uploaded image');
+          };
+          img.src = result.url;
+        } else {
+          toast.dismiss();
+          toast.error(result.error || 'Failed to upload image');
+        }
+      } catch (error) {
+        toast.dismiss();
+        toast.error('Failed to upload image');
+        console.error('Image upload error:', error);
+      }
+    } else {
+      // For create mode, convert to data URL for preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          setLayout(prev => ({
+            ...prev,
+            imageUrl: e.target?.result as string,
+            imageWidth: img.width,
+            imageHeight: img.height
+          }));
+        };
+        img.src = e.target?.result as string;
       };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleCanvasClick = (event: React.MouseEvent) => {
@@ -286,10 +338,11 @@ const SeatingLayoutManager: React.FC<SeatingLayoutManagerProps> = ({
       updatedAt: new Date()
     };
 
-    // In a real app, this would save to a backend
+    // Pass the image file if we're in create mode and have one
+    const fileToPass = (!venueId && imageFile && layout.imageUrl?.startsWith('data:')) ? imageFile : undefined;
+    
     console.log('Saving layout:', savedLayout);
-    onLayoutSaved?.(savedLayout);
-    alert('Layout saved successfully!');
+    onLayoutSaved?.(savedLayout, fileToPass);
   };
 
   const addPriceCategory = () => {

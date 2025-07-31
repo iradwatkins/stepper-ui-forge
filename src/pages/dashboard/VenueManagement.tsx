@@ -30,6 +30,7 @@ import SeatingLayoutManager from '@/components/seating/SeatingLayoutManager';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { VenueService, type VenueLayout } from '@/lib/services/VenueService';
+import { imageUploadService } from '@/lib/services/ImageUploadService';
 
 const VenueManagement: React.FC = () => {
   const { user } = useAuth();
@@ -86,7 +87,7 @@ const VenueManagement: React.FC = () => {
     setIsEditing(true);
   };
 
-  const handleVenueLayoutSaved = async (layout: Partial<VenueLayout>) => {
+  const handleVenueLayoutSaved = async (layout: Partial<VenueLayout>, imageFile?: File) => {
     try {
       setLoading(true);
       
@@ -116,13 +117,13 @@ const VenueManagement: React.FC = () => {
           throw new Error('Failed to update venue');
         }
       } else {
-        // Create new venue
+        // Create new venue first
         const created = await VenueService.createVenue({
           name: layout.name,
           description: layout.description,
           layout_data: {
             venueType: layout.venueType,
-            imageUrl: layout.imageUrl,
+            imageUrl: layout.imageUrl, // This might be a data URL initially
             capacity: layout.capacity,
             priceCategories: layout.priceCategories,
             seats: layout.seats,
@@ -132,7 +133,40 @@ const VenueManagement: React.FC = () => {
         });
         
         if (created) {
-          setVenues([...venues, created]);
+          // If we have an image file and the image is a data URL, upload it to storage
+          if (imageFile && layout.imageUrl?.startsWith('data:')) {
+            const uploadResult = await imageUploadService.uploadVenueImage(
+              imageFile,
+              created.id,
+              layout.name
+            );
+            
+            if (uploadResult.success && uploadResult.url) {
+              // Update the venue with the proper image URL
+              const updatedWithImage = await VenueService.updateVenue(created.id, {
+                layout_data: {
+                  venueType: created.venueType,
+                  imageUrl: uploadResult.url,
+                  capacity: created.capacity,
+                  priceCategories: created.priceCategories,
+                  seats: created.seats,
+                  isTemplate: created.isTemplate,
+                  tags: created.tags
+                }
+              });
+              
+              if (updatedWithImage) {
+                setVenues([...venues, updatedWithImage]);
+              } else {
+                setVenues([...venues, created]);
+              }
+            } else {
+              setVenues([...venues, created]);
+            }
+          } else {
+            setVenues([...venues, created]);
+          }
+          
           toast.success('Venue layout created successfully');
         } else {
           throw new Error('Failed to create venue');
@@ -316,7 +350,8 @@ const VenueManagement: React.FC = () => {
           } : undefined}
           mode={isCreating ? 'create' : 'edit'}
           onLayoutSaved={handleVenueLayoutSaved}
-          venueImageUrl={selectedVenue?.imageUrl}
+          venueId={selectedVenue?.id}
+          venueName={selectedVenue?.name}
         />
       </div>
     );

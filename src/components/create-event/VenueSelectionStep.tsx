@@ -5,6 +5,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Building2, 
   Plus, 
@@ -15,13 +19,16 @@ import {
   Eye, 
   ExternalLink,
   RefreshCw,
-  Upload as UploadIcon
+  Upload as UploadIcon,
+  FileImage,
+  Loader2
 } from 'lucide-react';
 import { EventFormData } from '@/types/event-form';
 import { useAuth } from '@/contexts/AuthContext';
 import { VenueService, type VenueLayout } from '@/lib/services/VenueService';
 import { useEventCreation } from '@/contexts/EventCreationContext';
 import { SeatAdapterFacade } from '@/domain/seat';
+import { imageUploadService } from '@/lib/services/ImageUploadService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +59,17 @@ export const VenueSelectionStep = ({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [venueServiceAvailable, setVenueServiceAvailable] = useState(true);
+  
+  // Inline venue creation state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createVenueForm, setCreateVenueForm] = useState({
+    name: '',
+    description: '',
+    venueType: 'theater' as 'theater' | 'stadium' | 'arena' | 'table-service' | 'general-admission',
+    imageFile: null as File | null,
+    imagePreview: ''
+  });
+  const [isCreatingVenue, setIsCreatingVenue] = useState(false);
   
   const COMPONENT_NAME = 'VenueSelectionStep';
 
@@ -205,6 +223,101 @@ export const VenueSelectionStep = ({
     // Open venue management in new tab
     window.open('/dashboard/venues', '_blank');
     toast.info('Create or edit venues in the new tab, then refresh here to see them');
+  };
+
+  // Handle inline venue creation
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCreateVenueForm(prev => ({
+        ...prev,
+        imageFile: file,
+        imagePreview: e.target?.result as string
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCreateVenue = async () => {
+    if (!createVenueForm.name.trim()) {
+      toast.error('Please enter a venue name');
+      return;
+    }
+
+    if (!createVenueForm.imageFile) {
+      toast.error('Please select a venue layout image');
+      return;
+    }
+
+    setIsCreatingVenue(true);
+    try {
+      // First, create the venue entry
+      const tempVenueId = `temp-${Date.now()}`;
+      
+      // Upload the image with the venue name
+      const uploadResult = await imageUploadService.uploadVenueImage(
+        createVenueForm.imageFile,
+        tempVenueId,
+        createVenueForm.name,
+        user?.id
+      );
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload image');
+      }
+
+      // Create the venue with the uploaded image URL
+      const newVenue = await VenueService.createVenue({
+        name: createVenueForm.name,
+        description: createVenueForm.description || '',
+        layout_data: {
+          venueType: createVenueForm.venueType,
+          imageUrl: uploadResult.url!,
+          capacity: 0, // Will be set when seats are configured
+          priceCategories: [],
+          seats: [],
+          isTemplate: false,
+          tags: []
+        }
+      });
+
+      if (!newVenue) {
+        throw new Error('Failed to create venue');
+      }
+
+      // Add to venues list
+      setVenues(prev => [newVenue, ...prev]);
+      
+      // Select the newly created venue
+      handleVenueSelect(newVenue);
+      
+      // Close dialog and reset form
+      setShowCreateDialog(false);
+      setCreateVenueForm({
+        name: '',
+        description: '',
+        venueType: 'theater',
+        imageFile: null,
+        imagePreview: ''
+      });
+
+      toast.success('Venue created and selected successfully!');
+    } catch (error) {
+      console.error('Error creating venue:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create venue');
+    } finally {
+      setIsCreatingVenue(false);
+    }
   };
 
   const filteredVenues = venues.filter(venue => 
@@ -364,25 +477,160 @@ export const VenueSelectionStep = ({
         </Alert>
       )}
       
-      {/* Option to proceed without venue */}
+      {/* Option to create new venue inline */}
       {!selectedVenue && (
         <Card className="mt-4">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <h3 className="text-lg font-medium">
-                {venues.length === 0 ? "Don't have a venue layout yet?" : "Prefer to upload a custom layout?"}
+                {venues.length === 0 ? "Don't have a venue layout yet?" : "Need to create a new venue?"}
               </h3>
               <p className="text-muted-foreground">
-                You can upload a custom venue image and configure seating in the next step.
+                Create a new venue layout and save it to your profile for future use.
               </p>
-              <Button onClick={onProceedWithCustom} variant="secondary" className="w-full max-w-xs">
-                <UploadIcon className="h-4 w-4 mr-2" />
-                Upload Custom Venue Layout
+              <Button onClick={() => setShowCreateDialog(true)} variant="secondary" className="w-full max-w-xs">
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Venue
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Inline Venue Creation Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Venue</DialogTitle>
+            <DialogDescription>
+              Create a new venue layout that will be saved to your profile for future events.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Venue Name */}
+            <div>
+              <Label htmlFor="venue-name">Venue Name *</Label>
+              <Input
+                id="venue-name"
+                placeholder="e.g., Madison Square Garden"
+                value={createVenueForm.name}
+                onChange={(e) => setCreateVenueForm(prev => ({ ...prev, name: e.target.value }))}
+                disabled={isCreatingVenue}
+              />
+            </div>
+
+            {/* Venue Type */}
+            <div>
+              <Label htmlFor="venue-type">Venue Type *</Label>
+              <Select
+                value={createVenueForm.venueType}
+                onValueChange={(value) => setCreateVenueForm(prev => ({ 
+                  ...prev, 
+                  venueType: value as typeof createVenueForm.venueType 
+                }))}
+                disabled={isCreatingVenue}
+              >
+                <SelectTrigger id="venue-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="theater">Theater</SelectItem>
+                  <SelectItem value="stadium">Stadium</SelectItem>
+                  <SelectItem value="arena">Arena</SelectItem>
+                  <SelectItem value="table-service">Table Service</SelectItem>
+                  <SelectItem value="general-admission">General Admission</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label htmlFor="venue-description">Description (Optional)</Label>
+              <Textarea
+                id="venue-description"
+                placeholder="Describe your venue..."
+                value={createVenueForm.description}
+                onChange={(e) => setCreateVenueForm(prev => ({ ...prev, description: e.target.value }))}
+                disabled={isCreatingVenue}
+                rows={3}
+              />
+            </div>
+
+            {/* Image Upload */}
+            <div>
+              <Label htmlFor="venue-image">Venue Layout Image *</Label>
+              {!createVenueForm.imagePreview ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <FileImage className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                  <Label htmlFor="venue-image-input" className="cursor-pointer">
+                    <div className="text-sm font-medium text-primary hover:text-primary/80">
+                      Click to upload venue layout
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Supports JPG, PNG, SVG up to 10MB
+                    </p>
+                  </Label>
+                  <Input
+                    id="venue-image-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                    disabled={isCreatingVenue}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <img 
+                    src={createVenueForm.imagePreview} 
+                    alt="Venue preview" 
+                    className="w-full max-h-64 object-contain rounded-lg border"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCreateVenueForm(prev => ({ 
+                      ...prev, 
+                      imageFile: null, 
+                      imagePreview: '' 
+                    }))}
+                    disabled={isCreatingVenue}
+                  >
+                    Remove Image
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateDialog(false)}
+              disabled={isCreatingVenue}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateVenue}
+              disabled={isCreatingVenue || !createVenueForm.name || !createVenueForm.imageFile}
+            >
+              {isCreatingVenue ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Venue
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
