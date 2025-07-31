@@ -17,7 +17,7 @@ export const EventHeader = ({ children }: EventHeaderProps) => {
           variant="outline"
           size="sm"
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
+          className="flex items-center gap-2 text-white hover:text-gray-100 dark:text-white dark:hover:text-gray-200 border-white/20 hover:border-white/40"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           Back

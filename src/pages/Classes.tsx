@@ -10,7 +10,6 @@ import {
   Users, 
   Star, 
   Play, 
-  Filter, 
   Search, 
   MapPin, 
   GraduationCap, 
@@ -294,7 +293,7 @@ export default function Classes() {
           <div className="lg:col-span-3">
             <Card>
               <CardContent className="p-6">
-                <div className="grid md:grid-cols-4 gap-4 mb-4">
+                <div className="grid md:grid-cols-3 gap-4 mb-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
@@ -328,11 +327,6 @@ export default function Classes() {
                       ))}
                     </SelectContent>
                   </Select>
-
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Apply Filters
-                  </Button>
                 </div>
 
                 {/* Location Search Bar */}

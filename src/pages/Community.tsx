@@ -365,7 +365,7 @@ export default function Community() {
           <div className="lg:col-span-3">
             <Card>
               <CardContent className="p-6">
-                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
@@ -389,11 +389,6 @@ export default function Community() {
                       ))}
                     </SelectContent>
                   </Select>
-
-                  <Button variant="outline" className="w-full">
-                    <Filter className="w-4 h-4 mr-2" />
-                    More Filters
-                  </Button>
                 </div>
 
                 {/* Location Search Bar */}
