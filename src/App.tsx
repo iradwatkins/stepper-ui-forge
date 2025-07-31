@@ -82,6 +82,7 @@ const EventAssignments = lazy(() => import("./pages/dashboard/EventAssignments")
 const Schedule = lazy(() => import("./pages/dashboard/Schedule"));
 const AudienceInsights = lazy(() => import("./pages/dashboard/AudienceInsights"));
 const VenueManagement = lazy(() => import("./pages/dashboard/VenueManagement"));
+const VenueManagementPremiumEvent = lazy(() => import("./pages/dashboard/VenueManagementPremiumEvent"));
 const CashPaymentDashboardPage = lazy(() => import("./pages/CashPaymentDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminAuth = lazy(() => import("./pages/AdminAuth"));
@@ -208,6 +209,8 @@ const AppContent = () => {
           <Route path="events/premium/create" element={<CreatePremiumEvent />} />
           <Route path="events/premium/edit/:id" element={<EditPremiumEvent />} />
           <Route path="venues" element={<VenueManagement />} />
+          <Route path="venue-management/create-premium-event" element={<VenueManagementPremiumEvent mode="create" />} />
+          <Route path="venue-management/edit-premium-event/:id" element={<VenueManagementPremiumEvent mode="edit" />} />
           <Route path="tickets" element={<TicketsOverview />} />
           <Route path="tickets/:id" element={<TicketsOverview />} />
           <Route path="tickets/analytics" element={<TicketAnalytics />} />

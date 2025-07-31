@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,8 @@ import {
   Download,
   Eye,
   Settings,
-  AlertTriangle
+  AlertTriangle,
+  Crown
 } from 'lucide-react';
 import SeatingLayoutManager from '@/components/seating/SeatingLayoutManager';
 import { toast } from 'sonner';
@@ -34,6 +36,7 @@ import { imageUploadService } from '@/lib/services/ImageUploadService';
 
 const VenueManagement: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [venues, setVenues] = useState<VenueLayout[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueLayout | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -368,6 +371,13 @@ const VenueManagement: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={() => navigate('/dashboard/venue-management/create-premium-event')} 
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Crown className="w-4 h-4 mr-2" />
+            Create Premium Event
+          </Button>
           <label htmlFor="import-venue">
             <Button variant="outline" className="cursor-pointer" disabled={loading || !venueServiceAvailable}>
               <Upload className="w-4 h-4 mr-2" />

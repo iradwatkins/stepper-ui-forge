@@ -116,8 +116,8 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
 
   const handleTypeSelection = (type: EventType) => {
     if (type.id === 'premium') {
-      // Don't set the event type, just navigate
-      navigate('/dashboard/events/premium/create');
+      // Navigate to venue management for premium events
+      navigate('/dashboard/venue-management/create-premium-event');
     } else {
       console.log("Selected event type:", type.id);
       setEventType(type.id);
@@ -138,7 +138,7 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
         <Alert className="max-w-2xl mx-auto">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            <strong>Note:</strong> Premium events with table seating are managed through your dashboard for a better experience.
+            <strong>Note:</strong> Premium events with table seating are created through the Venue Management section for a specialized workflow.
           </AlertDescription>
         </Alert>
       )}
@@ -214,7 +214,7 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
                   {isPremium && (
                     <div className="pt-2 border-t border-border">
                       <Button className="w-full" size="sm">
-                        Go to Dashboard
+                        Go to Venue Management
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
                     </div>
