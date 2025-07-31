@@ -15,7 +15,11 @@
     <link rel="icon" type="image/svg+xml" href="/steppers-icon.svg" />
     <link rel="manifest" href="/manifest.json" />
     
-    <!-- Google Fonts -->
+    <!-- Preconnect to critical domains for faster connections -->
+    <link rel="preconnect" href="https://aszzhlgwfbijaotfddsh.supabase.co" crossorigin>
+    <link rel="dns-prefetch" href="https://aszzhlgwfbijaotfddsh.supabase.co">
+    
+    <!-- Google Fonts with display swap for better performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@600;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
@@ -40,6 +44,10 @@
     
     <!-- Square Web SDK - Load it FIRST before React -->
     <script type="text/javascript" src="https://web.squarecdn.com/v1/square.js"></script>
+    
+    <!-- Preload critical resources -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+    <link rel="modulepreload" href="/src/App.tsx" />
   </head>
 
   <body>

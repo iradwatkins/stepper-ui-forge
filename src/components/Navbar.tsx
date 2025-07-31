@@ -6,6 +6,7 @@ import { PlusIcon, ShoppingBag } from "lucide-react";
 import { useTheme } from "next-themes";
 import DayNightSwitch from "@/components/ui/DayNightSwitch";
 import { Link, useLocation } from "react-router-dom";
+import { PreloadableLink } from "@/components/navigation/PreloadableLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { UserProfile } from "@/components/auth/UserProfile";
@@ -95,41 +96,41 @@ const Navbar = () => {
           
           {/* Right: Full Navigation */}
           <div className="flex items-center gap-3">
-            <Link to="/events">
+            <PreloadableLink to="/events">
               <Button 
                 variant={location.pathname === "/events" ? "default" : "ghost"}
                 className="font-medium text-sm px-3 h-9"
               >
                 Events
               </Button>
-            </Link>
+            </PreloadableLink>
 
-            <Link to="/magazine">
+            <PreloadableLink to="/magazine">
               <Button 
                 variant={location.pathname === "/magazine" ? "default" : "ghost"}
                 className="font-medium text-sm px-3 h-9"
               >
                 Magazine
               </Button>
-            </Link>
+            </PreloadableLink>
 
-            <Link to="/classes">
+            <PreloadableLink to="/classes">
               <Button 
                 variant={location.pathname === "/classes" ? "default" : "ghost"}
                 className="font-medium text-sm px-3 h-9"
               >
                 Classes
               </Button>
-            </Link>
+            </PreloadableLink>
 
-            <Link to="/community">
+            <PreloadableLink to="/community">
               <Button 
                 variant={location.pathname === "/community" ? "default" : "ghost"}
                 className="font-medium text-sm px-3 h-9"
               >
                 Community
               </Button>
-            </Link>
+            </PreloadableLink>
             
             {user && (
               <Link to="/create-event">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { EventsService } from "@/lib/events-db";
@@ -12,6 +12,9 @@ import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
 import { LazyEventImage } from "@/components/event/LazyEventImage";
 import { getEventImageUrl } from "@/lib/utils/imageUtils";
 import { formatEventDate, formatEventTime } from "@/lib/utils/dateUtils";
+import { useDebounce } from "@/hooks/useDebounce";
+import { EventCardSkeleton, EventListSkeleton, EventMasonrySkeleton, FeaturedEventSkeleton } from "@/components/event/EventCardSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface EventImageData {
   original?: string;
@@ -31,6 +34,7 @@ const Events = () => {
   const [featuredEvent, setFeaturedEvent] = useState<EventWithStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300); // 300ms delay
   const [activeCategory, setActiveCategory] = useState("All Events");
   const [activeView, setActiveView] = useState("Masonry");
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -154,127 +158,108 @@ const Events = () => {
     }
   };
 
-  const filteredEvents = events.filter(event => {
-    // Enhanced search logic with fuzzy matching and priority scoring
-    const searchTerms = searchQuery.toLowerCase().trim().split(/\s+/);
-    const matchesSearch = searchQuery === "" || searchTerms.every(term => {
-      const searchFields = [
-        event.title?.toLowerCase() || '',
-        event.description?.toLowerCase() || '',
-        event.organization_name?.toLowerCase() || '',
-        event.location?.toLowerCase() || '',
-        ...(event.categories?.map(cat => cat.toLowerCase()) || [])
-      ].join(' ');
+  // Memoize filtered events to prevent recalculation on every render
+  const filteredEvents = useMemo(() => {
+    return events.filter(event => {
+      // Enhanced search logic with fuzzy matching and priority scoring
+      const searchTerms = debouncedSearchQuery.toLowerCase().trim().split(/\s+/);
+      const matchesSearch = debouncedSearchQuery === "" || searchTerms.every(term => {
+        const searchFields = [
+          event.title?.toLowerCase() || '',
+          event.description?.toLowerCase() || '',
+          event.organization_name?.toLowerCase() || '',
+          event.location?.toLowerCase() || '',
+          ...(event.categories?.map(cat => cat.toLowerCase()) || [])
+        ].join(' ');
+        
+        // Check for exact matches first, then partial matches
+        return searchFields.includes(term) || 
+               searchFields.split(' ').some(word => word.startsWith(term));
+      });
       
-      // Check for exact matches first, then partial matches
-      return searchFields.includes(term) || 
-             searchFields.split(' ').some(word => word.startsWith(term));
+      const matchesCategory = activeCategory === "All Events" || 
+                             (() => {
+                               const categoryId = getCategoryId(activeCategory);
+                               // Check both ID format and label format for robustness
+                               return categoryId && (
+                                 event.categories?.includes(categoryId) ||
+                                 event.categories?.includes(activeCategory) ||
+                                 event.categories?.some(cat => cat.toLowerCase() === categoryId.toLowerCase()) ||
+                                 event.categories?.some(cat => cat.toLowerCase() === activeCategory.toLowerCase())
+                               );
+                             })();
+      
+      // Location filtering - check if event location contains the selected state
+      const matchesLocation = !selectedLocation || 
+                             event.location?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
+                             event.location?.toLowerCase().includes(getStateName(selectedLocation).toLowerCase());
+      
+      // Date range filtering
+      const matchesDateRange = (!selectedDateRange.start || event.date >= selectedDateRange.start) &&
+                              (!selectedDateRange.end || event.date <= selectedDateRange.end);
+
+      // Advanced filters
+      const eventPrice = getEventPriceValue(event);
+      const matchesPriceRange = (priceRange.min === 0 || eventPrice >= priceRange.min) &&
+                               (priceRange.max === 0 || eventPrice <= priceRange.max);
+
+      const eventCapacity = event.max_attendees || Infinity;
+      const matchesCapacityRange = (capacityRange.min === 0 || eventCapacity >= capacityRange.min) &&
+                                  (capacityRange.max === 0 || eventCapacity <= capacityRange.max);
+
+      const matchesTimeOfDay = timeOfDay === "any" || (() => {
+        if (!event.time) return true;
+        const hour = parseInt(event.time.split(':')[0]);
+        switch (timeOfDay) {
+          case "morning": return hour >= 6 && hour < 12;
+          case "afternoon": return hour >= 12 && hour < 17;
+          case "evening": return hour >= 17 && hour < 21;
+          case "night": return hour >= 21 || hour < 6;
+          default: return true;
+        }
+      })();
+
+      const matchesAdvancedEventType = advancedEventType === "any" || event.event_type === advancedEventType;
+      
+      return matchesSearch && matchesCategory && matchesLocation && matchesDateRange && 
+             matchesPriceRange && matchesCapacityRange && matchesTimeOfDay && matchesAdvancedEventType;
     });
-    
-    // Debug category filtering
-    if (activeCategory !== "All Events") {
-      console.log('🔍 Category Filter Debug:', {
-        activeCategory,
-        eventTitle: event.title,
-        eventCategories: event.categories,
-        categoryId: getCategoryId(activeCategory),
-        eventId: event.id
-      });
-    }
-    
-    const matchesCategory = activeCategory === "All Events" || 
-                           (() => {
-                             const categoryId = getCategoryId(activeCategory);
-                             // Check both ID format and label format for robustness
-                             return categoryId && (
-                               event.categories?.includes(categoryId) ||
-                               event.categories?.includes(activeCategory) ||
-                               event.categories?.some(cat => cat.toLowerCase() === categoryId.toLowerCase()) ||
-                               event.categories?.some(cat => cat.toLowerCase() === activeCategory.toLowerCase())
-                             );
-                           })();
-    
-    // Location filtering - check if event location contains the selected state
-    const matchesLocation = !selectedLocation || 
-                           event.location?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-                           event.location?.toLowerCase().includes(getStateName(selectedLocation).toLowerCase());
-    
-    // Date range filtering
-    const matchesDateRange = (!selectedDateRange.start || event.date >= selectedDateRange.start) &&
-                            (!selectedDateRange.end || event.date <= selectedDateRange.end);
-
-    // Advanced filters
-    const eventPrice = getEventPriceValue(event);
-    const matchesPriceRange = (priceRange.min === 0 || eventPrice >= priceRange.min) &&
-                             (priceRange.max === 0 || eventPrice <= priceRange.max);
-
-    const eventCapacity = event.max_attendees || Infinity;
-    const matchesCapacityRange = (capacityRange.min === 0 || eventCapacity >= capacityRange.min) &&
-                                (capacityRange.max === 0 || eventCapacity <= capacityRange.max);
-
-    const matchesTimeOfDay = timeOfDay === "any" || (() => {
-      if (!event.time) return true;
-      const hour = parseInt(event.time.split(':')[0]);
-      switch (timeOfDay) {
-        case "morning": return hour >= 6 && hour < 12;
-        case "afternoon": return hour >= 12 && hour < 17;
-        case "evening": return hour >= 17 && hour < 21;
-        case "night": return hour >= 21 || hour < 6;
-        default: return true;
-      }
-    })();
-
-    const matchesAdvancedEventType = advancedEventType === "any" || event.event_type === advancedEventType;
-    
-    const finalResult = matchesSearch && matchesCategory && matchesLocation && matchesDateRange && 
-           matchesPriceRange && matchesCapacityRange && matchesTimeOfDay && matchesAdvancedEventType;
-           
-    // Debug: Log final filtering result for non-All Events categories
-    if (activeCategory !== "All Events") {
-      console.log('🎯 Filter Result:', {
-        eventTitle: event.title,
-        finalResult,
-        matchesCategory,
-        matchesSearch,
-        matchesLocation,
-        matchesDateRange
-      });
-    }
-    
-    return finalResult;
-  });
-
-  // Debug: Summary of filtering results
-  console.log('📈 Filtering Summary:', {
-    totalEvents: events.length,
-    filteredEvents: filteredEvents.length,
+  }, [
+    events,
+    debouncedSearchQuery,
     activeCategory,
     selectedLocation,
-    searchQuery
-  });
+    selectedDateRange,
+    priceRange,
+    capacityRange,
+    timeOfDay,
+    advancedEventType
+  ]);
 
-  // Sort filtered events
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    switch (sortBy) {
-      case "date_asc":
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      case "date_desc":
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      case "title_asc":
-        return a.title.localeCompare(b.title);
-      case "price_asc":
-        return getEventPriceValue(a) - getEventPriceValue(b);
-      case "price_desc":
-        return getEventPriceValue(b) - getEventPriceValue(a);
-      case "popularity":
-        // Sort by total tickets sold if available, otherwise by created date
-        const aPopularity = a.total_tickets_sold || 0;
-        const bPopularity = b.total_tickets_sold || 0;
-        return bPopularity - aPopularity;
-      default:
-        return 0;
-    }
-  });
+  // Memoize sorted events to prevent re-sorting on every render
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a, b) => {
+      switch (sortBy) {
+        case "date_asc":
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case "date_desc":
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case "title_asc":
+          return a.title.localeCompare(b.title);
+        case "price_asc":
+          return getEventPriceValue(a) - getEventPriceValue(b);
+        case "price_desc":
+          return getEventPriceValue(b) - getEventPriceValue(a);
+        case "popularity":
+          // Sort by total tickets sold if available, otherwise by created date
+          const aPopularity = a.total_tickets_sold || 0;
+          const bPopularity = b.total_tickets_sold || 0;
+          return bPopularity - aPopularity;
+        default:
+          return 0;
+      }
+    });
+  }, [filteredEvents, sortBy]);
 
   const getEventPrice = (event: EventWithStats) => {
     if (event.event_type === 'simple') {
@@ -610,11 +595,57 @@ const Events = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 sm:mb-4 text-foreground">Discover Events</h1>
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground">Loading events...</p>
+        <div className="container mx-auto px-4 py-12 events-container">
+          {/* Featured Event Skeleton */}
+          <FeaturedEventSkeleton />
+          
+          {/* Filters Skeleton */}
+          <div className="mb-8">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search bar skeleton */}
+              <div className="flex-1">
+                <Skeleton className="h-10 w-full rounded-lg" />
+              </div>
+              
+              {/* Filter buttons skeleton */}
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-24 rounded-lg" />
+                <Skeleton className="h-10 w-24 rounded-lg" />
+                <Skeleton className="h-10 w-32 rounded-lg" />
+              </div>
+            </div>
           </div>
+          
+          {/* Events Grid Skeleton */}
+          {activeView === "Grid" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {[...Array(8)].map((_, index) => (
+                <EventCardSkeleton key={index} />
+              ))}
+            </div>
+          )}
+          
+          {/* Events List Skeleton */}
+          {activeView === "List" && (
+            <div className="space-y-4">
+              {[...Array(6)].map((_, index) => (
+                <EventListSkeleton key={index} />
+              ))}
+            </div>
+          )}
+          
+          {/* Masonry Skeleton */}
+          {activeView === "Masonry" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, colIndex) => (
+                <div key={colIndex} className="flex flex-col gap-4">
+                  {[...Array(3)].map((_, index) => (
+                    <EventMasonrySkeleton key={index} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -740,6 +771,37 @@ const Events = () => {
                 `Load More Events (${events.length} loaded so far)`
               )}
             </Button>
+          </div>
+        )}
+        
+        {/* Loading More Skeleton */}
+        {loadingMore && (
+          <div className="mt-8">
+            {activeView === "Grid" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                {[...Array(4)].map((_, index) => (
+                  <EventCardSkeleton key={`loading-more-${index}`} />
+                ))}
+              </div>
+            )}
+            
+            {activeView === "List" && (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, index) => (
+                  <EventListSkeleton key={`loading-more-${index}`} />
+                ))}
+              </div>
+            )}
+            
+            {activeView === "Masonry" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, colIndex) => (
+                  <div key={`loading-more-col-${colIndex}`} className="flex flex-col gap-4">
+                    <EventMasonrySkeleton />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
