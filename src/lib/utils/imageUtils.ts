@@ -11,6 +11,12 @@ interface OptimizedImage {
     small?: string;
     thumbnail?: string;
   };
+  avif?: {
+    original?: string;
+    medium?: string;
+    small?: string;
+    thumbnail?: string;
+  };
   url?: string; // Legacy support
 }
 
@@ -21,15 +27,47 @@ interface EventImages {
 }
 
 export type ImageSize = 'thumbnail' | 'small' | 'medium' | 'original';
+export type ImageFormat = 'avif' | 'webp' | 'jpeg';
+
+/**
+ * Check if browser supports AVIF format
+ */
+function supportsAvif(): boolean {
+  if (typeof window === 'undefined') return false;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  return canvas.toDataURL('image/avif').indexOf('image/avif') === 5;
+}
+
+/**
+ * Check if browser supports WebP format
+ */
+function supportsWebp(): boolean {
+  if (typeof window === 'undefined') return false;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  return canvas.toDataURL('image/webp').indexOf('image/webp') === 5;
+}
+
+/**
+ * Get the best supported image format for the current browser
+ */
+export function getBestImageFormat(): ImageFormat {
+  if (supportsAvif()) return 'avif';
+  if (supportsWebp()) return 'webp';
+  return 'jpeg';
+}
 
 /**
  * Get the appropriate image URL for an event based on the requested size
  * Provides intelligent fallbacks if the requested size is not available
+ * Prioritizes modern formats (AVIF > WebP > JPEG) when available
  */
 export function getEventImageUrl(
   event: EventWithStats | null | undefined,
   size: ImageSize = 'thumbnail',
-  preferPostcard: boolean = false
+  preferPostcard: boolean = false,
+  format?: ImageFormat
 ): string | null {
   if (!event?.images) return null;
   
@@ -71,19 +109,39 @@ export function getEventImageUrl(
       return img.url;
     }
     
-    // New optimized format with size variations
-    switch (size) {
-      case 'thumbnail':
-        return img.thumbnail || img.small || img.medium || img.original || img.url || null;
-      case 'small':
-        return img.small || img.thumbnail || img.medium || img.original || img.url || null;
-      case 'medium':
-        return img.medium || img.small || img.original || img.thumbnail || img.url || null;
-      case 'original':
-        return img.original || img.medium || img.small || img.thumbnail || img.url || null;
-      default:
-        return img.thumbnail || img.small || img.medium || img.original || img.url || null;
+    // Get the best format available
+    const bestFormat = getBestImageFormat();
+    
+    // Helper to get URL by size from a format object
+    const getUrlBySize = (formatObj: any, size: ImageSize): string | null => {
+      if (!formatObj) return null;
+      switch (size) {
+        case 'thumbnail':
+          return formatObj.thumbnail || formatObj.small || formatObj.medium || formatObj.original || null;
+        case 'small':
+          return formatObj.small || formatObj.thumbnail || formatObj.medium || formatObj.original || null;
+        case 'medium':
+          return formatObj.medium || formatObj.small || formatObj.original || formatObj.thumbnail || null;
+        case 'original':
+          return formatObj.original || formatObj.medium || formatObj.small || formatObj.thumbnail || null;
+        default:
+          return formatObj.thumbnail || formatObj.small || formatObj.medium || formatObj.original || null;
+      }
+    };
+    
+    // Try to get the URL in order of best format preference
+    if (bestFormat === 'avif' && img.avif) {
+      const avifUrl = getUrlBySize(img.avif, size);
+      if (avifUrl) return avifUrl;
     }
+    
+    if ((bestFormat === 'webp' || bestFormat === 'avif') && img.webp) {
+      const webpUrl = getUrlBySize(img.webp, size);
+      if (webpUrl) return webpUrl;
+    }
+    
+    // Fall back to JPEG
+    return getUrlBySize(img, size) || img.url || null;
   };
   
   // Try primary image first, then fallback

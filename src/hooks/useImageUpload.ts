@@ -13,6 +13,12 @@ interface OptimizedImage {
     small: string;
     thumbnail: string;
   };
+  avif?: {
+    original: string;
+    medium: string;
+    small: string;
+    thumbnail: string;
+  };
   metadata: {
     originalSize: number;
     compressedSize: number;
@@ -59,6 +65,13 @@ export const useImageUpload = () => {
       };
       img.src = URL.createObjectURL(file);
     });
+  };
+
+  // Check if browser supports AVIF
+  const supportsAvif = (): boolean => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    return canvas.toDataURL('image/avif').indexOf('image/avif') === 5;
   };
 
   // Enhanced image processing with multiple sizes and WebP conversion
@@ -149,19 +162,61 @@ export const useImageUpload = () => {
         useWebWorker: true
       })
     ]);
+
+    // Generate AVIF versions if supported (best compression)
+    let avifVersions = null;
+    if (supportsAvif()) {
+      setProcessingProgress(prev => ({ ...prev, stage: `Converting ${imageType} to AVIF` }));
+      
+      try {
+        avifVersions = await Promise.all([
+          // Original AVIF
+          imageCompression(file, {
+            maxWidthOrHeight: config.original,
+            initialQuality: 0.90,
+            fileType: 'image/avif',
+            useWebWorker: true
+          }),
+          // Medium AVIF
+          imageCompression(file, {
+            maxWidthOrHeight: config.medium,
+            initialQuality: 0.85,
+            fileType: 'image/avif',
+            useWebWorker: true
+          }),
+          // Small AVIF
+          imageCompression(file, {
+            maxWidthOrHeight: config.small,
+            initialQuality: 0.82,
+            fileType: 'image/avif',
+            useWebWorker: true
+          }),
+          // Thumbnail AVIF
+          imageCompression(file, {
+            maxWidthOrHeight: config.thumbnail,
+            initialQuality: 0.80,
+            fileType: 'image/avif',
+            useWebWorker: true
+          })
+        ]);
+      } catch (error) {
+        console.log('AVIF generation failed, continuing with JPEG and WebP only:', error);
+      }
+    }
     
     setProcessingProgress(prev => ({ ...prev, stage: `Finalizing ${imageType}` }));
     
     // Convert to base64
-    const [jpegBase64, webpBase64] = await Promise.all([
+    const [jpegBase64, webpBase64, avifBase64] = await Promise.all([
       Promise.all(jpegVersions.map(fileToBase64)),
-      Promise.all(webpVersions.map(fileToBase64))
+      Promise.all(webpVersions.map(fileToBase64)),
+      avifVersions ? Promise.all(avifVersions.map(fileToBase64)) : Promise.resolve(null)
     ]);
     
     const compressedSize = jpegVersions[0].size; // Use original optimized size
     const compressionRatio = ((originalSize - compressedSize) / originalSize) * 100;
     
-    return {
+    const result: OptimizedImage = {
       original: jpegBase64[0],
       medium: jpegBase64[1],
       small: jpegBase64[2],
@@ -180,6 +235,18 @@ export const useImageUpload = () => {
         dimensions
       }
     };
+
+    // Add AVIF data if available
+    if (avifBase64) {
+      result.avif = {
+        original: avifBase64[0],
+        medium: avifBase64[1],
+        small: avifBase64[2],
+        thumbnail: avifBase64[3]
+      };
+    }
+
+    return result;
   };
 
   const handleImageUpload = useCallback(async (files: FileList, imageType: 'banner' | 'postcard' = 'banner') => {

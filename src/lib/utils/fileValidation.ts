@@ -10,6 +10,7 @@ export const ALLOWED_IMAGE_TYPES = [
   'image/png',
   'image/gif',
   'image/webp',
+  'image/avif',
 ] as const;
 
 export const ALLOWED_DOCUMENT_TYPES = [
@@ -26,7 +27,7 @@ export const FILE_SIZE_LIMITS = {
 } as const;
 
 // File extension whitelist
-const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'];
 const ALLOWED_DOCUMENT_EXTENSIONS = ['.pdf', '.doc', '.docx'];
 
 export interface FileValidationResult {

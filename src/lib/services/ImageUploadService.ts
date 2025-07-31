@@ -108,7 +108,7 @@ export class ImageUploadService {
       folder: `${currentUser}/venues/${venueId}`,
       filename: 'floor-plan',
       maxSizeBytes: 10 * 1024 * 1024, // 10MB
-      allowedTypes: ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'],
+      allowedTypes: ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/avif'],
       userId: currentUser
     });
   }
@@ -132,7 +132,7 @@ export class ImageUploadService {
       folder: `${currentUser}/events/${eventId}/charts/${chartId}`,
       filename: 'chart-image',
       maxSizeBytes: 10 * 1024 * 1024, // 10MB
-      allowedTypes: ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'],
+      allowedTypes: ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/avif'],
       userId: currentUser
     });
   }
@@ -154,7 +154,7 @@ export class ImageUploadService {
       bucket: 'magazine-images',
       folder: `${currentUser}/${type}`,
       maxSizeBytes: 10 * 1024 * 1024, // 10MB
-      allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'],
       userId: currentUser
     });
   }
@@ -300,7 +300,7 @@ export class ImageUploadService {
   ): Promise<UploadResult> {
     try {
       // Only optimize raster images
-      if (['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      if (['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)) {
         const optimizedFile = await this.createOptimizedImage(
           file,
           optimizeOptions?.maxWidth,

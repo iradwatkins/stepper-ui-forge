@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from 'vite-plugin-pwa';
+import { imagetools } from 'vite-imagetools';
+import viteCompression from 'vite-plugin-compression';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -22,6 +24,34 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
+    // Image optimization plugin
+    imagetools({
+      defaultDirectives: (id) => {
+        // Only process images in src directory
+        if (id.includes('/src/')) {
+          return new URLSearchParams({
+            format: 'avif;webp;jpg',
+            quality: '85',
+            w: '200;400;800;1200',
+            as: 'picture'
+          });
+        }
+        return new URLSearchParams();
+      }
+    }),
+    // Compression plugin for production builds
+    mode === 'production' && viteCompression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 1024,
+      deleteOriginFile: false
+    }),
+    mode === 'production' && viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 1024,
+      deleteOriginFile: false
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {

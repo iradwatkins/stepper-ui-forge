@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { isEventPast7Days, isEventPast } from '@/lib/utils/eventDateUtils';
+import { OptimizedPicture } from '@/components/ui/OptimizedPicture';
+import { getEventImageUrl } from '@/lib/utils/imageUtils';
 
 interface LazyEventImageProps {
   eventDate: string;
@@ -10,6 +12,8 @@ interface LazyEventImageProps {
   isOrganizer?: boolean;
   showPlaceholder?: boolean;
   priority?: boolean; // For above-the-fold images
+  event?: any; // Event object for getting optimized URLs
+  size?: 'thumbnail' | 'small' | 'medium' | 'original';
 }
 
 export const LazyEventImage = ({ 
@@ -19,7 +23,9 @@ export const LazyEventImage = ({
   className, 
   isOrganizer = false,
   showPlaceholder = true,
-  priority = false
+  priority = false,
+  event,
+  size = 'medium'
 }: LazyEventImageProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(priority); // Priority images load immediately
@@ -82,29 +88,43 @@ export const LazyEventImage = ({
     ) : null;
   }
 
+  // Try to get optimized image sources if event object is provided
+  const getImageSources = () => {
+    if (event && event.images) {
+      const banner = event.images.banner || event.images.postcard;
+      if (banner && typeof banner === 'object') {
+        return {
+          avif: banner.avif?.[size] || banner.avif?.medium,
+          webp: banner.webp?.[size] || banner.webp?.medium,
+          jpeg: banner[size] || banner.medium || imageUrl,
+          fallback: imageUrl || banner.url || ''
+        };
+      }
+    }
+    return {
+      avif: undefined,
+      webp: undefined,
+      jpeg: imageUrl,
+      fallback: imageUrl || ''
+    };
+  };
+
+  const imageSources = getImageSources();
+
   return (
     <div ref={imgRef} className={cn("relative overflow-hidden", className)}>
-      {/* Blur placeholder while loading */}
-      {!isLoaded && (
-        <div className="absolute inset-0 bg-muted animate-pulse" />
-      )}
-      
-      {/* Load image only when in view */}
-      {isInView && (
-        <img
-          src={imageUrl}
-          alt={alt}
-          className={cn(
-            "transition-opacity duration-300",
-            isLoaded ? "opacity-100" : "opacity-0",
-            isPastEvent && !isOrganizer ? "opacity-75" : "",
-            className
-          )}
-          loading={priority ? "eager" : "lazy"}
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setError(true)}
-        />
-      )}
+      <OptimizedPicture
+        sources={imageSources}
+        alt={alt}
+        className={cn(
+          isPastEvent && !isOrganizer ? "opacity-75" : "",
+          className
+        )}
+        priority={priority}
+        showBlurPlaceholder={!priority}
+        onLoadStart={() => setIsInView(true)}
+        onLoadComplete={() => setIsLoaded(true)}
+      />
       
       {/* Past event indicator */}
       {isPastEvent && !isOrganizer && isLoaded && (

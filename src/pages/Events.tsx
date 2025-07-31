@@ -15,6 +15,8 @@ import { formatEventDate, formatEventTime } from "@/lib/utils/dateUtils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { EventCardSkeleton, EventListSkeleton, EventMasonrySkeleton, FeaturedEventSkeleton } from "@/components/event/EventCardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { preloadCriticalEventImages } from "@/lib/utils/imageOptimization";
+import { EventPageHead } from "@/components/event/EventPageHead";
 
 interface EventImageData {
   original?: string;
@@ -117,6 +119,11 @@ const Events = () => {
         // Set featured event (first event, static - won't change with filters)
         if (publicEvents.length > 0) {
           setFeaturedEvent(publicEvents[0]);
+          
+          // Preload critical images for better performance
+          preloadCriticalEventImages(publicEvents, 4).catch(err => {
+            console.warn('Failed to preload some images:', err);
+          });
         }
       } catch (error) {
         console.error('❌ Error loading events:', error);
@@ -363,6 +370,8 @@ const Events = () => {
                 className="w-full h-full object-cover"
                 showPlaceholder={true}
                 priority={index < 4} // First 4 images load immediately
+                event={event}
+                size="medium"
               />
             </div>
             
@@ -454,6 +463,8 @@ const Events = () => {
                 className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
                 showPlaceholder={true}
                 priority={index < 8} // First 8 masonry images load immediately
+                event={event}
+                size="small"
               />
               {/* Minimal overlays */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -653,6 +664,9 @@ const Events = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      {/* Preload critical images */}
+      <EventPageHead events={sortedEvents.slice(0, 4)} featuredEvent={featuredEvent} />
+      
       <div className="container mx-auto px-4 py-12 events-container">
 
         {/* Featured Event Hero Section */}
@@ -664,11 +678,13 @@ const Events = () => {
                 <div className="relative h-96 md:h-[500px]">
                   <LazyEventImage
                     eventDate={featuredEvent.date}
-                    imageUrl={getEventImageUrl(featuredEvent, 'medium')}
+                    imageUrl={getEventImageUrl(featuredEvent, 'original')}
                     alt={featuredEvent.title}
                     className="w-full h-full object-cover"
                     showPlaceholder={true}
                     priority={true} // Featured image loads immediately
+                    event={featuredEvent}
+                    size="original"
                   />
                   
                   {/* Gradient Overlay */}
