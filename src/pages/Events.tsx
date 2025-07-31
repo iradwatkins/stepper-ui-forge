@@ -9,7 +9,7 @@ import { getCategoryId } from "@/lib/constants/event-categories";
 import { UnifiedSearchComponent } from "@/components/search/UnifiedSearchComponent";
 import { SearchResult } from "@/lib/services/CategorySearchService";
 import { isEventPast, isEventPast7Days } from "@/lib/utils/eventDateUtils";
-import { PastEventImage } from "@/components/event/PastEventImage";
+import { LazyEventImage } from "@/components/event/LazyEventImage";
 import { getEventImageUrl } from "@/lib/utils/imageUtils";
 import { formatEventDate, formatEventTime } from "@/lib/utils/dateUtils";
 
@@ -47,7 +47,7 @@ const Events = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentOffset, setCurrentOffset] = useState(0);
-  const INITIAL_EVENTS_LOAD = 50; // Load more initially to show 2026/2027 events
+  const INITIAL_EVENTS_LOAD = 20; // Optimized initial load for better performance
   const EVENTS_PER_PAGE = 20; // Subsequent loads
 
   // Helper function to get state name from abbreviation
@@ -361,9 +361,9 @@ const Events = () => {
   };
 
   // Render event card component
-  const renderEventCard = (event: EventWithStats) => {
-    // Get thumbnail for card view (faster loading)
-    const imageUrl = getEventImageUrl(event, 'small');
+  const renderEventCard = (event: EventWithStats, index: number) => {
+    // Use thumbnail for card view for optimal performance
+    const imageUrl = getEventImageUrl(event, 'thumbnail');
 
     return (
       <Link key={event.id} to={`/events/${event.id}`}>
@@ -371,12 +371,13 @@ const Events = () => {
           {/* Image Container */}
           <div className="relative">
             <div className="w-full h-56">
-              <PastEventImage
+              <LazyEventImage
                 eventDate={event.date}
                 imageUrl={imageUrl}
                 alt={event.title}
                 className="w-full h-full object-cover"
                 showPlaceholder={true}
+                priority={index < 4} // First 4 images load immediately
               />
             </div>
             
@@ -453,19 +454,21 @@ const Events = () => {
   };
 
   const renderMasonryCard = (event: EventWithStats, index: number) => {
-    // Get medium size for masonry view (good balance of quality and performance)
-    const imageUrl = getEventImageUrl(event, 'medium');
+    // Use small size for masonry view for better performance
+    const imageUrl = getEventImageUrl(event, 'small');
 
     return (
       <Link key={event.id} to={`/events/${event.id}`}>
         <div className="group relative overflow-hidden rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer">
           {imageUrl ? (
             <div className="relative">
-              <img
-                src={imageUrl}
+              <LazyEventImage
+                eventDate={event.date}
+                imageUrl={imageUrl}
                 alt={event.title}
                 className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300"
-                loading="lazy"
+                showPlaceholder={true}
+                priority={index < 8} // First 8 masonry images load immediately
               />
               {/* Minimal overlays */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -507,7 +510,7 @@ const Events = () => {
       case "Grid":
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {eventsToShow.map(renderEventCard)}
+            {eventsToShow.map((event, index) => renderEventCard(event, index))}
           </div>
         );
       
@@ -598,7 +601,7 @@ const Events = () => {
       default:
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {eventsToShow.map(renderEventCard)}
+            {eventsToShow.map((event, index) => renderEventCard(event, index))}
           </div>
         );
     }
@@ -628,12 +631,13 @@ const Events = () => {
               <div className="relative">
                 {/* Hero Image */}
                 <div className="relative h-96 md:h-[500px]">
-                  <PastEventImage
+                  <LazyEventImage
                     eventDate={featuredEvent.date}
-                    imageUrl={getEventImageUrl(featuredEvent, 'original')}
+                    imageUrl={getEventImageUrl(featuredEvent, 'medium')}
                     alt={featuredEvent.title}
                     className="w-full h-full object-cover"
                     showPlaceholder={true}
+                    priority={true} // Featured image loads immediately
                   />
                   
                   {/* Gradient Overlay */}

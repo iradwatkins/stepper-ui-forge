@@ -261,20 +261,31 @@ export class EventsService {
         throw error
       }
 
-      const eventsWithStats: EventWithStats[] = await Promise.all(data.map(async event => {
+      // Get all unique owner IDs
+      const ownerIds = [...new Set(data.map(event => event.owner_id))]
+      
+      // Batch fetch follower counts for all organizers
+      const followerCounts: Record<string, number> = {}
+      try {
+        const followerPromises = ownerIds.map(async (ownerId) => {
+          try {
+            const count = await FollowerService.getFollowerCount(ownerId)
+            followerCounts[ownerId] = count
+          } catch (error) {
+            console.error('Error getting follower count for owner:', ownerId, error)
+            followerCounts[ownerId] = 0
+          }
+        })
+        await Promise.all(followerPromises)
+      } catch (error) {
+        console.error('Error batch fetching follower counts:', error)
+      }
+
+      const eventsWithStats: EventWithStats[] = data.map(event => {
         const ticketTypes = event.ticket_types as TicketType[]
         const tickets_sold = ticketTypes?.reduce((sum, tt) => sum + tt.sold_quantity, 0) || 0
         const total_revenue = ticketTypes?.reduce((sum, tt) => sum + (tt.price * tt.sold_quantity), 0) || 0
         
-        // Get follower count for the event organizer
-        let follower_count = 0
-        try {
-          follower_count = await FollowerService.getFollowerCount(event.owner_id)
-        } catch (error) {
-          console.error('Error getting follower count for event:', event.id, error)
-          // Continue with 0 followers if there's an error
-        }
-
         return {
           ...event,
           // Provide defaults for potentially missing fields
@@ -286,9 +297,9 @@ export class EventsService {
           tickets_sold,
           total_revenue,
           attendee_count: tickets_sold,
-          follower_count
+          follower_count: followerCounts[event.owner_id] || 0
         }
-      }))
+      })
 
       console.log('✅ Final results - returning', eventsWithStats.length, 'events with stats')
       console.log('✅ Final 2026 events:', eventsWithStats.filter(e => e.date?.includes('2026')).map(e => ({ id: e.id, title: e.title, date: e.date })))
