@@ -49,14 +49,11 @@ import { cn } from '@/lib/utils';
 
 type Step = 'event-info' | 'tickets' | 'venue-layout' | 'seat-placement' | 'review';
 
-interface VenueManagementPremiumEventProps {
-  mode?: 'create' | 'edit';
-}
-
-export default function VenueManagementPremiumEvent({ mode = 'create' }: VenueManagementPremiumEventProps) {
+export default function VenueManagementPremiumEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { id: eventId } = useParams();
+  const mode = eventId ? 'edit' : 'create';
   const [currentStep, setCurrentStep] = useState<Step>('event-info');
   const [isSaving, setIsSaving] = useState(false);
   const [isDraft, setIsDraft] = useState(true);
