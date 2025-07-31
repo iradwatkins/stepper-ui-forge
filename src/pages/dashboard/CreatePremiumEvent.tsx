@@ -32,7 +32,6 @@ import {
   X,
   Info,
   Plus,
-  FileImage,
   Loader2,
   CheckCircle
 } from 'lucide-react'
@@ -47,12 +46,12 @@ import { SeatData, SeatCategory as EnhancedSeatCategory } from '@/types/seating'
 import { TicketInventoryTracker } from '@/components/create-event/TicketInventoryTracker'
 import { cn } from '@/lib/utils'
 
-type Step = 'basic' | 'venue' | 'tickets' | 'seating' | 'review'
+type Step = 'details' | 'tickets-seating' | 'review'
 
 export default function CreatePremiumEvent() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState<Step>('basic')
+  const [currentStep, setCurrentStep] = useState<Step>('details')
   const [isSaving, setIsSaving] = useState(false)
   const [eventId, setEventId] = useState<string | null>(null)
   const [isDraft, setIsDraft] = useState(true)
@@ -129,33 +128,21 @@ export default function CreatePremiumEvent() {
   // Steps configuration
   const steps: { id: Step; title: string; description: string; icon: any }[] = [
     {
-      id: 'basic',
-      title: 'Basic Information',
-      description: 'Event details and images',
+      id: 'details',
+      title: 'Event Details & Venue',
+      description: 'Basic info and venue selection',
       icon: Info
     },
     {
-      id: 'venue',
-      title: 'Venue Selection',
-      description: 'Choose or create venue',
-      icon: Building2
-    },
-    {
-      id: 'tickets',
-      title: 'Ticket Types',
-      description: 'Create pricing tiers',
-      icon: DollarSign
-    },
-    {
-      id: 'seating',
-      title: 'Seating Layout',
-      description: 'Assign seats to tickets',
+      id: 'tickets-seating',
+      title: 'Tickets & Seating',
+      description: 'Create tickets and assign seats',
       icon: Users
     },
     {
       id: 'review',
-      title: 'Review & Activate',
-      description: 'Final review',
+      title: 'Review & Publish',
+      description: 'Final review and activation',
       icon: CheckCircle
     }
   ]
@@ -166,23 +153,21 @@ export default function CreatePremiumEvent() {
   // Validation for each step
   const canProceedFromStep = (step: Step): boolean => {
     switch (step) {
-      case 'basic':
-        const basicData = form.getValues()
+      case 'details':
+        const detailsData = form.getValues()
         return !!(
-          basicData.title?.trim() &&
-          basicData.description?.trim() &&
-          basicData.organizationName?.trim() &&
-          basicData.date &&
-          basicData.time &&
-          basicData.categories?.length > 0 &&
-          uploadedImages.banner
+          detailsData.title?.trim() &&
+          detailsData.description?.trim() &&
+          detailsData.organizationName?.trim() &&
+          detailsData.date &&
+          detailsData.time &&
+          detailsData.categories?.length > 0 &&
+          uploadedImages.banner &&
+          selectedVenue // Venue must be selected in step 1
         )
-      case 'venue':
-        return !!selectedVenue
-      case 'tickets':
-        return ticketTypes.length > 0
-      case 'seating':
-        return seats.length > 0
+      case 'tickets-seating':
+        // Must have both tickets created AND seats placed
+        return ticketTypes.length > 0 && seats.length > 0
       case 'review':
         return true
       default:
@@ -504,7 +489,7 @@ export default function CreatePremiumEvent() {
         {/* Step Content */}
         <Card>
           <CardContent className="p-6">
-            {currentStep === 'basic' && (
+            {currentStep === 'details' && (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Basic Event Information</h3>
@@ -700,144 +685,199 @@ export default function CreatePremiumEvent() {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {currentStep === 'venue' && (
-              <div className="space-y-6">
+                <Separator />
+
+                {/* Venue Selection - Now part of Step 1 */}
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Select Venue</h3>
                   <p className="text-muted-foreground mb-4">
                     Choose from your saved venues or create a new one
                   </p>
+
+                  {venues.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {venues.map(venue => (
+                        <Card
+                          key={venue.id}
+                          className={cn(
+                            "cursor-pointer transition-all hover:shadow-md",
+                            selectedVenue?.id === venue.id && "ring-2 ring-primary"
+                          )}
+                          onClick={() => setSelectedVenue(venue)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-medium">{venue.name}</h4>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {venue.description || 'No description'}
+                                </p>
+                                <div className="flex items-center gap-4 mt-2 text-sm">
+                                  <span className="flex items-center gap-1">
+                                    <Users className="h-3 w-3" />
+                                    {venue.capacity} seats
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    {venue.venueType}
+                                  </span>
+                                </div>
+                              </div>
+                              {selectedVenue?.id === venue.id && (
+                                <CheckCircle className="h-5 w-5 text-primary" />
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Card>
+                      <CardContent className="text-center py-8">
+                        <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h4 className="text-lg font-medium mb-2">No venues yet</h4>
+                        <p className="text-muted-foreground">
+                          Create your first venue layout to get started
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <div className="flex justify-center mt-4">
+                    <Button onClick={() => setShowCreateVenueDialog(true)} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Venue
+                    </Button>
+                  </div>
+
+                  {selectedVenue && (
+                    <Alert className="mt-4">
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Selected venue:</strong> {selectedVenue.name} ({selectedVenue.capacity} seats)
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'tickets-seating' && (
+              <div className="space-y-6">
+                {/* Header */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Create Tickets & Assign Seats</h3>
+                  <p className="text-muted-foreground">
+                    First create your ticket types, then place them on the venue layout below
+                  </p>
                 </div>
 
-                {venues.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {venues.map(venue => (
-                      <Card
-                        key={venue.id}
-                        className={cn(
-                          "cursor-pointer transition-all hover:shadow-md",
-                          selectedVenue?.id === venue.id && "ring-2 ring-primary"
-                        )}
-                        onClick={() => setSelectedVenue(venue)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-medium">{venue.name}</h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {venue.description || 'No description'}
-                              </p>
-                              <div className="flex items-center gap-4 mt-2 text-sm">
-                                <span className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  {venue.capacity} seats
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Building2 className="h-3 w-3" />
-                                  {venue.venueType}
-                                </span>
-                              </div>
-                            </div>
-                            {selectedVenue?.id === venue.id && (
-                              <CheckCircle className="h-5 w-5 text-primary" />
-                            )}
+                {/* Ticket Creation Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Step 1: Create Ticket Types</CardTitle>
+                    <CardDescription>
+                      Define your ticket categories (VIP, Regular, etc.) with pricing and quantities
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <TicketConfigurationWizard
+                      form={form}
+                      eventType="premium"
+                      initialTickets={ticketTypes}
+                      onTicketsChange={setTicketTypes}
+                    />
+                    
+                    {ticketTypes.length > 0 && (
+                      <div className="mt-4 p-4 bg-muted rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">Total Capacity</h4>
+                            <p className="text-sm text-muted-foreground">Across all ticket types</p>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <Card>
-                    <CardContent className="text-center py-8">
-                      <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h4 className="text-lg font-medium mb-2">No venues yet</h4>
-                      <p className="text-muted-foreground">
-                        Create your first venue layout to get started
-                      </p>
-                    </CardContent>
-                  </Card>
+                          <p className="text-2xl font-bold">
+                            {ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} seats
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Seating Assignment Section */}
+                {ticketTypes.length > 0 && selectedVenue?.imageUrl && (
+                  <>
+                    <Separator />
+                    
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Step 2: Place Seats on Venue Layout</CardTitle>
+                        <CardDescription>
+                          Click on the venue image to place seats. Each seat will be assigned to a ticket type.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {/* Inventory Tracker */}
+                        <div className="mb-4">
+                          <TicketInventoryTracker
+                            tickets={ticketTypes}
+                            placedSeats={seats}
+                          />
+                        </div>
+
+                        {/* Seating Manager */}
+                        <PremiumSeatingManager
+                          venueImageUrl={selectedVenue.imageUrl}
+                          onSeatingConfigurationChange={handleSeatingConfigurationChange}
+                          initialSeats={seats}
+                          initialCategories={categories}
+                          ticketTypes={ticketTypes}
+                          startingTab="place"
+                          showOnlyTab="place"
+                        />
+
+                        {/* Progress Alert */}
+                        {seats.length > 0 && (
+                          <Alert className="mt-4">
+                            <Info className="h-4 w-4" />
+                            <AlertDescription>
+                              {seats.length < ticketTypes.reduce((sum, t) => sum + t.quantity, 0) ? (
+                                <>
+                                  <strong>Progress:</strong> You've placed {seats.length} seats. 
+                                  Place {ticketTypes.reduce((sum, t) => sum + t.quantity, 0) - seats.length} more to match your ticket quantities.
+                                </>
+                              ) : (
+                                <>
+                                  <strong>Complete!</strong> All {seats.length} seats have been placed on the venue layout.
+                                </>
+                              )}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </>
                 )}
 
-                <div className="flex justify-center">
-                  <Button onClick={() => setShowCreateVenueDialog(true)} variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Venue
-                  </Button>
-                </div>
-
-                {selectedVenue && (
+                {/* Show message if no tickets created yet */}
+                {ticketTypes.length === 0 && (
                   <Alert>
-                    <CheckCircle className="h-4 w-4" />
+                    <Info className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Selected venue:</strong> {selectedVenue.name} ({selectedVenue.capacity} seats)
+                      Create ticket types above to begin placing seats on the venue layout.
                     </AlertDescription>
                   </Alert>
                 )}
-              </div>
-            )}
 
-            {currentStep === 'tickets' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Create Ticket Types</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Define your ticket categories and pricing. You'll assign these to specific seats in the next step.
-                  </p>
-                </div>
-
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Create ticket types like VIP, Regular, or Accessible seating. Each type can have different pricing and amenities.
-                  </AlertDescription>
-                </Alert>
-
-                <TicketConfigurationWizard
-                  form={form}
-                  eventType="premium"
-                  initialTickets={ticketTypes}
-                  onTicketsChange={setTicketTypes}
-                />
-
-                {ticketTypes.length > 0 && (
-                  <div className="mt-6 p-4 bg-muted rounded-lg">
-                    <h4 className="font-medium mb-2">Total Capacity</h4>
-                    <p className="text-2xl font-bold">
-                      {ticketTypes.reduce((sum, ticket) => sum + ticket.quantity, 0)} seats
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentStep === 'seating' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Configure Seating Layout</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Place your tickets on the venue layout. Click to add seats or create tables.
-                  </p>
-                </div>
-
-                {ticketTypes.length > 0 && (
-                  <TicketInventoryTracker
-                    tickets={ticketTypes}
-                    placedSeats={seats}
-                  />
-                )}
-
-                {selectedVenue?.imageUrl && (
-                  <PremiumSeatingManager
-                    venueImageUrl={selectedVenue.imageUrl}
-                    onSeatingConfigurationChange={handleSeatingConfigurationChange}
-                    initialSeats={seats}
-                    initialCategories={categories}
-                    ticketTypes={ticketTypes}
-                    startingTab="configure"
-                  />
+                {/* Show message if no venue selected */}
+                {!selectedVenue && ticketTypes.length > 0 && (
+                  <Alert className="border-amber-200 bg-amber-50">
+                    <Info className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800">
+                      <strong>Venue Required:</strong> Please go back and select a venue to place seats.
+                    </AlertDescription>
+                  </Alert>
                 )}
               </div>
             )}
@@ -940,7 +980,7 @@ export default function CreatePremiumEvent() {
               <Button
                 variant="outline"
                 onClick={prevStep}
-                disabled={currentStep === 'basic'}
+                disabled={currentStep === 'details'}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Previous

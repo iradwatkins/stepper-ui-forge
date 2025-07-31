@@ -104,50 +104,12 @@ export const useWizardNavigation = ({
         canNavigateBackward: () => true
       },
       {
-        id: 'venue-selection',
-        title: 'Venue Selection',
-        description: 'Choose or create venue layout',
-        icon: 'Building',
-        isRequired: (eventType) => eventType === 'premium',
-        canNavigateForward: (data) => {
-          // Can proceed if they selected a venue OR chose to proceed with custom
-          return !!(data.venueLayoutId) || !!(data.proceedWithCustomVenue) || !!(data.venueImageUrl || data.hasVenueImage);
-        },
-        canNavigateBackward: () => true
-      },
-      {
         id: 'ticketing',
         title: 'Ticketing',
         description: 'Configure ticket sales',
         icon: 'Ticket',
         isRequired: (eventType) => eventType !== 'simple',
         canNavigateForward: () => true, // Will be validated by TicketConfiguration component
-        canNavigateBackward: () => true
-      },
-      {
-        id: 'seating-setup',
-        title: 'Venue Configuration',
-        description: 'Upload venue, create tickets, and configure seating',
-        icon: 'Building',
-        isRequired: (eventType) => eventType === 'premium',
-        canNavigateForward: (data) => {
-          // For Premium events, require all three steps to be completed
-          const hasVenueImage = !!(data.venueImageUrl || data.hasVenueImage);
-          const hasSeats = !!(data.seats && data.seats.length > 0);
-          const hasCategories = !!(data.seatCategories && data.seatCategories.length > 0);
-          
-          // All must be complete for Premium events
-          const canAdvance = hasVenueImage && hasSeats && hasCategories;
-          
-          console.log('Premium venue configuration validation:', {
-            hasVenueImage,
-            hasSeats,
-            hasCategories,
-            canAdvance
-          });
-          
-          return canAdvance;
-        },
         canNavigateBackward: () => true
       },
       {
