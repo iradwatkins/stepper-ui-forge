@@ -586,7 +586,7 @@ export default function Community() {
                 >
                   Clear All Filters
                 </Button>
-                <Link to="/create-business">
+                <Link to="/dashboard/businesses/create">
                   <Button variant="outline">
                     <Plus className="w-4 h-4 mr-2" />
                     Be the First to List Your Business

@@ -870,53 +870,79 @@ export default function CreateBusinessSteps() {
                     icon={<Clock className="w-5 h-5" />}
                   >
                     <div className="space-y-4">
-                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
-                        <div key={day} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border rounded-lg">
-                          <div className="w-full sm:w-20 text-sm font-medium capitalize">
-                            {day}
-                          </div>
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-                            <div className="flex items-center gap-2 flex-1">
-                              <Input
-                                type="time"
-                                placeholder="Open"
-                                value={businessHours[day as keyof BusinessHours]?.open || ''}
-                                onChange={(e) => updateBusinessHours(day as keyof BusinessHours, {
-                                  open: e.target.value,
-                                  close: businessHours[day as keyof BusinessHours]?.close || '',
-                                  closed: false
-                                })}
-                                className="flex-1 sm:w-32"
-                              />
-                              <span className="text-muted-foreground text-sm">to</span>
-                              <Input
-                                type="time"
-                                placeholder="Close"
-                                value={businessHours[day as keyof BusinessHours]?.close || ''}
-                                onChange={(e) => updateBusinessHours(day as keyof BusinessHours, {
-                                  open: businessHours[day as keyof BusinessHours]?.open || '',
-                                  close: e.target.value,
-                                  closed: false
-                                })}
-                                className="flex-1 sm:w-32"
-                              />
+                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
+                        const dayHours = businessHours[day as keyof BusinessHours];
+                        const isClosed = dayHours?.closed === true;
+                        
+                        return (
+                          <div key={day} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 border rounded-lg">
+                            <div className="w-full sm:w-20 text-sm font-medium capitalize">
+                              {day}
                             </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateBusinessHours(day as keyof BusinessHours, {
-                                open: '',
-                                close: '',
-                                closed: true
-                              })}
-                              className="w-full sm:w-auto"
-                            >
-                              Closed
-                            </Button>
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
+                              {isClosed ? (
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-muted-foreground">Closed</span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => updateBusinessHours(day as keyof BusinessHours, {
+                                      open: '09:00',
+                                      close: '17:00',
+                                      closed: false
+                                    })}
+                                    className="ml-auto"
+                                  >
+                                    Set Hours
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <Input
+                                      type="time"
+                                      placeholder="Open"
+                                      value={dayHours?.open || ''}
+                                      onChange={(e) => updateBusinessHours(day as keyof BusinessHours, {
+                                        open: e.target.value,
+                                        close: dayHours?.close || '',
+                                        closed: false
+                                      })}
+                                      className="flex-1 sm:w-32"
+                                    />
+                                    <span className="text-muted-foreground text-sm">to</span>
+                                    <Input
+                                      type="time"
+                                      placeholder="Close"
+                                      value={dayHours?.close || ''}
+                                      onChange={(e) => updateBusinessHours(day as keyof BusinessHours, {
+                                        open: dayHours?.open || '',
+                                        close: e.target.value,
+                                        closed: false
+                                      })}
+                                      className="flex-1 sm:w-32"
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => updateBusinessHours(day as keyof BusinessHours, {
+                                      open: '',
+                                      close: '',
+                                      closed: true
+                                    })}
+                                    className="w-full sm:w-auto"
+                                  >
+                                    Mark Closed
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </FormStep>
                 )}

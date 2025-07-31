@@ -39,6 +39,7 @@ const CreateClass = lazy(() => import("./pages/CreateClass"));
 const EditClass = lazy(() => import("./pages/EditClass"));
 const EditBusiness = lazy(() => import("./pages/EditBusiness"));
 const Community = lazy(() => import("./pages/Community"));
+const CreateBusinessSteps = lazy(() => import("./pages/CreateBusinessSteps"));
 const CreateEvent = lazy(() => import("./pages/CreateEvent"));
 const CreateEventWizard = lazy(() => import("./pages/CreateEventWizard"));
 const EditEvent = lazy(() => import("./pages/EditEvent"));
@@ -141,7 +142,7 @@ const AppContent = () => {
         <Route path="/community" element={<Community />} />
         <Route path="/create-business" element={
           <ProtectedRoute>
-            <CreateBusiness />
+            <CreateBusinessSteps />
           </ProtectedRoute>
         } />
         <Route path="/my-tickets" element={<MyTickets />} />
