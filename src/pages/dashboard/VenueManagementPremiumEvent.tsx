@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { GooglePlacesInput } from '@/components/ui/GooglePlacesInput';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -545,11 +546,22 @@ export default function VenueManagementPremiumEvent() {
 
                 <div className="space-y-2 mt-4">
                   <Label htmlFor="address">Event Address</Label>
-                  <Input
-                    id="address"
-                    placeholder="e.g., 123 Main Street, City, State"
-                    {...form.register('address')}
+                  <GooglePlacesInput
+                    value={form.watch('address') || ''}
+                    onChange={(value, placeData) => {
+                      form.setValue('address', value)
+                      if (placeData) {
+                        // Store coordinates and place data if needed
+                        console.log('Place selected:', placeData)
+                      }
+                    }}
+                    placeholder="Search for venue, address, or landmark..."
+                    error={!!form.formState.errors.address}
+                    className="w-full"
                   />
+                  {form.formState.errors.address && (
+                    <p className="text-sm text-destructive mt-1">{form.formState.errors.address.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2 mt-4">
