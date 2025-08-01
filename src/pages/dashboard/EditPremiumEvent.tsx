@@ -30,6 +30,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { eventFormSchema } from '@/types/event-form'
 import { useImageUpload } from '@/hooks/useImageUpload'
+import { EventSeatingService } from '@/lib/services/EventSeatingService'
+import { SeatData } from '@/types/seating'
 
 export default function EditPremiumEvent() {
   const { id } = useParams()
@@ -42,6 +44,7 @@ export default function EditPremiumEvent() {
   const [venue, setVenue] = useState<any>(null)
   const [ticketTypes, setTicketTypes] = useState<any[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [seats, setSeats] = useState<SeatData[]>([])
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventFormSchema),
@@ -125,6 +128,17 @@ export default function EditPremiumEvent() {
             earlyBirdUntil: ticket.early_bird_until
           })))
         }
+
+        // Load seating configuration
+        try {
+          const seatingData = await EventSeatingService.loadEventSeating(id)
+          if (seatingData && seatingData.seats) {
+            setSeats(seatingData.seats)
+          }
+        } catch (seatingError) {
+          console.error('Error loading seating configuration:', seatingError)
+          // Continue without seating data - it may not exist yet
+        }
       } catch (error) {
         console.error('Error loading event:', error)
         toast.error('Failed to load event')
@@ -177,6 +191,21 @@ export default function EditPremiumEvent() {
         .eq('id', id)
 
       if (error) throw error
+
+      // Save seating configuration if modified
+      if (seats.length > 0 && venue?.id) {
+        try {
+          await EventSeatingService.saveEventSeating(
+            id,
+            venue.id,
+            seats,
+            ticketTypes
+          )
+        } catch (seatingError) {
+          console.error('Error saving seating configuration:', seatingError)
+          toast.warning('Event updated but seating configuration could not be saved')
+        }
+      }
 
       toast.success('Event updated successfully')
     } catch (error) {
@@ -412,8 +441,8 @@ export default function EditPremiumEvent() {
 
                       <PremiumSeatingManager
                         venueImageUrl={venue.imageUrl}
-                        onSeatingConfigurationChange={() => {}}
-                        initialSeats={venue.seats || []}
+                        onSeatingConfigurationChange={(newSeats) => setSeats(newSeats)}
+                        initialSeats={seats}
                         initialCategories={venue.priceCategories || []}
                         ticketTypes={ticketTypes}
                         startingTab="preview"

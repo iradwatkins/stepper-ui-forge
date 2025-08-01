@@ -46,6 +46,8 @@ const EditEvent = lazy(() => import("./pages/EditEvent"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardHome = lazy(() => import("./pages/DashboardHome"));
 const Profile = lazy(() => import("./pages/Profile"));
+const TestPage = lazy(() => import("./pages/dashboard/TestPage"));
+const TestSeating = lazy(() => import("./pages/TestSeating"));
 const Settings = lazy(() => import("./pages/Settings"));
 const MyTickets = lazy(() => import("./pages/MyTickets"));
 const Notifications = lazy(() => import("./pages/dashboard/Notifications"));
@@ -82,8 +84,6 @@ const EventAssignments = lazy(() => import("./pages/dashboard/EventAssignments")
 const Schedule = lazy(() => import("./pages/dashboard/Schedule"));
 const AudienceInsights = lazy(() => import("./pages/dashboard/AudienceInsights"));
 const VenueManagement = lazy(() => import("./pages/dashboard/VenueManagement"));
-// const VenueManagementPremiumEvent = lazy(() => import("./pages/dashboard/VenueManagementPremiumEvent"));
-import VenueManagementPremiumEvent from "./pages/dashboard/VenueManagementPremiumEventTest";
 const CashPaymentDashboardPage = lazy(() => import("./pages/CashPaymentDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminAuth = lazy(() => import("./pages/AdminAuth"));
@@ -111,6 +111,7 @@ import { useCart } from "./contexts/CartContext";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
+  console.log('App.tsx loaded at', new Date().toISOString());
   const location = useLocation();
   const isHomePage = location.pathname === '/';
   const isDashboardPage = location.pathname.startsWith('/dashboard');
@@ -129,6 +130,7 @@ const AppContent = () => {
       <Suspense fallback={<PageLoader />}>
         <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/testroute" element={<div>Test Route Outside Dashboard Works!</div>} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/magazine" element={<Magazine />} />
@@ -178,6 +180,9 @@ const AppContent = () => {
         {/* Legacy auth route - redirect to account */}
         <Route path="/auth" element={<AccountAuth />} />
         
+        {/* Test routes */}
+        <Route path="/test-seating" element={<TestSeating />} />
+        
         {/* Payment callback routes */}
         <Route path="/payment/paypal/callback" element={<PayPalCallback />} />
         <Route path="/auth/callback" element={<SquareOAuthCallback />} />
@@ -190,6 +195,7 @@ const AppContent = () => {
           </ProtectedRoute>
         }>
           <Route index element={<DashboardHome />} />
+          <Route path="newtest" element={<TestPage />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
           <Route path="notifications" element={<Notifications />} />
@@ -210,8 +216,7 @@ const AppContent = () => {
           <Route path="events/premium/create" element={<CreatePremiumEvent />} />
           <Route path="events/premium/edit/:id" element={<EditPremiumEvent />} />
           <Route path="venues" element={<VenueManagement />} />
-          <Route path="venues/create-premium-event" element={<VenueManagementPremiumEvent />} />
-          <Route path="venues/edit-premium-event/:id" element={<VenueManagementPremiumEvent />} />
+          <Route path="testpage" element={<TestPage />} />
           <Route path="tickets" element={<TicketsOverview />} />
           <Route path="tickets/:id" element={<TicketsOverview />} />
           <Route path="tickets/analytics" element={<TicketAnalytics />} />
@@ -224,7 +229,6 @@ const AppContent = () => {
           <Route path="seller-payouts" element={<SellerPayouts />} />
           <Route path="payouts" element={<PayoutsDashboard />} />
           <Route path="liked" element={<LikedEvents />} />
-          <Route path="tickets" element={<MyTickets />} />
           <Route path="scanner" element={<QRScanner />} />
           <Route path="businesses" element={<MyBusinesses />} />
           <Route path="businesses/create" element={<CreateBusiness />} />

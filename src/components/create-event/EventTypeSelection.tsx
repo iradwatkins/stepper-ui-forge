@@ -117,7 +117,7 @@ export const EventTypeSelection = ({ eventType, setEventType }: EventTypeSelecti
   const handleTypeSelection = (type: EventType) => {
     if (type.id === 'premium') {
       // Navigate to venue management for premium events
-      navigate('/dashboard/venues/create-premium-event');
+      navigate('/dashboard/events/premium/create');
     } else {
       console.log("Selected event type:", type.id);
       setEventType(type.id);

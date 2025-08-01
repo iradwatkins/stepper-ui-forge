@@ -45,6 +45,7 @@ import PremiumSeatingManager from '@/components/seating/PremiumSeatingManager'
 import { SeatData, SeatCategory as EnhancedSeatCategory } from '@/types/seating'
 import { TicketInventoryTracker } from '@/components/create-event/TicketInventoryTracker'
 import { cn } from '@/lib/utils'
+import { EventSeatingService } from '@/lib/services/EventSeatingService'
 
 type Step = 'details' | 'tickets-seating' | 'review'
 
@@ -374,7 +375,21 @@ export default function CreatePremiumEvent() {
           await Promise.all(ticketPromises)
         }
 
-        // TODO: Store seating configuration (when seating tables are available)
+        // Save seating configuration if seats have been configured
+        if (seats.length > 0 && selectedVenue?.id) {
+          try {
+            await EventSeatingService.saveEventSeating(
+              event.id,
+              selectedVenue.id,
+              seats,
+              ticketTypes
+            )
+          } catch (seatingError) {
+            console.error('Error saving seating configuration:', seatingError)
+            // Continue with event creation even if seating fails
+            toast.warning('Event created but seating configuration could not be saved')
+          }
+        }
       }
 
       toast.success(publish ? 'Event published successfully!' : 'Event saved as draft')

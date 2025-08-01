@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' && componentTagger(),
+    // mode === 'development' && componentTagger(),
     // Image optimization plugin
     imagetools({
       defaultDirectives: (id) => {
