@@ -46,7 +46,6 @@ import { SeatData, SeatCategory as EnhancedSeatCategory } from '@/types/seating'
 import { TicketInventoryTracker } from '@/components/create-event/TicketInventoryTracker'
 import { cn } from '@/lib/utils'
 import { EventSeatingService } from '@/lib/services/EventSeatingService'
-import { GooglePlacesInput } from '@/components/ui/GooglePlacesInput'
 
 type Step = 'details' | 'tickets-seating' | 'review'
 
@@ -582,22 +581,11 @@ export default function CreatePremiumEvent() {
 
                   <div className="space-y-2 mt-4">
                     <Label htmlFor="address">Event Address</Label>
-                    <GooglePlacesInput
-                      value={form.watch('address') || ''}
-                      onChange={(value, placeData) => {
-                        form.setValue('address', value)
-                        if (placeData) {
-                          // Store coordinates and place data if needed
-                          console.log('Place selected:', placeData)
-                        }
-                      }}
-                      placeholder="Search for venue, address, or landmark..."
-                      error={!!form.formState.errors.address}
-                      className="w-full"
+                    <Input
+                      id="address"
+                      placeholder="e.g., 123 Main Street, City, State"
+                      {...form.register('address')}
                     />
-                    {form.formState.errors.address && (
-                      <p className="text-sm text-destructive mt-1">{form.formState.errors.address.message}</p>
-                    )}
                   </div>
 
                   <div className="space-y-2 mt-4">
